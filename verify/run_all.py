@@ -25,7 +25,7 @@ def main():
     try:
         import test_pool_slot as ps
         _n_ps = ps.run_all_cases()
-        print(f"  ✅ 滑池槽 golden PASS（{_n_ps}/8：KL例 J=180/150＋E1-E7）\n")
+        print(f"  ✅ 滑池槽 golden PASS（{_n_ps}/8：KL例 J=1.80/1.50㎡＋E1-E7）\n")
     except Exception as e:
         print(f"  🔴 滑池槽 golden FAIL: {e}\n")
         rc = 1

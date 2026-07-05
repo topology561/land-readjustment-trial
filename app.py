@@ -5792,7 +5792,9 @@ def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
         rw_R = (R(b_R + sR) - R(b_R)) if has_R else 0.0
         table.append({
             'k': k,
-            'J': rw_L * F_L * l1_L + rw_R * F_R * l1_R,
+            # J 單位＝負擔「面積」㎡（Rw 化比率 ×F(m)×l₁；KL 量級裁示 2026-07-05：
+            #   如 R2 全飽和 J≈1.00×44.94×1≈45）。等權 F=l1=1 時 ×100 即手冊 %表述（180/150）。
+            'J': (rw_L / 100.0) * F_L * l1_L + (rw_R / 100.0) * F_R * l1_R,
             'dev': abs(sL - sR),
             'ΣRw_L': rw_L,
             'ΣRw_R': rw_R,
@@ -15214,6 +15216,22 @@ def main():
                                 'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
                                 'left_results': left_results, 'right_results': right_results,
                             }
+
+                        # ── 🆕 W-D.2 J-fix：warn-on-zero-weight（no-silent-fallback）──
+                        #   有 SIDE_LINE 之側其 J 權重 F×l₁ 必 >0；零＝上游參數層靜默缺
+                        #   （Step E 該街廓側街「新闢」未勾/路寬未設 → 尺度 0 → J 死值、
+                        #    G 公式側街負擔項**同源**歸零）。具名警示、不得靜默吞 0。
+                        for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (
+                                ('左', _has_left_corner, _F_left, _lside_left),
+                                ('右', _has_right_corner, _F_right, _lside_right)):
+                            if _has_w2 and (_F_w2 * _l1_w2) <= 0.0:
+                                st.warning(
+                                    f"⚠️ 街廓 {blk_label} {_side_nm_w2}側：有 SIDE_LINE 但滑池槽權重 "
+                                    f"F×l₁ = {_F_w2:.2f}×{_l1_w2:.2f} = 0 → J 退化為 0"
+                                    "（選槽將僅剩 min-dev 居中），且 G 公式側街負擔項同源歸零。"
+                                    "請檢查**步驟 E** 該街廓側街「路寬／新闢道路」設定"
+                                    "（尺度=0 多因未勾新闢；參數正典見 verify/case_params 快照）後重跑。"
+                                )
 
                         # ── 🆕 W-D.2 §3 選槽 orchestration（D-1：基準趟→k*→正式趟）──
                         _N = len(ordered_v2)
