@@ -1,0 +1,30 @@
+# ══ secrets（金鑰永不入倉） ══
+.streamlit/
+
+# ══ 真地籍／對照表／敏感原始檔（白名單制之第二道防線；永不入倉） ══
+# 倉內地籍資料唯一合法來源＝data/地籍資料來源_匿名版.xlsx（見 docs/匿名化驗證報告.md）
+*對照表*
+data/地籍資料來源.xlsx
+data/地籍資料來源_花蓮*.xlsx
+data/*.xls
+data/*.m02
+data/*.M02
+data/*.jpg
+data/UA0013.DXF
+data/sv_tmp00.dxf
+references/
+
+# ══ Python ══
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# ══ 系統檔 ══
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ══ harness 重生成物（b6_report.md 除外，追蹤中） ══
+verify/out/got_*
