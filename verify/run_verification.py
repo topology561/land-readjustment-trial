@@ -26,11 +26,13 @@ sys.path.insert(0, HERE)
 from app_harvest import harvest  # noqa: E402
 from selection_pipeline import (  # noqa: E402
     build_ownership, build_build_parcels, run_corner_pk)
+from stepg_pipeline import run_step_g, build_step_g_tables  # noqa: E402
 
 SNAPSHOT = os.path.join(HERE, "case_params_UC9898.json")
 V6DXF = os.path.join(REPO, "data", "V6.dxf")
 ANON_XLSX = os.path.join(REPO, "data", "地籍資料來源_匿名版.xlsx")
 BASELINES = os.path.join(HERE, "baselines")
+WD2RUN = os.path.join(HERE, "baselines", "v2")   # v2 baselines（KL 2026-07-06 乾淨雙參數輪轉正）
 OUTDIR = os.path.join(HERE, "out")
 CORNER_BLOCKS = ["R1", "R2", "R3", "R4", "R5", "R6"]
 
@@ -224,9 +226,12 @@ def _classify_gxxx(violations):
     return hard, warn
 
 
-def diff_rows(got_rows, baseline_path, key_cols, label):
+def diff_rows(got_rows, baseline_path, key_cols, label, skip_cols=None):
     """逐格比對 got_rows vs baseline CSV。key_cols 定位（宗地地號/街廓/端，非群組號）。
+    skip_cols：豁免欄（每一條＝鬆一格閘，README 白名單記帳；現僅
+    『原位次(距角序·暫行)』於 v1 診斷——v2 轉正換源投影序 rank，KL 放行）。
     回傳 (ok, violations)。"""
+    skip_cols = skip_cols or set()
     base = _read_csv(baseline_path)
     def keyof(r):
         return tuple(str(r.get(k, "")).strip() for k in key_cols)
@@ -244,6 +249,8 @@ def diff_rows(got_rows, baseline_path, key_cols, label):
             continue
         b, g = base_by[k], got_by[k]
         for col in b:
+            if col in skip_cols:
+                continue
             if col not in g:
                 viol.append(f"[{label}] {k} 缺欄 {col}"); continue
             if _norm(b[col]) != _norm(g[col]):
@@ -329,16 +336,19 @@ def main():
           f"面積交叉換位 {len(swaps)} 對")
 
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
-        diag, sel, off = run_corner_pk(
+        diag, sel, off, winners_state, forced_map = run_corner_pk(
             ns, fake_st, list(cb_by.values()), cad,
             param_by_tag[tag], temp_parcels, build_parcels, setback)
         _dump_csv(diag, os.path.join(OUTDIR, f"got_診斷_退縮{tag}.csv"))
         _dump_csv(sel, os.path.join(OUTDIR, f"got_指配_退縮{tag}.csv"))
         _dump_csv(off, os.path.join(OUTDIR, f"got_抵費地_退縮{tag}.csv"))
 
+        # v1 診斷豁免欄記帳：『原位次(距角序·暫行)』——W-D.2 v2 轉正換源投影序 rank
+        # （KL 放行三件套 2026-07-06；新欄由 v2 段＋pool-slot 單測看守，README 白名單 #3）
         ok_d, v_d = diff_rows(diag, os.path.join(BASELINES, f"W-D.1.2 診斷_退縮{tag}.csv"),
-                              ["街廓", "端", "候選地號"], f"診斷{tag}")
-        results.append((f"診斷{tag}", ok_d, v_d))
+                              ["街廓", "端", "候選地號"], f"診斷{tag}",
+                              skip_cols={"原位次(距角序·暫行)"})
+        results.append((f"診斷{tag}(v1·原位次欄豁免)", ok_d, v_d))
 
         ok_s, v_s = diff_rows(sel, os.path.join(BASELINES, f"第 1 宗街角地指配結果_退縮{tag}.csv"),
                               ["街廓"], f"指配{tag}")
@@ -355,6 +365,31 @@ def main():
             results.append((f"抵費地{tag}(應空)", not off,
                             [f"[抵費地{tag}] 預期空、得 {len(off)} 列：{off}"] if off else []))
 
+        # ── 🆕 W-D.2 P6：Step G headless → 三張表對拍 v2 準源（wd2_run/） ──
+        print(f"… Step G headless（{tag}；快照尺度輸入消費＋J 非零看守）")
+        try:
+            _sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
+                             param_by_tag[tag], build_parcels,
+                             winners_state, forced_map, setback)
+            g_tab, diag_tab, slot_tab = build_step_g_tables(_sg)
+            _dump_csv(g_tab, os.path.join(OUTDIR, f"got_G值_退縮{tag}.csv"))
+            _dump_csv(diag_tab, os.path.join(OUTDIR, f"got_滑池槽診斷_退縮{tag}.csv"))
+            _dump_csv(slot_tab, os.path.join(OUTDIR, f"got_逐槽J表_退縮{tag}.csv"))
+            ok_g, v_g = diff_rows(
+                g_tab, os.path.join(WD2RUN, f"G 值計算結果_退縮{tag}.csv"),
+                ["所屬街廓", "暫編地號"], f"v2·G值{tag}")
+            results.append((f"v2·G值{tag}", ok_g, v_g))
+            ok_pd, v_pd = diff_rows(
+                diag_tab, os.path.join(WD2RUN, f"W-D.2 §3 滑池槽診斷_退縮{tag}.csv"),
+                ["街廓"], f"v2·滑池槽{tag}")
+            results.append((f"v2·滑池槽{tag}", ok_pd, v_pd))
+            ok_j, v_j = diff_rows(
+                slot_tab, os.path.join(WD2RUN, f"逐槽 J 表_退縮{tag}.csv"),
+                ["街廓", "k"], f"v2·J表{tag}")
+            results.append((f"v2·J表{tag}", ok_j, v_j))
+        except RuntimeError as _e_sg:
+            results.append((f"v2·StepG{tag}", False, [f"[StepG{tag}] 看守觸發：{_e_sg}"]))
+
     print("=" * 60)
     allok = True
     for name, ok, viol in results:
@@ -366,7 +401,7 @@ def main():
     if gxxx_warnings:
         print("⚠️ Gxxx 警告級 diverge（不得正規化吃掉；迭代序訊號 → 交 B6 仲裁）")
     print("嫌犯序：快照漏參 > dtype 1.5（法人統編 '.0'）> driver orchestration 漂移 > 引擎（勿動 app）")
-    print("RESULT:", "ALL GREEN（幾何半＋選位半）" if allok else "FAIL")
+    print("RESULT:", "ALL GREEN（幾何半＋選位半＋Step G v2）" if allok else "FAIL")
     return 0 if allok else 1
 
 

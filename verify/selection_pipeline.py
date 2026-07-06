@@ -267,6 +267,7 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
 
     _corner_select_results = []
     _corner_cand_diag = []
+    _winners_state = {}   # 🆕 W-D.2 P6：鏡射 app f3_corner_winners
     for b in _build_blocks:
         _lbl = b['label']
         _row = rows_by_lbl.get(_lbl)
@@ -278,6 +279,12 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         _fl_p2_lstep = _cad_fl_lstep.get('p2') if _cad_fl_lstep else None
         _all_in_blk = by_blk.get(_lbl, [])
         _candidates_pool = _all_in_blk   # Patch D-1：候選池一律全自動 PK
+        # 🆕 W-D.2 v2（鏡射 app tiebreaker 換源）：§2 正典原位次 rank（投影序）
+        _rank_by_tpid = {
+            tp.get('暫編地號'): _i_rk + 1
+            for _i_rk, tp in enumerate(
+                ns["_projection_order"](_all_in_blk, _fl_p1_lstep, _fl_p2_lstep))
+        }
         _candidates = []
         for r in _candidates_pool:
             _parent = r.get('原地號', '')
@@ -311,6 +318,7 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                 '臨正街長度_m': _front_len_priority,
                 '臨側街長度_m': _side_len_priority,
                 '跨占街角面積_m2': float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0),
+                '_pre_position_rank': _rank_by_tpid.get(r.get('暫編地號', ''), float('inf')),
             })
         _bf = max((c['臨正街長度_m'] for c in _candidates), default=1.0) or 1.0
         _bs = max((c['臨側街長度_m'] for c in _candidates), default=1.0) or 1.0
@@ -385,8 +393,7 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                                         if '_score_overlap' in _dc else '—'),
                         '總分': (round(float(_dc.get('priority_index', 0) or 0), 4)
                                  if 'priority_index' in _dc else '—'),
-                        '原位次(距角序·暫行)': round(float(_dc.get('_dist_to_corner_point',
-                                                                  _dc.get('_dist_to_side_line', 0)) or 0), 2),
+                        '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
                         '選中': ('✅' if (_dg_win and _dc.get('暫編地號') == _dg_win) else ''),
                     })
         # ── 指配 rows（app 13950-14009 原樣） ──
@@ -412,6 +419,12 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                          if (_r_winner and _r_disp_min != '無此側') else '—')
         _l_qcount = (len(_l_v13.get('qualified', [])) if _l_disp_min != '無此側' else '—')
         _r_qcount = (len(_r_v13.get('qualified', [])) if _r_disp_min != '無此側' else '—')
+        # 🆕 W-D.2 P6：winners_state（鏡射 app f3_corner_winners；Step G driver 消費）
+        _winners_state[_lbl] = {
+            'p1_end': (_l_winner.get('暫編地號', '') if _l_winner else None),
+            'p2_end': (_r_winner.get('暫編地號', '') if _r_winner else None),
+            'method': 'V13_spatial_binding',
+        }
         _corner_select_results.append({
             '街廓': _lbl,
             '演算法': ('V13' if _use_v13 else 'V12'),
@@ -441,4 +454,30 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                     '指配': '強制抵費地',
                 })
 
-    return _corner_cand_diag, _corner_select_results, _offset_diag_rows
+    # ── 🆕 W-D.2 P6：forced_offset_map（鏡射 app f3L_forced_offset，含 W-D.2 min_area 鍵）──
+    _forced_offset_map = {}
+
+    def _fo_min_area(_v):
+        try:
+            return float(_v)
+        except (TypeError, ValueError):
+            return 0.0
+    for _r_pk in (_corner_select_results or []):
+        _lbl_pk = _r_pk.get('街廓', '')
+        _l_forced = ('強制抵費地' in str(_r_pk.get('【左】第1宗指配', '')))
+        _r_forced = ('強制抵費地' in str(_r_pk.get('【右】第1宗指配', '')))
+        _l_has_side = (_r_pk.get('【左】最小面積(㎡)') != '無此側')
+        _r_has_side = (_r_pk.get('【右】最小面積(㎡)') != '無此側')
+        _forced_offset_map[_lbl_pk] = {
+            'left_forced_offset': bool(_l_forced and _l_has_side),
+            'right_forced_offset': bool(_r_forced and _r_has_side),
+            'left_has_side': bool(_l_has_side),
+            'right_has_side': bool(_r_has_side),
+            'left_corner_min_area': (_fo_min_area(_r_pk.get('【左】最小面積(㎡)'))
+                                     if (_l_forced and _l_has_side) else 0.0),
+            'right_corner_min_area': (_fo_min_area(_r_pk.get('【右】最小面積(㎡)'))
+                                      if (_r_forced and _r_has_side) else 0.0),
+        }
+
+    return (_corner_cand_diag, _corner_select_results, _offset_diag_rows,
+            _winners_state, _forced_offset_map)

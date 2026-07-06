@@ -23,10 +23,13 @@ class _NamedBytesIO(io.BytesIO):
 
 # ============ 主計總處 SDMX API：營造工程物價總指數 ============
 @st.cache_data(ttl=86400, show_spinner=False)
-def fetch_construction_price_index(start_year: int = 2024, end_ym: str = "2026-M3") -> dict:
+def fetch_construction_price_index(start_year: int = 2024, end_ym: str = None) -> dict:
     """
     從行政院主計總處 SDMX API 取得「營造工程物價總指數」月資料。
     資料源：A030502015（營造工程物價指數）/ fldid=131（總指數）
+    🆕 W-D.2 backlog（KL 2026-07-06）：end_ym 預設由寫死 "2026-M3" 改**動態**＝
+    當日年月＋2 月緩衝（寫死時間參數＝靜默過期，no-silent-fallback 遠親；
+    SDMX endTime 超出既有資料月份僅回傳現有資料，安全）。
     回傳：
       {
         'success': bool,
@@ -39,6 +42,12 @@ def fetch_construction_price_index(start_year: int = 2024, end_ym: str = "2026-M
     """
     import json
     import datetime as _dt
+    if end_ym is None:
+        _today = _dt.date.today()
+        _em = _today.month + 2
+        _ey = _today.year + (_em - 1) // 12
+        _em = (_em - 1) % 12 + 1
+        end_ym = f"{_ey}-M{_em}"
     result = {'success': False, 'data': [], 'by_roc': {}, 'fetched_at': '', 'error': None}
     url = (f"https://nstatdb.dgbas.gov.tw/dgbasAll/webMain.aspx?"
            f"sdmx/A030502015/131...M.&startTime={start_year}&endTime={end_ym}")
@@ -7997,13 +8006,12 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
 
     # 🆕 Phase 8 Issue 3 + 防護一：法定排序主鍵不能用「距角點」為第一鍵
     # （否則大塊合法街角地會被微小畸零地淘汰）
-    # 採法定優先權指數為主鍵，物理重疊框內面積為次鍵，距角點距離僅作最終 Tiebreaker
-    # 🆕 W-D.1.3-c tiebreaker：pi 同分(4dp) → 重劃前原位次小者勝（以距角點近似：角地 position 1 最近角）。
-    #   刪舊殘餘鍵 physical_overlap_area(15m 框)/front_length。嚴格 FRONT 投影序可後續細化（交 KL）。
+    # 🆕 W-D.2 v2 轉正（§2 tiebreaker 換源，KL 放行 2026-07-05）：pi 同分(4dp) →
+    #   重劃前**正典原位次**小者勝（_pre_position_rank＝_projection_order 投影序，
+    #   呼叫端寫入；單一真相源）。廢距角序暫行近似（-c 引入、TODO(W-D §2) 就此消滅）。
     qualified.sort(key=lambda c: (
         -round(float(c.get('priority_index', 0)), 4),                 # 1: 手冊優先權指數（4dp 判平手）
-        float(c.get('_dist_to_corner_point',
-                     c.get('_dist_to_side_line', float('inf')))),     # 2: 重劃前原位次（距角點近似）
+        float(c.get('_pre_position_rank', float('inf'))),             # 2: §2 正典原位次（投影序 rank）
     ))
     return {'winner': qualified[0], 'qualified': qualified,
             'eliminated': eliminated, 'note': '✅ PK 完成',
@@ -13899,6 +13907,13 @@ def main():
                             _candidates_pool = _all_in_blk
                             _has_user_marked = bool(_user_marked_in_blk)
                             _candidate_source = 'auto_pk'
+                            # 🆕 W-D.2 v2 轉正（§2 tiebreaker 換源）：正典原位次＝
+                            #   _projection_order 投影序 rank（單一真相源；廢距角序暫行近似）
+                            _rank_by_tpid = {
+                                tp.get('暫編地號'): _i_rk + 1
+                                for _i_rk, tp in enumerate(
+                                    _projection_order(_all_in_blk, _fl_p1_lstep, _fl_p2_lstep))
+                            }
                             _candidates = []
                             for r in _candidates_pool:
                                 _parent = r.get('原地號', '')
@@ -13940,6 +13955,9 @@ def main():
                                     '臨正街長度_m': _front_len_priority,
                                     '臨側街長度_m': _side_len_priority,
                                     '跨占街角面積_m2': float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0),
+                                    # 🆕 W-D.2 v2：§2 正典原位次（tiebreaker 單一真相源）
+                                    '_pre_position_rank': _rank_by_tpid.get(
+                                        r.get('暫編地號', ''), float('inf')),
                                 })
                             _bf = max((c['臨正街長度_m'] for c in _candidates), default=1.0) or 1.0
                             _bs = max((c['臨側街長度_m'] for c in _candidates), default=1.0) or 1.0
@@ -14020,10 +14038,9 @@ def main():
                                                                 if '_score_overlap' in _dc else '—'),
                                                 '總分': (round(float(_dc.get('priority_index', 0) or 0), 4)
                                                          if 'priority_index' in _dc else '—'),
-                                                # 🆕 W-D.1.3-d（§7.2）：原位次（tiebreaker 可稽核）；暫行＝距角序（角地 PK position 1＝最近角）。
-                                                #   TODO(W-D §2)：改吃 §2 正典原位次（單一真相源），廢此暫行距角近似。
-                                                '原位次(距角序·暫行)': round(float(_dc.get('_dist_to_corner_point',
-                                                                                          _dc.get('_dist_to_side_line', 0)) or 0), 2),
+                                                # 🆕 W-D.2 v2 轉正：原位次＝§2 正典投影序 rank（單一真相源；
+                                                #   廢距角序暫行欄——v1 診斷 baseline 該欄豁免記帳見 verify/README）
+                                                '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
                                                 '選中': ('✅' if (_dg_win and _dc.get('暫編地號') == _dg_win) else ''),
                                             })
                                 _l_disp_min = ('無此側' if _min_p1 == float('inf')
@@ -14164,8 +14181,8 @@ def main():
                                         "winner＝達標候選中真交集最大者（項一/項二仍常數 0.4/0.2，per-parcel 為 -c）；"
                                         "**交叉檢查（KL）：『範圍=門檻?』應逐塊全 ✅（項三分母＝G-gate 最小面積＝同顆法定 range 多邊形）、『項三比』應全 ≤1（無 clamp）；任一 🔴 → 停查**；"
                                         "『側街分』為 0 或 — 表示 `side_length` 未供（-c 逐筆化）。\n\n"
-                                        "🆕 **原位次(距角序·暫行)**：tiebreaker 可稽核欄；暫以『距角序』近似（角地 PK position 1＝最近角），"
-                                        "**TODO(W-D §2)** 落地時改吃正典原位次（單一真相源）。"
+                                        "🆕 **原位次(投影序)**：tiebreaker 可稽核欄＝§2 正典原位次"
+                                        "（`_projection_order` 投影序 rank，單一真相源；W-D.2 v2 轉正時換源、廢距角序暫行）。"
                                     )
                             # 🚨 W-B §6：街角規定範圍面積驗收
                             _cr_areas_ui = st.session_state.get(
@@ -15414,6 +15431,12 @@ def main():
                                            if _pool_total_blk is not None else None),
                             '守恆殘差(㎡)': _resid_wd2,
                             '判定': _verdict_wd2,
+                            # 🆕 KL 條件④（2026-07-05）：ledger vs 幾何片對照——ledger 角落＝
+                            #   range 規劃值拆帳、幾何片＝實際切片；兩算總量逐塊相等（池總），
+                            #   位移非漏帳。此欄防未來誤判。
+                            '幾何片明細(㎡)': (str([round(float(_g.area), 2) for _g in offset_geoms])
+                                               if _pool_total_blk is not None else ''),
+                            '片數': (len(offset_geoms) if _pool_total_blk is not None else 0),
                             'note': ((_slot_res or {}).get('note', '') or
                                      ('degenerate/N≤1 單趟' if (_degenerate_order or _N <= 1) else ''))
                                     + ('；naive 切點不在合法域(pin)，停機②看守略過比較'
