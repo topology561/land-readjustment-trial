@@ -121,11 +121,12 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _meta["shapely"] = None
         block_meta_by_label[b["label"]] = _meta
 
-    # ⚠️ [H-ghost 上呈中] KL v2 準源輪之 Step G **無 _GHOST 殘塊列**（R1 n=5、R4 n=2、
-    #   且 driver ghost 5.28㎡ 區域在 KL 表中呈為 R1-抵費地-2=5.3 幾何剩餘）→ 假說 H：
-    #   該輪 app 之 build_parcels 等效排除 ghost sliver。此過濾為**對拍假說**，
-    #   「app 為何無 ghost」待 KL 看 Step C 畫面 👻 計數／claude.ai 追碼裁定後轉正或改判。
-    _n_ghost_dropped = sum(1 for tp in build_parcels if tp.get("_is_ghost_sliver", False))
+    # [H-ghost] 已決（KL 逐碼裁定 2026-07-06，consistent 不升版；見 baselines/v2/PROVENANCE_v2）：
+    #   ghost 天生零面積（幾何面積_m2=0、面積_m2=0，真面積另存 _ghost_area_m2 已落池）→
+    #   生不生、排不排，G/守恆/J 全不變。app 的 Step G 實**不**排除 ghost（E-0.4 排除只在
+    #   三層調配 _allocate_three_tier_v1，W-E/W-F 階段）；KL 準源輪 overlay 未生 R1/R4 住宅
+    #   ghost（H-a 輸入差），harness 輪（repo V6.dxf）生了 → 此過濾**對齊 KL 輪**、零面積無條件安全。
+    #   ⚠️ backlog（下波）：加零面積不變量斷言（見 PROVENANCE_v2 backlog 節）。
     parcels_by_block = {}
     for tp in build_parcels:
         if tp.get("_is_ghost_sliver", False):

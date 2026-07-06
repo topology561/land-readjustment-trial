@@ -23,10 +23,37 @@
 - 守恆 ledger：角落抵費地＝range 規劃值**拆帳呈示**（池重定位、非新增面積）；
   「幾何片明細/片數」欄＝ledger vs 實際切片對照（KL 條件④，拆帳位移非漏帳）。
 
-## ⚠️ 未決事項（上呈中，不擋 v2）
+## [H-ghost]：已決（consistent，追碼可證，不升版）— KL 逐碼裁定 2026-07-06
 
-- **[H-ghost]**：本輪 app 實跑之 Step G **無 `_GHOST` 邊界帶殘塊列**（如 R1 之 5.28㎡
-  區域呈為 `R1-抵費地-2=5.3` 幾何剩餘），而 harness 標準管線之 overlay 會產出該類
-  ghost 暫編。harness 以「排除 `_is_ghost_sliver`」為**對拍假說**重現本輪（全綠）。
-  「app 該輪為何無 ghost」待 KL 看 Step C 畫面 👻 計數／claude.ai 追碼裁定後，
-  假說轉正或改判（若改判＝v2 升版事由）。
+CC 上呈時為黑箱假說，KL pull `5d24519` 逐碼裁定、CC 複核追至根本機制：
+
+1. **ghost 天生零面積**：overlay（`overlay_polygons_to_blocks`，app＝harness 共用同一
+   AST 抽出函式）之 UNC 殘料判定（`BOUNDARY_BAND_M=2.0`／`UNC_AREA_MIN=50.0`，
+   ~app.py 4160-4179）把邊界帶碎屑標 `_is_ghost_sliver=True` 且 `幾何面積_m2=0`、
+   `面積_m2=0`——真面積另存 `_ghost_area_m2`（已合至主體/落池）＝**零面積視覺列**。
+2. **等價無條件**：因 ghost 零面積，生不生成、排不排除，`G/ΣRw/守恆/J/池` 全不變。
+   守恆 <1㎡ 本就不含 ghost 面積（真面積落幾何剩餘、進池、計一次——R1 那 5.28㎡ ＝
+   呈為 `R1-抵費地-2=5.3` 的同一片；R4 8.09㎡ 併入 640.68 池）。此即不升版之硬核。
+3. **主因＝H-a 輸入差（CC 追碼精確化，KL 散文之「E-0.4 排除」修正）**：
+   - E-0.4 排除點（`_allocate_three_tier_v1`，app.py 6745/6873）屬**三層調配**
+     （W-E/W-F 階段，Step G **之後**）——**不是** Step G 前。
+   - app 的 Step G（`build_parcels` 13545／`parcels_by_block` 14663）**皆不排除** ghost；
+     R1/R4 邊界帶 ghost 街廓分類=住宅區 → 會進 build_parcels。故某輪 overlay 若生
+     R1/R4 住宅 ghost，**app 的 Step G 亦會產零面積 `_GHOST` 列**（與 harness 未過濾前同）。
+   - KL 準源輪六表**無** `_GHOST` 列 ⟹ **該輪 overlay 未生 R1/R4 住宅 ghost**
+     （live DXF 精度／shapely 版本 vs repo V6.dxf 輸入差，未觸發邊界帶判定）。
+     harness 輪（repo V6.dxf）生了 R1/R4 兩個零面積 ghost → `stepg_pipeline.py` 之
+     `_is_ghost_sliver` 過濾對齊 KL 輪之無-ghost 狀態。
+   - **故 harness 過濾之正當性＝「對齊 KL 輪＋零面積無條件安全」**（非「E-0.4 忠實移位」——
+     app Step G 實不排除）。Step C 畫面 👻 計數對 KL 輪**預期 N=0**（確認性，非閘；
+     即便 live 版本某輪 N>0，因零面積 v2 數字不動）。
+
+**裁定**：consistent，收案，不升版。v2 三件套轉正生效、W-D.2 全線收官。
+
+## backlog（穩健性，非本波、非 v2 阻擋；KL 2026-07-06 裁交下波）
+
+- **ghost 零面積不變量斷言**：harness（overlay 後）若標記任何 `_is_ghost_sliver`，
+  斷言其 `幾何面積_m2==0 且 面積_m2==0`（破＝零面積性質被 refactor 破壞＝真發散源，
+  比「集合相等」更抓根本——因 app Step G 不排除 ghost，等價全靠零面積）。附記
+  「app Step G 不排除 ghost、harness `stepg` 過濾為對齊 KL 輪」之事實，釘成可證等價。
+  下波（W-D.3 或清理波）落地。
