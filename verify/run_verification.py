@@ -335,6 +335,22 @@ def main():
     print(f"… parcels：temp {len(temp_parcels)} 筆｜可建築 build {len(build_parcels)} 筆｜"
           f"面積交叉換位 {len(swaps)} 對")
 
+    # ── 🆕 W-D.3 backlog（KL 折入④）：ghost 零面積不變量斷言 ──
+    #   [H-ghost] 已決 H-a 之等價**全靠零面積**（app Step G 不排 ghost；見 baselines/v2/
+    #   PROVENANCE_v2）。若任一 _is_ghost_sliver 之 幾何面積_m2/面積_m2 ≠0 → 零面積性質被
+    #   refactor 破壞＝真發散源 → fail-loud（harness RuntimeError；run_all 轉 FAIL 閘）。
+    _ghost_bad = [tp for tp in temp_parcels
+                  if tp.get("_is_ghost_sliver")
+                  and (float(tp.get("幾何面積_m2", 0) or 0) != 0.0
+                       or float(tp.get("面積_m2", 0) or 0) != 0.0)]
+    if _ghost_bad:
+        raise RuntimeError(
+            f"🔴 ghost 零面積不變量破：{len(_ghost_bad)} 筆 _is_ghost_sliver 面積≠0"
+            f"（H-a 等價根基失守，見 PROVENANCE_v2）："
+            f"{[tp.get('暫編地號') for tp in _ghost_bad[:3]]}")
+    results.append((f"W-D.3 ghost 零面積不變量（{sum(1 for tp in temp_parcels if tp.get('_is_ghost_sliver'))} 筆全零）",
+                    True, []))
+
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         diag, sel, off, winners_state, forced_map = run_corner_pk(
             ns, fake_st, list(cb_by.values()), cad,
@@ -389,6 +405,22 @@ def main():
             results.append((f"v2·J表{tag}", ok_j, v_j))
         except RuntimeError as _e_sg:
             results.append((f"v2·StepG{tag}", False, [f"[StepG{tag}] 看守觸發：{_e_sg}"]))
+
+    # ── 🆕 W-D.3 §4：碎片幾何/三分類/逐邊 CAD 對拍（診斷閘；零幾何移動之診斷凍結）──
+    #   compute() 自含管線（雙情境）；三分類(碎片/forced/池主體)由 (a)S=0/(b)寬<最小/
+    #   (c)深<最小 判（KL 定稿，面積門檻全廢）。geom 之 面積/沿街s/長寬比/緊湊 錨定 c1584a8。
+    print("… W-D.3 碎片幾何/分類/逐邊 CAD 對拍")
+    try:
+        from wd3_fragment_geom import compute as _frag_compute
+        _geom_rows, _edge_rows = _frag_compute()
+        ok_fg, v_fg = diff_rows(_geom_rows, os.path.join(WD2RUN, "wd3_fragment_geom.csv"),
+                                ["情境", "暫編地號"], "碎片幾何")
+        results.append(("W-D.3 碎片幾何/三分類", ok_fg, v_fg))
+        ok_fe, v_fe = diff_rows(_edge_rows, os.path.join(WD2RUN, "wd3_fragment_edges.csv"),
+                                ["情境", "暫編地號"], "碎片逐邊")
+        results.append(("W-D.3 碎片逐邊CAD", ok_fe, v_fe))
+    except Exception as _e_fg:
+        results.append(("W-D.3 碎片", False, [f"[碎片] compute 失敗：{_e_fg}"]))
 
     print("=" * 60)
     allok = True

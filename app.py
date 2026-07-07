@@ -11823,6 +11823,19 @@ def main():
                     f"✅ 產生 {len(temp_parcels)} 筆暫編地號"
                     + ("（" + "、".join(_msg_extra) + "）" if _msg_extra else "")
                 )
+                # 🆕 W-D.3（純加性診斷 warn，零行為變更）：ghost 零面積不變量。
+                #   [H-ghost] 已決 H-a 之等價全靠 ghost 零面積（Step G 不排 ghost）；
+                #   若任一 ghost 面積≠0 → 具名警示（不改分配控制流；harness 側為 RuntimeError）。
+                _ghost_nonzero = [tp for tp in temp_parcels
+                                  if tp.get('_is_ghost_sliver')
+                                  and (float(tp.get('幾何面積_m2', 0) or 0) != 0.0
+                                       or float(tp.get('面積_m2', 0) or 0) != 0.0)]
+                if _ghost_nonzero:
+                    st.warning(
+                        f"⚠️ ghost 零面積不變量破：**{len(_ghost_nonzero)}** 筆 ghost 面積≠0"
+                        "（[H-ghost] H-a 等價根基失守，真面積應僅存 `_ghost_area_m2`）。"
+                        "請查 overlay 之 ghost 建構（幾何面積_m2/面積_m2 應恆 0）。"
+                    )
 
                 # 🚨 W-A.2 §3：完整性警示清單（缺口率 > 3% 之地號）
                 _integrity_warnings = (
