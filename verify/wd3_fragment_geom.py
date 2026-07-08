@@ -122,19 +122,24 @@ def compute():
             aspect = longs / shorts
             compact = (4 * 3.14159265 * area / (frag.length ** 2)) if frag.length > 0 else 0.0
             # 宗地寬度(⊥ALLOC) / 深度(∥ALLOC)：ALLOC⊥FRONT 不變量下，寬=∥FRONT、深=⊥FRONT
+            # backlog①（no-silent-fallback，W-D.4 前置清）：抵費地片所屬可建築街廓**必有** ALLOC；
+            #   缺→loud RuntimeError（不靜默使 (b)(c) 失據）。六街廓 ALLOC 齊備，此 raise 不觸發、輸出不變。
             adir = alloc.get(lbl)
-            width_alloc = depth_alloc = None
-            if adir:
-                ax, ay = float(adir[0]), float(adir[1])
-                nrm = (ax * ax + ay * ay) ** 0.5 or 1.0
-                ax, ay = ax / nrm, ay / nrm
-                pj_d = [c[0] * ax + c[1] * ay for c in cs]        # ∥ALLOC = 深度
-                pj_w = [c[0] * (-ay) + c[1] * ax for c in cs]     # ⊥ALLOC = 宗地寬度
-                depth_alloc = max(pj_d) - min(pj_d)
-                width_alloc = max(pj_w) - min(pj_w)
-            # 法定最小寬/深（WARNING-2 backlog：harness 硬編「住宅區」，W-D.4 開工前修為真實 category）
+            if not adir:
+                raise RuntimeError(
+                    f"街廓 {lbl} 缺 alloc_dir_by_block（宗地分配線方向）→ 宗地寬度⊥ALLOC／"
+                    f"深度∥ALLOC 無法量測、碎片 (b)(c) 判準失據。請補 ALLOC_LINE 後重出 DXF。")
+            ax, ay = float(adir[0]), float(adir[1])
+            nrm = (ax * ax + ay * ay) ** 0.5 or 1.0
+            ax, ay = ax / nrm, ay / nrm
+            pj_d = [c[0] * ax + c[1] * ay for c in cs]        # ∥ALLOC = 深度
+            pj_w = [c[0] * (-ay) + c[1] * ax for c in cs]     # ⊥ALLOC = 宗地寬度
+            depth_alloc = max(pj_d) - min(pj_d)
+            width_alloc = max(pj_w) - min(pj_w)
+            # backlog②（WARNING-2，W-D.4 前置清）：法定最小寬/深逐塊吃**真實 category**
+            #   （廢硬編「住宅區」；category 缺→KeyError loud）。六街廓皆住宅區故現況數字不變。
             fw = float(snapshot["blocks"][lbl]["正面"]["路寬_m"])
-            _ml = gm("住宅區", fw)
+            _ml = gm(cb_by[lbl]["category"], fw)
             min_w, min_d, min_a = _ml["min_width"], _ml["min_depth"], _ml["min_area"]
             depth_blk = float(snapshot["blocks"][lbl]["街廓分配深度_m"])
             _pr = param_by_lbl.get(lbl, {})
@@ -176,15 +181,15 @@ def compute():
                 "裁決": ("臨路" if (L_front + L_sideL + L_sideR) > 0.5 else "不臨路"),
             })
             # 碎片判準（KL 定稿 2026-07-06；面積門檻全廢）：(a)S=0 或 (b)寬<最小 或 (c)深<最小
-            fail_a = (L_front < 0.5)                                          # (a) 不臨正街 ⟺ S=0
-            fail_b = (width_alloc is not None and width_alloc < min_w)        # (b) 宗地寬度<法定最小寬
-            fail_c = (depth_alloc is not None and depth_alloc < min_d)       # (c) 深度<法定最小深
+            fail_a = (L_front < 0.5)              # (a) 不臨正街 ⟺ S=0
+            fail_b = (width_alloc < min_w)        # (b) 宗地寬度<法定最小寬（ALLOC 已 raise 保證非空）
+            fail_c = (depth_alloc < min_d)        # (c) 深度<法定最小深
             # 三分類：forced角落鎖定（於 forced 端**極角**且寬達標之保留地）優先，其次碎片，其餘池主體。
             #   極角 s<0.12/>0.88（forced 保留地位於側街∩正街之角落端點；中央池居 mid-s，勿誤收）。
             _fm = (forced or {}).get(lbl, {})
             at_forced_end = ((_fm.get("left_forced_offset") and s_rel is not None and s_rel < 0.12)
                              or (_fm.get("right_forced_offset") and s_rel is not None and s_rel > 0.88))
-            if at_forced_end and (width_alloc is not None and width_alloc >= min_w):
+            if at_forced_end and (width_alloc >= min_w):
                 cat3 = "forced角落鎖定"
             elif fail_a or fail_b or fail_c:
                 cat3 = "碎片"

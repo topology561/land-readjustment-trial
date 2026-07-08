@@ -97,9 +97,10 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     ss["f3L_setback_default"] = setback
     ss["f3_alloc_depth_by_label"] = {b["label"]: float(SB[b["label"]]["街廓分配深度_m"])
                                      for b in _build_blocks}
+    # backlog②（WARNING-2）：min_width 逐塊吃**真實 category**（廢硬編「住宅區」）。
     ss["f3_min_width_by_label"] = {
         b["label"]: float(ns["get_min_lot_size"](
-            "住宅區", float(SB[b["label"]]["正面"]["路寬_m"])).get("min_width", 0.0) or 0.0)
+            b["category"], float(SB[b["label"]]["正面"]["路寬_m"])).get("min_width", 0.0) or 0.0)
         for b in _build_blocks}
     ss["f3_corner_winners"] = winners_state
     ss["f3L_forced_offset"] = forced_map
