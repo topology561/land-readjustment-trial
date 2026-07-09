@@ -28,3 +28,4 @@ desktop.ini
 
 # ══ harness 重生成物（b6_report.md 除外，追蹤中） ══
 verify/out/got_*
+verify/out/W-D.4_*

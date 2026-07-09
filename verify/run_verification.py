@@ -422,6 +422,69 @@ def main():
     except Exception as _e_fg:
         results.append(("W-D.3 碎片", False, [f"[碎片] compute 失敗：{_e_fg}"]))
 
+    # ── 🆕 W-D.4 清單波：四梯分級清單（歸戶=Gxxx 群組；零幾何移動）──
+    #   22 旗標消費/MinA_區推導/R6 遞補錨/fixture 查封自成一群/三 CSV 對拍 v2 baseline。
+    print("… W-D.4 四梯分級清單（Gxxx 群組·22 旗標消費·遞補錨·fixture）")
+    try:
+        import wd4_tier_list as _w4
+        _w4res = _w4.compute(fixture=False)
+        for tag in ("0m", "3.5m"):
+            _d4 = _w4res[tag]
+            _dump_csv(_d4["groups"], os.path.join(OUTDIR, f"got_W-D.4_清單_退縮{tag}.csv"))
+            _dump_csv(_d4["frag"], os.path.join(OUTDIR, f"got_W-D.4_遞補_退縮{tag}.csv"))
+            _dump_csv(_d4["recomp"], os.path.join(OUTDIR, f"got_W-D.4_跨占_退縮{tag}.csv"))
+            ok_l, v_l = diff_rows(_d4["groups"],
+                                  os.path.join(WD2RUN, f"W-D.4_四梯分級清單_退縮{tag}.csv"),
+                                  ["情境", "歸戶鍵Gxxx"], f"W-D.4清單{tag}")
+            results.append((f"W-D.4 四梯清單{tag}", ok_l, v_l))
+            ok_r, v_r = diff_rows(_d4["frag"],
+                                  os.path.join(WD2RUN, f"W-D.4_碎片遞補對照_退縮{tag}.csv"),
+                                  ["情境", "碎片"], f"W-D.4遞補{tag}")
+            results.append((f"W-D.4 碎片遞補{tag}", ok_r, v_r))
+            ok_x, v_x = diff_rows(_d4["recomp"],
+                                  os.path.join(WD2RUN, f"W-D.4_跨占分配線_退縮{tag}.csv"),
+                                  ["情境", "暫編地號"], f"W-D.4跨占{tag}")
+            results.append((f"W-D.4 跨占分配線{tag}", ok_x, v_x))
+        # 推導斷言（WARNING-1 裁定：正典 rounded 全等＋½線顯示 Decimal 釘刀口）
+        _d0 = _w4res["0m"]
+        _ok_der = (_d0["mina_qu"] == 114.07 and _d0["half_disp"] == 57.04)
+        results.append(("W-D.4 MinA_區==114.07(正典rounded)·½顯示==57.04(Decimal非round)", _ok_der,
+                        [] if _ok_der else [f"MinA_區={_d0['mina_qu']} ½顯示={_d0['half_disp']}"]))
+        _consumed = sum(int(g["含旗標宗數"]) for g in _d0["groups"])
+        _ok_fl = (_d0["flagged_ct"] == 22 and _consumed == 22)
+        results.append(("W-D.4 22旗標全消費(群組語意)", _ok_fl,
+                        [] if _ok_fl else [f"旗標{_d0['flagged_ct']}→消費{_consumed}"]))
+        # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
+        import copy as _cp
+        _snap2 = _cp.deepcopy(snapshot)
+        _snap2["blocks"]["R4"]["街廓分配深度_m"] = 20.0   # 原 32.59；R4 仍為 min → 20×3.5=70
+        _bb4 = [b for b in cb_by.values()
+                if ns["F3_CATEGORY_BURDEN"].get(b.get("category", ""), "") == "可建築土地"]
+        _, _mq2 = _w4._mina_by_block(ns, _snap2, cb_by, _bb4)
+        _ok_rev = (_mq2 == 70.0)   # round(20×3.5,2)=70 隨動（非鎖死 114.07）
+        results.append(("W-D.4 MinA_區 reverse-test(改深度→隨動·非寫死)", _ok_rev,
+                        [] if _ok_rev else [f"改 R4 深度20→MinA_區={_mq2}(期70)"]))
+        _r6 = [f for f in _d0["frag"] if f["碎片"] == "R6-抵費地-2"]
+        _ok_anc = bool(_r6) and _r6[0]["遞補標的宗"] == "628-1(2)" and "628(2)" in _r6[0]["跳過失格筆"]
+        results.append(("W-D.4 遞補錨 R6 85.66→628-1(2)跳過628(2)", _ok_anc,
+                        [] if _ok_anc else [f"實得 {_r6}"]))
+        _share_bad = sum(1 for g in _d0["groups"] if "🔴" in g["持分和檢核"])
+        results.append(("W-D.4 持分和逐宗檢核(WARNING-A)", _share_bad == 0,
+                        [] if _share_bad == 0 else [f"{_share_bad} 群異常"]))
+        # fixture：查封宗自成一群·阻卻=是·移除後 byte-identical（不碰 build_ownership 靶）
+        _fx = _w4.compute(fixture=True)
+        _fg = [g for g in _fx["0m"]["groups"] if g["歸戶鍵Gxxx"] == "G_FIXTURE"]
+        _fx_ok = (bool(_fg) and _fg[0]["阻卻"] == "是"
+                  and "不得聯合" in _fg[0]["路徑標註"]
+                  and [g for g in _fx["0m"]["groups"] if g["歸戶鍵Gxxx"] != "G_FIXTURE"]
+                  == _d0["groups"])
+        results.append(("W-D.4 第4梯 fixture(查封自成一群·移除後 byte-identical)", _fx_ok,
+                        [] if _fx_ok else ["fixture 阻卻/隔離破"]))
+    except Exception as _e_w4:
+        import traceback
+        results.append(("W-D.4", False, [f"[W-D.4] compute 失敗：{_e_w4}",
+                                         traceback.format_exc()[-300:]]))
+
     print("=" * 60)
     allok = True
     for name, ok, viol in results:
