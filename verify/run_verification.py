@@ -360,6 +360,30 @@ def main():
     results.append((f"W-D.3 ghost 零面積不變量（{sum(1 for tp in temp_parcels if tp.get('_is_ghost_sliver'))} 筆全零）",
                     True, []))
 
+    # ── 🆕 F.0-pre（W-F 缺口C）：15.73㎡ 歸因，驗一行 ──
+    #   DXF 街廓面積和 − 非-ghost 暫編幾何和 ＝ ghost sliver 之**真面積**
+    #   （ghost 幾何面積_m2 恆 0 故不入暫編和；真面積另存 _ghost_area_m2、已合入主體/落池）。
+    #   公設分量 15.73㎡ ＋ 可建築分量 13.34㎡ ＝ 29.07㎡ ＝ 全區殘餘。
+    _fcb_a = ns["F3_CATEGORY_BURDEN"]
+    _blkA, _pclA = {}, {}
+    for _b in cb_by.values():
+        _k = _fcb_a.get(_b.get("category", ""), "")
+        _blkA[_k] = _blkA.get(_k, 0.0) + float(_b.get("area_m2", 0) or 0)
+    for _tp in temp_parcels:
+        if _tp.get("_is_ghost_sliver"):
+            continue
+        _k = _fcb_a.get(_tp["街廓分類"], "")
+        _pclA[_k] = _pclA.get(_k, 0.0) + float(_tp.get("幾何面積_m2", 0) or 0)
+    _d_pub = _blkA["共同負擔"] - _pclA["共同負擔"]
+    _d_bld = _blkA["可建築土地"] - _pclA["可建築土地"]
+    _ghost_true = sum(float(_tp.get("_ghost_area_m2", 0) or 0)
+                      for _tp in temp_parcels if _tp.get("_is_ghost_sliver"))
+    _ok_1573 = (abs(_d_pub - 15.73) < 0.01 and abs(_d_bld - 13.34) < 0.01
+                and abs((_d_pub + _d_bld) - _ghost_true) < 0.05)
+    results.append((f"F.0-pre 15.73㎡ 歸因（公設 {_d_pub:.2f} ＋ 可建築 {_d_bld:.2f} "
+                    f"= {_d_pub + _d_bld:.2f} ＝ ghost 真面積 {_ghost_true:.2f}）", _ok_1573,
+                    [] if _ok_1573 else [f"公設Δ={_d_pub:.4f} 可建築Δ={_d_bld:.4f} ghost={_ghost_true:.4f}"]))
+
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         diag, sel, off, winners_state, forced_map = run_corner_pk(
             ns, fake_st, list(cb_by.values()), cad,
@@ -596,6 +620,34 @@ def main():
         _ok_fl = (_d0["flagged_ct"] == _FL and _consumed == _FL)
         results.append((f"W-D.4 {_FL}旗標全消費(群組語意·v3 隨價變)", _ok_fl,
                         [] if _ok_fl else [f"旗標{_d0['flagged_ct']}→消費{_consumed}（期{_FL}）"]))
+
+        # ── 🆕 F.0-pre 雙軌錨（KL 裁定 2026-07-10，W-F 缺口D）──
+        _ok_tr = (_d0["tracks"] == _w4.TRACK_EXPECT and _d0["tiers"] == _w4.TIER_EXPECT)
+        results.append((f"F.0-pre 雙軌錨 軌別{_w4.TRACK_EXPECT}·梯次{_w4.TIER_EXPECT}", _ok_tr,
+                        [] if _ok_tr else [f"實得 軌別{_d0['tracks']} 梯次{_d0['tiers']}"]))
+        _pubg = sorted(g["歸戶鍵Gxxx"] for g in _d0["groups"] if g["軌別"] == "公設軌")
+        _ok_pg = (_pubg == _w4.PUB_TRACK_GROUPS)
+        results.append((f"F.0-pre 公設軌 8 群（撤出梯3、待 F.3/F.4）", _ok_pg,
+                        [] if _ok_pg else [f"實得 {_pubg}"]))
+        # 補償取值停機條款：公設軌之半實算欄一律留空（舊碼會算出假 0）
+        _est_cols = ("增配a′(㎡)", "差額地價(元)§52-1", "放棄改領(元)§53-2",
+                     "補償_本文式(元)§53-1", "補償_但書式(元)")
+        _bad_c = [g["歸戶鍵Gxxx"] for g in _d0["groups"] if g["軌別"] == "公設軌"
+                  and any(str(g[c]).strip() for c in _est_cols)]
+        results.append(("F.0-pre 公設軌補償欄全空（G(a′) 未算前禁取值·停機條款）",
+                        not _bad_c, _bad_c))
+        # F.3 母數（取代規格作廢之「30 筆 / ~4,428㎡」）
+        _np = sum(int(g["公設宗數"]) for g in _d0["groups"])
+        _nh = sum(1 for g in _d0["groups"] if int(g["公設宗數"]) > 0)
+        _ok_f3 = (_np == _w4.PUB_PARCELS_EXPECT and _nh == _w4.PUB_HOLDER_GROUPS_EXPECT)
+        results.append((f"F.3 母數錨 公設地 {_np} 筆／{_nh} 群持有（廢「30 筆/4,428㎡」）", _ok_f3,
+                        [] if _ok_f3 else [f"實得 {_np} 筆/{_nh} 群"]))
+        # F.0 釋池對象＝梯3 二群（原十群之 8 群已改軌）
+        _t3 = sorted((g["歸戶鍵Gxxx"], float(g["ΣG_戶(㎡)"]))
+                     for g in _d0["groups"] if g["梯次"] == "3")
+        _ok_t3 = (_t3 == [("G025", 1.84), ("G030", 55.64)])
+        results.append((f"F.0 釋池對象＝梯3 二群 {_t3}（Σ={sum(v for _, v in _t3):.2f}㎡）", _ok_t3,
+                        [] if _ok_t3 else [f"實得 {_t3}"]))
         # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
         import copy as _cp
         _snap2 = _cp.deepcopy(snapshot)

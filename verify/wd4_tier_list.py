@@ -13,6 +13,16 @@ W-D.4 清單波 — 四梯分級清單（消費 22 畸零旗標 → 歸戶級四
 ⚠️ 梯次判定吃 ΣG_戶（價格相依）→ v3 換真值地價後**梯次合法變動**，
 「梯次零 flip」斷言已由 KL 解除（2026-07-09）。
 
+🆕 **F.0-pre 雙軌（KL 裁定 2026-07-10，W-F 缺口D）**：四梯之**值域＝有可建築宗之歸戶**。
+無可建築宗者（純公設地歸戶，ΣG_戶 恆 0）舊碼被 `else` 分支靜默吞入「梯3 現金補償」，
+與 §7-2/7-3/7-4 之公設地調配路徑對同一批 8 群兩處指派。改：
+- 新增 `軌別` 欄：建地軌（有可建築宗）／公設軌（無可建築宗但持公設地）／無地軌（fixture）。
+- **公設軌不判梯次**（`梯次="—"`）、撤出梯3；達標門檻＝**區標準 MinA_區**（手冊 宗地分配原則(三)）；
+  ½線測試延至 **F.4** 以 **G(a′)** 施作。
+- **補償取值停機條款**：公設軌之 §53 補償欄一律留空（舊碼會算出假 0，因 lots 空、清單不吃公設地 a）。
+- 梯3 由 10 群縮為 **2 群**（G025 1.84㎡、G030 55.64㎡）＝F.0 唯一釋池對象。
+（教訓入 failure-archaeology #15：報表層分類器之輸入域 ≠ 引擎作用域）
+
 歸戶主體＝**Gxxx 指紋群**（KL 撤銷改判 2026-07-08；指紋已含持分＋他項權利內容）；
 ΣG_戶＝群內 G **直加**；四梯走群組。詳 `docs/W-D.4_合併分配規格.md`＋`docs/W-D.4_域裁鎖定.md`。
 
@@ -45,6 +55,15 @@ HALF_EXPECT = 57.04       # ½線顯示：Decimal ROUND_HALF_UP(114.07/2=57.035)
 # 🆕 v3：畸零旗標數（宗地寬度<法定最小寬）。v2=22 → v3=31（+9，無消失）：配地寬隨真值地價
 #   縮約 24%、跌破 min_width 3.5m，屬合法隨價變（歸因見 baselines/v3/PROVENANCE_v3.md 註⑤）。
 FLAGGED_EXPECT = 31
+# 🆕 F.0-pre 雙軌錨（KL 裁定 2026-07-10，缺口D）：33 群＝建地軌 25 ＋ 公設軌 8。
+#   公設軌不判梯次（"—"），撤出舊「梯3 現金補償」；梯3 由 10 群縮為 2 群
+#   （G025 ΣG=1.84㎡、G030 ΣG=55.64㎡，此二群方為 F.0 釋池對象）。
+TRACK_EXPECT = {"建地軌": 25, "公設軌": 8}
+TIER_EXPECT = {"—": 8, "0": 12, "1": 7, "2": 4, "3": 2}
+PUB_TRACK_GROUPS = ["G003", "G012", "G013", "G015", "G016", "G024", "G028", "G031"]
+# 公設地實盤（F.3 母數，取代規格作廢之「30 筆/4,428㎡」）：59 筆 / 28 群持有 / 12,130.83㎡
+PUB_PARCELS_EXPECT = 59
+PUB_HOLDER_GROUPS_EXPECT = 28
 FLAG = "⚠️移出/第1調配順位"
 # 禁止移轉/查封類 權利種類（U_LAND；本案全空，fixture 用「查封」觸發）
 _LOCK_KINDS = ("查封", "假扣押", "假處分", "破產", "預告登記")
@@ -148,6 +167,15 @@ def compute(fixture=False):
     post_price = {k: float(v["單價_元每m2"]) for k, v in _fin3["後街廓_面積單價"].items()}
     pre_price = {z: float(v["單價_元每m2"]) for z, v in _fin3["重劃前區段_面積單價"].items()}
     zone_of = _fin3["原地號_區段"]
+    # 🆕 F.0-pre 雙軌（KL 裁定 2026-07-10，缺口D）：逐原地號之公設地（共同負擔）持有量。
+    #   ghost sliver 幾何面積恆 0、不入計；其真面積另存 _ghost_area_m2（已落池）。
+    pub_cnt, pub_area = {}, {}
+    for tp in temp:
+        if (fcb.get(tp["街廓分類"], "") != "共同負擔") or tp.get("_is_ghost_sliver"):
+            continue
+        _p = tp["原地號"]
+        pub_cnt[_p] = pub_cnt.get(_p, 0) + 1
+        pub_area[_p] = pub_area.get(_p, 0.0) + float(tp.get("幾何面積_m2", 0) or 0)
     # 碎片三分類（W-D.3 單一真相源）：{(情境,暫編): (cat3, 沿街s)}——只有「碎片」需遞補
     _geom, _ = wd3.compute()
     frag_cls = {(g["情境"], g["暫編地號"]): (g["三分類"],
@@ -185,8 +213,26 @@ def compute(fixture=False):
                 return (float(r.get("G(㎡)", 0) or 0) >= mina.get(r["所屬街廓"], 1e9)
                         and not str(r.get("畸零地旗標", "")).strip())
             all_qual = bool(lots) and all(_qual(r) for r in lots)
+
+            # ── 🆕 F.0-pre 軌別（KL 裁定 2026-07-10，缺口D）──
+            #   **四梯之值域＝有可建築宗之歸戶**。無可建築宗者（純公設地歸戶）ΣG_戶 恆 0，
+            #   舊碼被 else 分支靜默吞入「梯3 現金補償」，與 §7-2/7-3/7-4 之公設地調配路徑
+            #   直接衝突（同一批 8 群兩處指派）。改**顯式標軌別、不判梯次**（failure-archaeology #15）。
+            _n_pub = sum(pub_cnt.get(p, 0) for p in parents)
+            _a_pub = round(sum(pub_area.get(p, 0.0) for p in parents), 2)
+            if lots:
+                track = "建地軌"
+            elif _n_pub > 0:
+                track = "公設軌"
+            else:
+                track = "無地軌"          # 本案僅 fixture 合成群落此
+
             # 步2 群組級梯次（阻卻→仍原位，梯次仍計；第4梯前置以 阻卻 欄呈現）
-            if all_qual:
+            if track == "公設軌":
+                # 不判梯次：達標門檻＝區標準 MinA_區（手冊 宗地分配原則(三)，無「原街廓」可言）；
+                # ½線測試延至 F.4、以 G(a′) 施作（KL 裁定）。
+                tier, lvl = "—", "公設地歸戶·待 F.3/F.4 調配"
+            elif all_qual:
                 tier, lvl = "1", "級0 逐宗個別"
             elif any(sumG >= mina[l] for l in mina):
                 tier, lvl = "0", "級0 集中合併/級0′弱弱聯合"
@@ -200,7 +246,13 @@ def compute(fixture=False):
             # 🆕 v3 半實算（真值地價；**仍屬試分配、非正式**）。零回饋圍欄：
             #   本區所有金額/面積僅入報表，永不回饋 G/守恆/位次/J/k*/池（裁定二圍欄）。
             _inc_a = _diff_price = _waive = _comp_main = _comp_proviso = ""
-            if tier == "2":
+            _est_kind = "半實算(試分配·非正式)"
+            if track == "公設軌":
+                # **補償取值停機條款（KL 裁定）**：G(a′) 未算前禁取補償值。
+                #   舊碼於此會算出 Σa_i=0 → 補償額 0（因 lots 空、清單不吃公設地 a），
+                #   該 0 為假值。一律留空並標停機條款，待 F.4 以 G(a′) 施作。
+                _est_kind = "待 F.4·G(a′) 未算前禁取補償值（停機條款）"
+            elif tier == "2":
                 # 出口a：增配（§31-1-2 後段＋§52-1）。目標＝最淺深度街廓（MinA 最小者）
                 _tgt = min(mina, key=mina.get)
                 _inc = round(mina[_tgt] - sumG, 2)
@@ -217,21 +269,28 @@ def compute(fixture=False):
                 _comp_proviso = round(sum(                             # 但書式：前地價（v3 首次可實算）
                     float(r.get("a 面積(㎡)", 0) or 0) * pre_price[zone_of[r["原地號"]]]
                     for r in lots)) if all(r["原地號"] in zone_of for r in lots) else ""
+            if is_fixture_grp or blocked:
+                _path = "查封宗自成一群·不得聯合"
+            elif track == "公設軌":
+                _path = ("公設軌·達標門檻＝區標準 " + f"{mina_qu}" +
+                         "(手冊(三))；½線測試延至 F.4 以 G(a′) 施作")
+            else:
+                _path = lvl
             group_rows.append({
-                "情境": tag, "歸戶鍵Gxxx": gid, "宗數": len(lots),
+                "情境": tag, "歸戶鍵Gxxx": gid, "軌別": track, "宗數": len(lots),
                 "宗清單": ";".join(r["暫編地號"] for r in lots),
+                "公設宗數": _n_pub, "公設面積(㎡)": _a_pub,
                 "ΣG_戶(㎡)": sumG, "含旗標宗數": len(flagged),
                 "梯次": tier, "對應v3級": lvl,
                 "阻卻": ("是" if blocked else "否"),
-                "路徑標註": ("查封宗自成一群·不得聯合" if (is_fixture_grp or blocked)
-                             else lvl),
+                "路徑標註": _path,
                 "持分和檢核": ("✅" if not bad_share else f"🔴異常{bad_share}"),
                 "增配a′(㎡)": _inc_a,
                 "差額地價(元)§52-1": _diff_price,
                 "放棄改領(元)§53-2": _waive,
                 "補償_本文式(元)§53-1": _comp_main,
                 "補償_但書式(元)": _comp_proviso,
-                "估算性質": "半實算(試分配·非正式)",
+                "估算性質": _est_kind,
                 "備註": ("第4梯前置·阻卻" if blocked else ""),
             })
 
@@ -283,8 +342,14 @@ def compute(fixture=False):
                 "遞補標的宗": target, "跳過失格筆": ";".join(skipped),
                 "定序註": "先解失格業主(域裁C)",
             })
+        _tracks, _tiers = {}, {}
+        for r in group_rows:
+            _tracks[r["軌別"]] = _tracks.get(r["軌別"], 0) + 1
+            _tiers[r["梯次"]] = _tiers.get(r["梯次"], 0) + 1
         out[tag] = {"groups": group_rows, "recomp": recomp_rows, "frag": frag_rows,
-                    "mina_qu": mina_qu, "half_disp": half_disp, "flagged_ct": sum(
+                    "mina_qu": mina_qu, "half_disp": half_disp,
+                    "tracks": _tracks, "tiers": _tiers,
+                    "flagged_ct": sum(
                         1 for r in g_rows if str(r.get("畸零地旗標", "")).strip())}
     return out
 
@@ -324,10 +389,21 @@ def main():
         # 旗標全消費（群組語意）＋ v3 旗標數錨（隨價變、非硬編 22）
         consumed = sum(int(g["含旗標宗數"]) for g in d["groups"])
         ok_f = (d["flagged_ct"] == FLAGGED_EXPECT) and (consumed == FLAGGED_EXPECT)
+        # 🆕 F.0-pre 雙軌錨
+        ok_t = (d["tracks"] == TRACK_EXPECT) and (d["tiers"] == TIER_EXPECT)
+        _pub = sorted(g["歸戶鍵Gxxx"] for g in d["groups"] if g["軌別"] == "公設軌")
+        ok_p = (_pub == PUB_TRACK_GROUPS)
+        _n_pub_parcels = sum(int(g["公設宗數"]) for g in d["groups"])
+        _n_pub_holders = sum(1 for g in d["groups"] if int(g["公設宗數"]) > 0)
+        ok_m2 = (_n_pub_parcels == PUB_PARCELS_EXPECT
+                 and _n_pub_holders == PUB_HOLDER_GROUPS_EXPECT)
         print(f"[{tag}] MinA_區={d['mina_qu']}(期114.07) ½顯示={d['half_disp']}(期57.04) "
               f"{'✅' if ok_m else '🔴'} | 旗標 {d['flagged_ct']}→消費 {consumed} "
               f"(期{FLAGGED_EXPECT}) {'✅' if ok_f else '🔴'} | 群組 {len(d['groups'])}")
-        allok = allok and ok_m and ok_f
+        print(f"      軌別 {d['tracks']} 梯次 {d['tiers']} {'✅' if ok_t else '🔴'} | "
+              f"公設軌 {len(_pub)} 群 {'✅' if ok_p else '🔴'} | "
+              f"公設地 {_n_pub_parcels} 筆/{_n_pub_holders} 群持有 {'✅' if ok_m2 else '🔴'}")
+        allok = allok and ok_m and ok_f and ok_t and ok_p and ok_m2
     print("RESULT:", "W-D.4 CLEAN" if allok else "W-D.4 FAIL")
     return 0 if allok else 1
 
