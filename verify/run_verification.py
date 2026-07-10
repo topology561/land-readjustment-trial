@@ -35,6 +35,7 @@ ANON_XLSX = os.path.join(REPO, "data", "地籍資料來源_匿名版.xlsx")
 BASELINES = os.path.join(HERE, "baselines")
 # baselines/v2/＝財務半中間態期（C=0、A=1）之歷史錨，**凍存不刪、不再對拍**（見 v3/PROVENANCE_v3.md）
 V3RUN = os.path.join(HERE, "baselines", "v3")    # 🆕 v3 錨定 baseline（財務接線波換源，KL 裁定 2026-07-09）
+F0DIR = os.path.join(HERE, "baselines", "wf", "f0")  # 🆕 W-F F.0 終態 baseline（trunk B；v3 凍存不動）
 # k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
 K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
 OUTDIR = os.path.join(HERE, "out")
@@ -446,7 +447,8 @@ def main():
             _dump_csv(diag_tab, os.path.join(OUTDIR, f"got_滑池槽診斷_退縮{tag}.csv"))
             _dump_csv(slot_tab, os.path.join(OUTDIR, f"got_逐槽J表_退縮{tag}.csv"))
             stepg_ctx[tag] = {"g": g_tab, "sg": _sg, "params": param_by_tag[tag],
-                              "win": winners_state, "forced": forced_map, "sb": setback}
+                              "win": winners_state, "forced": forced_map, "sb": setback,
+                              "poolA": _sg["pool_diag"]}   # F.0 trunk A 之池（釋池量對照）
             results.append((f"結構不變量永久閘{tag}（守恆/⊥/位次=投影序/J(k*)≥J(naive)/理論=實跑/telescoping）",
                             True, []))
             ok_g, v_g = diff_rows(
@@ -681,6 +683,81 @@ def main():
         import traceback
         results.append(("W-D.4", False, [f"[W-D.4] compute 失敗：{_e_w4}",
                                          traceback.format_exc()[-300:]]))
+
+    # ── 🆕 W-F F.0：級0/0' 合併＋梯3 釋池（雙 trunk；trunk A 零漂移已由上列 v3 閘證）──
+    #   trunk A（原 parcels→v3 baseline）之 G值/滑池槽/J/wd3/四梯清單 皆已於上方逐格對拍過
+    #   ＝gate#2「基礎引擎零漂移」之機器證明。此處跑 trunk B（F.0 終態 parcels）。
+    print("… W-F F.0（級0/0' 合併＋梯3 釋池；trunk B 終態）")
+    try:
+        import wf_f0
+        _omap = fake_st.session_state["t8_ownership_map"]
+        _ctx = {}
+        for tag in ("0m", "3.5m"):
+            _c = stepg_ctx.get(tag)
+            if not _c:
+                raise RuntimeError(f"stepg_ctx[{tag}] 缺（trunk A 未成功？）")
+            _ctx[tag] = {
+                "ns": ns, "fake_st": fake_st, "cb_by": cb_by, "cad": cad,
+                "snap": snapshot, "omap": _omap, "build": build_parcels,
+                "params": _c["params"], "winners": _c["win"], "forced": _c["forced"],
+                "setback": _c["sb"], "gA": _c["sg"]["g_rows"], "poolA": _c["poolA"],
+            }
+        _f0 = wf_f0.compute(_ctx)
+        for tag in ("0m", "3.5m"):
+            d = _f0[tag]
+            for nm, rows in (("G值", d["g_tab"]), ("滑池槽診斷", d["diag_tab"]),
+                             ("逐槽J表", d["slot_tab"]), ("合併決策", d["dec_rows"]),
+                             ("旗標消長", d["flag_rows"]), ("池差", d["pool_rows"])):
+                _dump_csv(rows, os.path.join(OUTDIR, f"got_F.0_{nm}_退縮{tag}.csv"))
+            ok_g, v_g = diff_rows(d["g_tab"], os.path.join(F0DIR, f"F.0_G值_退縮{tag}.csv"),
+                                  ["所屬街廓", "暫編地號"], f"F.0·G值{tag}")
+            results.append((f"F.0·G值{tag}（trunk B 終態）", ok_g, v_g))
+            ok_pd, v_pd = diff_rows(d["diag_tab"], os.path.join(F0DIR, f"F.0_滑池槽診斷_退縮{tag}.csv"),
+                                    ["街廓"], f"F.0·滑池槽{tag}")
+            results.append((f"F.0·滑池槽{tag}", ok_pd, v_pd))
+            ok_j, v_j = diff_rows(d["slot_tab"], os.path.join(F0DIR, f"F.0_逐槽J表_退縮{tag}.csv"),
+                                  ["街廓", "k"], f"F.0·J表{tag}")
+            results.append((f"F.0·J表{tag}", ok_j, v_j))
+            ok_dc, v_dc = diff_rows(d["dec_rows"], os.path.join(F0DIR, f"F.0_合併決策_退縮{tag}.csv"),
+                                    ["情境", "歸戶", "街廓"], f"F.0·決策{tag}")
+            results.append((f"F.0·合併決策{tag}", ok_dc, v_dc))
+            ok_fl, v_fl = diff_rows(d["flag_rows"], os.path.join(F0DIR, f"F.0_旗標消長_退縮{tag}.csv"),
+                                    ["情境", "暫編地號"], f"F.0·旗標{tag}")
+            results.append((f"F.0·旗標消長{tag}", ok_fl, v_fl))
+            ok_pl, v_pl = diff_rows(d["pool_rows"], os.path.join(F0DIR, f"F.0_池差_退縮{tag}.csv"),
+                                    ["情境", "街廓"], f"F.0·池差{tag}")
+            results.append((f"F.0·池差閉合{tag}", ok_pl, v_pl))
+            # 結構閘（trunk B）
+            _bad = [lbl for lbl, v in d["verdict"].items() if "🔴" in str(v)]
+            results.append((f"F.0 結構永久閘{tag}（trunk B 守恆全綠）", not _bad, _bad))
+            # 位次序＋標的宗毗鄰（投影序、k*-無關）
+            results.append((f"F.0 位次序不變{tag}（投影序∖移除宗）", not d["pos_viol"],
+                            [str(x) for x in d["pos_viol"][:3]]))
+            results.append((f"F.0 標的宗毗鄰不變{tag}", not d["adj_viol"],
+                            [str(x) for x in d["adj_viol"][:3]]))
+        # 六格 G(Σa) 錨（雙情境）
+        _g0 = _f0["0m"]["gsa"]
+        _ok_gsa = all(abs(_g0[k] - v) <= 0.01 for k, v in wf_f0.GSA_EXPECT["0m"].items())
+        results.append((f"F.0 六格 G(Σa) 錨 0m {wf_f0.GSA_EXPECT['0m']}", _ok_gsa,
+                        [] if _ok_gsa else [f"實得 {{{', '.join(f'{k}:{_g0[k]:.2f}' for k in _g0)}}}"]))
+        # 旗標終態錨 31→17（移除13＋脫旗1＋新生0）
+        _fr = _f0["0m"]["flag_rows"]
+        _n_new = sum(1 for r in _fr if r["歸因"] == "新生")
+        _ok_fl2 = (_f0["0m"]["n_flag_A"] == 31 and _f0["0m"]["n_flag_B"] == 17 and _n_new == 0)
+        results.append((f"F.0 旗標 31→17（新生 {_n_new}）", _ok_fl2,
+                        [] if _ok_fl2 else [f"A={_f0['0m']['n_flag_A']} B={_f0['0m']['n_flag_B']} 新生={_n_new}"]))
+        # k* f0 錨（trunk B；經驗非機制）
+        _ok_k = (_f0["0m"]["kstar"] == {"R1": 2, "R2": 6, "R3": 5, "R4": 1, "R5": 4, "R6": 3})
+        results.append((f"F.0 k* f0 錨 trunk B {_f0['0m']['kstar']}", _ok_k,
+                        [] if _ok_k else ["k* 與 f0 錨不符"]))
+        # 不達標二格去向（G009→F.2、G014→F.4；停機#4 全鏈）
+        _dest = {r["歸戶"]: r["去向"] for r in _f0["0m"]["dec_rows"]}
+        _ok_rt = ("轉F.2" in _dest.get("G009", "") and "轉F.4" in _dest.get("G014", ""))
+        results.append(("F.0 不達標二格 G009→F.2·G014→F.4（先併再標旗轉出）", _ok_rt,
+                        [] if _ok_rt else [f"G009={_dest.get('G009')} G014={_dest.get('G014')}"]))
+    except Exception as _e_f0:
+        import traceback
+        results.append(("W-F F.0", False, [f"[F.0] {_e_f0}", traceback.format_exc()[-400:]]))
 
     print("=" * 60)
     allok = True
