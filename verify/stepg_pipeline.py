@@ -35,6 +35,49 @@ alloc_normal_axis/get_min_lot_size）全走 app_harvest。
 """
 
 
+def compute_total_burden_rate(ns, cb, snapshot):
+    """🆕 微波（KL 裁「翻」2026-07-10）：**重劃總負擔率現算**（非寫死、非抄錄截圖）。
+
+    域定義（KL 裁示）＝公設用地負擔比 ＋ 費用負擔比；與 app Tab7（~10259-10263）同式：
+        公設負擔比 = (公設共同負擔 − 抵充地) ÷ (總面積精確 − 抵充地)
+        費用負擔比 = 費用總額 ÷ [重劃後平均地價 × (總面積精確 − 抵充地)]
+        重劃總負擔率 = 公設負擔比 + 費用負擔比
+
+    輸入全數取自 v3 快照既有欄 ＋ DXF 街廓面積（零新增料）。
+    ⚠️ **公設共同負擔須用 DXF 實值 12146.5579**：改用截圖 rounded 12146.56 會得
+    0.40712393（差第 7 位）。此即「現算 vs 抄錄」之刀口。
+
+    UC9898 錨：公設負擔比 34.754211%、費用負擔比 5.958176%、**總 0.40712387**
+    （run_verification 全等斷言 ＋ reverse-test：改單位工程費 → 率隨動）。
+
+    消費者：`f3_total_burden_rate_from_finance` → `_estimate_G_for_qualification`（街角 PK 之 G估）
+    ＋ `iterate_G_S` 之迭代初值。回傳 (rate, breakdown)。
+    """
+    fcb = ns["F3_CATEGORY_BURDEN"]
+    fin = snapshot["財務接線_v3"]          # 缺節＝loud KeyError
+    total = float(fin["重劃區總面積_m2_精確"])
+    offset = float(fin["抵充地_m2"])
+    denom = total - offset
+    if denom <= 0:
+        raise RuntimeError(f"🔴 重劃總負擔率：總面積精確({total}) − 抵充地({offset}) ≤ 0")
+    public_common = sum(float(b.get("area_m2", 0.0) or 0.0) for b in cb
+                        if fcb.get(b.get("category", ""), "") == "共同負擔")
+    if public_common <= 0:
+        raise RuntimeError("🔴 重劃總負擔率：DXF 共同負擔街廓面積和 ≤0（分類或圖層有誤）")
+    eng = float(fin["單位工程費_元每m2"]) * total
+    redev = (float(fin["拆遷費_元每m2"]) + float(fin["行政費_元每m2"])) * total
+    cost_sum = eng + redev + float(fin["貸款利息_元"])
+    price_after = float(fin["重劃後平均地價_元每m2"])
+    if price_after <= 0:
+        raise RuntimeError("🔴 重劃總負擔率：重劃後平均地價 ≤0")
+    public_rate = (public_common - offset) / denom
+    fee_rate = cost_sum / (price_after * denom)
+    rate = public_rate + fee_rate
+    return rate, {"公設負擔比": public_rate, "費用負擔比": fee_rate,
+                  "公設共同負擔_DXF": public_common, "費用總額": cost_sum,
+                  "總面積精確": total, "抵充地": offset}
+
+
 def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                winners_state, forced_map, setback):
     """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。"""
@@ -123,7 +166,14 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         raise RuntimeError(
             f"🔴 C 兩形分岔：加總形={C_for_calc:.12f} vs 均價形(calc_C_value)={_C_avg_form:.12f}"
             f"，Δ={abs(C_for_calc - _C_avg_form):.3e} > 1e-8（快照 後街廓面積 與 DXF 公設面積不再互補？）")
-    _tab6_burden = float(ss.get("f3_total_burden_rate_from_finance", 0.40) or 0.40)
+    # 重劃總負擔率＝`compute_total_burden_rate` 現算（build_pipeline 鋪底）。
+    # 舊 `or 0.40` fallback 已廢（快照 global.重劃總負擔率 鍵一併刪）→ 缺值即 loud。
+    _tab6_burden = ss.get("f3_total_burden_rate_from_finance")
+    if _tab6_burden is None:
+        raise RuntimeError(
+            "🔴 f3_total_burden_rate_from_finance 未鋪底：須先 compute_total_burden_rate()"
+            "（禁靜默退回 0.40 舊 fallback）")
+    _tab6_burden = float(_tab6_burden)
 
     # ── 地價（v3：後街廓單價／重劃前區段單價；A 逐宗＝post/pre） ──
     post_price_by_block = {lbl: float(v["單價_元每m2"]) for lbl, v in _post_bp.items()}

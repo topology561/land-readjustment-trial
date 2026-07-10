@@ -26,7 +26,8 @@ sys.path.insert(0, HERE)
 from app_harvest import harvest  # noqa: E402
 from selection_pipeline import (  # noqa: E402
     build_ownership, build_build_parcels, run_corner_pk)
-from stepg_pipeline import run_step_g, build_step_g_tables  # noqa: E402
+from stepg_pipeline import (  # noqa: E402
+    run_step_g, build_step_g_tables, compute_total_burden_rate)
 
 SNAPSHOT = os.path.join(HERE, "case_params_UC9898.json")
 V6DXF = os.path.join(REPO, "data", "V6.dxf")
@@ -89,7 +90,11 @@ def build_pipeline(ns, fake_st, snapshot):
     ss["f3_cad_side_lines_by_side"] = slm
     ss["f3_cad_alloc_dir"] = cad.get("alloc_dir_by_block", {}) or {}
     ss["f3_classified_blocks"] = cb
-    ss["f3_total_burden_rate_from_finance"] = float(snapshot["global"]["重劃總負擔率"])
+    # 🆕 微波：重劃總負擔率 **現算**（v3 快照輸入＋DXF 面積導出；廢 global.重劃總負擔率 寫死值）。
+    #    消費者＝_estimate_G_for_qualification（街角 PK 之 G估）＋ iterate_G_S 迭代初值。
+    _rate, _rate_bd = compute_total_burden_rate(ns, cb, snapshot)
+    ss["f3_total_burden_rate_from_finance"] = _rate
+    ss["_v3_burden_rate_breakdown"] = _rate_bd      # 財務閘消費（非計算鏈）
     return {b["label"]: b for b in cb}, cad
 
 
@@ -363,12 +368,31 @@ def main():
         _dump_csv(sel, os.path.join(OUTDIR, f"got_指配_退縮{tag}.csv"))
         _dump_csv(off, os.path.join(OUTDIR, f"got_抵費地_退縮{tag}.csv"))
 
-        # v1 診斷豁免欄記帳：『原位次(距角序·暫行)』——W-D.2 v2 轉正換源投影序 rank
-        # （KL 放行三件套 2026-07-06；新欄由 v2 段＋pool-slot 單測看守，README 白名單 #3）
-        ok_d, v_d = diff_rows(diag, os.path.join(BASELINES, f"W-D.1.2 診斷_退縮{tag}.csv"),
-                              ["街廓", "端", "候選地號"], f"診斷{tag}",
-                              skip_cols={"原位次(距角序·暫行)"})
-        results.append((f"診斷{tag}(v1·原位次欄豁免)", ok_d, v_d))
+        # 🆕 微波：診斷換源 v3（G估 吃現算之重劃總負擔率）。
+        #   v3 baseline 由 harness 產（非 KL app 重匯，不開 UI-session 向量），欄名為
+        #   『原位次(投影序)』→ **豁免欄除籍**（v1 之『原位次(距角序·暫行)』隨舊錨凍存），全欄逐格對拍。
+        ok_d, v_d = diff_rows(diag, os.path.join(V3RUN, f"W-D.1.2 診斷_退縮{tag}.csv"),
+                              ["街廓", "端", "候選地號"], f"v3·診斷{tag}")
+        results.append((f"v3·診斷{tag}（全欄逐格·無豁免）", ok_d, v_d))
+
+        # 🆕 微波：**無串聯之機器證明**（停機條件之硬看守）
+        #   對 v1 原錨逐格比對、僅豁免 {G估(㎡), 舊原位次欄}：必須全等
+        #   ⟹ 率接線「只動 G估 欄」，達標/選中/總分/門檻/真交集/範圍/評分 全未動。
+        #   任一格變動＝winner 或達標受污染 → 停機上呈。
+        ok_nc, v_nc = diff_rows(diag, os.path.join(BASELINES, f"W-D.1.2 診斷_退縮{tag}.csv"),
+                                ["街廓", "端", "候選地號"], f"無串聯{tag}",
+                                skip_cols={"原位次(距角序·暫行)", "G估(㎡)"})
+        results.append((f"率接線無串聯{tag}（vs v1 原錨，豁免 G估 後逐格全等）", ok_nc, v_nc))
+
+        # G估 欄變動格數錨（KL：0m 18 格／3.5m 21 格）
+        _b1_by = {(r["街廓"], r["端"], r["候選地號"]): r
+                  for r in _read_csv(os.path.join(BASELINES, f"W-D.1.2 診斷_退縮{tag}.csv"))}
+        _gest_diff = sum(
+            1 for r in diag
+            if _norm(_b1_by[(r["街廓"], r["端"], r["候選地號"])]["G估(㎡)"]) != _norm(r["G估(㎡)"]))
+        _exp_gd = 18 if tag == "0m" else 21
+        results.append((f"率接線 G估 欄變動 {_gest_diff} 格（期 {_exp_gd}）", _gest_diff == _exp_gd,
+                        [] if _gest_diff == _exp_gd else [f"實得 {_gest_diff} 格"]))
 
         ok_s, v_s = diff_rows(sel, os.path.join(BASELINES, f"第 1 宗街角地指配結果_退縮{tag}.csv"),
                               ["街廓"], f"指配{tag}")
@@ -489,6 +513,32 @@ def main():
                         [] if _ok_rt2 else ["B 未隨動 或 C 誤吃前均價"]))
         # 復原模組級中繼態（避免後續消費者讀到變異值）
         _sgp._V3_FINANCE = _fin
+
+        # ── 🆕 微波：重劃總負擔率 現算閘（KL 裁「翻」2026-07-10）──
+        #   率 = 公設負擔比 + 費用負擔比，由 v3 快照既有輸入＋DXF 面積導出（零新增料、非寫死）。
+        _bd = fake_st.session_state["_v3_burden_rate_breakdown"]
+        _rate_live = float(fake_st.session_state["f3_total_burden_rate_from_finance"])
+        _ok_rate = round(_rate_live, 8) == float(_anc["重劃總負擔率"])
+        results.append((f"v3 重劃總負擔率錨 == {_anc['重劃總負擔率']}（現算 {_rate_live:.8f}）",
+                        _ok_rate, [] if _ok_rate else [f"實得 {_rate_live:.10f}"]))
+        _ok_bd = (round(_bd["公設負擔比"] * 100, 6) == 34.754211
+                  and round(_bd["費用負擔比"] * 100, 6) == 5.958176)
+        results.append((f"v3 率分項錨 公設負擔比 {_bd['公設負擔比']*100:.6f}% ＋ "
+                        f"費用負擔比 {_bd['費用負擔比']*100:.6f}%", _ok_bd,
+                        [] if _ok_bd else ["分項與 xlsx Tab7 不符"]))
+        # 公設共同負擔須用 DXF 實值（截圖 rounded 12146.56 → 0.40712393，差第 7 位）
+        _ok_dxf = abs(_bd["公設共同負擔_DXF"] - 12146.5579) < 5e-4
+        results.append((f"v3 率用 DXF 公設實值 {_bd['公設共同負擔_DXF']:.4f}（非截圖 rounded 12146.56）",
+                        _ok_dxf, [] if _ok_dxf else [f"實得 {_bd['公設共同負擔_DXF']}"]))
+        # reverse-test③：改單位工程費 3500→3600 ⟹ 率隨動（證現算、非抄錄）
+        _s3 = _cp3.deepcopy(snapshot)
+        _s3["財務接線_v3"]["單位工程費_元每m2"] = 3600
+        _rate3, _ = compute_total_burden_rate(ns, list(cb_by.values()), _s3)
+        _ok_rt3 = (round(_rate3, 8) != round(_rate_live, 8)
+                   and round(_rate3, 8) != float(_anc["重劃總負擔率"]))
+        results.append((f"v3 reverse-test③ 單位工程費 3500→3600 ⟹ 重劃總負擔率隨動 "
+                        f"({_rate_live:.8f}→{_rate3:.8f})", _ok_rt3,
+                        [] if _ok_rt3 else ["率未隨動＝疑似寫死"]))
     except Exception as _e_fin:
         import traceback
         results.append(("v3 財務接線閘", False,
