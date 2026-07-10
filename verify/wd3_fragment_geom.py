@@ -80,7 +80,7 @@ def compute():
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     build_ownership(ns, fake_st, rv.ANON_XLSX)
     raw = open(rv.V6DXF, "rb").read()
-    temp, build, _sw = build_build_parcels(ns, fake_st, raw, list(cb_by.values()))
+    temp, build, _sw = build_build_parcels(ns, fake_st, raw, list(cb_by.values()), snapshot)
     flm = cad.get("front_lines", {}) or {}
     slm = cad.get("side_lines_by_side", {}) or {}
     alloc = cad.get("alloc_dir_by_block", {}) or {}

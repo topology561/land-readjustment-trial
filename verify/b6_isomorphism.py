@@ -65,7 +65,7 @@ def main():
     with open(rv.V6DXF, "rb") as f:
         v6_raw = f.read()
     temp_parcels, build_parcels, _sw = build_build_parcels(
-        ns, fake_st, v6_raw, list(cb_by.values()))
+        ns, fake_st, v6_raw, list(cb_by.values()), snapshot)
     cand_parents = sorted({tp["原地號"] for tp in build_parcels
                            if anon_map.get(tp["原地號"], "")})
 

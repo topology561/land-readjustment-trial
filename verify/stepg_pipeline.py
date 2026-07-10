@@ -8,11 +8,25 @@ headless 重現 app.py 步驟 G（宗地分配 G 值迭代＋W-D.2 §3 滑池槽
 
 **參數裝配鐵則（KL 四條件①）**：路況負擔尺度一律消費快照 `blocks.*.負擔尺度_輸入`
 （front/side_new＝輸入>0；calc_* 算出之尺度與輸入逐格斷言相等，破＝RuntimeError），
-**不得吃 SS_ROAD 預設**。全區財務＝快照 `財務接線_全區_步驟F`＋`C_pct`；
-街廓深度＝快照 `街廓分配深度_m`；重劃後地價＝快照 Tab4（區段未指派→A=1，見 PROVENANCE v2）。
+**不得吃 SS_ROAD 預設**。街廓深度＝快照 `街廓分配深度_m`。
+
+**🆕 v3 財務接線（KL 裁定 2026-07-09；廢 `StepG_v2_中間態`／`財務接線_全區_步驟F`／Tab4／Tab5）**：
+全區財務一律消費快照 `財務接線_v3`。A/B/C 三者皆由**獨立於斷言錨的輸入現算**（禁反填）：
+  - C ＝ (單位工程費×總面積精確 ＋ (拆遷費+行政費)×總面積精確 ＋ 貸款利息) ÷ Σ(後街廓面積×單價)
+        〔**加總形**分母，KL 裁定；另斷言與 calc_C_value 均價形等價至 1e-8〕
+  - B ＝ calc_B_value(一般負擔, 重劃前均價, 重劃後均價, 總面積精確, 已徵收公設)
+        〔一般負擔 ＝ DXF 共同負擔街廓面積和 − 抵充地 − 特別負擔(C)〕
+  - A ＝ 後街廓單價[所屬街廓] ÷ 重劃前區段單價[重劃前地價區段]（**逐宗**；zone 由 `_attach_pre_zone` 貼）
+UC9898 錨：B=0.171043、C=0.091319（run_verification 全等斷言＋雙 reverse-test 證非寫死）。
+**精度鐵律**：重劃後均價全精度參與乘除，禁先 round 2dp。
 
 **J 非零看守（KL 四條件③）**：有 SIDE_LINE 之側 F×l₁ 必 >0，零＝RuntimeError
 （app 側 warn-on-zero-weight 之 headless 對應、fail-hard）。
+
+**🆕 結構不變量永久閘（KL 閘裁定 2026-07-09；破即 RuntimeError）**：守恆／⊥（ALLOC⊥FRONT）／
+位次＝投影序／J(k*)≥J(naive)／理論＝實跑／telescoping（ΣRw_側 = R(W_final) − R(W₀_buffer)）。
+取代舊「J/ΣRw 逐格不變」閘——後者僅成立於 Rw 飽和域，v3 換真值地價後配地寬縮約 24%、
+離開飽和域故 J/ΣRw 合法變動（詳 baselines/v3/PROVENANCE_v3.md 註①②）。
 
 🔧 維護耦合：本檔推進段＝app.py Step G orchestration（`_advance_block_with_split`／
 選槽／抵費地幾何／ledger，約 14650-15450）之**逐行複刻**——該段波動必同波更新本檔。
@@ -31,10 +45,21 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     ss = fake_st.session_state
     fcb = ns["F3_CATEGORY_BURDEN"]
     SB = snapshot["blocks"]
-    fin = snapshot["財務接線_全區_步驟F"]
-    # C＝快照 StepG_v2_中間態（KL 準源輪 Tab7 未跑→C=0 顯式路徑；缺節＝loud KeyError，
-    #   禁隱形預設）。global.C_pct 僅供 §7-0a 地基檢查、非 Step G 之 C。
-    C_for_calc = float(snapshot["StepG_v2_中間態"]["C_for_calc"])
+    fin = snapshot["財務接線_v3"]      # 缺節＝loud KeyError，禁隱形預設
+    # ── 🆕 v3：C 由 Tab7 輸入現算（加總形分母；獨立於 C 錨，禁反填） ──
+    #   global.C_pct 僅供 §7-0a 地基檢查、非 Step G 之 C。
+    _post_bp = fin["後街廓_面積單價"]
+    _total_precise = float(fin["重劃區總面積_m2_精確"])          # 34949.888（非 34950/34949.90）
+    _eng_cost = float(fin["單位工程費_元每m2"]) * _total_precise
+    _redev_cost = (float(fin["拆遷費_元每m2"]) + float(fin["行政費_元每m2"])) * _total_precise
+    _loan_interest = float(fin["貸款利息_元"])
+    _cost_sum = _eng_cost + _redev_cost + _loan_interest
+    # 加總形分母 Σ(後街廓面積×單價)（KL 裁定）＝ 1643176255.06
+    _C_denom_sum = sum(float(v["面積_m2"]) * float(v["單價_元每m2"])
+                       for v in _post_bp.values())
+    if _C_denom_sum <= 0:
+        raise RuntimeError("🔴 v3 C 分母（加總形 Σ後街廓面積×單價）≤0，快照 後街廓_面積單價 有誤")
+    C_for_calc = _cost_sum / _C_denom_sum
     _build_blocks = [b for b in cb
                      if fcb.get(b.get("category", ""), "") == "可建築土地"]
 
@@ -71,27 +96,49 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     f"條件① 尺度斷言破：{r_sb['街廓']} {k_snap} calc={got} ≠ 快照輸入={exp}"
                     "（路寬×新闢 與 負擔尺度_輸入 不相容，查快照/尺度表）")
 
-    # ── B 值（app 步驟 H 複刻；全區參數＝快照 財務接線_全區_步驟F） ──
+    # ── B 值（app 步驟 H 複刻；v3 全區參數＝快照 財務接線_v3） ──
     public_common_total = sum(float(b.get("area_m2", 0.0) or 0.0) for b in cb
                               if fcb.get(b.get("category", ""), "") == "共同負擔")
     offset_area = float(fin["抵充地_m2"])
     preexisting_public = float(fin["已徵收公設_m2"])
-    total_area = float(fin["重劃區總面積_m2"])
+    total_area = _total_precise
     price_before = float(fin["重劃前平均地價_元每m2"])
     price_after = float(fin["重劃後平均地價_元每m2"])
+    # 特別負擔已吃 C（(正+側)×(1−C)）→ 一般負擔 → B。C 耦合 B，故 C 必先算。
     general_burden = max(public_common_total - offset_area - sb["special_total"], 0.0)
     B_value = ns["calc_B_value"](
         general_burden_area=general_burden,
         price_before=price_before, price_after=price_after,
         total_area=total_area, preexisting_public_area=preexisting_public,
     )
+    # C 兩形等價斷言（reviewer 逮出之分岔顯性化）：加總形 vs app calc_C_value 均價形。
+    #   分母差 ~7.21 元（第 7 位有效數字，源自 Σ後面積 22803.33 vs total−DXF公設 22803.3301），
+    #   C 值差 ~4e-10。破 1e-8 ＝ 二形真分岔，須停查（勿靜默採其一）。
+    _C_avg_form = ns["calc_C_value"](
+        engineering_cost=_eng_cost, redev_cost=_redev_cost, loan_interest=_loan_interest,
+        price_after=price_after, total_area=total_area,
+        public_burden_total=public_common_total,
+    )
+    if abs(C_for_calc - _C_avg_form) > 1e-8:
+        raise RuntimeError(
+            f"🔴 C 兩形分岔：加總形={C_for_calc:.12f} vs 均價形(calc_C_value)={_C_avg_form:.12f}"
+            f"，Δ={abs(C_for_calc - _C_avg_form):.3e} > 1e-8（快照 後街廓面積 與 DXF 公設面積不再互補？）")
     _tab6_burden = float(ss.get("f3_total_burden_rate_from_finance", 0.40) or 0.40)
 
-    # ── 地價（快照 Tab4；重劃前區段未指派 → pre 查無 → A=1，PROVENANCE v2 記載） ──
-    post_price_by_block = {lbl: float(v["地價_元每m2"])
-                           for lbl, v in snapshot["財務接線_重劃後街廓地價_Tab4"].items()
-                           if isinstance(v, dict) and "地價_元每m2" in v}
-    pre_price_by_zone = {}
+    # ── 地價（v3：後街廓單價／重劃前區段單價；A 逐宗＝post/pre） ──
+    post_price_by_block = {lbl: float(v["單價_元每m2"]) for lbl, v in _post_bp.items()}
+    pre_price_by_zone = {z: float(v["單價_元每m2"])
+                         for z, v in fin["重劃前區段_面積單價"].items()}
+    # 財務中繼態外拋（run_verification 之財務閘消費；非計算鏈）
+    globals()["_V3_FINANCE"] = {
+        "B": B_value, "C": C_for_calc, "C_avg_form": _C_avg_form,
+        "eng": _eng_cost, "redev": _redev_cost, "loan": _loan_interest,
+        "cost_sum": _cost_sum, "C_denom": _C_denom_sum,
+        "general_burden": general_burden, "public_common": public_common_total,
+        "special_total": sb["special_total"],
+        "post_price_by_block": dict(post_price_by_block),
+        "pre_price_by_zone": dict(pre_price_by_zone),
+    }
 
     # ── session 鋪底（Step L/PK 產物＝快照/選位半 driver 餵入） ──
     ss["f3L_setback_default"] = setback
@@ -139,6 +186,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     alloc_normal_axis = ns["alloc_normal_axis"]
     _select_pool_slot = ns["_select_pool_slot"]
     _spatial_order_parcels_v2 = ns["_spatial_order_parcels_v2"]
+    _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
 
     g_rows = []
     detail_trace = {}
@@ -243,6 +291,20 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         _alloc_dir_cad = (ss.get('f3_cad_alloc_dir', {}) or {}).get(blk_label)
         allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)
 
+        # ── 結構閘 ⊥：宗地分配線(ALLOC) ⊥ 正面臨路線(FRONT) ──
+        #   機制不變量（純 CAD 幾何、價格無關）。容差 0.15 ≈ 8.6°（UC9898 實測 0.045–0.092
+        #   ＝繪圖公差 2.6°–5.3°）。破＝ALLOC/FRONT 畫錯或配對錯（如 ALLOC 平行 FRONT → |dot|≈1）。
+        if _alloc_dir_cad is not None and d_hat is not None:
+            _u_alloc = _np_d.asarray(_alloc_dir_cad, dtype=float)
+            _n_ua = float(_np_d.linalg.norm(_u_alloc))
+            if _n_ua > 1e-9:
+                _perp_dot = abs(float(_np_d.dot(_u_alloc / _n_ua, d_hat)))
+                if _perp_dot >= 0.15:
+                    raise RuntimeError(
+                        f"🔴 結構閘 ⊥ 破：街廓 {blk_label} |û_alloc·d̂_front|={_perp_dot:.4f} ≥0.15"
+                        f"（ALLOC 未垂直 FRONT，夾角 {90 - _np_d.degrees(_np_d.arccos(min(1.0, _perp_dot))):.1f}°"
+                        f" 偏離；查 DXF 之 宗地分配線／FRONT_LINE 圖層）")
+
         # ordered_v2（app 同構）
         _v2_res = None
         _degenerate_order = (d_hat is None or corner_pt is None)
@@ -272,6 +334,23 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             ordered_v2 = list(_v2_res.get('ordered', []) or [])
         for _i_ov2, _e_ov2 in enumerate(ordered_v2):
             _e_ov2['_ov2_idx'] = _i_ov2
+
+        # ── 結構閘 位次＝投影序 ──
+        #   ordered_v2 保留投影序（僅 PK winner 最小擾動上位），其 `pre_position` 必逐筆等於
+        #   `_projection_order`（純幾何 representative_point 投影）之排名。此為位次價格無關之
+        #   機制保證：任何使位次改吃 G/地價之 refactor 立即被逮。
+        if not _degenerate_order:
+            _proj_rank = {tp['暫編地號']: _i + 1 for _i, tp in enumerate(
+                ns["_projection_order"](parcels_in_blk, _cad_fl_blk.get('p1'),
+                                        _cad_fl_blk.get('p2')))}
+            _pos_bad = [(e['tp']['暫編地號'], e.get('pre_position'),
+                         _proj_rank.get(e['tp']['暫編地號']))
+                        for e in ordered_v2
+                        if e.get('pre_position') != _proj_rank.get(e['tp']['暫編地號'])]
+            if _pos_bad:
+                raise RuntimeError(
+                    f"🔴 結構閘 位次＝投影序 破：街廓 {blk_label} {len(_pos_bad)} 筆 pre_position "
+                    f"≠ _projection_order 排名（暫編, pre_position, 投影排名）={_pos_bad[:3]}")
 
         # forced buffer（app Phase C 複刻）
         _fo_block = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {})
@@ -366,8 +445,12 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
             left_cum_S = float(_left_buffer_S)
             right_cum_S = float(_right_buffer_S)
-            _W_prev_left = (_left_buffer_S * _cos_dn) if _has_left_corner else 0.0
-            _W_prev_right = (_right_buffer_S * _cos_dn) if _has_right_corner else 0.0
+            # W₀＝該側 Rw 累積起算點：forced 角落鎖定時＝buffer 之臨街投影，否則 0
+            #   （telescoping 閘用：ΣRw_側 = R(W_final) − R(W₀)）
+            _W0_left = (_left_buffer_S * _cos_dn) if _has_left_corner else 0.0
+            _W0_right = (_right_buffer_S * _cos_dn) if _has_right_corner else 0.0
+            _W_prev_left = _W0_left
+            _W_prev_right = _W0_right
             first_corner_used_left = False
             left_results = []
             for entry in left_group:
@@ -521,6 +604,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 'widths': _widths_local,
                 'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
                 'left_results': left_results, 'right_results': right_results,
+                'W0_left': _W0_left, 'W0_right': _W0_right,
+                'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
             }
 
         # 選槽 orchestration（app 同構）
@@ -645,6 +730,34 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         _row_at = {t['k']: t for t in _tbl_wd2}
         _t_star = _row_at.get(_k_star, {})
         _t_naive = _row_at.get(_k_naive, {})
+
+        # ── 結構閘 telescoping：ΣRw_側 == R(W_final) − R(W₀_buffer) ──
+        #   附件二累積差額制之望遠鏡和（rw_increment 逐筆串接、W 單調不減故無 max(0,·) 夾斷）。
+        #   W₀＝forced 角落鎖定之 buffer 起算點（無 forced → 0）。
+        #   破＝Rw 累積鏈斷（W_prev thread 漏更新／W_far 消失／W 非單調）。
+        for _sd_tag, _sd_has, _sd_W0, _sd_Wf in (
+                ('left', _has_left_corner, _adv_final['W0_left'], _adv_final['Wf_left']),
+                ('right', _has_right_corner, _adv_final['W0_right'], _adv_final['Wf_right'])):
+            if not _sd_has:
+                continue
+            _sum_rw_side = _rw_real_wd2(_sd_tag)
+            _tele_exp = _rw_from_width(_sd_Wf) - _rw_from_width(_sd_W0)
+            if abs(_sum_rw_side - _tele_exp) > 0.1:
+                raise RuntimeError(
+                    f"🔴 結構閘 telescoping 破：街廓 {blk_label} {_sd_tag} 側 "
+                    f"ΣRw_實跑={_sum_rw_side:.2f} ≠ R(W_final={_sd_Wf:.2f})−R(W₀={_sd_W0:.2f})"
+                    f"={_tele_exp:.2f}（Δ={abs(_sum_rw_side - _tele_exp):.3f} >0.1）")
+
+        # ── 結構閘 理論＝實跑：滑池槽 k* 之理論 ΣRw 必等於實際推進之 ΣRw（逐側） ──
+        #   破＝_select_pool_slot 之 widths 與實際推進不同源（選槽依據與落地結果脫鉤）。
+        if _slot_res:
+            for _th_key, _sd_tag2 in (('ΣRw_L', 'left'), ('ΣRw_R', 'right')):
+                _th = float(_t_star.get(_th_key, 0.0) or 0.0)
+                _re = _rw_real_wd2(_sd_tag2)
+                if abs(_th - _re) > 0.1:
+                    raise RuntimeError(
+                        f"🔴 結構閘 理論＝實跑 破：街廓 {blk_label} {_sd_tag2} 側 "
+                        f"理論@k*={_th:.2f} ≠ 實跑={_re:.2f}（Δ={abs(_th - _re):.3f} >0.1）")
         if _pool_total_blk is not None:
             _resid_wd2 = round(_sum_G_blk + _pool_total_blk - blk_area, 2)
             _verdict_wd2 = ('✅' if abs(_resid_wd2) < 1.0 else '🔴 守恆破')

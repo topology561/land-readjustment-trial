@@ -32,7 +32,10 @@ SNAPSHOT = os.path.join(HERE, "case_params_UC9898.json")
 V6DXF = os.path.join(REPO, "data", "V6.dxf")
 ANON_XLSX = os.path.join(REPO, "data", "地籍資料來源_匿名版.xlsx")
 BASELINES = os.path.join(HERE, "baselines")
-WD2RUN = os.path.join(HERE, "baselines", "v2")   # v2 baselines（KL 2026-07-06 乾淨雙參數輪轉正）
+# baselines/v2/＝財務半中間態期（C=0、A=1）之歷史錨，**凍存不刪、不再對拍**（見 v3/PROVENANCE_v3.md）
+V3RUN = os.path.join(HERE, "baselines", "v3")    # 🆕 v3 錨定 baseline（財務接線波換源，KL 裁定 2026-07-09）
+# k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
+K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
 OUTDIR = os.path.join(HERE, "out")
 CORNER_BLOCKS = ["R1", "R2", "R3", "R4", "R5", "R6"]
 
@@ -300,6 +303,7 @@ def main():
 
     results = []
     gxxx_warnings = []
+    stepg_ctx = {}          # {tag: {g, sg, params, win, forced, sb}}；v3 財務閘/reverse-test 消費
 
     # ── 幾何半（既有，保持綠） ──
     param_by_tag = {}
@@ -331,7 +335,7 @@ def main():
     with open(V6DXF, "rb") as f:
         v6_raw = f.read()
     temp_parcels, build_parcels, swaps = build_build_parcels(
-        ns, fake_st, v6_raw, list(cb_by.values()))
+        ns, fake_st, v6_raw, list(cb_by.values()), snapshot)
     print(f"… parcels：temp {len(temp_parcels)} 筆｜可建築 build {len(build_parcels)} 筆｜"
           f"面積交叉換位 {len(swaps)} 對")
 
@@ -381,8 +385,10 @@ def main():
             results.append((f"抵費地{tag}(應空)", not off,
                             [f"[抵費地{tag}] 預期空、得 {len(off)} 列：{off}"] if off else []))
 
-        # ── 🆕 W-D.2 P6：Step G headless → 三張表對拍 v2 準源（wd2_run/） ──
-        print(f"… Step G headless（{tag}；快照尺度輸入消費＋J 非零看守）")
+        # ── Step G headless → 三張表對拍 v3 錨定 baseline ──
+        #   結構不變量永久閘（守恆／⊥／位次＝投影序／J(k*)≥J(naive)／理論＝實跑／telescoping）
+        #   由 run_step_g 內部 raise RuntimeError；於此轉 FAIL 列（run_all 轉紅）。
+        print(f"… Step G headless（{tag}；v3 真值財務＋結構不變量永久閘）")
         try:
             _sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                              param_by_tag[tag], build_parcels,
@@ -391,20 +397,102 @@ def main():
             _dump_csv(g_tab, os.path.join(OUTDIR, f"got_G值_退縮{tag}.csv"))
             _dump_csv(diag_tab, os.path.join(OUTDIR, f"got_滑池槽診斷_退縮{tag}.csv"))
             _dump_csv(slot_tab, os.path.join(OUTDIR, f"got_逐槽J表_退縮{tag}.csv"))
+            stepg_ctx[tag] = {"g": g_tab, "sg": _sg, "params": param_by_tag[tag],
+                              "win": winners_state, "forced": forced_map, "sb": setback}
+            results.append((f"結構不變量永久閘{tag}（守恆/⊥/位次=投影序/J(k*)≥J(naive)/理論=實跑/telescoping）",
+                            True, []))
             ok_g, v_g = diff_rows(
-                g_tab, os.path.join(WD2RUN, f"G 值計算結果_退縮{tag}.csv"),
-                ["所屬街廓", "暫編地號"], f"v2·G值{tag}")
-            results.append((f"v2·G值{tag}", ok_g, v_g))
+                g_tab, os.path.join(V3RUN, f"G 值計算結果_退縮{tag}.csv"),
+                ["所屬街廓", "暫編地號"], f"v3·G值{tag}")
+            results.append((f"v3·G值{tag}", ok_g, v_g))
             ok_pd, v_pd = diff_rows(
-                diag_tab, os.path.join(WD2RUN, f"W-D.2 §3 滑池槽診斷_退縮{tag}.csv"),
-                ["街廓"], f"v2·滑池槽{tag}")
-            results.append((f"v2·滑池槽{tag}", ok_pd, v_pd))
+                diag_tab, os.path.join(V3RUN, f"W-D.2 §3 滑池槽診斷_退縮{tag}.csv"),
+                ["街廓"], f"v3·滑池槽{tag}")
+            results.append((f"v3·滑池槽{tag}", ok_pd, v_pd))
             ok_j, v_j = diff_rows(
-                slot_tab, os.path.join(WD2RUN, f"逐槽 J 表_退縮{tag}.csv"),
-                ["街廓", "k"], f"v2·J表{tag}")
-            results.append((f"v2·J表{tag}", ok_j, v_j))
+                slot_tab, os.path.join(V3RUN, f"逐槽 J 表_退縮{tag}.csv"),
+                ["街廓", "k"], f"v3·J表{tag}")
+            results.append((f"v3·J表{tag}", ok_j, v_j))
+            # k* 六塊經驗錨（非機制不變量；破＝widths 變動使切點翻，須重驗非直接放行）
+            _ks = {lbl: int(d["k*"]) for lbl, d in _sg["pool_diag"].items()}
+            results.append((f"k* 六塊經驗錨{tag} {K_STAR_EXPECT}", _ks == K_STAR_EXPECT,
+                            [] if _ks == K_STAR_EXPECT else [f"實得 {_ks}"]))
         except RuntimeError as _e_sg:
-            results.append((f"v2·StepG{tag}", False, [f"[StepG{tag}] 看守觸發：{_e_sg}"]))
+            results.append((f"v3·StepG{tag}（結構閘/看守觸發）", False,
+                            [f"[StepG{tag}] {_e_sg}"]))
+
+    # ── 🆕 v3 財務接線閘（KL 裁定 2026-07-09）──
+    #   **斷言錨之輸入必須獨立於錨**：B/C 皆由快照 財務接線_v3 之三純量（前均價/後均價/貸款利息）
+    #   ＋精確總面積＋單位費現算而得，禁反填。雙 reverse-test 走**真引擎重跑**（非算術複寫）。
+    print("… v3 財務接線閘（B/C 錨・中繼錨・C 兩形等價・A 逐宗全查・雙 reverse-test）")
+    try:
+        import copy as _cp3
+        import stepg_pipeline as _sgp
+        _fv3 = snapshot["財務接線_v3"]
+        _anc, _mid = _fv3["斷言錨"], _fv3["中繼錨"]
+        _fin = dict(_sgp._V3_FINANCE)          # 快照一份（reverse-test 會覆寫模組級變數）
+
+        _okB = round(_fin["B"], 6) == float(_anc["B"])
+        results.append((f"v3 財務錨 B == {_anc['B']}（獨立輸入現算 → {_fin['B']:.6f}）",
+                        _okB, [] if _okB else [f"實得 B={_fin['B']:.9f}"]))
+        _okC = round(_fin["C"], 6) == float(_anc["C"])
+        results.append((f"v3 財務錨 C == {_anc['C']}（加總形分母 {_fin['C_denom']:,.2f}）",
+                        _okC, [] if _okC else [f"實得 C={_fin['C']:.9f}"]))
+        _okM = (round(_fin["eng"]) == _mid["工程費_元"]
+                and round(_fin["redev"]) == _mid["重劃費_元"]
+                and round(_fin["cost_sum"]) == _mid["費用總額_元"])
+        results.append((f"v3 中繼錨 工程費/重劃費/費用總額 == "
+                        f"{_mid['工程費_元']}/{_mid['重劃費_元']}/{_mid['費用總額_元']}", _okM,
+                        [] if _okM else [f"實得 {round(_fin['eng'])}/{round(_fin['redev'])}/"
+                                         f"{round(_fin['cost_sum'])}"]))
+        _dC = abs(_fin["C"] - _fin["C_avg_form"])
+        results.append((f"v3 C 兩形等價（加總形 vs app calc_C_value 均價形）|Δ|={_dC:.2e} <1e-8",
+                        _dC < 1e-8, [] if _dC < 1e-8 else [f"Δ={_dC:.3e}"]))
+
+        # A 逐宗全查：A 地價比 == round(後街廓單價 ÷ 重劃前區段單價, 4)
+        _zone = _fv3["原地號_區段"]
+        _pp, _qq = _fin["post_price_by_block"], _fin["pre_price_by_zone"]
+        _abad, _nA = [], 0
+        for _tg, _c in stepg_ctx.items():
+            for _r in _c["g"]:
+                if _r.get("推進側別") not in ("left", "right"):
+                    continue
+                _nA += 1
+                _exp = round(_pp[_r["所屬街廓"]] / _qq[_zone[_r["原地號"]]], 4)
+                if abs(float(_r["A 地價比"]) - _exp) > 1e-9:
+                    _abad.append(f"{_tg}/{_r['暫編地號']}: A={_r['A 地價比']} ≠ 期{_exp}")
+        results.append((f"v3 A 逐宗全查（{_nA} 列＝後街廓單價/重劃前區段單價）", not _abad, _abad[:5]))
+
+        # reverse-test（證引擎現算、非寫死）：真引擎重跑於變異快照
+        _ctx = stepg_ctx["0m"]
+
+        def _rerun_fin(_mut):
+            _s2 = _cp3.deepcopy(snapshot)
+            _mut(_s2["財務接線_v3"])
+            run_step_g(ns, fake_st, list(cb_by.values()), cad, _s2,
+                       _ctx["params"], build_parcels, _ctx["win"], _ctx["forced"], _ctx["sb"])
+            return dict(_sgp._V3_FINANCE)
+
+        _rt1 = _rerun_fin(lambda f: f.__setitem__("單位工程費_元每m2", 3600))
+        _ok_rt1 = (round(_rt1["C"], 6) != round(_fin["C"], 6)
+                   and round(_rt1["C"], 6) != float(_anc["C"]))
+        results.append((f"v3 reverse-test① 單位工程費 3500→3600 ⟹ C 隨動 "
+                        f"({_fin['C']:.6f}→{_rt1['C']:.6f})", _ok_rt1,
+                        [] if _ok_rt1 else ["C 未隨動＝疑似寫死"]))
+        _rt2 = _rerun_fin(lambda f: f.__setitem__(
+            "重劃前平均地價_元每m2", f["重劃前平均地價_元每m2"] * 1.1))
+        _ok_rt2 = (round(_rt2["B"], 6) != round(_fin["B"], 6)
+                   and round(_rt2["B"], 6) != float(_anc["B"])
+                   and round(_rt2["C"], 6) == round(_fin["C"], 6))   # C 不吃前均價
+        results.append((f"v3 reverse-test② 前均價 ×1.1 ⟹ B 隨動且 C 不動 "
+                        f"(B {_fin['B']:.6f}→{_rt2['B']:.6f}；C {_rt2['C']:.6f})", _ok_rt2,
+                        [] if _ok_rt2 else ["B 未隨動 或 C 誤吃前均價"]))
+        # 復原模組級中繼態（避免後續消費者讀到變異值）
+        _sgp._V3_FINANCE = _fin
+    except Exception as _e_fin:
+        import traceback
+        results.append(("v3 財務接線閘", False,
+                        [f"[財務閘] {_e_fin}", traceback.format_exc()[-300:]]))
 
     # ── 🆕 W-D.3 §4：碎片幾何/三分類/逐邊 CAD 對拍（診斷閘；零幾何移動之診斷凍結）──
     #   compute() 自含管線（雙情境）；三分類(碎片/forced/池主體)由 (a)S=0/(b)寬<最小/
@@ -413,18 +501,20 @@ def main():
     try:
         from wd3_fragment_geom import compute as _frag_compute
         _geom_rows, _edge_rows = _frag_compute()
-        ok_fg, v_fg = diff_rows(_geom_rows, os.path.join(WD2RUN, "wd3_fragment_geom.csv"),
+        # 換源 v3：碎片幾何吃 run_step_g 之抵費地 cut_coords → 池變則池主體列變（G 縮→池脹）。
+        #   實測：列數/三分類/碎片列（5.30/78.19/85.66）原封不動，僅池主體列面積近倍增。
+        ok_fg, v_fg = diff_rows(_geom_rows, os.path.join(V3RUN, "wd3_fragment_geom.csv"),
                                 ["情境", "暫編地號"], "碎片幾何")
-        results.append(("W-D.3 碎片幾何/三分類", ok_fg, v_fg))
-        ok_fe, v_fe = diff_rows(_edge_rows, os.path.join(WD2RUN, "wd3_fragment_edges.csv"),
+        results.append(("W-D.3 碎片幾何/三分類（v3）", ok_fg, v_fg))
+        ok_fe, v_fe = diff_rows(_edge_rows, os.path.join(V3RUN, "wd3_fragment_edges.csv"),
                                 ["情境", "暫編地號"], "碎片逐邊")
-        results.append(("W-D.3 碎片逐邊CAD", ok_fe, v_fe))
+        results.append(("W-D.3 碎片逐邊CAD（v3）", ok_fe, v_fe))
     except Exception as _e_fg:
         results.append(("W-D.3 碎片", False, [f"[碎片] compute 失敗：{_e_fg}"]))
 
     # ── 🆕 W-D.4 清單波：四梯分級清單（歸戶=Gxxx 群組；零幾何移動）──
-    #   22 旗標消費/MinA_區推導/R6 遞補錨/fixture 查封自成一群/三 CSV 對拍 v2 baseline。
-    print("… W-D.4 四梯分級清單（Gxxx 群組·22 旗標消費·遞補錨·fixture）")
+    #   旗標消費(v3=31)/MinA_區推導/R6 遞補錨(v3 重錨)/fixture 查封自成一群/三 CSV 對拍 v3 baseline。
+    print("… W-D.4 四梯分級清單（Gxxx 群組·31 旗標消費·遞補錨·fixture·v3 半實算）")
     try:
         import wd4_tier_list as _w4
         _w4res = _w4.compute(fixture=False)
@@ -434,15 +524,15 @@ def main():
             _dump_csv(_d4["frag"], os.path.join(OUTDIR, f"got_W-D.4_遞補_退縮{tag}.csv"))
             _dump_csv(_d4["recomp"], os.path.join(OUTDIR, f"got_W-D.4_跨占_退縮{tag}.csv"))
             ok_l, v_l = diff_rows(_d4["groups"],
-                                  os.path.join(WD2RUN, f"W-D.4_四梯分級清單_退縮{tag}.csv"),
+                                  os.path.join(V3RUN, f"W-D.4_四梯分級清單_退縮{tag}.csv"),
                                   ["情境", "歸戶鍵Gxxx"], f"W-D.4清單{tag}")
-            results.append((f"W-D.4 四梯清單{tag}", ok_l, v_l))
+            results.append((f"W-D.4 四梯清單{tag}（v3 半實算）", ok_l, v_l))
             ok_r, v_r = diff_rows(_d4["frag"],
-                                  os.path.join(WD2RUN, f"W-D.4_碎片遞補對照_退縮{tag}.csv"),
+                                  os.path.join(V3RUN, f"W-D.4_碎片遞補對照_退縮{tag}.csv"),
                                   ["情境", "碎片"], f"W-D.4遞補{tag}")
             results.append((f"W-D.4 碎片遞補{tag}", ok_r, v_r))
             ok_x, v_x = diff_rows(_d4["recomp"],
-                                  os.path.join(WD2RUN, f"W-D.4_跨占分配線_退縮{tag}.csv"),
+                                  os.path.join(V3RUN, f"W-D.4_跨占分配線_退縮{tag}.csv"),
                                   ["情境", "暫編地號"], f"W-D.4跨占{tag}")
             results.append((f"W-D.4 跨占分配線{tag}", ok_x, v_x))
         # 推導斷言（WARNING-1 裁定：正典 rounded 全等＋½線顯示 Decimal 釘刀口）
@@ -450,10 +540,12 @@ def main():
         _ok_der = (_d0["mina_qu"] == 114.07 and _d0["half_disp"] == 57.04)
         results.append(("W-D.4 MinA_區==114.07(正典rounded)·½顯示==57.04(Decimal非round)", _ok_der,
                         [] if _ok_der else [f"MinA_區={_d0['mina_qu']} ½顯示={_d0['half_disp']}"]))
+        # 旗標數隨價變（v2=22 → v3=31，+9 無消失；配地寬縮 24% 跌破 min_width 3.5m）
         _consumed = sum(int(g["含旗標宗數"]) for g in _d0["groups"])
-        _ok_fl = (_d0["flagged_ct"] == 22 and _consumed == 22)
-        results.append(("W-D.4 22旗標全消費(群組語意)", _ok_fl,
-                        [] if _ok_fl else [f"旗標{_d0['flagged_ct']}→消費{_consumed}"]))
+        _FL = _w4.FLAGGED_EXPECT
+        _ok_fl = (_d0["flagged_ct"] == _FL and _consumed == _FL)
+        results.append((f"W-D.4 {_FL}旗標全消費(群組語意·v3 隨價變)", _ok_fl,
+                        [] if _ok_fl else [f"旗標{_d0['flagged_ct']}→消費{_consumed}（期{_FL}）"]))
         # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
         import copy as _cp
         _snap2 = _cp.deepcopy(snapshot)
@@ -464,9 +556,12 @@ def main():
         _ok_rev = (_mq2 == 70.0)   # round(20×3.5,2)=70 隨動（非鎖死 114.07）
         results.append(("W-D.4 MinA_區 reverse-test(改深度→隨動·非寫死)", _ok_rev,
                         [] if _ok_rev else [f"改 R4 深度20→MinA_區={_mq2}(期70)"]))
+        # 遞補錨（v3 重錨）：v2 之標的 628-1(2) 於 v3 自身入畸零旗標（寬<3.5m）→ 續往內遞補。
+        #   域裁§四規則不變：沿分配序往前找第一筆有效宗（S≠0 且 宗地寬度≥min_width），跳過失格中間筆。
         _r6 = [f for f in _d0["frag"] if f["碎片"] == "R6-抵費地-2"]
-        _ok_anc = bool(_r6) and _r6[0]["遞補標的宗"] == "628-1(2)" and "628(2)" in _r6[0]["跳過失格筆"]
-        results.append(("W-D.4 遞補錨 R6 85.66→628-1(2)跳過628(2)", _ok_anc,
+        _ok_anc = (bool(_r6) and _r6[0]["遞補標的宗"] == "628-4(1)"
+                   and _r6[0]["跳過失格筆"] == "628(2);628-1(2);628-23(1)")
+        results.append(("W-D.4 遞補錨 R6 85.66→628-4(1)（跳過 628(2);628-1(2);628-23(1)）", _ok_anc,
                         [] if _ok_anc else [f"實得 {_r6}"]))
         _share_bad = sum(1 for g in _d0["groups"] if "🔴" in g["持分和檢核"])
         results.append(("W-D.4 持分和逐宗檢核(WARNING-A)", _share_bad == 0,
@@ -496,7 +591,8 @@ def main():
     if gxxx_warnings:
         print("⚠️ Gxxx 警告級 diverge（不得正規化吃掉；迭代序訊號 → 交 B6 仲裁）")
     print("嫌犯序：快照漏參 > dtype 1.5（法人統編 '.0'）> driver orchestration 漂移 > 引擎（勿動 app）")
-    print("RESULT:", "ALL GREEN（幾何半＋選位半＋Step G v2）" if allok else "FAIL")
+    print("RESULT:", "ALL GREEN（幾何半＋選位半＋Step G v3 真值財務＋結構不變量永久閘）"
+          if allok else "FAIL")
     return 0 if allok else 1
 
 

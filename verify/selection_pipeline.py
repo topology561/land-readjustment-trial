@@ -209,9 +209,32 @@ def build_ownership(ns, fake_st, xlsx_path):
 
 # ═══════════════ 2. parcels / build_parcels（app 11631-11722 + 13458） ═══════════════
 
-def build_build_parcels(ns, fake_st, v6_bytes, cb):
+def _attach_pre_zone(temp_parcels, snapshot):
+    """🆕 v3 財務接線：逐宗貼 `重劃前地價區段`（A 地價比之分母查價鍵）。
+
+    區段係**原地號級**（同原地號之各暫編同區段；快照 `財務接線_v3.原地號_區段` 53 筆）。
+    no-silent-fallback：非-ghost 宗地之原地號不在表中 → loud RuntimeError（不靠 KeyError 兜、
+    更不得靜默給 '' 使 A 悄悄退回 1.0）。ghost sliver（無原地號、四欄面積恆 0、Step G 前即被
+    過濾）→ zone=''，不 raise。"""
+    zone_map = snapshot["財務接線_v3"]["原地號_區段"]
+    missing = sorted({tp.get("原地號", "") for tp in temp_parcels
+                      if not tp.get("_is_ghost_sliver", False)
+                      and tp.get("原地號", "") not in zone_map})
+    if missing:
+        raise RuntimeError(
+            f"🔴 v3 A 查價：{len(missing)} 個非-ghost 原地號不在快照 財務接線_v3.原地號_區段"
+            f"（{len(zone_map)} 筆）：{missing[:5]}。缺區段→A 無從查得，禁靜默退回 A=1。")
+    for tp in temp_parcels:
+        tp["重劃前地價區段"] = zone_map.get(tp.get("原地號", ""), "")
+    return temp_parcels
+
+
+def build_build_parcels(ns, fake_st, v6_bytes, cb, snapshot):
     """真函式管線：parse_cadastral_geofile → 面積交叉驗證換位 → overlay →
-    四欄面積 → cut_type → build_parcels（可建築、未併公設）。"""
+    四欄面積 → cut_type → 🆕 貼重劃前地價區段 → build_parcels（可建築、未併公設）。
+
+    `snapshot` 為**必填**（禁預設 None）：v3 起 A 地價比逐宗查價需 `原地號_區段`，
+    漏傳即 TypeError 當場炸，不容靜默略過 zone。"""
     cad_data = ns["parse_cadastral_geofile"](v6_bytes, "V6.dxf")
     parcel_polys = cad_data.get("parcel_polygons", []) or []
     _t1_areas = fake_st.session_state.get("t8_parcel_areas", {}) or {}
@@ -228,6 +251,7 @@ def build_build_parcels(ns, fake_st, v6_bytes, cb):
     temp_parcels = ns["overlay_polygons_to_blocks"](parcel_polys, cb)
     temp_parcels = ns["_assign_four_column_areas"](temp_parcels, _t1_areas)
     temp_parcels = ns["_annotate_temp_parcel_cut_type"](temp_parcels)
+    temp_parcels = _attach_pre_zone(temp_parcels, snapshot)
     fcb = ns["F3_CATEGORY_BURDEN"]
     build_parcels = [tp for tp in temp_parcels
                      if fcb.get(tp["街廓分類"], "") == "可建築土地"
