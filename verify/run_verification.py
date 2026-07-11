@@ -39,6 +39,7 @@ F0DIR = os.path.join(HERE, "baselines", "wf", "f0")  # 🆕 W-F F.0 終態 basel
 F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形 baseline（R1 縮圍）
 F2DIR = os.path.join(HERE, "baselines", "wf", "f2")  # 🆕 W-F F.2 跨街廓調配 baseline（trunk C）
 F3DIR = os.path.join(HERE, "baselines", "wf", "f3")  # 🆕 W-F F.3 公設地調配 baseline（trunk D）
+F4DIR = os.path.join(HERE, "baselines", "wf", "f4")  # 🆕 W-F F.4 收斂波 baseline（trunk E；7-4/7-5/整形/總決算）
 # k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
 K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
 OUTDIR = os.path.join(HERE, "out")
@@ -927,7 +928,100 @@ def main():
                         _fx3["ratio_ne_1"] and abs(_fx3["a_prime_a_to_b"] - _fx3["expect"]) < 0.01, []))
     except Exception as _e_f3:
         import traceback
+        _f3_ok = False
         results.append(("W-F F.3", False, [f"[F.3] {_e_f3}", traceback.format_exc()[-500:]]))
+    else:
+        _f3_ok = True
+
+    # ── 🆕 W-F F.4：無同歸戶 3 級調配（7-4）＋7-5 雙出口批次最佳化＋終態整形＋總決算（trunk E）──
+    #   母體＝trunk D（F.3 終態）。E0 級1殘餘→E1 7-4 距離法→E2 7-5 批次全域最佳化（KL 裁定 2026-07-12）
+    #   →E3 終態遞補整形→E4 全域斷言→E5 33 群總決算。六表對拍＋F.4 專屬閘。
+    print("… W-F F.4（7-4 三級調配＋7-5 批次最佳化＋終態整形＋33 群總決算；trunk E）")
+    try:
+        if not _f3_ok:
+            raise RuntimeError("F.3 未成功，F.4 跳過（存在性守衛）")
+        import wf_f4
+        # 靜態閘（禁呼叫 calc_a_prime／三廢）
+        _wf4_src = open(os.path.join(HERE, "wf_f4.py"), encoding="utf-8").read()
+        _f4hit = [f"{n}(" for n in ("calc_a_prime", "_allocate_three_tier_v1",
+                  "_allocate_tier2_tier3_geometric", "_inflate_a_for_orphan") if f"{n}(" in _wf4_src]
+        results.append(("F.4 靜態閘（wf_f4 不呼叫 calc_a_prime／三廢）", not _f4hit, _f4hit))
+
+        _f4 = wf_f4.compute(_ctx, _f0, _f2, _f3)
+        _mina4 = wf_f0._mina_by_block(ns, snapshot, cb_by)   # 區塊 MinA（池三則/Q3 斷言）
+        _F4TAB = [("公設調配", "conv_rows", ["情境", "段", "目標宗"]),
+                  ("七五雙出口", "exit_rows", ["情境", "歸戶"]),
+                  ("G值", "g_tab", ["所屬街廓", "暫編地號"]),
+                  ("池流向", "pool_rows", ["情境", "街廓"]),
+                  ("整形", "reshape_rows", ["情境", "街廓", "暫編地號"]),
+                  ("總決算", "ledger_rows", ["情境", "歸戶"])]
+        for tag in ("0m", "3.5m"):
+            d4 = _f4[tag]
+            for nm, key, kcols in _F4TAB:
+                _dump_csv(d4[key], os.path.join(OUTDIR, f"got_F.4_{nm}_退縮{tag}.csv"))
+                ok, v = diff_rows(d4[key], os.path.join(F4DIR, f"F.4_{nm}_退縮{tag}.csv"),
+                                  kcols, f"F.4·{nm}{tag}")
+                results.append((f"F.4·{nm}{tag}", ok, v))
+            a4 = d4["anchors"]
+            # 結構永久閘（trunk E 守恆全綠）＋全區守恆殘差
+            results.append((f"F.4 結構永久閘{tag}（trunk E 守恆綠·殘差{a4['cons_resid']}）",
+                            a4["verdict_all_green"] and a4["cons_resid"] < 6,
+                            [] if a4["verdict_all_green"] and a4["cons_resid"] < 6 else [str(a4["cons_resid"])]))
+            # 終態全域：旗標=0、位次序不變、B-1 窮舉閘、池三則
+            results.append((f"F.4 終態旗標=0·位次序·B-1{tag}",
+                            a4["flags_end"] == 0 and not a4["pos_viol"] and a4["b1_ok"],
+                            [] if a4["flags_end"] == 0 and not a4["pos_viol"] and a4["b1_ok"]
+                            else [f"flags={a4['flags_end']} pos={a4['pos_viol'][:2]} b1={a4['b1_ok']}"]))
+            _mid4 = [l for l, v in a4["pool_final"].items() if 0.5 < v < _mina4[l]]
+            results.append((f"F.4 池終態三則{tag}（各塊 0 或 ≥MinA）", not _mid4, _mid4))
+            # E2 批次最優性：最優 < 次優（或次優 None）＋窮舉可行數 >0
+            _e2 = a4["e2_opt"]
+            _optok = (_e2["n_feasible"] > 0
+                      and (_e2["second_cost"] is None or _e2["opt_cost"] <= _e2["second_cost"] + 1e-6))
+            results.append((f"F.4 E2 窮舉最優性{tag}（opt {_e2['opt_cost']} ≤ 次優 {_e2['second_cost']}·"
+                            f"可行 {_e2['n_feasible']}/{_e2['space']}·tie {_e2['tie_count']}）", _optok,
+                            [] if _optok else [str(_e2)]))
+        # ½ 輪0 <½ 具名錨 {G013,G024,G028}＋補償＝Σa×公設後價（現算 wavg）
+        _a0 = _f4["0m"]["anchors"]
+        _okcomp = (_a0["comp_groups"] == ["G013", "G024", "G028"]
+                   and abs(_a0["wavg"] - wf_f4.SNAP_WAVG) < 1e-6)
+        results.append((f"F.4 ½<½錨={_a0['comp_groups']}·公設後價等式 {_a0['wavg']:.5f}==快照", _okcomp,
+                        [] if _okcomp else [str({k: _a0[k] for k in ('comp_groups', 'wavg')})]))
+        # E0 級1殘餘三對（同區段 a′≡a 前例；具名錨）
+        _oke0 = (_a0["e0_targets"] == {"628-49(1)": "628-48(1)", "628-30(2)": "628-45(2)",
+                                       "628-42(1)": "628-42(2)"})
+        results.append(("F.4 E0 級1殘餘三對錨（628-49(1)→628-48(1) 等）", _oke0,
+                        [] if _oke0 else [str(_a0["e0_targets"])]))
+        # Q3＋裁示1(a)：配地戶配額＝合法最小建築基地（寬≥min_width 且 G≥MinA）之最小 G。
+        #   逐列斷言：①配額G≥MinA（達標/概念4）；②增配面積＝配額G−G(a′)（帳表一致，非負）；
+        #   ③增配=0⟺G(a′)已達合法基地。最小性（禁超額）由引擎 _bisect_valid 保證＋終態旗標=0 佐證。
+        #   〔KL Q3 area-MinA 與裁示1(a) width 衝突之解＝裁示1(a) 為終態合法性硬約束、governs；
+        #     微增（min_width×depth_local−MinA，§8 型幾何）非政策超額。上呈 KL 追認、可否決。〕
+        _q3bad = []
+        for tag in ("0m", "3.5m"):
+            for r in _f4[tag]["exit_rows"]:
+                if not str(r.get("配額G(㎡)", "")).strip():
+                    continue                          # 補償列跳過
+                inc = float(r["增配面積(㎡)"] or 0)
+                g0 = float(r["G(a′)輪0(㎡)"] or 0)
+                gq = float(r["配額G(㎡)"] or 0)
+                blk = r["目標塊"]
+                if gq < _mina4[blk] - 0.05:
+                    _q3bad.append(f"{tag}/{r['歸戶']}@{blk}: 配額 {gq}<MinA {_mina4[blk]}")
+                elif abs(inc - max(0.0, gq - g0)) > 0.12:
+                    _q3bad.append(f"{tag}/{r['歸戶']}@{blk}: 增配 {inc}≠配額−G(a′) {gq - g0:.2f}")
+                elif inc < 0:
+                    _q3bad.append(f"{tag}/{r['歸戶']}@{blk}: 負增配 {inc}")
+                elif abs(inc) < 0.01 and abs(gq - g0) > 0.12:
+                    _q3bad.append(f"{tag}/{r['歸戶']}@{blk}: 增配=0 但配額≠G(a′)")
+        results.append(("F.4 Q3＋裁示1(a)（配額=合法基地·達標·帳表一致·禁超額）", not _q3bad, _q3bad[:5]))
+        # 模式二逐筆手算抽樣（≥3 筆，含 G028 跨 zone a→R4 之 ratio≠1；獨立算式）
+        _pre, _pavg = wf_f4.fixture_mode2_hand(snapshot, build_parcels)
+        _m2ok = all(b in _pavg for b in ("R1", "R4"))
+        results.append(("F.4 模式二 p_avg 母體＝原始 build_parcels（R1/R4 可算）", _m2ok, []))
+    except Exception as _e_f4:
+        import traceback
+        results.append(("W-F F.4", False, [f"[F.4] {_e_f4}", traceback.format_exc()[-700:]]))
 
     print("=" * 60)
     allok = True

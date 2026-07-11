@@ -22,9 +22,11 @@ W-F F.4 — 無同歸戶 3 級調配（7-4）＋7-5 雙出口＋終態遞補整�
   估價師公會第 11 號公報 P.4，KL 裁定 2026-07-11）→ 退場不配地。終態複驗，翻轉＝停機。
 - **池三則**（禁中間態）：cap＝池−MinA；「吃光歸零」僅限塊內無 S=0 殘片（strip 幾何不可達）；
   同級多歸戶比例分攤（分母綁該輪該塊請求集）；剩餘需求以源面積逆折算記帳；收斂 0.05。
-- **E2 7-5**：逃生門/梯2/E1 溢入群，R4 優先→R3→R5（後價最低，tie 字典序）；
-  配額=max(G(a′),MinA)；增配面積=配額−G(a′)、差額地價×後價（§52-1）、§53-2 放棄改領標旗；
-  增配>0 標「意思決定・試分配預設自動」。
+- **E2 7-5 批次全域最佳化**（KL 裁定 2026-07-12）：逃生門/梯2/E1 溢入群聯合最佳化，
+  目標 min Σ 增配面積×目標後價；資格＝§31-1-2 **比較級**（深度淺於原街廓 ∪ 後價低於原街廓；
+  公設軌無原街廓→全塊，手冊(三)）；**Q3 禁超額**（配額＝max(G(a′),MinA)、增配＝max(0,MinA−G(a′))）；
+  池三則以容量約束；窮舉可證最優（tie：Σ增配面積→Σ質心起迄距→暫編字典序）。
+  差額地價×後價（§52-1）、§53-2 放棄改領標旗；增配>0 標「意思決定・試分配預設自動」。
 - **E3**：純幾何等 G 重切＋前移（wf_f1 機制通用化任意塊×側；池總量不變）；整形後池落 (0,MinA)
   ＝停機上呈（無自動補灌）。
 - additive-only：不改 app.py／stepg／wf_f0／wf_f1／wf_f2（wf_f3 僅加性暴露 f3_parcels 等）。
@@ -56,9 +58,13 @@ E0_EXPECT = {"628-49(1)": "628-48(1)", "628-30(2)": "628-45(2)", "628-42(1)": "6
 F1_REVERIFY = {"0m": "628-37(1)", "3.5m": "628-36(1)"}   # E3 R1 楔形標的複驗（F.1 錨）
 E2_NAMED = {"G004": "628-52(1)", "G018": "628-51(1)", "G020": "628-50(1)",
             "G014": "628-29(1)", "G033": "628-46(1)"}    # 第2梯類 5 源宗（由旗標規則導出後對拍）
-POST_LOW = ["R3", "R5"]                # 後價最低（67996 並列，字典序）
 MAX_ROUNDS = 12
 TOL = 0.05
+POS_SLACK_AREA = 2.0                   # E2 成本帶：位置相依 G 誤差保守上界（㎡/宗）；band 外免引擎重評
+CAP_EVAL = 500                         # E2 引擎重評候選上限（超出＝停機；本案 0m band 遠小於此）
+WIDTH_MARGIN = 0.03                    # 合法基地寬目標＝min_width＋此餘裕（引擎旗標用未捨入 S×cos，
+                                       #   宗地寬度欄已捨入 2dp；rounded≥min_width+0.03 保未捨入>min_width）
+E1_MARGIN = 5.0                        # E1 灌配保留餘裕：可達殘池 ≥ MinA+MARG（中央殘池寬>min_width，避浮點邊界）
 
 
 def _money(x):
@@ -156,8 +162,13 @@ class _Eng:
     def try_G(self, pid):
         """probe 安全讀取：撞守恆牆（strip 幾何吃盡而 G 目標超出）→ None＝該態不可容納。
         僅供試探評估；commit 路徑一律直讀 rows() 保 fail-loud。"""
+        r = self.try_rows()
+        return float(r[pid]["G(㎡)"]) if (r is not None and pid in r) else None
+
+    def try_rows(self):
+        """probe 安全全讀：撞守恆牆 → None（候選不可行）。僅供 _actual 試評；commit 直讀 rows()。"""
         try:
-            return float(self.rows()[pid]["G(㎡)"])
+            return self.rows()
         except RuntimeError as e:
             if "守恆破" in str(e):
                 self._sg = None
@@ -206,22 +217,47 @@ def _bisect_G(eng, pid, target_G, tol=0.05, max_iter=40):
     raise RuntimeError(f"🔴 _bisect_G 不收斂：{pid} target={target_G:.2f} 得 {g:.2f}")
 
 
-def _step_pool_floor(eng, pid, blk, floor, tol=0.1, max_iter=25):
-    """單調自下方逼近池 floor（吃池歸零/rule1 用）：每步吃掉 90% 缺口、永不越
-    「strip 吃盡」之守恆殘差牆。回傳 a″。"""
-    r_est = 0.95                                  # 高估起步（步幅偏小＝安全；量測後更新）
+def _valid_G(G, width, mw, mina):
+    """達「合法最小建築基地」所需 G＝max(MinA, (min_width＋WIDTH_MARGIN) 對應之 G)。
+    裁示1(a) 宗地寬度≥min_width 為終態必要；深度>名目時 area 微增至 min_width×depth_local
+    （§8 型幾何、非政策增配）。width>0 時對應 G＝G×寬目標/width（線性：area∝width @固定深）。"""
+    gw = ((mw + WIDTH_MARGIN) * G / width) if width > 1e-6 else mina
+    return max(mina, gw)
+
+
+def _bisect_valid(eng, pid, blk, mw, mina, max_iter=48):
+    """增配至合法基地（宗地寬度≥min_width＋WIDTH_MARGIN 且 G≥MinA）之**最小** a″
+    （二者皆隨 a″ 單調增）。回傳 a″。裁示1(a)＋終極驗收＝合法可建築最小基地（非僅 area 達標）。"""
+    wt = mw + WIDTH_MARGIN
+    def _wg():
+        r = eng.rows()[pid]
+        return float(r["宗地寬度(m)"]), float(r["G(㎡)"])
+    a = float(eng.by_id()[pid]["面積_m2"])
+    w, g = _wg()
+    if w >= wt - 1e-6 and g >= mina - TOL:
+        return a
+    hi = max(a, 1.0)
+    for _ in range(14):                       # 上界擴張至滿足
+        hi = hi * 1.3 + 5.0
+        eng.set_area(pid, hi)
+        w, g = _wg()
+        if w >= wt and g >= mina:
+            break
+    else:
+        raise RuntimeError(f"🔴 _bisect_valid 上界擴張失敗 {pid}@{blk}")
+    lo = a
     for _ in range(max_iter):
-        pl = eng.pool(blk)
-        if pl <= floor + tol:
-            return float(eng.by_id()[pid]["面積_m2"])
-        a_now = float(eng.by_id()[pid]["面積_m2"])
-        g_now = float(eng.rows()[pid]["G(㎡)"]) if a_now > 0.01 else 0.0
-        step = (pl - floor) * 0.9 / r_est
-        eng.set_area(pid, a_now + step)
-        g_new = float(eng.rows()[pid]["G(㎡)"])
-        if step > 0.01 and g_new > g_now:
-            r_est = min(max(((g_new - g_now) / step) * 1.15, 0.3), 0.98)  # ×1.15 安全係數防越牆
-    raise RuntimeError(f"🔴 _step_pool_floor 不收斂：{pid}@{blk} floor={floor} 池={eng.pool(blk):.2f}")
+        mid = (lo + hi) / 2.0
+        eng.set_area(pid, mid)
+        w, g = _wg()
+        if w >= wt - 1e-9 and g >= mina - 1e-9:
+            hi = mid
+        else:
+            lo = mid
+        if hi - lo < 0.005:
+            break
+    eng.set_area(pid, hi)                      # hi 為已知滿足之最小
+    return hi
 
 
 def _cur_pool_anchor(eng, blk):
@@ -428,7 +464,8 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                               "放棄改領(元)§53-2": "",
                               "補償_本文式(元)§53-1": comp,
                               "補償_但書式(元)": "—(不適用·非申請分割)",
-                              "目標塊": "—", "意思決定": "§53-3 他項權利協調旗(本案空)"})
+                              "目標塊": "—", "資格款": "—(公設軌·無原街廓)",
+                              "意思決定": "§53-3 他項權利協調旗(本案空)"})
             events[gid].append(f"E1 ½測試<½→現金補償 {_money(ginfo[gid]['a'] * wavg)} 元")
 
         # ── 配地輪（≥½；R4 非常規靶；同級比例分攤；池三則；收斂 0.05） ──
@@ -449,20 +486,22 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                                        else 0.55)
             return ratio_est[(g, blk)]
 
+        def _reach(blk):                             # 可達池＝池總量 − 不可達(楔形/forced)
+            return eng.pool(blk) - unreach.get(blk, 0.0)
+
+        def _budget(blk):                            # 可灌量＝可達池 − 保留有效殘池(MinA+餘裕)
+            return _reach(blk) - (mina[blk] + E1_MARGIN)
+
         def _usable(g, blk):
-            """blk 可供 g 再灌一片 ≥MinA？回傳 (可用, demG_est, full_eat可行)。"""
-            pool_now = eng.pool(blk)
-            no_s0 = unreach.get(blk, 0.0) < 0.01
+            """blk 可供 g 再灌一片 ≥MinA 且留 ≥MinA+餘裕 可達殘池？回傳 (可用, demG_est)。"""
             demG = a_rem[g] * _conv(g, blk) * _ratio(g, blk)
-            can_full = no_s0 and demG >= pool_now - 1.0 and pool_now >= mina[blk] - 0.5
-            can_norm = (pool_now - mina[blk]) >= mina[blk] - 0.5
-            if not (can_norm or can_full):
-                return False, demG, can_full
+            if _budget(blk) < mina[blk] - 0.5:       # 容不下一片 ≥MinA 且保殘池
+                return False, demG
             if demG < mina[blk] - 0.5:               # 小片：概念4 以引擎 solo 實測
                 G, a2, a2p = _trial(g, blk, a_rem[g])
                 if G is None or a2p < a2 - 0.01 or G < mina[blk] - 0.01:
-                    return False, demG, can_full
-            return True, demG, can_full
+                    return False, demG
+            return True, demG
 
         rounds = 0
         while True:
@@ -480,7 +519,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                 for blk in border[gid]:
                     if blk == "R4":                  # R4 非常規靶（KL 政策：專供第2梯類）
                         continue
-                    ok, _, _ = _usable(gid, blk)
+                    ok, _ = _usable(gid, blk)
                     if ok:
                         pick = blk
                         break
@@ -493,10 +532,8 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                 break
             for blk in sorted(requests):
                 gs = sorted(requests[blk], key=lambda g: (-ginfo[g]["value"], g))
-                no_s0 = unreach.get(blk, 0.0) < 0.01
                 demG = {g: a_rem[g] * _conv(g, blk) * _ratio(g, blk) for g in gs}
-                full_eat = no_s0 and sum(demG.values()) >= eng.pool(blk) - 1.0
-                budget = eng.pool(blk) - (0.0 if full_eat else mina[blk])
+                budget = _budget(blk)            # 可灌量＝可達池 − (MinA+餘裕)；rule3 保有效殘池
                 # 同級比例分攤（分母＝本輪本塊請求集）；share<MinA 者退出本塊（自小值序）
                 while True:
                     tot = sum(demG[g] for g in gs)
@@ -516,14 +553,13 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                     rem_after = a_rem[g] - a_used
                     if rem_after > 0.01:
                         nxts = [b for b in border[g] if b not in (blk, "R4")
-                                and eng.pool(b) - mina[b] >= mina[b] - 0.5]
+                                and _budget(b) >= mina[b] - 0.5]
                         if nxts:
                             b2 = nxts[0]
                             need = (mina[b2] + 0.5) / (_conv(g, b2) * _ratio(g, b2))
                             if rem_after < need:
                                 a_used = max(0.0, a_rem[g] - need)
-                        else:
-                            a_used = a_rem[g]        # 無次塊：全塞，池 floor 校正把關
+                        # 無次塊：不強塞（保 blk 有效殘池；剩餘 → E2 溢入佇列由 rule3 收）
                     if a_used <= TOL:
                         continue
                     key = (g, blk)
@@ -538,23 +574,30 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                     placed[key] += a_used * _conv(g, blk)
                     eng.set_area(syn_ids[key], placed[key])
                     a_rem[g] -= a_used
-                # 池 floor 校正：實跑後若落中間態 → 對末灌宗調整、差額進出 a_rem
-                pl = eng.pool(blk)
+                # 池 floor 校正（rule3）：實跑後可達殘池若落 < MinA+餘裕 → 縮末灌宗回補、差額退還
+                reach = _reach(blk)
                 filled = [g for g in gs if placed.get((g, blk), 0) > 0]
-                if filled and 0.5 < pl < mina[blk] - 0.05:
+                if filled and reach < mina[blk] + E1_MARGIN - 0.05:
                     last_g = filled[-1]
                     key = (last_g, blk)
                     pid = syn_ids[key]
                     a2_old = placed[key]
-                    if full_eat:                 # rule1：末灌宗補吃至歸零（單調下逼近，不越牆）
-                        a2fix = _step_pool_floor(eng, pid, blk, 0.45)
-                    else:                        # rule3：縮末灌宗使池回 MinA（G 目標內域二分）
-                        g_now = float(eng.rows()[pid]["G(㎡)"])
-                        a2fix = _bisect_G(eng, pid, g_now - (mina[blk] - pl), TOL)
+                    g_now = float(eng.rows()[pid]["G(㎡)"])
+                    a2fix = _bisect_G(eng, pid, g_now - (mina[blk] + E1_MARGIN - reach), TOL)
                     placed[key] = a2fix
                     d_a = (a2_old - a2fix) / _conv(last_g, blk)
                     a_rem[last_g] = max(a_rem[last_g] + d_a, 0.0)
                     ratio_est.pop((last_g, blk), None)
+
+        # E1 valid-width pass（裁示1(a)）：7-4 落位宗須達合法基地（寬≥min_width）。深度>名目致
+        #   area 達標但寬<min_width 之邊界宗（如 74·G012@R2）微增至合法基地（§8 型幾何、非政策增配）。
+        _mw_e1 = {b: float(ns["get_min_lot_size"](cb_by[b]["category"],
+                  float(snap["blocks"][b]["正面"]["路寬_m"]))["min_width"]) for b in mina}
+        for (gid, blk), pid in list(syn_ids.items()):
+            if eng.rows()[pid]["畸零地旗標"].strip():       # 引擎旗標（未捨入 S×cos<min_width）
+                placed[(gid, blk)] = _bisect_valid(eng, pid, blk, _mw_e1[blk], mina[blk])
+                if _reach(blk) < mina[blk] - 0.05:
+                    raise RuntimeError(f"🔴 [{tag}] E1 valid-width 後 {blk} 可達殘池<MinA（餘裕不足）")
 
         # E1 終態調整帳（conv_rows）
         for (gid, blk), a2 in sorted(placed.items()):
@@ -574,112 +617,34 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                               "處置": "7-4 配地(模式二)"})
             events[gid].append(f"E1 7-4 配地 {blk} G={float(r['G(㎡)']):.2f}")
 
-        # ══ E2：7-5 第2梯類雙出口 ══
+        # ══ E2：7-5 第2梯類雙出口（批次全域最佳化；KL 裁定 2026-07-12）══
+        #   目標式 min Σ 增配面積×目標後價；資格＝§31-1-2 比較級集（深度較淺 ∪ 後價較低；
+        #   公設軌無原街廓→全可建築塊）；Q3 禁超額（配額＝max(G(a′),MinA)）；池三則以容量約束；
+        #   窮舉可證最優（非啟發式）。E1（7-4 距離法）結果不重開。
         rm2 = sorted(x[1]["暫編地號"] for x in e2_class)
         if set(rm2) & win_set:
             raise RuntimeError(f"🔴 [{tag}] E2 移除宗為街角 winner：{sorted(set(rm2) & win_set)}")
-        q75 = []
-        for gid, r in e2_class:                       # 逃生門＋梯2（建地軌，源宗移除）
-            q75.append({"gid": gid, "kind": "建地軌·第2梯類", "a": float(r["a 面積(㎡)"]),
-                        "zone": zof[r["原地號"]], "src": r["暫編地號"], "src_blk": r["所屬街廓"]})
-        for gid, why in spill_75:                     # E1 溢入之公設軌增配出口
-            q75.append({"gid": gid, "kind": "公設軌·增配出口", "a": a_rem[gid],
-                        "zone": ginfo[gid]["zone"], "src": f"公設群餘量", "src_blk": ginfo[gid]["anchor"]["blk"]})
+        E_pre2 = eng.rows()
+        hh75 = []
+        for gid, r in e2_class:                       # 建地軌（逃生門＋梯2；源宗移除、原街廓可比）
+            hh75.append({"gid": gid, "kind": "建地軌·第2梯類", "a": float(r["a 面積(㎡)"]),
+                         "zone": zof[r["原地號"]], "src": r["暫編地號"], "src_blk": r["所屬街廓"],
+                         "orig": r["所屬街廓"],
+                         "anchor_cen": _row_centroid(E_pre2.get(r["暫編地號"]))
+                         or ginfo.get(gid, {}).get("anchor", {}).get("cen", (0.0, 0.0))})
+        for gid, why in spill_75:                     # 公設軌（E1 溢入；無原街廓→全塊合格）
+            hh75.append({"gid": gid, "kind": "公設軌·增配出口", "a": a_rem[gid],
+                         "zone": ginfo[gid]["zone"], "src": "公設群餘量",
+                         "src_blk": ginfo[gid]["anchor"]["blk"], "orig": None,
+                         "anchor_cen": ginfo[gid]["anchor"]["cen"]})
         eng.remove(rm2)
         eng.invalidate()
-        q75.sort(key=lambda q: (-(q["a"] * pre_price[q["zone"]]), q["gid"]))
-        for q in q75:
-            gid = q["gid"]
-            placed_blk = None
-            for blk in ["R4"] + POST_LOW:
-                a2_ent = q["a"] * pre_price[q["zone"]] / p_avg[blk]     # a′ 權利量（模式二）
-                pid = syn_ids.get((gid, blk))
-                base_a2 = placed.get((gid, blk), 0.0)
-                fresh = pid is None
-                if fresh:
-                    anc = _cur_pool_anchor(eng, blk)
-                    if anc is None:
-                        continue                      # 該塊池已空
-                    off = len([1 for (gg, bb) in syn_ids if bb == blk]) * 0.6
-                    cenb = (anc[0] + off * float(d_off[blk][0]),
-                            anc[1] + off * float(d_off[blk][1]))
-                    pid = eng.add_syn(gid, blk, _zone_key(blk), cenb)
-                    syn_ids[(gid, blk)] = pid
-
-                def _drop():
-                    if fresh:
-                        eng.remove([pid])
-                        del syn_ids[(gid, blk)]
-                    else:
-                        eng.set_area(pid, base_a2)
-                G_base = (float(eng.rows()[pid]["G(㎡)"]) if base_a2 > 0 else 0.0)
-                pl = eng.pool(blk)
-                # 量測邊際 G(a′)：probe 上限＋撞牆安全（r=G/a″<1 ⟹ G_probe < a″_probe ≤ 池−2）
-                a2_probe = min(a2_ent, max(1.0, pl - unreach.get(blk, 0.0) - 2.0))
-                eng.set_area(pid, base_a2 + a2_probe)
-                G_read = eng.try_G(pid)
-                eng.set_area(pid, base_a2)            # 還原試探
-                if G_read is None or a2_probe < a2_ent - 0.01:   # 撞牆/蓋帽＝塞不進 → 轉次塊
-                    _drop()
-                    continue
-                G_ent = G_read - G_base
-                quota = max(G_ent, mina[blk])
-                # 池規則：灌 quota 後池 ≥ MinA → 配；否則 池餘≥max(G(a′),MinA) 且無 S=0 片
-                #   → 末戶吃池歸零（增配吸收）；否則轉次塊
-                mode = None
-                if pl - quota >= mina[blk] - TOL:
-                    mode = "normal"                    # 灌後池仍 ≥ MinA
-                elif (unreach.get(blk, 0.0) < 0.01 and pl >= G_ent - TOL
-                      and pl >= mina[blk] - TOL):
-                    mode = "eat_zero"                  # 末戶吃池歸零（增配吸收）
-                else:
-                    _drop()
-                    continue
-                if mode == "normal":
-                    if quota - G_ent <= TOL:           # 配 G(a′)：a″=a′ 直灌（§142 原生）
-                        eng.set_area(pid, base_a2 + a2_ent)
-                    else:                              # 增配至 MinA（內域二分：池餘裕 ≥MinA）
-                        _bisect_G(eng, pid, G_base + quota, TOL)
-                else:                                  # 吃池歸零：單調下逼近（不越守恆牆）
-                    eng.set_area(pid, base_a2 + a2_ent)
-                    _step_pool_floor(eng, pid, blk, 0.45)
-                G_fin = float(eng.rows()[pid]["G(㎡)"]) - G_base
-                zeng = round(G_fin - G_ent, 2) if G_fin > G_ent + TOL else 0.0
-                if zeng < 0:
-                    raise RuntimeError(f"🔴 [{tag}] {gid} 負增配 {zeng}（規則矛盾）")
-                placed[(gid, blk)] = float(eng.by_id()[pid]["面積_m2"])
-                exit_rows.append({"情境": tag, "歸戶": gid, "類": q["kind"],
-                                  "出口": ("增配§31-1-2" if zeng > 0 else "≥½ 配地 G(a′)"),
-                                  "G(a′)輪0(㎡)": round(G_ent, 2),
-                                  "2×G vs 114.07": "≥", "Σa(㎡)": round(q["a"], 2),
-                                  "配額G(㎡)": round(G_fin, 2), "增配面積(㎡)": zeng,
-                                  "差額地價(元)§52-1": (_money(zeng * post_price[blk]) if zeng > 0 else ""),
-                                  "放棄改領(元)§53-2": _money(G_ent * post_price[blk]),
-                                  "補償_本文式(元)§53-1": "", "補償_但書式(元)": "",
-                                  "目標塊": blk,
-                                  "意思決定": ("增配>0·試分配預設自動" if zeng > 0 else "")})
-                conv_rows.append({"情境": tag, "段": "E2·7-5", "歸戶": gid, "源": q["src"],
-                                  "源塊": q["src_blk"], "目標宗": pid, "目標塊": blk,
-                                  "級別": "7-5(R4優先→R3→R5)", "起迄距(m)": "",
-                                  "a源(㎡)": round(q["a"], 2), "模式一a′(㎡)": "—",
-                                  "模式二a′(㎡)": round(a2_ent, 2),
-                                  "a″引擎(㎡)": round(placed[(gid, blk)], 2),
-                                  "配額G(㎡)": round(G_fin, 2),
-                                  "處置": ("7-5 增配" if zeng > 0 else "7-5 配地")})
-                events[gid].append(f"E2 7-5 {blk} G={G_fin:.2f}" + (f" 增配{zeng}" if zeng else ""))
-                placed_blk = blk
-                break
-            if placed_blk is None:
-                _diag = {b: round(eng.pool(b), 2) for b in sorted(mina)}
-                _pl75 = [(r["歸戶"], r["目標塊"], r["配額G(㎡)"], r["增配面積(㎡)"])
-                         for r in exit_rows if r.get("配額G(㎡)")]
-                _e1 = {f"{g}@{b}": round(a2, 2) for (g, b), a2 in sorted(placed.items())
-                       if a2 > 0.01}
-                raise RuntimeError(
-                    f"🔴 [{tag}] {gid}(a={q['a']:.2f}) 7-5 三塊(R4/R3/R5)皆無法落位——停機上呈｜"
-                    f"池態={_diag}｜MinA={mina}｜7-5已落位={_pl75}｜"
-                    f"E1/E2 a″帳={_e1}｜溢入={sorted({s[0] for s in spill_75})}｜"
-                    f"unreach={ {k: round(v, 2) for k, v in unreach.items()} }")
+        depth_by = {b: float(snap["blocks"][b]["街廓分配深度_m"]) for b in mina}
+        e2_opt = _e2_optimal(tag, ns, eng, hh75, mina, depth_by, p_avg, pre_price, post_price,
+                             snapE, cb_by, cad, c["forced"], pool_cen, d_off,
+                             syn_ids, placed, conv_rows, exit_rows, events)
+        if not e2_opt.get("feasible"):
+            raise RuntimeError(f"🔴 [{tag}] E2 7-5 批次全域最佳化不可行——停機上呈｜{e2_opt}")
 
         # ── trunk E 定稿＋B-1 窮舉閘＋池三則＋½ 終態複驗 ──
         sgE = eng.sg()
@@ -724,9 +689,17 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         if "R1" in resh_targets and resh_targets["R1"] != F1_REVERIFY[tag]:
             raise RuntimeError(f"🔴 [{tag}] R1 楔形標的 {resh_targets['R1']} ≠ F.1 複驗錨 {F1_REVERIFY[tag]}")
 
-        # 整形後池複驗（三則＋無 S=0 殘留）
+        # 整形後複驗：①整形守恆總配地面積（buffer-free、逐宗 Δ~0.001）→ 池總量不變；
+        #   ②無 S=0 池片殘留（臨街長判、不受 buffer 皮膚影響）。池差以 Σ面積 守恆計，
+        #   非「block−union.buffer(0.001)」（後者 1mm 皮膚隨宗數/周長變、非真面積漏，
+        #   R3/R6 多宗致 −0.45/+0.14 假影）。
         pool_final = dict(poolE)
         for blk, npolys in new_polys_by_blk.items():
+            old_area = sum(_poly_of_row(E[k]).area for k in npolys if k in E)
+            new_area = sum(p.area for p in npolys.values())
+            if abs(new_area - old_area) > 0.1:
+                raise RuntimeError(f"🔴 [{tag}] E3 {blk} 整形未守恆：Σ新形 {new_area:.2f} ≠ Σ原 {old_area:.2f}")
+            pool_final[blk] = poolE[blk]             # Σ配地面積守恆 → 池總量不變
             bpoly = Polygon(cb_by[blk]["vertices"])
             if not bpoly.is_valid:
                 bpoly = bpoly.buffer(0)
@@ -745,20 +718,19 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                     if fm.get("left_forced_offset") or fm.get("right_forced_offset"):
                         continue                     # forced 角落鎖定片（3.5m 情境豁免）
                     raise RuntimeError(f"🔴 [{tag}] E3 後 {blk} 仍有 S=0 池片 {g.area:.2f}㎡")
-            newp = sum(g.area for g in pieces)
-            if abs(newp - poolE[blk]) > 0.05 + 0.05:
-                raise RuntimeError(f"🔴 [{tag}] E3 {blk} 池差 {newp - poolE[blk]:+.2f} >0.1（整形應池不變）")
-            pool_final[blk] = newp
         mid = [l for l in pool_final if 0.5 < pool_final[l] < mina[l] - 0.05]
         if mid:
             raise RuntimeError(f"🔴 [{tag}] 終態池落 (0,MinA)：{ {l: round(pool_final[l],2) for l in mid} }——停機上呈")
 
         # ══ E4：終態全域斷言 ══
+        #   旗標=0 嚴格（裁示1(a) 宗地寬度≥min_width）——E1/E2 合成宗皆 _bisect_valid 至合法基地，
+        #   終態不應殘旗標；殘留＝真畸零、停機（不再以 area≥MinA 放行寬<min_width 之宗，reviewer#6）。
+        min_depth = float(snap["global"]["法定最小深_m"])
+        alloc_dirs = cad.get("alloc_dir_by_block", {}) or {}
         flag_end = [k for k, r in E.items() if r["畸零地旗標"].strip()]
         if flag_end:
-            raise RuntimeError(f"🔴 [{tag}] 終態殘餘畸零旗標：{flag_end}")
+            raise RuntimeError(f"🔴 [{tag}] 終態殘餘畸零旗標（寬<min_width，裁示1(a)）：{flag_end}")
         e4_viol = []
-        alloc_dirs = cad.get("alloc_dir_by_block", {}) or {}
         for k, r in E.items():
             blk = r["所屬街廓"]
             poly = (new_polys_by_blk.get(blk, {}).get(k)) or _poly_of_row(r)
@@ -771,16 +743,18 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                 bpoly = bpoly.buffer(0)
             if wf_f1._front_len_of(poly, wf_f1._seg(fl), bpoly) < 0.5:
                 e4_viol.append(f"{k}: 不臨 FRONT")
-            ad = ns["alloc_normal_axis"](alloc_dirs.get(blk))
-            if ad is not None:
+            adir = alloc_dirs.get(blk)                 # 深＝沿 raw alloc_dir（wd3 碎片判準同源）
+            if adir:
+                ax, ay = float(adir[0]), float(adir[1])
+                nrm = (ax * ax + ay * ay) ** 0.5 or 1.0
+                ax, ay = ax / nrm, ay / nrm
                 cs = list(poly.exterior.coords)
-                depth = (max(p[0] * ad[0] + p[1] * ad[1] for p in cs)
-                         - min(p[0] * ad[0] + p[1] * ad[1] for p in cs))
-                if depth < float(snap["global"]["法定最小深_m"]) - 0.05:
-                    e4_viol.append(f"{k}: 深 {depth:.2f} < 最小深")
-            g_ok = float(r["G(㎡)"]) >= mina[blk] - TOL
-            if not g_ok:
-                e4_viol.append(f"{k}: G={r['G(㎡)']} < MinA_{blk} 且不在增配/補償帳")
+                depth = (max(p[0] * ax + p[1] * ay for p in cs)
+                         - min(p[0] * ax + p[1] * ay for p in cs))
+                if depth < min_depth - 0.05:
+                    e4_viol.append(f"{k}: 深 {depth:.2f} < 最小深 {min_depth}")
+            if float(r["G(㎡)"]) < mina[blk] - TOL:
+                e4_viol.append(f"{k}: G={r['G(㎡)']} < MinA_{blk}")
         if e4_viol:
             raise RuntimeError(f"🔴 [{tag}] E4 終態全域斷言破：{e4_viol[:6]}")
         # 位次序（投影序）：oE == oD 約簡序 ∪ 合成宗插入
@@ -821,6 +795,10 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             "resh_targets": dict(resh_targets), "cons_resid": round(cons, 2),
             "flags_end": 0, "pos_viol": [], "b1_ok": True,
             "med_dist": round(med, 1),
+            "e2_opt": {k: e2_opt[k] for k in ("assign", "opt_cost", "opt_inc", "opt_dist",
+                                              "second_cost", "tie_count", "space", "n_feasible",
+                                              "n_actual_eval", "canon_best", "capped", "max_err")},
+            "e2_cost_matrix": e2_opt["cost_matrix"], "e2_eligible": e2_opt["eligible"],
             "verdict_all_green": all("🔴" not in str(v["判定"]) for v in sgE["pool_diag"].values()),
         }
         out[tag] = {"conv_rows": conv_rows, "exit_rows": exit_rows, "g_tab": g_tab,
@@ -834,6 +812,249 @@ def _proj_order(ns, cad, parcels, blk):
     pib = [{"暫編地號": tp["暫編地號"], "polygon_coords": tp.get("polygon_coords")}
            for tp in parcels if tp["所屬街廓"] == blk and not tp.get("_is_ghost_sliver")]
     return [x["暫編地號"] for x in ns["_projection_order"](pib, fl.get("p1"), fl.get("p2"))]
+
+
+def _row_centroid(row):
+    """g_row 之 cut_coords 質心（起迄距離之起點；建地軌源宗移除前擷取）。"""
+    if not row:
+        return None
+    cs = row.get("cut_coords") or []
+    if len(cs) < 3:
+        return None
+    p = Polygon(cs)
+    if not p.is_valid:
+        p = p.buffer(0)
+    return (p.centroid.x, p.centroid.y)
+
+
+def _e2_optimal(tag, ns, eng, households, mina, depth_by, p_avg, pre_price, post_price,
+                snapE, cb_by, cad, forced, pool_cen, d_off,
+                syn_ids, placed, conv_rows, exit_rows, events):
+    """7-5 第2梯類批次全域最佳化（KL 裁定 2026-07-12；就地 commit、回傳 opt_meta）。
+
+    - 資格＝§31-1-2 比較級（頓號讀「或」）：{深度淺於原街廓} ∪ {後價低於原街廓}；
+      公設軌無原街廓 → 全可建築塊（達標門檻用區標準、手冊(三)）。
+    - **兩階段可證最優**（非啟發式）：①canonical 窮舉快篩（合成宗 solo G 近似）＋容量剪枝 →
+      成本帶（±SLACK 覆蓋位置相依 G 誤差）；②帶內候選以**引擎實際 G** 重評（全額 a′ 一次 run
+      讀 G/寬）取真最優。band-sufficiency 閘：max|canon−actual|<SLACK ⟹ 帶外候選不可能勝出。
+    - **Q3＋裁示1(a)**：配額＝合法最小建築基地（寬≥min_width 且 G≥MinA）；增配＝max(0,該目標−G(a′))；
+      深度>名目致寬<min_width 時 area 微增至 min_width×depth_local（§8 型幾何、非政策超額）。
+    - 池三則以容量約束（每塊 Σconsume ≤ reachable−MinA，留 ≥MinA 可達殘池；S=0 片入 unreach）。
+    - 目標 min Σ增配金額(×後價) → tie Σ增配面積 → Σ質心起迄距 → 塊指派字典序（gid 序、決定性）。
+    """
+    import itertools
+    blocks = sorted(mina)
+    unreach = _s0_unreachable(ns, snapE, cb_by, cad, eng, forced)
+    reachable = {b: max(eng.pool(b) - unreach.get(b, 0.0), 0.0) for b in blocks}
+    mw_by = {b: float(ns["get_min_lot_size"](cb_by[b]["category"],
+             float(snapE["blocks"][b]["正面"]["路寬_m"]))["min_width"]) for b in blocks}
+
+    def _elig(h):
+        if h["orig"] is None:
+            return list(blocks), {b: "公設軌·全塊(手冊(三))" for b in blocks}
+        do, po = depth_by[h["orig"]], post_price[h["orig"]]
+        out, why = [], {}
+        for b in blocks:
+            sh, ch = depth_by[b] < do - 1e-9, post_price[b] < po - 1e-9
+            if sh or ch:
+                out.append(b)
+                why[b] = "＋".join(x for x in ("深度較淺" if sh else "",
+                                               "後價較低" if ch else "") if x)
+        return out, why
+
+    def _canon_G(h, b):
+        """canonical (G, width)(a′)：solo 置合成宗於池錨（同 commit-first 位置）、全額 a′、讀引擎。
+        位置固定＝決定性、可重現。回傳 (G, width, a′_full) 或 (None, None, a′_full)。"""
+        a_full = h["a"] * pre_price[h["zone"]] / p_avg[b]
+        if reachable[b] < mina[b] - 0.5:
+            return None, None, a_full
+        anc = _cur_pool_anchor(eng, b) or pool_cen[b][0]
+        pid = eng.add_syn(f"K·{h['gid']}", b, _zone_key(b), (anc[0], anc[1]))
+        eng.set_area(pid, a_full)                          # 全額 a′（撞牆則退回 probe 外插）
+        rows = eng.try_rows()
+        if rows is not None and pid in rows:
+            G = float(rows[pid]["G(㎡)"]); W = float(rows[pid]["宗地寬度(m)"])
+        else:
+            ap = min(a_full, max(3.0, reachable[b] * 0.5))
+            eng.set_area(pid, ap)
+            r2 = eng.try_rows()
+            if r2 is not None and pid in r2 and ap > 0:
+                G = float(r2[pid]["G(㎡)"]) / ap * a_full
+                W = float(r2[pid]["宗地寬度(m)"]) / ap * a_full
+            else:
+                G = W = None
+        eng.remove([pid])
+        return G, W, a_full
+
+    cost, elig_map, why_map = {}, {}, {}
+    for h in households:
+        el, why = _elig(h)
+        why_map[h["gid"]] = why
+        feas = []
+        for b in el:
+            G, W, a_full = _canon_G(h, b)
+            if G is None:
+                continue
+            gt = _valid_G(G, W, mw_by[b], mina[b])         # 合法基地目標 G（含 min_width）
+            inc = max(0.0, gt - G)
+            consume = max(G, gt)
+            if consume > reachable[b] - mina[b] + 0.5:      # solo 已超容
+                continue
+            cx, cy = h["anchor_cen"]
+            px, py = (pool_cen[b][0] if pool_cen.get(b) else (cx, cy))
+            cost[(h["gid"], b)] = {
+                "a_prime": a_full, "G": G, "inc": inc, "consume": consume,
+                "cost": inc * post_price[b], "dist": ((cx - px) ** 2 + (cy - py) ** 2) ** 0.5,
+                "why": why.get(b, "")}
+            feas.append(b)
+        if not feas:
+            return {"feasible": False, "reason": f"{h['gid']} 無合格且可行落位塊",
+                    "eligible": el, "reachable": {b: round(reachable[b], 2) for b in blocks}}
+        elig_map[h["gid"]] = feas
+
+    gids = [h["gid"] for h in households]
+    opts = [elig_map[g] for g in gids]
+    space = 1
+    for o in opts:
+        space *= len(o)
+    # ── 階段一：canonical 窮舉快篩（G=k·a′ 位置無關近似；供容量剪枝＋成本帶）──
+    feas = []                                            # (canon_cost, canon_inc, dist, combo)
+    for combo in itertools.product(*opts):
+        by_blk = collections.defaultdict(float)
+        for g, b in zip(gids, combo):
+            by_blk[b] += cost[(g, b)]["consume"]
+        if any(cs > reachable[b] - mina[b] + 0.5 for b, cs in by_blk.items()):
+            continue
+        tc = sum(cost[(g, b)]["cost"] for g, b in zip(gids, combo))
+        ti = sum(cost[(g, b)]["inc"] for g, b in zip(gids, combo))
+        td = sum(cost[(g, b)]["dist"] for g, b in zip(gids, combo))
+        feas.append((round(tc, 2), round(ti, 3), round(td, 2), combo))
+    if not feas:
+        return {"feasible": False, "reason": "窮舉無可行指派（容量約束）", "space": space,
+                "reachable": {b: round(reachable[b], 2) for b in blocks},
+                "cost_matrix": {f"{g}@{b}": {"G": round(v['G'], 2), "inc": round(v['inc'], 2)}
+                                for (g, b), v in sorted(cost.items())}}
+    feas.sort()
+    canon_best = feas[0][0]
+    # ── 階段二：成本帶內候選以引擎實際 G 重評（位置相依之嚴格化，證真最優非近似）──
+    #   G 經局部塊深位置相依（多戶同塊之後置戶落較淺處，實測 canonical 誤差 ≤~1㎡/宗）。
+    #   SLACK 保守覆蓋：band 外候選 actual ≥ canon−SLACK > actual_best，數學上不可能勝出 → 免評。
+    SLACK = len(gids) * POS_SLACK_AREA * max(post_price.values())
+    in_band = [f for f in feas if f[0] <= canon_best + SLACK]
+    capped = len(in_band) > CAP_EVAL
+    if capped:                                          # 截斷＝band-sufficiency 證明不完整 → 停機
+        return {"feasible": False, "reason": f"成本帶內候選 {len(in_band)} > CAP_EVAL {CAP_EVAL}"
+                f"（截斷則最優性不保，須提高 CAP_EVAL 或加緊剪枝）", "space": space}
+    band = in_band
+
+    def _actual(combo):
+        """引擎實際成本：全額 a′ 置各宗、一次 run、讀 G、算 Σ(inc×price)；回滾。
+        回傳 (cost, inc, dist, combo) 或 None（撞牆/超容）。"""
+        pids = []
+        for g, b in zip(gids, combo):
+            anc = _cur_pool_anchor(eng, b) or pool_cen[b][0]
+            k = sum(1 for (_g, _b, _p) in pids if _b == b)
+            cen = (anc[0] + k * 0.6 * float(d_off[b][0]), anc[1] + k * 0.6 * float(d_off[b][1]))
+            pid = eng.add_syn(f"A·{g}", b, _zone_key(b), cen)
+            eng.set_area(pid, cost[(g, b)]["a_prime"])
+            pids.append((g, b, pid))
+        rows = eng.try_rows()
+        res = None
+        if rows is not None:
+            tc = ti = td = 0.0
+            csm = collections.defaultdict(float)
+            ok = all(p in rows for _, _, p in pids)
+            for g, b, pid in pids:
+                if not ok:
+                    break
+                G = float(rows[pid]["G(㎡)"]); W = float(rows[pid]["宗地寬度(m)"])
+                gt = _valid_G(G, W, mw_by[b], mina[b])     # 合法基地目標（含 min_width）
+                inc = max(0.0, gt - G)
+                tc += inc * post_price[b]
+                ti += inc
+                td += cost[(g, b)]["dist"]
+                csm[b] += max(G, gt)
+            if ok and all(csm[b] <= reachable[b] - mina[b] + 0.5 for b in csm):
+                res = (round(tc, 2), round(ti, 3), round(td, 2), tuple(combo))
+        eng.remove([p for _, _, p in pids])
+        eng.invalidate()
+        return res
+
+    canon_by_combo = {f[3]: f[0] for f in band}
+    actual = [r for r in (_actual(f[3]) for f in band) if r is not None]
+    if not actual:
+        return {"feasible": False, "reason": "成本帶內候選皆引擎不可行（超容/撞牆）",
+                "n_band": len(band), "reachable": {b: round(reachable[b], 2) for b in blocks}}
+    # band-sufficiency 閘（證 band 外候選不可能勝出）：max|canon−actual| < SLACK ⟹
+    #   任一 band 外候選 actual ≥ canon−SLACK > canon_best ≥ actual_best（∵ actual_best≤canon_best）。
+    #   實測 max_err << SLACK 即放行；逼近 SLACK＝位置誤差超估、band 可能漏 → 停機上呈。
+    max_err = max(abs(canon_by_combo[r[3]] - r[0]) for r in actual)
+    if max_err >= SLACK:
+        return {"feasible": False, "reason": f"band-sufficiency 破：max|canon−actual|={max_err:.0f} "
+                f"≥ SLACK={SLACK:.0f}（位置誤差超 band，最優性不保，停機上呈）"}
+    actual.sort()
+    best = actual[0]                                     # (cost, inc, dist, combo)
+    combo = list(best[3])
+    assign = dict(zip(gids, combo))
+    a_distinct = sorted({r[0] for r in actual})
+    second = a_distinct[1] if len(a_distinct) > 1 else None
+    tie_ct = sum(1 for r in actual if r[0] == a_distinct[0])
+    hby = {h["gid"]: h for h in households}
+
+    for g in gids:                                        # commit 真最優（bisect 增配至 MinA）
+        b = assign[g]
+        cm = cost[(g, b)]
+        anc = _cur_pool_anchor(eng, b) or pool_cen[b][0]
+        off = len([1 for (gg, bb) in syn_ids if bb == b]) * 0.6
+        cen = (anc[0] + off * float(d_off[b][0]), anc[1] + off * float(d_off[b][1]))
+        pid = eng.add_syn(g, b, _zone_key(b), cen)
+        syn_ids[(g, b)] = pid
+        eng.set_area(pid, cm["a_prime"])                  # 先置全額 a′，讀實際 G(a′)、寬
+        _r_ap = eng.rows()[pid]                           # fail-loud（撞牆＝真 bug）
+        G_ap = float(_r_ap["G(㎡)"]); W_ap = float(_r_ap["宗地寬度(m)"])
+        if W_ap >= mw_by[b] + WIDTH_MARGIN - 1e-6 and G_ap >= mina[b] - TOL:  # 已達合法基地：全額
+            G_fin, zeng = G_ap, 0.0
+        else:                                             # 增配至合法基地（寬≥min_width 且 G≥MinA）
+            _bisect_valid(eng, pid, b, mw_by[b], mina[b])
+            G_fin = float(eng.rows()[pid]["G(㎡)"])
+            zeng = round(G_fin - G_ap, 2)
+        placed[(g, b)] = float(eng.by_id()[pid]["面積_m2"])
+        if eng.rows()[pid]["畸零地旗標"].strip() or G_fin < mina[b] - TOL:
+            return {"feasible": False, "reason": f"{g}@{b} 概念4/裁示1(a) 破：G={G_fin:.2f} 寬 "
+                    f"{float(eng.rows()[pid]['宗地寬度(m)']):.2f}（仍畸零）"}
+        if zeng < 0:
+            return {"feasible": False, "reason": f"{g}@{b} 負增配 {zeng}"}
+        cm["G"] = G_ap                                    # 以實際 G(a′) 回填帳表
+        h = hby[g]
+        exit_rows.append({"情境": tag, "歸戶": g, "類": h["kind"],
+                          "出口": ("增配§31-1-2" if zeng > 0 else "≥½ 配地 G(a′)"),
+                          "G(a′)輪0(㎡)": round(cm["G"], 2), "2×G vs 114.07": "≥",
+                          "Σa(㎡)": round(h["a"], 2), "配額G(㎡)": round(G_fin, 2),
+                          "增配面積(㎡)": zeng,
+                          "差額地價(元)§52-1": (_money(zeng * post_price[b]) if zeng > 0 else ""),
+                          "放棄改領(元)§53-2": _money(cm["G"] * post_price[b]),
+                          "補償_本文式(元)§53-1": "", "補償_但書式(元)": "",
+                          "目標塊": b, "資格款": cm["why"],
+                          "意思決定": ("增配>0·試分配預設自動" if zeng > 0 else "")})
+        conv_rows.append({"情境": tag, "段": "E2·7-5", "歸戶": g, "源": h["src"],
+                          "源塊": h["src_blk"], "目標宗": pid, "目標塊": b,
+                          "級別": "7-5批次最佳化", "起迄距(m)": round(cm["dist"], 1),
+                          "a源(㎡)": round(h["a"], 2), "模式一a′(㎡)": "—",
+                          "模式二a′(㎡)": round(cm["a_prime"], 2),
+                          "a″引擎(㎡)": round(placed[(g, b)], 2), "配額G(㎡)": round(G_fin, 2),
+                          "處置": ("7-5 增配" if zeng > 0 else "7-5 配地")})
+        events[g].append(f"E2 7-5批次 {b} G={G_fin:.2f}" + (f" 增配{zeng}" if zeng else ""))
+
+    return {"feasible": True, "assign": assign, "opt_cost": round(best[0], 2),
+            "opt_inc": round(best[1], 2), "opt_dist": round(best[2], 1),
+            "second_cost": second, "tie_count": tie_ct, "space": space,
+            "n_feasible": len(feas), "n_actual_eval": len(actual),
+            "canon_best": canon_best, "capped": capped, "max_err": round(max_err, 0),
+            "eligible": {g: elig_map[g] for g in gids},
+            "reachable": {b: round(reachable[b], 2) for b in blocks},
+            "cost_matrix": {f"{g}@{b}": {"G": round(v["G"], 2), "inc": round(v["inc"], 2),
+                                         "金額": _money(v["cost"]), "why": v["why"]}
+                            for (g, b), v in sorted(cost.items())}}
 
 
 def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
