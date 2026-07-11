@@ -269,6 +269,8 @@ def compute(ctx_by_tag):
         out[tag] = {
             "g_tab": g_tab, "diag_tab": diag_tab, "slot_tab": slot_tab,
             "sgB_rows": sgB["g_rows"],   # 🆕 F.1 消費（原始列含 cut_coords；純加性，12 檔 f0 baseline byte 不動）
+            "f0_parcels": f0_parcels,    # 🆕 F.2 消費（trunk B parcels＝跨街廓搬 a′ 之母體；純加性）
+            "poolB_diag": {lbl: sgB["pool_diag"][lbl] for lbl in sgB["pool_diag"]},
             "dec_rows": dec_rows, "flag_rows": flag_rows, "pool_rows": pool_rows,
             "decisions": decisions, "removed": sorted(removed), "gsa": gsa,
             "kstar": kstar, "verdict": verd,

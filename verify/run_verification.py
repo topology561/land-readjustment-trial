@@ -37,6 +37,7 @@ BASELINES = os.path.join(HERE, "baselines")
 V3RUN = os.path.join(HERE, "baselines", "v3")    # 🆕 v3 錨定 baseline（財務接線波換源，KL 裁定 2026-07-09）
 F0DIR = os.path.join(HERE, "baselines", "wf", "f0")  # 🆕 W-F F.0 終態 baseline（trunk B；v3 凍存不動）
 F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形 baseline（R1 縮圍）
+F2DIR = os.path.join(HERE, "baselines", "wf", "f2")  # 🆕 W-F F.2 跨街廓調配 baseline（trunk C）
 # k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
 K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
 OUTDIR = os.path.join(HERE, "out")
@@ -800,9 +801,69 @@ def main():
             _exp_m = 2 if tag == "0m" else 1
             results.append((f"F.1 標記制{tag}（{len(_marks)} 片待 F.4 終態遞補整形，期 {_exp_m}）",
                             len(_marks) == _exp_m, [str(m) for m in _marks]))
+        _f1_ok = True
     except Exception as _e_f1:
         import traceback
         results.append(("W-F F.1", False, [f"[F.1] {_e_f1}", traceback.format_exc()[-400:]]))
+
+    # ── 🆕 W-F F.2：級1/2/3 跨街廓同歸戶合併（a′ 模式一；trunk C 終態）──
+    #   消費 trunk B parcels（F.0 終態；F.1 為幾何後處理未改 parcels）→ 搬 a′ → run_step_g → trunk C。
+    print("… W-F F.2（跨街廓搬 a′ 模式一；五群 G009/G001/G021/G026/G027）")
+    try:
+        if not _f0_ok:
+            raise RuntimeError("F.0 未成功，F.2 跳過（存在性守衛）")
+        import wf_f2
+        # 靜態閘（reviewer#3）：wf_f2.py 不得呼叫 calc_a_prime／三廢函式（紀律機檢化）
+        _wf2_src = open(os.path.join(HERE, "wf_f2.py"), encoding="utf-8").read()
+        _forbid = [f"{n}(" for n in ("calc_a_prime", "_allocate_three_tier_v1",
+                                     "_allocate_tier2_tier3_geometric", "_inflate_a_for_orphan")]
+        _hit = [f for f in _forbid if f in _wf2_src]
+        results.append(("F.2 靜態閘（wf_f2 不呼叫 calc_a_prime／三廢函式）", not _hit, _hit))
+
+        _f2 = wf_f2.compute(_ctx, _f0)
+        # 雙模式並列錨（G021）：模式一=該歸戶地 pb；模式二=R1 之**重劃前 DXF 幾何面積_m2** 權重均價
+        #   （規格 §7-4:420；89.32 為規格正確值，修正 CC sandbox 配地後面積近似之 89.11）。
+        _G021_M1, _G021_M2 = 98.54, 89.32
+        for tag in ("0m", "3.5m"):
+            d2 = _f2[tag]
+            for nm, rows in (("跨街廓調配", d2["conv_rows"]), ("G值", d2["g_tab"]),
+                             ("池流向", d2["pool_rows"])):
+                _dump_csv(rows, os.path.join(OUTDIR, f"got_F.2_{nm}_退縮{tag}.csv"))
+            ok_c, v_c = diff_rows(d2["conv_rows"], os.path.join(F2DIR, f"F.2_跨街廓調配_退縮{tag}.csv"),
+                                  ["情境", "歸戶", "源宗"], f"F.2·調配{tag}")
+            results.append((f"F.2·跨街廓調配{tag}", ok_c, v_c))
+            ok_g2, v_g2 = diff_rows(d2["g_tab"], os.path.join(F2DIR, f"F.2_G值_退縮{tag}.csv"),
+                                    ["所屬街廓", "暫編地號"], f"F.2·G值{tag}")
+            results.append((f"F.2·G值{tag}（trunk C 終態）", ok_g2, v_g2))
+            ok_pf, v_pf = diff_rows(d2["pool_rows"], os.path.join(F2DIR, f"F.2_池流向_退縮{tag}.csv"),
+                                    ["情境", "街廓"], f"F.2·池流向{tag}")
+            results.append((f"F.2·池流向{tag}", ok_pf, v_pf))
+            _a2 = d2["anchors"]
+            results.append((f"F.2 結構永久閘{tag}（trunk C 守恆全綠）", _a2["verdict_all_green"],
+                            [] if _a2["verdict_all_green"] else ["守恆破"]))
+            results.append((f"F.2 跨街廓守恆{tag}（源池增/目標池減/全區殘差 {_a2['cons_resid']}<6㎡）",
+                            _a2["cons_resid"] < 6.0, [] if _a2["cons_resid"] < 6.0 else [str(_a2["cons_resid"])]))
+            results.append((f"F.2 位次序不變{tag}（投影序∖移除宗）", not _a2["pos_viol"],
+                            [str(x) for x in _a2["pos_viol"][:3]]))
+            results.append((f"F.2 F.1 正交{tag}（{wf_f2.F1_TARGET[tag]} B→C 全等）",
+                            _a2["f1_orthogonal"], [] if _a2["f1_orthogonal"] else ["F.1 標的被 F.2 污染"]))
+            results.append((f"F.2 同區段恆等{tag}（同zone轉出 a′==a）", _a2["same_zone_identity"],
+                            [] if _a2["same_zone_identity"] else ["同區段 ratio≠1"]))
+        # 雙模式並列錨（G021；雙情境同）
+        _g0 = _f2["0m"]["anchors"]
+        _ok_dm = (_g0["g021_m1"] == _G021_M1 and _g0["g021_m2"] == _G021_M2)
+        results.append((f"F.2 雙模式並列錨 G021 模式一{_g0['g021_m1']}／模式二{_g0['g021_m2']}", _ok_dm,
+                        [] if _ok_dm else [f"實得 m1={_g0['g021_m1']} m2={_g0['g021_m2']}（期 {_G021_M1}/{_G021_M2}）"]))
+        # 跨區段 fixture（合成 a→b，exercise ratio≠1）
+        _fx = wf_f2.fixture_cross_zone(snapshot, build_parcels)
+        _ok_fx = (_fx["ratio_ne_1"] and abs(_fx["mode1_a_to_b"] - _fx["expect_m1"]) < 0.01
+                  and _fx["mode1_a_to_b"] > _fx["a"])
+        results.append((f"F.2 跨區段 fixture（a→b 模式一 a′={_fx['mode1_a_to_b']}≠a=100·"
+                        f"模式二R2={_fx['mode2_tgtR2']}/R1混={_fx['mode2_tgtR1_mixed']}）", _ok_fx,
+                        [] if _ok_fx else [str(_fx)]))
+    except Exception as _e_f2:
+        import traceback
+        results.append(("W-F F.2", False, [f"[F.2] {_e_f2}", traceback.format_exc()[-500:]]))
 
     print("=" * 60)
     allok = True
