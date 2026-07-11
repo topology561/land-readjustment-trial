@@ -257,7 +257,9 @@ def compute(ctx_by_tag, f0_out):
                 for cr in conv_rows if cr["源zone"] == cr["目標zone"]),
         }
         out[tag] = {"conv_rows": conv_rows, "g_tab": g_tab, "pool_rows": pool_rows,
-                    "anchors": anchors, "blk_avg": blk_avg, "pre_price": pre_price}
+                    "anchors": anchors, "blk_avg": blk_avg, "pre_price": pre_price,
+                    "f2_parcels": f2_parcels,   # 🆕 F.3 消費（trunk C parcels＝公設 a′ 灌入母體；純加性）
+                    "poolC_diag": {l: sgC["pool_diag"][l] for l in sgC["pool_diag"]}}
     return out
 
 

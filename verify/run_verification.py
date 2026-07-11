@@ -38,6 +38,7 @@ V3RUN = os.path.join(HERE, "baselines", "v3")    # 🆕 v3 錨定 baseline（財
 F0DIR = os.path.join(HERE, "baselines", "wf", "f0")  # 🆕 W-F F.0 終態 baseline（trunk B；v3 凍存不動）
 F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形 baseline（R1 縮圍）
 F2DIR = os.path.join(HERE, "baselines", "wf", "f2")  # 🆕 W-F F.2 跨街廓調配 baseline（trunk C）
+F3DIR = os.path.join(HERE, "baselines", "wf", "f3")  # 🆕 W-F F.3 公設地調配 baseline（trunk D）
 # k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
 K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
 OUTDIR = os.path.join(HERE, "out")
@@ -705,6 +706,7 @@ def main():
                 "snap": snapshot, "omap": _omap, "build": build_parcels,
                 "params": _c["params"], "winners": _c["win"], "forced": _c["forced"],
                 "setback": _c["sb"], "gA": _c["sg"]["g_rows"], "poolA": _c["poolA"],
+                "temp": temp_parcels,   # F.3 消費（全 temp_parcels，含公設，供 poly/分攤登記）
             }
         _f0 = wf_f0.compute(_ctx)
         for tag in ("0m", "3.5m"):
@@ -861,9 +863,71 @@ def main():
         results.append((f"F.2 跨區段 fixture（a→b 模式一 a′={_fx['mode1_a_to_b']}≠a=100·"
                         f"模式二R2={_fx['mode2_tgtR2']}/R1混={_fx['mode2_tgtR1_mixed']}）", _ok_fx,
                         [] if _ok_fx else [str(_fx)]))
+        _f2_ok = True
     except Exception as _e_f2:
         import traceback
+        _f2_ok = False
         results.append(("W-F F.2", False, [f"[F.2] {_e_f2}", traceback.format_exc()[-500:]]))
+
+    # ── 🆕 W-F F.3：RD 五則＋PF 公設地調配（a′ 併入同歸戶建地；trunk D）──
+    #   母體＝trunk C（F.2 終態）；公設筆 a′ 灌入建地→run_step_g→trunk D。24 筆轉 7-4（F.4）。
+    print("… W-F F.3（公設地調配：RD 五則①切半5/③集中30＋PF6；轉7-4 24筆）")
+    try:
+        if not _f2_ok:
+            raise RuntimeError("F.2 未成功，F.3 跳過（存在性守衛）")
+        import wf_f3
+        # 靜態閘（守衛：wf_f3 不呼叫 calc_a_prime／三廢函式）
+        _wf3_src = open(os.path.join(HERE, "wf_f3.py"), encoding="utf-8").read()
+        _f3hit = [f"{n}(" for n in ("calc_a_prime", "_allocate_three_tier_v1",
+                  "_allocate_tier2_tier3_geometric", "_inflate_a_for_orphan") if f"{n}(" in _wf3_src]
+        results.append(("F.3 靜態閘（wf_f3 不呼叫 calc_a_prime／三廢）", not _f3hit, _f3hit))
+
+        _f3 = wf_f3.compute(_ctx, _f2)
+        for tag in ("0m", "3.5m"):
+            d3 = _f3[tag]
+            for nm, rows in (("公設調配", d3["conv_rows"]), ("轉7-4", d3["to74_rows"]),
+                             ("G值", d3["g_tab"]), ("池流向", d3["pool_rows"])):
+                _dump_csv(rows, os.path.join(OUTDIR, f"got_F.3_{nm}_退縮{tag}.csv"))
+            ok_c, v_c = diff_rows(d3["conv_rows"], os.path.join(F3DIR, f"F.3_公設調配_退縮{tag}.csv"),
+                                  ["情境", "公設筆"], f"F.3·調配{tag}")
+            results.append((f"F.3·公設調配{tag}", ok_c, v_c))
+            ok_7, v_7 = diff_rows(d3["to74_rows"], os.path.join(F3DIR, f"F.3_轉7-4_退縮{tag}.csv"),
+                                  ["情境", "公設筆"], f"F.3·轉74{tag}")
+            results.append((f"F.3·轉7-4{tag}", ok_7, v_7))
+            ok_g3, v_g3 = diff_rows(d3["g_tab"], os.path.join(F3DIR, f"F.3_G值_退縮{tag}.csv"),
+                                    ["所屬街廓", "暫編地號"], f"F.3·G值{tag}")
+            results.append((f"F.3·G值{tag}（trunk D 終態）", ok_g3, v_g3))
+            ok_pf, v_pf = diff_rows(d3["pool_rows"], os.path.join(F3DIR, f"F.3_池流向_退縮{tag}.csv"),
+                                    ["情境", "街廓"], f"F.3·池流向{tag}")
+            results.append((f"F.3·池流向{tag}", ok_pf, v_pf))
+            _a3 = d3["anchors"]
+            # 59 筆零遺漏
+            _ok59 = (_a3["n_pub"] == 59 and _a3["n_in"] == 35 and _a3["n_74"] == 24)
+            results.append((f"F.3 零遺漏{tag}（59＝併入{_a3['n_in']}＋轉7-4{_a3['n_74']}）", _ok59,
+                            [] if _ok59 else [str({k: _a3[k] for k in ('n_pub', 'n_in', 'n_74')})]))
+            results.append((f"F.3 結構永久閘{tag}（trunk D 守恆綠·殘差{_a3['cons_resid']}）",
+                            _a3["verdict_all_green"] and _a3["cons_resid"] < 6,
+                            [] if _a3["verdict_all_green"] and _a3["cons_resid"] < 6 else [str(_a3["cons_resid"])]))
+            results.append((f"F.3 位次序不變{tag}", not _a3["pos_viol"], [str(x) for x in _a3["pos_viol"][:3]]))
+            # 五則①切半 5 筆全 RD2（40 灌入項）
+            _ok1 = (_a3["straddle"] == sorted(wf_f3.STRADDLE) and _a3["n_inject_items"] == 40)
+            results.append((f"F.3 五則①切半5筆·{_a3['n_inject_items']}灌入項{tag}", _ok1,
+                            [] if _ok1 else [f"切半{_a3['straddle']} 灌入{_a3['n_inject_items']}"]))
+        # 628-18(2) 舊帳重測（a=477.91）＋轉7-4 群
+        _a0 = _f3["0m"]["anchors"]
+        _ok18 = (_a0["a_628_18_2"] == 477.91)
+        results.append((f"F.3 舊帳重測 628-18(2) a={_a0['a_628_18_2']}==477.91（新機制·分攤登記96.82）", _ok18,
+                        [] if _ok18 else [f"實得 {_a0['a_628_18_2']}"]))
+        _ok74g = (_a0["groups_74"] == ["G003", "G012", "G013", "G015", "G016", "G024", "G025", "G028", "G031"])
+        results.append((f"F.3 轉7-4 9群（含 G025 邊界：建地 F.0梯3釋池）", _ok74g,
+                        [] if _ok74g else [str(_a0["groups_74"])]))
+        # 跨區段 fixture（守衛④）
+        _fx3 = wf_f3.fixture_cross_zone_f3(snapshot)
+        results.append((f"F.3 跨區段 fixture（a→b a′={_fx3['a_prime_a_to_b']}≠a·ratio≠1）",
+                        _fx3["ratio_ne_1"] and abs(_fx3["a_prime_a_to_b"] - _fx3["expect"]) < 0.01, []))
+    except Exception as _e_f3:
+        import traceback
+        results.append(("W-F F.3", False, [f"[F.3] {_e_f3}", traceback.format_exc()[-500:]]))
 
     print("=" * 60)
     allok = True
