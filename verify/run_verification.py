@@ -36,6 +36,7 @@ BASELINES = os.path.join(HERE, "baselines")
 # baselines/v2/＝財務半中間態期（C=0、A=1）之歷史錨，**凍存不刪、不再對拍**（見 v3/PROVENANCE_v3.md）
 V3RUN = os.path.join(HERE, "baselines", "v3")    # 🆕 v3 錨定 baseline（財務接線波換源，KL 裁定 2026-07-09）
 F0DIR = os.path.join(HERE, "baselines", "wf", "f0")  # 🆕 W-F F.0 終態 baseline（trunk B；v3 凍存不動）
+F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形 baseline（R1 縮圍）
 # k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
 K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
 OUTDIR = os.path.join(HERE, "out")
@@ -688,6 +689,8 @@ def main():
     #   trunk A（原 parcels→v3 baseline）之 G值/滑池槽/J/wd3/四梯清單 皆已於上方逐格對拍過
     #   ＝gate#2「基礎引擎零漂移」之機器證明。此處跑 trunk B（F.0 終態 parcels）。
     print("… W-F F.0（級0/0' 合併＋梯3 釋池；trunk B 終態）")
+    _f0_ok = False          # W5：F.1 之存在性守衛（F.0 失敗 → F.1 跳過記 FAIL，不連坐 NameError）
+    _f0 = _ctx = None
     try:
         import wf_f0
         _omap = fake_st.session_state["t8_ownership_map"]
@@ -755,9 +758,51 @@ def main():
         _ok_rt = ("轉F.2" in _dest.get("G009", "") and "轉F.4" in _dest.get("G014", ""))
         results.append(("F.0 不達標二格 G009→F.2·G014→F.4（先併再標旗轉出）", _ok_rt,
                         [] if _ok_rt else [f"G009={_dest.get('G009')} G014={_dest.get('G014')}"]))
+        _f0_ok = True
     except Exception as _e_f0:
         import traceback
         results.append(("W-F F.0", False, [f"[F.0] {_e_f0}", traceback.format_exc()[-400:]]))
+
+    # ── 🆕 W-F F.1：S=0 碎片遞補形狀調整（KL 縮圍 R1；等 G 幾何重切＋後續宗前移）──
+    #   R3/R6 楔形＝標記制待 F.4 終態遞補整形（裁示 1(b) F.1 段）。停機斷言於 wf_f1 內 raise。
+    print("… W-F F.1（R1 楔形等 G 吞納＋前移；R3/R6 標記待 F.4）")
+    try:
+        if not _f0_ok:
+            raise RuntimeError("F.0 未成功，F.1 跳過（W5 守衛）")
+        import wf_f1
+        _f1 = wf_f1.compute(_ctx, _f0)
+        _F1_ANCH = {"0m": ("628-37(1)", 2, 1), "3.5m": ("628-36(1)", 2, 1)}
+        for tag in ("0m", "3.5m"):
+            d1 = _f1[tag]
+            for nm, rows in (("遞補整形", d1["reshape_rows"]), ("碎片處置", d1["frag_rows"]),
+                             ("池驗證", d1["pool_rows"])):
+                _dump_csv(rows, os.path.join(OUTDIR, f"got_F.1_{nm}_退縮{tag}.csv"))
+            ok_r, v_r = diff_rows(d1["reshape_rows"], os.path.join(F1DIR, f"F.1_遞補整形_退縮{tag}.csv"),
+                                  ["情境", "暫編地號"], f"F.1·整形{tag}")
+            results.append((f"F.1·遞補整形{tag}", ok_r, v_r))
+            ok_f, v_f = diff_rows(d1["frag_rows"], os.path.join(F1DIR, f"F.1_碎片處置_退縮{tag}.csv"),
+                                  ["情境", "碎片"], f"F.1·碎片{tag}")
+            results.append((f"F.1·碎片處置{tag}", ok_f, v_f))
+            ok_p, v_p = diff_rows(d1["pool_rows"], os.path.join(F1DIR, f"F.1_池驗證_退縮{tag}.csv"),
+                                  ["情境", "街廓", "池片"], f"F.1·池{tag}")
+            results.append((f"F.1·池驗證{tag}", ok_p, v_p))
+            _a = d1["anchors"]
+            _exp_t, _exp_pB, _exp_pN = _F1_ANCH[tag]
+            _ok_a = (_a["target"] == _exp_t and _a["pool_pieces_B"] == _exp_pB
+                     and _a["pool_pieces_new"] == _exp_pN and abs(_a["pool_delta"]) <= 0.05
+                     and _a["w_new"] >= 3.5)
+            results.append((f"F.1 錨{tag}（標的 {_a['target']}·寬 {_a['w_new']}≥3.5·"
+                            f"池片 {_a['pool_pieces_B']}→{_a['pool_pieces_new']}·"
+                            f"池差 {_a['pool_delta']:+.2f}≈0）", _ok_a,
+                            [] if _ok_a else [str(_a)]))
+            # 標記閘：R3/R6 楔形標記待 F.4（0m 二片、3.5m 一片＝R6）
+            _marks = [r for r in d1["frag_rows"] if "標記" in r["處置"]]
+            _exp_m = 2 if tag == "0m" else 1
+            results.append((f"F.1 標記制{tag}（{len(_marks)} 片待 F.4 終態遞補整形，期 {_exp_m}）",
+                            len(_marks) == _exp_m, [str(m) for m in _marks]))
+    except Exception as _e_f1:
+        import traceback
+        results.append(("W-F F.1", False, [f"[F.1] {_e_f1}", traceback.format_exc()[-400:]]))
 
     print("=" * 60)
     allok = True

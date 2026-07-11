@@ -268,6 +268,7 @@ def compute(ctx_by_tag):
         verd = {lbl: v["判定"] for lbl, v in sgB["pool_diag"].items()}
         out[tag] = {
             "g_tab": g_tab, "diag_tab": diag_tab, "slot_tab": slot_tab,
+            "sgB_rows": sgB["g_rows"],   # 🆕 F.1 消費（原始列含 cut_coords；純加性，12 檔 f0 baseline byte 不動）
             "dec_rows": dec_rows, "flag_rows": flag_rows, "pool_rows": pool_rows,
             "decisions": decisions, "removed": sorted(removed), "gsa": gsa,
             "kstar": kstar, "verdict": verd,
