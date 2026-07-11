@@ -208,7 +208,10 @@ def compute(ctx_by_tag, f2_out):
                                     + sum(poolD.values()) - 22803.33), 2),
         }
         out[tag] = {"conv_rows": conv_rows, "to74_rows": to74_rows, "g_tab": g_tab,
-                    "pool_rows": pool_rows, "anchors": anchors}
+                    "pool_rows": pool_rows, "anchors": anchors,
+                    "f3_parcels": f3_parcels,   # 🆕 F.4 消費（trunk D parcels＝7-4/7-5 母體；純加性）
+                    "sgD_rows": sgD["g_rows"],  # 🆕 F.4 消費（trunk D 原始列含 cut_coords）
+                    "poolD_diag": {l: sgD["pool_diag"][l] for l in sgD["pool_diag"]}}
     return out
 
 
