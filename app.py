@@ -1798,8 +1798,8 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     _summary_rows = [
         ('重劃區實測面積', total_area, '㎡',
          '街廓總面積（含可建築 + 公設 + 抵充）', ''),
-        ('重劃前平均地價', pre_avg_price, '元/㎡', 'Tab 5 推算', ''),
-        ('重劃後平均地價', post_avg_price, '元/㎡', 'Tab 4 推算', ''),
+        ('重劃前平均地價', pre_avg_price, '元/㎡', '預期開發分析法 推算', ''),
+        ('重劃後平均地價', post_avg_price, '元/㎡', '土地開發分析法 推算', ''),
         ('重劃前後地價上漲率',
          round(post_avg_price / pre_avg_price, 4) if pre_avg_price > 0 else 0,
          '倍', '= 重劃後 ÷ 重劃前', ''),
@@ -1812,15 +1812,15 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
         ('—— 法定分項負擔比率（地主實際感受）——', '', '', '', ''),
         ('公共設施用地平均負擔比率（待輸入）', '需另填', '比率',
          '= (共同負擔公設 − 政府已取得公設 − 抵充地) ÷ (重劃區總面積 − 政府已取得公設 − 抵充地)',
-         '需 Tab 7 提供「政府已取得公設」+「抵充地」面積'),
+         '需 財務分析 提供「政府已取得公設」+「抵充地」面積'),
         ('費用負擔比率（待輸入）', '需另填', '比率',
          '= (工程 + 重劃 + 利息) ÷ [重劃後地價 ×(總面積 − 政府已取得公設 − 抵充地)]',
          '抵費地（R 街廓內）大致對應此項；實務 10-15%'),
         ('地主實際平均負擔比率', '兩項合計', '比率',
          '= 公設用地平均負擔比率 + 費用負擔比率（**非 B+C**）', ''),
-        ('工程費用總額', engineering_cost, '元', 'Tab 7 工程費', ''),
-        ('重劃費用總額', redev_cost, '元', 'Tab 7 重劃費', ''),
-        ('貸款利息總額', loan_interest, '元', 'Tab 7 利息', ''),
+        ('工程費用總額', engineering_cost, '元', '財務分析 工程費', ''),
+        ('重劃費用總額', redev_cost, '元', '財務分析 重劃費', ''),
+        ('貸款利息總額', loan_interest, '元', '財務分析 利息', ''),
         ('—— 分配結果統計 ——', '', '', '', ''),
         ('應分配 G 值總計', round(_total_g, 2), '㎡', '合計所有私人 G(㎡)', ''),
         ('抵費地總面積', round(_total_offset_area, 2), '㎡',
@@ -3013,7 +3013,7 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
                 fillcolor='rgba(245,158,11,0.30)',
                 line=dict(color='#F59E0B', width=1.5, dash='dash'),
                 hoverinfo='text',
-                text=f"⚠️ <b>未歸戶</b><br>原地號 {orig_no}<br>暫編 {tp.get('暫編地號','')}<br>面積 {tp.get('分攤登記面積_m2', tp.get('面積_m2', 0)):.2f} ㎡<br><i>(Tab 1 查無此地號)</i>",
+                text=f"⚠️ <b>未歸戶</b><br>原地號 {orig_no}<br>暫編 {tp.get('暫編地號','')}<br>面積 {tp.get('分攤登記面積_m2', tp.get('面積_m2', 0)):.2f} ㎡<br><i>(土地歸戶 查無此地號)</i>",
                 showlegend=False,
             ))
 
@@ -8578,7 +8578,7 @@ def main():
             _f3_areas = st.session_state.get('f3_to_tab_areas')
             if _f3_areas:
                 st.success(
-                    f"✅ 已自動帶入 Tab 3 街廓分類結果：可建築 {_f3_areas.get('buildable_total', 0):,.2f} ㎡、"
+                    f"✅ 已自動帶入 街廓互動分析 街廓分類結果：可建築 {_f3_areas.get('buildable_total', 0):,.2f} ㎡、"
                     f"共同負擔 {_f3_areas.get('public_common_total', 0):,.2f} ㎡、"
                     f"非共同負擔 {_f3_areas.get('public_non_common_total', 0):,.2f} ㎡、"
                     f"抵充地 {_f3_areas.get('offset_area', 0):,.2f} ㎡"
@@ -8858,14 +8858,14 @@ def main():
         _f3_blocks = st.session_state.get('f3_to_tab_blocks')
         _f3_zones = st.session_state.get('f3_to_tab_zones')
         if _f3_blocks or _f3_zones:
-            with st.expander("📦 已從 Tab 3（街廓互動分析）帶入之街廓／區段清單", expanded=True):
+            with st.expander("📦 已從 街廓互動分析 帶入之街廓／區段清單", expanded=True):
                 if _f3_blocks:
-                    st.markdown("**重劃後街廓清單（由 Tab 3 推送）**")
+                    st.markdown("**重劃後街廓清單（由 街廓互動分析 推送）**")
                     st.dataframe(pd.DataFrame(_f3_blocks), use_container_width=True, hide_index=True)
                 if _f3_zones:
-                    st.markdown("**重劃前地價區段清單（由 Tab 3 圖面點選結果推送）**")
+                    st.markdown("**重劃前地價區段清單（由 街廓互動分析 圖面點選結果推送）**")
                     st.dataframe(pd.DataFrame(_f3_zones), use_container_width=True, hide_index=True)
-                st.caption("💡 如需更新，請至 Tab 3 重新點選區段並再次按「📤 推送至 Tab 6」。")
+                st.caption("💡 如需更新，請至 街廓互動分析 重新點選區段並再次按「📤 推送至 地價區段分析」。")
 
         # ===== 從 Tab 4 取得各類土地面積（不再重複輸入） =====
         t4_area_buildable = st.session_state.get('area_buildable', 0)
@@ -8875,7 +8875,7 @@ def main():
         
         if t4_area_buildable <= 0:
             st.warning("⚠️ 請先至「📋 預期開發分析法」頁籤輸入各類土地面積，本頁將自動帶入該資料")
-            st.info("尚未取得 Tab 4 面積資料，將使用預設值。完成 Tab 4 輸入後重新進入本頁即可帶入。")
+            st.info("尚未取得 預期開發分析法 面積資料，將使用預設值。完成 預期開發分析法 輸入後重新進入本頁即可帶入。")
         else:
             st.success(f"✅ 已從「預期開發分析法」帶入面積資料：可建築土地 {t4_area_buildable:,.2f} ㎡｜共同負擔公設 {t4_area_public_shared:,.2f} ㎡｜非共同負擔公設 {t4_area_public_non_shared:,.2f} ㎡｜抵充地 {t4_area_offset:,.2f} ㎡")
         
@@ -8886,8 +8886,8 @@ def main():
         _has_f3_zones = bool(_f3_zones)
 
         with col_left:
-            st.subheader("📐 重劃區街廓清單（由 Tab 3 帶入，無需手動輸入分區數）")
-            st.caption("💡 本頁不再輸入「分區數／類型／面積」。請於 Tab 3（街廓互動分析）完成街廓分類後，按「📤 推送至 Tab 6」即可自動帶入。")
+            st.subheader("📐 重劃區街廓清單（由 街廓互動分析 帶入，無需手動輸入分區數）")
+            st.caption("💡 本頁不再輸入「分區數／類型／面積」。請於 街廓互動分析 完成街廓分類後，按「📤 推送至 地價區段分析」即可自動帶入。")
 
             # ---- 依 Tab 3 推送結果組出 general_zones / non_shared_zones ----
             general_zones = []
@@ -8910,8 +8910,8 @@ def main():
                             'name': label, 'category': '非共同負擔'
                         })
             else:
-                st.warning("⚠️ 尚未從 Tab 3 推送街廓清單。請先完成 Tab 3 的街廓分類並按「📤 推送至 Tab 6」。")
-                st.info("尚未取得 Tab 3 街廓清單時，本頁仍以 Tab 5 的總面積顯示；但「相對比率」計算需個別街廓，請優先完成 Tab 3。")
+                st.warning("⚠️ 尚未從 街廓互動分析 推送街廓清單。請先完成 街廓互動分析 的街廓分類並按「📤 推送至 地價區段分析」。")
+                st.info("尚未取得 街廓互動分析 街廓清單時，本頁仍以 預期開發分析法 的總面積顯示；但「相對比率」計算需個別街廓，請優先完成 街廓互動分析。")
 
             # ---- 一、一般可建築土地 ----
             st.markdown("**一、一般可建築土地（住宅區、商業區等）**")
@@ -8922,14 +8922,14 @@ def main():
                 ])
                 st.dataframe(df_gz, use_container_width=True, hide_index=True)
             else:
-                st.caption("（Tab 3 尚未推送一般可建築街廓）")
+                st.caption("（街廓互動分析 尚未推送一般可建築街廓）")
             total_general = sum(z['area'] for z in general_zones)
             if t4_area_buildable > 0:
                 gz_diff = total_general - t4_area_buildable
                 if abs(gz_diff) > 1:
-                    st.error(f"❌ 一般可建築土地（Tab 3）合計 {total_general:,.2f}㎡ ≠ Tab 5 設定 {t4_area_buildable:,.2f}㎡（差異：{gz_diff:+,.2f}㎡）")
+                    st.error(f"❌ 一般可建築土地（街廓互動分析）合計 {total_general:,.2f}㎡ ≠ 預期開發分析法 設定 {t4_area_buildable:,.2f}㎡（差異：{gz_diff:+,.2f}㎡）")
                 else:
-                    st.success(f"✅ 一般可建築土地合計 = {total_general:,.2f} ㎡（與 Tab 5 一致）")
+                    st.success(f"✅ 一般可建築土地合計 = {total_general:,.2f} ㎡（與 預期開發分析法 一致）")
             else:
                 st.info(f"一般可建築土地合計：{total_general:,.2f} ㎡")
 
@@ -8943,14 +8943,14 @@ def main():
                 ])
                 st.dataframe(df_nsz, use_container_width=True, hide_index=True)
             else:
-                st.caption("（Tab 3 尚未推送非共同負擔公設街廓）")
+                st.caption("（街廓互動分析 尚未推送非共同負擔公設街廓）")
             total_non_shared = sum(z['area'] for z in non_shared_zones)
             if t4_area_public_non_shared > 0:
                 nsz_diff = total_non_shared - t4_area_public_non_shared
                 if abs(nsz_diff) > 1:
-                    st.error(f"❌ 非共同負擔公設（Tab 3）合計 {total_non_shared:,.2f}㎡ ≠ Tab 5 設定 {t4_area_public_non_shared:,.2f}㎡（差異：{nsz_diff:+,.2f}㎡）")
+                    st.error(f"❌ 非共同負擔公設（街廓互動分析）合計 {total_non_shared:,.2f}㎡ ≠ 預期開發分析法 設定 {t4_area_public_non_shared:,.2f}㎡（差異：{nsz_diff:+,.2f}㎡）")
                 else:
-                    st.success(f"✅ 非共同負擔公設合計 = {total_non_shared:,.2f} ㎡（與 Tab 5 一致）")
+                    st.success(f"✅ 非共同負擔公設合計 = {total_non_shared:,.2f} ㎡（與 預期開發分析法 一致）")
             else:
                 st.info(f"非共同負擔公設小計：{total_non_shared:,.2f} ㎡")
 
@@ -8961,7 +8961,7 @@ def main():
             
             # ===== 共同負擔公共設施用地（從 Tab 4 帶入，不再輸入）=====
             st.markdown("---")
-            st.markdown("**三、共同負擔公共設施用地**（由 Tab 4 帶入，無需重複輸入）")
+            st.markdown("**三、共同負擔公共設施用地**（由 預期開發分析法 帶入，無需重複輸入）")
             st.caption("道路、溝渠、公園、綠地、廣場等，由土地所有權人共同負擔")
 
             # 若 Tab 5（預期開發分析法）尚未填入面積，優先從 Tab 3 推送結果回讀；
@@ -8994,8 +8994,8 @@ def main():
             | 一般可建築土地 | {total_general:,.2f} | 住宅區、商業區等 |
             | 非共同負擔公設用地 | {total_non_shared:,.2f} | 社宅、機關用地（需價購） |
             | **可建築土地合計** | **{total_buildable:,.2f}** | 納入地價計算 |
-            | 共同負擔公設用地 | {area_public_shared_t5:,.2f} | 道路、公園等（Tab 4 帶入） |
-            | 　其中：抵充地 | {area_offset_t5:,.2f} | 既有公有土地（Tab 4 帶入） |
+            | 共同負擔公設用地 | {area_public_shared_t5:,.2f} | 道路、公園等（預期開發分析法 帶入） |
+            | 　其中：抵充地 | {area_offset_t5:,.2f} | 既有公有土地（預期開發分析法 帶入） |
             | **重劃區總面積** | **{total_area_t5:,.2f}** | |
             """)
             
@@ -9018,7 +9018,7 @@ def main():
             
             # 一般可建築土地分區數面積總和檢核
             if t4_area_buildable > 0 and abs(total_general - t4_area_buildable) > 1:
-                errors.append(f"一般可建築土地分區面積總和 ({total_general:,.2f}㎡) ≠ Tab 4 可建築土地總面積 ({t4_area_buildable:,.2f}㎡)")
+                errors.append(f"一般可建築土地分區面積總和 ({total_general:,.2f}㎡) ≠ 預期開發分析法 可建築土地總面積 ({t4_area_buildable:,.2f}㎡)")
             
             if errors:
                 for err in errors:
@@ -9043,11 +9043,11 @@ def main():
 
             st.markdown("**重劃前平均地價**")
             if pre_price_from_t4 > 0:
-                st.info(f"來自預期開發分析法（Tab 4）：{pre_price_from_t4:,.0f} 元/㎡ = {pre_price_from_t4/0.3025:,.0f} 元/坪")
+                st.info(f"來自預期開發分析法：{pre_price_from_t4:,.0f} 元/㎡ = {pre_price_from_t4/0.3025:,.0f} 元/坪")
                 use_pre_t4 = _cb("使用預期開發分析法結果", value=True, key="use_pre_t4_t5")
                 pre_avg_price = pre_price_from_t4 if use_pre_t4 else _ni("手動輸入重劃前平均單價(元/㎡)", min_value=1000.0, value=30000.0, step=1000.0, key="pre_avg_manual")
             else:
-                pre_avg_price = _ni("重劃前平均單價 (元/㎡)（請先至 Tab 4 完成計算）", min_value=1000.0, value=30000.0, step=1000.0, key="pre_avg")
+                pre_avg_price = _ni("重劃前平均單價 (元/㎡)（請先至 預期開發分析法 完成計算）", min_value=1000.0, value=30000.0, step=1000.0, key="pre_avg")
         
         st.markdown("---")
         
@@ -9181,7 +9181,7 @@ def main():
         col_pre1, col_pre2 = st.columns([1, 1])
 
         with col_pre1:
-            st.markdown("**地價區段清單（由 Tab 3 圖面點選結果帶入，無需手動輸入區段數）**")
+            st.markdown("**地價區段清單（由 街廓互動分析 圖面點選結果帶入，無需手動輸入區段數）**")
 
             # ---- 由 Tab 3 推送之重劃前地價區段清單生成 pre_zones ----
             pre_zones = []
@@ -9200,7 +9200,7 @@ def main():
                 ])
                 st.dataframe(df_prez, use_container_width=True, hide_index=True)
             else:
-                st.warning("⚠️ 尚未從 Tab 3 推送重劃前地價區段。請先於 Tab 3 完成圖面點選標註並按「📤 推送至 Tab 6」。")
+                st.warning("⚠️ 尚未從 街廓互動分析 推送重劃前地價區段。請先於 街廓互動分析 完成圖面點選標註並按「📤 推送至 地價區段分析」。")
 
             total_pre_area = sum(z['area'] for z in pre_zones)
             if pre_zones:
@@ -9318,7 +9318,7 @@ def main():
             
             st.markdown("---")
             st.subheader("🔧 重劃總費用單價（元/㎡）")
-            st.caption("💡 本區數值直接使用「Tab 5 預期開發分析法」已輸入之 B／K／C 開發成本，不再重複填寫。如需修改請至 Tab 5。")
+            st.caption("💡 本區數值直接使用「預期開發分析法」已輸入之 B／K／C 開發成本，不再重複填寫。如需修改請至 預期開發分析法。")
             # 直接讀取 Tab 5（預期開發分析法）的三個開發成本 widget：
             #   B_cost（key='b_cost'）= 開發工事費       → 工程費用
             #   K_cost（key='k_cost'）= 拆遷補償費       → 地上物拆遷補償費
@@ -9344,27 +9344,27 @@ def main():
             # 顯示資料來源狀態（已連動 vs 使用 Tab 5 預設）
             _all_synced = _b_in_state and _k_in_state and _c_in_state
             if _all_synced:
-                st.success("✅ 已連動 Tab 5 之 B／K／C 輸入值")
+                st.success("✅ 已連動 預期開發分析法 之 B／K／C 輸入值")
             else:
                 _missing = []
                 if not _b_in_state: _missing.append("B 工程費")
                 if not _k_in_state: _missing.append("K 拆遷補償費")
                 if not _c_in_state: _missing.append("C 重劃費用")
                 st.warning(
-                    f"⚠️ 您尚未於 Tab 5（預期開發分析法）輸入：{'、'.join(_missing)}；"
-                    "目前顯示之數值為 **Tab 5 預設值**。建議先至 Tab 5 確認 / 修改 B／K／C，"
+                    f"⚠️ 您尚未於 預期開發分析法 輸入：{'、'.join(_missing)}；"
+                    "目前顯示之數值為 **預期開發分析法 預設值**。建議先至 預期開發分析法 確認 / 修改 B／K／C，"
                     "回到本頁即會自動帶入您輸入的單價。"
                 )
 
             _c_dc = st.columns(3)
             _c_dc[0].metric("地上物拆遷補償費 (K)", f"{demolition_cost:,.0f} 元/㎡",
-                            delta="✅ 已連動 Tab 5" if _k_in_state else "⚠️ 尚未連動",
+                            delta="✅ 已連動 預期開發分析法" if _k_in_state else "⚠️ 尚未連動",
                             delta_color="off")
             _c_dc[1].metric("行政作業費 / 重劃費用 (C)", f"{admin_cost:,.0f} 元/㎡",
-                            delta="✅ 已連動 Tab 5" if _c_in_state else "⚠️ 尚未連動",
+                            delta="✅ 已連動 預期開發分析法" if _c_in_state else "⚠️ 尚未連動",
                             delta_color="off")
             _c_dc[2].metric("工程費用 (B)", f"{construction_cost:,.0f} 元/㎡",
-                            delta="✅ 已連動 Tab 5" if _b_in_state else "⚠️ 尚未連動",
+                            delta="✅ 已連動 預期開發分析法" if _b_in_state else "⚠️ 尚未連動",
                             delta_color="off")
             
             st.markdown("---")
@@ -9698,14 +9698,14 @@ def main():
                 public_shared_area = st.session_state.get('public_shared_area', 5000)
                 offset_area = st.session_state.get('offset_area', 0)
 
-                _pre_src_note = "來源：Tab 5 預期開發分析法（重劃前價格日期）"
+                _pre_src_note = "來源：預期開發分析法（重劃前價格日期）"
                 if pre_avg_price_check <= 0:
-                    _pre_src_note = "⚠️ 尚未取得，請先完成 Tab 5 預期開發分析法計算"
+                    _pre_src_note = "⚠️ 尚未取得，請先完成 預期開發分析法計算"
 
                 st.markdown(f"""
                 **已知數據（來自其他頁籤）**
                 - 重劃區總面積：{total_area_fin:,.0f} ㎡
-                - 重劃後平均地價：{post_avg_price_check:,.0f} 元/㎡（來源：Tab 4 加權平均）
+                - 重劃後平均地價：{post_avg_price_check:,.0f} 元/㎡（來源：土地開發分析法 加權平均）
                 - 重劃前平均地價：{pre_avg_price_check:,.0f} 元/㎡（{_pre_src_note}）
                 - 共同負擔公設用地：{public_shared_area:,.0f} ㎡
                 - 抵充地面積：{offset_area:,.0f} ㎡
@@ -9761,12 +9761,12 @@ def main():
             # 本頁的金額單位為「萬元」，公式內部須換算為「元」
             # ============================================================
             st.markdown("---")
-            st.markdown("### 🔗 C 值計算（費用負擔係數）— 回送 Tab 3")
+            st.markdown("### 🔗 C 值計算（費用負擔係數）— 回送 街廓互動分析")
 
             _f3_inputs = st.session_state.get('f3_to_finance_inputs')
             if _f3_inputs:
                 st.info(
-                    f"✅ 已自動從 Tab 3 街廓互動分析帶入："
+                    f"✅ 已自動從 街廓互動分析帶入："
                     f"重劃區總面積 {float(_f3_inputs.get('total_area', 0) or 0):,.2f} ㎡、"
                     f"公共設施用地負擔總面積 {float(_f3_inputs.get('public_common_total', 0) or 0):,.2f} ㎡"
                 )
@@ -9775,9 +9775,9 @@ def main():
                 _c_price_after = float(_f3_inputs.get('price_after', 0) or 0) or float(post_avg_price_check)
             else:
                 st.warning(
-                    "⚠️ 尚未從 Tab 3 推送參數，將以本頁既有之「重劃區總面積」、"
+                    "⚠️ 尚未從 街廓互動分析 推送參數，將以本頁既有之「重劃區總面積」、"
                     "「共同負擔公設用地面積」及「重劃後平均地價」估算 C 值。"
-                    "建議先於 Tab 3 完成街廓分類後按下「📤 推送 B 值與參數至 Tab 7（財務分析）」。"
+                    "建議先於 街廓互動分析 完成街廓分類後按下「📤 推送 B 值與參數至 財務分析」。"
                 )
                 _c_total_area = float(total_area_fin)
                 _c_pub_burden = float(public_shared_area)
@@ -9825,8 +9825,8 @@ def main():
             # 自動回寫 session_state，供 Tab 3 重算 B 值
             st.session_state['f3_C_from_finance'] = float(C_value)
             st.success(
-                f"✅ 已將 C = {C_value:.6f} 回送至 Tab 3 街廓互動分析，"
-                f"Tab 3 的臨街地特別負擔總面積與 B 值將自動重算。"
+                f"✅ 已將 C = {C_value:.6f} 回送至 街廓互動分析，"
+                f"街廓互動分析 的臨街地特別負擔總面積與 B 值將自動重算。"
             )
 
             # 計算三個地價總值
@@ -10690,8 +10690,8 @@ def main():
                             value=0.0, min_value=0.0, max_value=1.0, format="%.6f", key="alloc_C")
                         if _pre_p > 0 or _post_p > 0:
                             st.caption(
-                                f"▸ 由 Tab 4 帶入重劃前地價：{_pre_p:,.0f} 元/㎡　"
-                                f"由 Tab 5 帶入重劃後地價：{_post_p:,.0f} 元/㎡　→　自動計算 A = {_auto_A:.6f}"
+                                f"▸ 由 預期開發分析法 帶入重劃前地價：{_pre_p:,.0f} 元/㎡　"
+                                f"由 土地開發分析法 帶入重劃後地價：{_post_p:,.0f} 元/㎡　→　自動計算 A = {_auto_A:.6f}"
                             )
 
                         # 收集已填入的街廓代碼
@@ -10966,7 +10966,7 @@ def main():
     elif selected_tab == TAB_BLOCK_INTERACT:
         st.markdown("### 功能：街廓分類 + 重劃前地籍套疊 + 臨街地特別負擔 + B 值計算")
         st.caption("📌 依序完成 A→B→C→D→E→F→H→G→I，可得 B 值、臨街地特別負擔與各暫編地號 G 值分配")
-        st.caption("📌 C 值須於 Tab 7「💰 財務分析」輸入工程費用等後自動回傳本頁")
+        st.caption("📌 C 值須於「💰 財務分析」輸入工程費用等後自動回傳本頁")
 
         # 採用模組層級的常數：F3_BLOCK_CATEGORIES、F3_CATEGORY_BURDEN、F3_CATEGORY_COLORS
 
@@ -11227,11 +11227,11 @@ def main():
                 _msg = (f"✅ 地籍讀取完成：{len(cad_data.get('parcels', [])):,} 筆地號；"
                         f"重建 {len(parcel_polys):,} 筆重劃前宗地多邊形")
                 if _swap_log:
-                    _msg += f"｜🔄 Tab 1 面積交叉驗證自動修正 **{len(_swap_log)} 對**錯配"
+                    _msg += f"｜🔄 土地歸戶 面積交叉驗證自動修正 **{len(_swap_log)} 對**錯配"
                 st.success(_msg)
                 # 列出修正詳情
                 if _swap_log:
-                    with st.expander(f"🔄 Tab 1 面積交叉驗證：自動換位修正 {len(_swap_log)} 對", expanded=True):
+                    with st.expander(f"🔄 土地歸戶 面積交叉驗證：自動換位修正 {len(_swap_log)} 對", expanded=True):
                         for sw in _swap_log:
                             st.write(
                                 f"・**{sw['parcel_a_orig']}** ↔ **{sw['parcel_b_orig']}** "
@@ -11365,7 +11365,7 @@ def main():
                             except Exception as _e628:
                                 st.write(f"  ⚠️ polygon 重算失敗：{_e628}")
                         st.write(f"- 多邊形面積（DXF 重建）≈ **{_poly_area_628:.2f} ㎡**")
-                        st.write(f"- Tab 1 登記面積 = **{_reg_628:.2f} ㎡**")
+                        st.write(f"- 土地歸戶 登記面積 = **{_reg_628:.2f} ㎡**")
                         if _reg_628 > 0:
                             _diff_628 = abs(_poly_area_628 - _reg_628)
                             _ratio_628 = _diff_628 / _reg_628 * 100
@@ -11621,9 +11621,9 @@ def main():
                     # 多為 _UNC 匿名標籤誤讀；§1 修好後實際 orphan 應極少（純粹
                     # Tab 1 漏填或地號編碼差異）。系統不再自動剔除有原地號歸屬之暫編。
                     st.info(
-                        f"ℹ️ 偵測到 **{len(_orphans)} 筆**暫編地號之原地號未在 Tab 1 歸戶清單中"
+                        f"ℹ️ 偵測到 **{len(_orphans)} 筆**暫編地號之原地號未在 土地歸戶 歸戶清單中"
                         f"（已嘗試正規化比對：去除段碼前綴與 -0 子號後綴）。"
-                        f"請檢核 Tab 1 是否漏填，或為地號編碼差異。"
+                        f"請檢核 土地歸戶 是否漏填，或為地號編碼差異。"
                     )
                     _orphan_rows = [{
                         '暫編地號': tp.get('暫編地號', ''),
@@ -11645,12 +11645,12 @@ def main():
                     _own_groups_check = st.session_state.get('t8_ownership_groups', {}) or {}
                     _real_landno_count = sum(len(v) for v in _own_groups_check.values())
                     st.success(
-                        f"✅ Tab 1 歸戶交叉檢核通過：{len(temp_parcels)} 筆暫編地號全部對應到 Tab 1 歸戶清單"
+                        f"✅ 土地歸戶 歸戶交叉檢核通過：{len(temp_parcels)} 筆暫編地號全部對應到 土地歸戶 歸戶清單"
                         f"（共 {_real_landno_count} 筆地號）{_msg_norm}"
                     )
             elif temp_parcels and not _own_map_check:
                 st.info(
-                    "ℹ️ 尚未匯入 Tab 1（土地歸戶）資料。建議先至 Tab 1 上傳地籍 Excel，"
+                    "ℹ️ 尚未匯入 土地歸戶 資料。建議先至 土地歸戶 上傳地籍 Excel，"
                     "系統會自動比對暫編地號與歸戶清單。"
                 )
 
@@ -11765,7 +11765,7 @@ def main():
             _layers['problem_parcels']  = _lc9.checkbox(
                 "⚠️ 問題地塊", value=_layers.get('problem_parcels', False),
                 key='f3_um_lyr_problems',
-                help="標示 (1) 無地號之地塊（紅色）(2) 有地號但 Tab 1 找不到歸戶者（黃色）",
+                help="標示 (1) 無地號之地塊（紅色）(2) 有地號但 土地歸戶 找不到歸戶者（黃色）",
             )
             # 🆕 V12 模組 4-B：重劃後土地歸戶分佈
             _layers['ownership_after_alloc'] = _lc10.checkbox(
@@ -12573,7 +12573,7 @@ def main():
                               type='primary'):
                     _zone_count = len({v for v in _zmap.values() if v})
                     st.success(f"✅ 已儲存 {len(_zmap)} 筆地號標註，共 {_zone_count} 個重劃前地價區段。"
-                               f"後續步驟（Step E/F/G、Tab 5/6/7/8）將以此為基礎。")
+                               f"後續步驟（Step E/F/G 與下游分析頁）將以此為基礎。")
                     st.rerun(scope='app')
 
                 # 暫編地號清單（直接讀 session_state 取得最新狀態）
@@ -12748,13 +12748,13 @@ def main():
         _post_from_t4 = float(st.session_state.get('weighted_price_sqm', 0.0) or 0.0)
         _pre_from_t5  = float(st.session_state.get('pre_land_price_sqm', 0.0) or 0.0)
         qi_c1, qi_c2, qi_c3 = st.columns([1, 1, 2])
-        qi_c1.metric("Tab 4 重劃後平均地價", f"{_post_from_t4:,.0f} 元/㎡" if _post_from_t4 > 0 else "（尚未計算）")
-        qi_c2.metric("Tab 5 重劃前平均地價", f"{_pre_from_t5:,.0f} 元/㎡"  if _pre_from_t5  > 0 else "（尚未計算）")
+        qi_c1.metric("土地開發分析法 重劃後平均地價", f"{_post_from_t4:,.0f} 元/㎡" if _post_from_t4 > 0 else "（尚未計算）")
+        qi_c2.metric("預期開發分析法 重劃前平均地價", f"{_pre_from_t5:,.0f} 元/㎡"  if _pre_from_t5  > 0 else "（尚未計算）")
         if qi_c3.button(
-            "🔄 一鍵匯入 Tab 4/5 計算之重劃前後平均地價",
+            "🔄 一鍵匯入 土地開發分析法/預期開發分析法 計算之重劃前後平均地價",
             use_container_width=True,
             disabled=(_post_from_t4 <= 0 and _pre_from_t5 <= 0),
-            help="自動將 Tab 4 的加權重劃後平均地價與 Tab 5 的重劃前平均地價帶入下方欄位",
+            help="自動將 土地開發分析法 的加權重劃後平均地價與 預期開發分析法 的重劃前平均地價帶入下方欄位",
         ):
             st.session_state['f3_price_before'] = _pre_from_t5
             st.session_state['f3_price_after']  = _post_from_t4
@@ -12802,10 +12802,10 @@ def main():
 
         C_value = st.session_state.get('f3_C_from_finance', None)
         if C_value is None:
-            st.warning("⚠️ 尚未取得 C 值。請於 Tab 7「💰 財務分析」輸入工程費用、重劃費用、貸款利息後自動回傳；目前以 C=0 試算。")
+            st.warning("⚠️ 尚未取得 C 值。請於「💰 財務分析」輸入工程費用、重劃費用、貸款利息後自動回傳；目前以 C=0 試算。")
             C_for_calc = 0.0
         else:
-            st.info(f"✅ 已讀取 Tab 7 之 C 值 = {C_value:.6f}")
+            st.info(f"✅ 已讀取 財務分析 之 C 值 = {C_value:.6f}")
             C_for_calc = float(C_value)
 
         road_data = []
@@ -12873,8 +12873,8 @@ def main():
 **公式**：G = [a·(1 − A·B) − Rw·F·l₁ − S·l₂] × (1 − C)
 
 - **a**：1 筆土地（未歸戶）坐落於該街廓面積
-- **A**：地價比 = 重劃後單價 / 重劃前單價（自動由 Tab 5 同街廓／同重劃前區段單價查得）
-- **B**：一般負擔係數（Tab 3）　**C**：費用負擔係數（Tab 7）
+- **A**：地價比 = 重劃後單價 / 重劃前單價（自動由 預期開發分析法 同街廓／同重劃前區段單價查得）
+- **B**：一般負擔係數（街廓互動分析）　**C**：費用負擔係數（財務分析）
 - **l₁ = 側面負擔尺度**（配 Rw·F·l₁）；**l₂ = 正面負擔尺度**（配 S·l₂）
 - **F**：街角第一筆土地面臨側面道路之長度＝勾選「街角側別」後，自動帶入步驟 E 該街廓之
   「左側長度」或「右側長度」（左右定義：站在街廓內面向正面道路，左手邊為左側、右手邊為右側）
@@ -12882,7 +12882,7 @@ def main():
   **按「🔍 自動計算 W」**可由「街廓多邊形 + 宗地多邊形 + 街廓分配線（若未指定，以街廓 MBR 長邊方向替代）」自動幾何推導；亦可直接在表格手動輸入。
 - **Rw（%）**：由 104 版作業手冊 P.103 累積表（W=1→17.4、W=2→24.4、…、W=18 以上→100）線性內插。
 - **街廓平均深度 = 街廓面積 ÷ 正面臨接道路長度**
-- **迭代初值 S₀ = a·(1 − Tab 7 總負擔比率) / 街廓平均深度**
+- **迭代初值 S₀ = a·(1 − 財務分析 總負擔比率) / 街廓平均深度**
 - 收斂條件：|G_k − G_(k-1)| < 0.005 且 |S_(k+1) − S_k| < 0.005（皆取小數點後 2 位）
 
 ⚠️ **關於圖面點選街角地**：下方「🖱️ 圖面點選街角地」expander 提供 fragment 優化之地圖點選器，
@@ -12898,10 +12898,10 @@ def main():
                 # ⚠️ B+C 僅為迭代初值的粗略估計；非「地主實際平均負擔比率」之正確公式
                 # 正確公式請參考 Step G 完成後說明欄與 Excel 報表 Sheet 3
                 _burden_note = (f"（以 B+C = {_tab6_burden:.4f} **粗估初值**，"
-                                "Tab 7 更新後將自動覆寫；正確平均負擔比率請見 Step G 結果說明）")
+                                "財務分析 更新後將自動覆寫；正確平均負擔比率請見 Step G 結果說明）")
             else:
-                _burden_note = f"（來自 Tab 7：{float(_tab6_burden):.4f}）"
-            st.caption(f"📌 初值用 Tab 7 總負擔比率 = **{float(_tab6_burden):.4f}** {_burden_note}")
+                _burden_note = f"（來自 財務分析：{float(_tab6_burden):.4f}）"
+            st.caption(f"📌 初值用 財務分析 總負擔比率 = **{float(_tab6_burden):.4f}** {_burden_note}")
 
             # 2. 各街廓 l_front/l_side_L/l_side_R/正面長度/面積/左右側長度
             sb_rows_by_label = {r['街廓']: r for r in (sb.get('rows') or [])}
@@ -13244,7 +13244,7 @@ def main():
                               use_container_width=True, key='btn_f3L_corner_priority'):
                     _own_map = st.session_state.get('t8_ownership_map', {}) or {}
                     if not _own_map:
-                        st.warning("⚠️ 尚未偵測到 Tab 1 歸戶資料，請先至 Tab 1（🏘️ 土地歸戶）匯入歸戶 Excel。")
+                        st.warning("⚠️ 尚未偵測到 土地歸戶 資料，請先至 土地歸戶 匯入歸戶 Excel。")
                     else:
                         from shapely.geometry import LineString as _SLine
                         _corner_select_results = []
@@ -15082,14 +15082,14 @@ def main():
                         "* 故 **抵費地比 ≠ B + C，亦 ≠ C 值本身**；正確需另計\n\n"
                         "若實際抵費比顯著高於 10-15%（典型值），通常代表：\n"
                         "1. 重劃前地籍圖被「街廓線」切碎 → 4-Tier 公設整併失效（請檢查圖層）\n"
-                        "2. 部分公設地仍為**真孤立**狀態（無同地號可合併）→ 待 Step K 跨街廓調配"
+                        "2. 部分公設地仍為**真孤立**狀態（無同地號可合併）→ 待跨街廓調配（§31 機制）"
                     )
                     if _n_orphan_in > 0:
                         st.info(
                             "💡 **孤立公設地註**：目前抵費地面積尚包含「尚未跨街廓調配之孤立公設地保留額度」。"
                             f"目前有 **{_n_orphan_in}** 筆真孤立公設地以「虛擬 G 值」結算"
                             "（市地重劃實施辦法 §31 之跨街廓調配機制）。"
-                            "實際抵費地面積將於 **Step K 跨街廓指配 / 現金補償** 完成後縮減至最終法定值。"
+                            "實際抵費地面積將於**跨街廓指配 / 現金補償**（§31 機制）完成後縮減至最終法定值。"
                         )
                     st.rerun()
 
@@ -15636,7 +15636,7 @@ def main():
 **判斷規則（市地重劃實施辦法 §30 + 平均地權條例 §60-1）：**
 1. 暫編地號 G 值 **< 最小分配面積 1/2** → 建議**現金補償**
 2. 暫編地號 G 值 **≥ 1/2 但 < 最小分配面積** → 合併至**同原地號面積最大之暫編地號**
-3. 若同原地號所有暫編地號 G 值**加總後仍未達最小分配面積** → 需**跨街廓調配**（進入步驟 K）
+3. 若同原地號所有暫編地號 G 值**加總後仍未達最小分配面積** → 需**跨街廓調配**（§31 機制）
 """)
 
                 # 建立每街廓之最小分配面積
@@ -15757,7 +15757,7 @@ def main():
 
                 # 提示跨街廓調配
                 if _merge_res['cross_block_needed']:
-                    st.info(f"ℹ️ 共 {len(_merge_res['cross_block_needed'])} 個原地號於所屬街廓合併後仍未達最小分配面積 → 請執行**步驟 K**進行跨街廓調配")
+                    st.info(f"ℹ️ 共 {len(_merge_res['cross_block_needed'])} 個原地號於所屬街廓合併後仍未達最小分配面積 → 需進行**跨街廓調配**（§31 機制）")
 
 
             # ---------- 步驟 L 已前移至 Step G 內部（Phase A 重構） ----------
@@ -15766,19 +15766,19 @@ def main():
 
             # ---------- 步驟 M：公共設施用地分配（任務四） ----------
             st.markdown("---")
-            st.markdown("#### 🌳 步驟 M：公共設施用地分配（與 Tab 1 歸戶連動）")
+            st.markdown("#### 🌳 步驟 M：公共設施用地分配（與 土地歸戶 連動）")
             st.markdown("""
 依《平均地權條例》§60 + 《市地重劃實施辦法》§21~28：
 - **道路（共同負擔）**：以道路中心線為界，將道路面積分向兩側合併分配
 - **廣場 / 鄰里公園 / 零售市場（共同負擔）**：合併於相鄰住宅區
 - **非共同負擔（機關、社會住宅）**：公地優先指配 → 不足時按私有歸戶面積比例發還（不受最小分配限制）
 """)
-            with st.expander("📋 自動計算公設分配（依目前 Tab 1 歸戶 + Tab 3 街廓分類）",
+            with st.expander("📋 自動計算公設分配（依目前 土地歸戶 + 街廓互動分析 街廓分類）",
                               expanded=False):
                 _own_map = st.session_state.get('t8_ownership_map', {}) or {}
                 _own_groups = st.session_state.get('t8_ownership_groups', {}) or {}
                 if not _own_map:
-                    st.warning("⚠️ 尚未偵測到 Tab 1 歸戶資料，請先至 Tab 1 匯入歸戶 Excel。")
+                    st.warning("⚠️ 尚未偵測到 土地歸戶 資料，請先至 土地歸戶 匯入歸戶 Excel。")
                 else:
                     # 把街廓依用途分群
                     _road_blocks = [b for b in classified_blocks
@@ -16301,7 +16301,7 @@ def main():
 
         # ---------- 步驟 I：推送資料至下游 Tab ----------
         st.markdown("---")
-        st.markdown("#### 🔗 步驟 I：推送資料至下游 Tab（Tab 5 / Tab 6 / Tab 7）")
+        st.markdown("#### 🔗 步驟 I：推送資料至下游分頁（預期開發分析法 / 地價區段分析 / 財務分析）")
         pcol1, pcol2, pcol3 = st.columns(3)
 
         # ------ 共用：把 Tab 3 計算出的四項面積同步寫入 Tab 5/6 widget session_state ------
@@ -16324,12 +16324,12 @@ def main():
             }
             st.session_state['_f3_push_consume'] = True  # Tab 5 下次進入時強制覆寫殘留 widget 狀態
 
-        if pcol1.button("📤 推送至 Tab 5（預期開發分析法）", use_container_width=True):
+        if pcol1.button("📤 推送至 預期開發分析法", use_container_width=True):
             _sync_areas_to_tabs()
             st.success(f"✅ 已推送；可建築 {buildable_total:,.2f} ㎡、共同負擔 {public_common_total:,.2f} ㎡、非共同負擔 {public_non_common_total:,.2f} ㎡、抵充地 {offset_area:,.2f} ㎡")
             st.rerun()
 
-        if pcol2.button("📤 推送至 Tab 6（地價區段分析）", use_container_width=True):
+        if pcol2.button("📤 推送至 地價區段分析", use_container_width=True):
             blocks_out = [
                 {'街廓編號': b['label'], '街廓分類': b['category'], '面積_m2': round(b['area_m2'], 2)}
                 for b in classified_blocks
@@ -16351,10 +16351,10 @@ def main():
             st.session_state['f3_to_tab_blocks'] = blocks_out
             st.session_state['f3_to_tab_zones'] = zones_out
             _sync_areas_to_tabs()  # 同步面積到 Tab 5，Tab 6 從 Tab 5 讀取面積才會正確
-            st.success(f"✅ 已推送 {len(blocks_out)} 個街廓、{len(zones_out)} 個重劃前地價區段（含四項面積同步至 Tab 5/6）")
+            st.success(f"✅ 已推送 {len(blocks_out)} 個街廓、{len(zones_out)} 個重劃前地價區段（含四項面積同步至 預期開發分析法/地價區段分析）")
             st.rerun()
 
-        if pcol3.button("📤 推送 B 值與參數至 Tab 7（財務分析）", use_container_width=True):
+        if pcol3.button("📤 推送 B 值與參數至 財務分析", use_container_width=True):
             st.session_state['f3_to_finance_inputs'] = {
                 'total_area': total_area,
                 'preexisting_public': preexisting_public,
@@ -16366,7 +16366,7 @@ def main():
             }
             st.session_state['f3_to_tab_B'] = B_value
             _sync_areas_to_tabs()  # 連同四項面積一起同步
-            st.success(f"✅ 已推送參數與 B={B_value:.6f} 至 Tab 7（含四項面積同步至 Tab 5/6）")
+            st.success(f"✅ 已推送參數與 B={B_value:.6f} 至 財務分析（含四項面積同步至 預期開發分析法/地價區段分析）")
             st.rerun()
 
 if __name__ == "__main__":
