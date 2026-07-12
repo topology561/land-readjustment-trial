@@ -38,6 +38,7 @@ def main():
                     params, build, winners_state, forced_map, setback)
 
     seed = dict(fake_st.session_state)
+    seed.pop("f3_total_burden_rate_from_finance", None)   # 複現 live 缺鍵：證 _build_wf_ctx 主動鋪底（G.1 補丁）
     seed.update({
         "f3_G_values": sg["g_rows"], "f3_classified_blocks": list(cb_by.values()),
         "f3_temp_parcels": temp, "f3_build_parcels": build,

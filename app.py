@@ -8012,9 +8012,27 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
         }
     snap = {"財務接線_v3": snap_full["財務接線_v3"], "global": snap_full["global"], "blocks": blocks}
 
+    _ns = _wf_ns()
+    _fake_st = _WFSessionShim(ss)
+    # G.1 補丁（合約缺口修）：主動鋪底 `f3_total_burden_rate_from_finance`——本 shim 種子之引擎路徑消費者＝
+    # run_step_g loud 前置閘（stepg:171 缺即 raise）＋ iterate_G_S 迭代初值（stepg:307-314）。
+    # **禁**要求使用者先點財務分析 Tab（#11 脆弱路徑）、**禁**靜默 0.40 舊 fallback。
+    # 作法＝呼叫 harness 同一 `compute_total_burden_rate`（app 真符號 _ns、β 快照 財務接線_v3 輸入），
+    # 現算後寫入 shim——與 harness build_pipeline 同源同式、決定性（UC9898 錨 0.40712387）。
+    # 註：另一消費者 `_estimate_G_for_qualification`（街角 PK 資格 G估）讀**真** st.session_state（非本 shim）、
+    # 且不在 live wf 引擎路徑（live 用預算 winners）——其既有 0.40 fallback 屬另路徑、上呈 KL（見補丁報告 §七）。
+    import os as _os2
+    import sys as _sys2
+    _vdir2 = _os2.path.join(_os2.path.dirname(_os2.path.abspath(app_file)), "verify")
+    if _vdir2 not in _sys2.path:
+        _sys2.path.insert(0, _vdir2)
+    from stepg_pipeline import compute_total_burden_rate as _ctbr
+    _rate, _ = _ctbr(_ns, list(cb_by.values()), snap_full)
+    _fake_st.session_state["f3_total_burden_rate_from_finance"] = float(_rate)
+
     return {
-        "ns": _wf_ns(),
-        "fake_st": _WFSessionShim(ss),
+        "ns": _ns,
+        "fake_st": _fake_st,
         "cb_by": cb_by,
         "cad": cad,
         "snap": snap,
@@ -8069,6 +8087,18 @@ _WG_GID_PALETTE = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD',
                    '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']
 
 
+def _wg_is_ghost(r):
+    """G.2 補①：ghost sliver 濾除（純呈現、只讀列值非重算）。ghost＝零面積虛編
+    （app Step G 不排 ghost、真面積已落池；引擎 harness 於 stepg:230 排除）→ GIS 不畫。
+    判準＝列旗標 `_is_ghost_sliver` 或 幾何面積(㎡)≤0（皆列既有值）。"""
+    if r.get("_is_ghost_sliver"):
+        return True
+    try:
+        return float(r.get("幾何面積(㎡)", 1.0) or 1.0) <= 0.0
+    except (TypeError, ValueError):
+        return False
+
+
 def _wg_add_poly(fig, coords, fill_color, hover, line_color="#455A64",
                  width=1.0, dash=None, opacity=0.55, show_fill=True):
     """單一多邊形 trace（座標→plotly 變換；不動數值）。"""
@@ -8118,7 +8148,7 @@ def _wg_gen_figure(rows, cb_by, reshape_polys=None, wedge_coords=None,
     drawn = set()
     for r in rows or []:
         pid = r.get("暫編地號", "")
-        if pid in drawn:
+        if pid in drawn or _wg_is_ghost(r):   # G.2 補①：濾 ghost
             continue
         side = str(r.get("推進側別", "") or "")
         orig = r.get("cut_coords") or []
@@ -8220,7 +8250,7 @@ def _wg_theme_exit(rows_E, exit_rows, cb_by, omap, title):
     _wg_block_outlines(fig, cb_by)
     for r in rows_E or []:
         coords = r.get("cut_coords") or []
-        if len(coords) < 3:
+        if len(coords) < 3 or _wg_is_ghost(r):   # G.2 補①：濾 ghost
             continue
         gid = _wg_gid_of_row(r, omap)
         x = exit_by_gid.get(str(gid))
@@ -8254,7 +8284,7 @@ def _wg_theme_ledger(rows_E, ledger_rows, cb_by, omap, title):
     _wg_block_outlines(fig, cb_by)
     for r in rows_E or []:
         coords = r.get("cut_coords") or []
-        if len(coords) < 3:
+        if len(coords) < 3 or _wg_is_ghost(r):   # G.2 補①：濾 ghost
             continue
         gid = str(_wg_gid_of_row(r, omap) or "")
         L = led.get(gid)
@@ -16768,8 +16798,29 @@ def main():
                                         "app live": "≈34950 (DXF/輸入)", "狀態": "⚠️ 反推精確值 app 無 live 源"})
                     _fence_rows.append({"項目": "貸款利息(元)", "快照凍結值(採用)": f"{int(_fin['貸款利息_元']):,}",
                                         "app live": "NPV×1e4 (精度較粗)", "狀態": "⚠️ 模型/精度不同源"})
+                    # G.2 補②：區段級逐一比對（前區段 a/b＋後街廓 R1-R6 六價）——
+                    #   活抓「均價相同、區段漂移、圍欄全綠」缺口（#11 家族新變體；均價層比對會漏）。
+                    _pre_live = {r.get('區段'): r.get('單價(元/㎡)') for r in (_wg_ss.get('pre_zone_results') or [])}
+                    _post_live = {r.get('街廓'): r.get('單價(元/㎡)') for r in (_wg_ss.get('post_block_results') or [])}
+                    for _z, _zv in (_fin.get('重劃前區段_面積單價') or {}).items():
+                        _sv = float(_zv['單價_元每m2'])
+                        _lv = _pre_live.get(_z)
+                        _d = ("— (app 無對應區段)" if _lv is None
+                              else ("✅ 一致" if abs(float(_lv) - _sv) < 1e-6
+                                    else f"⚠️ 漂移 (live {float(_lv):,.2f})"))
+                        _fence_rows.append({"項目": f"前區段 {_z} 單價(元/㎡)", "快照凍結值(採用)": f"{_sv:,.2f}",
+                                            "app live": ("—" if _lv is None else f"{float(_lv):,.2f}"), "狀態": _d})
+                    for _blk, _bv in (_fin.get('後街廓_面積單價') or {}).items():
+                        _sv = float(_bv['單價_元每m2'])
+                        _lv = _post_live.get(_blk)
+                        _d = ("— (app 無對應街廓)" if _lv is None
+                              else ("✅ 一致" if abs(float(_lv) - _sv) < 1e-6
+                                    else f"⚠️ 漂移 (live {float(_lv):,.2f})"))
+                        _fence_rows.append({"項目": f"後街廓 {_blk} 單價(元/㎡)", "快照凍結值(採用)": f"{_sv:,.2f}",
+                                            "app live": ("—" if _lv is None else f"{float(_lv):,.2f}"), "狀態": _d})
                     st.dataframe(pd.DataFrame(_fence_rows), use_container_width=True, hide_index=True)
-                    st.caption("🔒 全節凍結採用：重劃區總面積_m2_精確、後街廓/前區段面積單價、原地號_區段 等 財務接線_v3。")
+                    st.caption("🔒 全節凍結採用 財務接線_v3；**區段級逐一比對**（前區段/後街廓單價）活抓「均價同、區段漂移」"
+                               "之隱形缺口（均價層比對會漏、圍欄仍全綠）。")
                 except Exception as _e_fence:
                     st.warning(f"誠實圍欄表生成失敗（不影響引擎）：{_e_fence}")
 

@@ -1077,7 +1077,17 @@ def main():
             _vg1.append("snap.blocks 負擔尺度 欄名映射錯")
         if not ns["_is_uc9898"](_seed):
             _vg1.append("_is_uc9898 指紋誤判本案")
-        results.append(("W-G G.1 接線層 ctx-builder 同源（cb_by/cad+centerlines/gA/winners/β財務/blocks欄名/指紋）",
+        # G.1 補丁閘：ctx-builder 須主動鋪底 f3_total_burden_rate_from_finance（禁 UI 前置點擊、禁靜默 0.40）
+        #   值＝compute_total_burden_rate（β 快照）現算＝快照斷言錨 重劃總負擔率（0.40712387）。
+        _seed.pop("f3_total_burden_rate_from_finance", None)   # 抹去 seed 之既有值→證 ctx-builder 主動鋪底（複現 live 缺鍵）
+        _bctx2 = ns["_build_wf_ctx"](_seed, "0m", ns["__file__"])
+        _rate_seed = _bctx2["fake_st"].session_state.get("f3_total_burden_rate_from_finance")
+        _rate_anchor = float(snapshot["財務接線_v3"]["斷言錨"]["重劃總負擔率"])
+        if _rate_seed is None:
+            _vg1.append("ctx-builder 未鋪底 f3_total_burden_rate_from_finance（合約缺口未修）")
+        elif abs(float(_rate_seed) - _rate_anchor) > 1e-6:
+            _vg1.append(f"鋪底率 {_rate_seed} ≠ 快照斷言錨 {_rate_anchor}（>1e-6）")
+        results.append(("W-G G.1 接線層 ctx-builder 同源（cb_by/cad+centerlines/gA/winners/β財務/blocks欄名/指紋/率鋪底）",
                         not _vg1, _vg1))
     except Exception as _e_g1:
         import traceback

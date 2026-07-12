@@ -60,6 +60,7 @@ def main():
 
     ss = fake_st.session_state       # 含 run_step_g 寫入之 f3_corner_winners/f3L_corner_min_table/… ＋ build_ownership 之 t8_*
     seed = dict(ss)
+    seed.pop("f3_total_burden_rate_from_finance", None)   # 複現 live 缺鍵：證 _build_wf_ctx 主動鋪底（G.1 補丁）
     seed.update({
         "f3_G_values": sg["g_rows"],
         "f3_classified_blocks": list(cb_by.values()),
