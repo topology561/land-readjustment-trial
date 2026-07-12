@@ -7924,6 +7924,133 @@ def allocate_non_common_public_land(public_land_area_m2: float,
     }
 
 
+# ============ W-G G.1：§7 七級調配引擎接線層（單一真相源＝verify/wf_f0~f4；禁 fork）============
+# 裁定（KL 2026-07-12）：①範圍＝UC9898 複現（非本案旗標告知不硬跑）；
+# ②財務 ctx＝β 混源（live 幾何/宗地/Step-G ＋ 快照 財務接線_v3），加誠實圍欄。
+# ns＝app 真符號（禁 harvest()，會 re-exec app.py 再入）；缺鍵/缺符號一律 loud（no-silent-fallback）。
+_WF_NS_NAMES = [
+    "F3_CATEGORY_BURDEN", "calc_B_value", "calc_C_value", "calc_special_burden_total",
+    "solve_G_binary", "iterate_G_S", "rw_from_width", "get_min_lot_size",
+    "_select_pool_slot", "_projection_order", "_spatial_order_parcels_v2",
+    "alloc_normal_axis", "_block_strip",
+]
+
+
+def _wf_ns():
+    """引擎經 ns 呼叫之 13 app 真符號 dict（直取本模組 globals，非 harvest）。"""
+    g = globals()
+    ns = {}
+    for n in _WF_NS_NAMES:
+        if n not in g:
+            raise RuntimeError(f"🔴 七級調配接線：app 缺真符號 {n}（引擎單一真相源不完整）")
+        ns[n] = g[n]
+    return ns
+
+
+class _WFSessionShim:
+    """曝 .session_state（引擎唯一觸及之 fake_st 介面）；淺拷貝隔離、不污染 live st.session_state。
+    未知屬性回 no-op（鏡射 harness _FakeStreamlit，防引擎他路觸及）。"""
+    def __init__(self, ss_like):
+        object.__setattr__(self, "session_state", dict(ss_like))
+
+    def __getattr__(self, _name):
+        def _noop(*a, **k):
+            return None
+        return _noop
+
+
+def _wf_load_snapshot(app_file):
+    """β：財務 ctx 之凍結來源＝verify/case_params_UC9898.json（裁定②）。回傳完整 snapshot dict。"""
+    import os
+    import json
+    p = os.path.join(os.path.dirname(os.path.abspath(app_file)), "verify", "case_params_UC9898.json")
+    with open(p, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _build_wf_ctx(ss, tag, app_file=__file__):
+    """由 live session_state 組單一情境 wf 引擎 ctx（β：live 幾何/宗地/Step-G ＋ 快照財務）。
+    ss＝session_state-like dict（app 傳 st.session_state；harness +1 gate 傳 seed dict）。
+    tag∈{'0m','3.5m'}。缺鍵 loud。回傳引擎所需 14 欄 ctx。"""
+    def _need(k):
+        if k not in ss:
+            raise RuntimeError(f"🔴 七級調配接線：session 缺 {k}（Step G 未完成或未曝值？）")
+        return ss[k]
+
+    # cad：7 鍵 → 引擎單一 cad dict（**含 centerlines**，否則 wf_f3 STRADDLE 宗 KeyError）
+    cad = {
+        "front_lengths":        _need("f3_cad_front_lengths"),
+        "side_lengths_by_side": _need("f3_cad_side_lengths_by_side"),
+        "front_lines":          _need("f3_cad_front_lines"),
+        "side_lines_by_side":   ss.get("f3_cad_side_lines_by_side", {}) or {},
+        "alloc_dir_by_block":   ss.get("f3_cad_alloc_dir", {}) or {},
+        "centerlines":          ss.get("f3_manual_road_centerlines", {}) or {},
+    }
+
+    # cb_by：list → {label: blk}
+    cb_by = {b["label"]: b for b in _need("f3_classified_blocks")}
+
+    # snap：β 混源＝快照 財務接線_v3/global（凍結）＋ live blocks 幾何
+    snap_full = _wf_load_snapshot(app_file)
+    sb_rows = {r["街廓"]: r for r in _need("f3_sb_rows")}
+    depth_by = _need("f3_alloc_depth_by_label")
+    mw_by = _need("f3_min_width_by_label")
+    blocks = {}
+    for lbl in cb_by:
+        r = sb_rows.get(lbl)
+        if r is None:
+            continue  # 非可建築街廓（無臨街負擔列）：引擎僅讀可建築塊
+        blocks[lbl] = {
+            "正面": {"路寬_m": float(r["正面路寬(m)"]), "負擔尺度_輸入": float(r["正街尺度"]),
+                     "期望長度_m": float(r["正面長度(m)"]), "期望負擔面積_m2": float(r["正面面積(㎡)"])},
+            "左側": {"路寬_m": float(r["左側路寬(m)"]), "負擔尺度_輸入": float(r["左側尺度"]),
+                     "期望長度_m": float(r["左側長度(m)"]), "期望負擔面積_m2": float(r["左側面積(㎡)"])},
+            "右側": {"路寬_m": float(r["右側路寬(m)"]), "負擔尺度_輸入": float(r["右側尺度"]),
+                     "期望長度_m": float(r["右側長度(m)"]), "期望負擔面積_m2": float(r["右側面積(㎡)"])},
+            "街廓分配深度_m": float(depth_by.get(lbl, 0.0)),
+            "法定最小寬_m": float(mw_by.get(lbl, 0.0)),
+        }
+    snap = {"財務接線_v3": snap_full["財務接線_v3"], "global": snap_full["global"], "blocks": blocks}
+
+    return {
+        "ns": _wf_ns(),
+        "fake_st": _WFSessionShim(ss),
+        "cb_by": cb_by,
+        "cad": cad,
+        "snap": snap,
+        "omap": _need("t8_ownership_map"),
+        "build": _need("f3_build_parcels"),
+        "temp": _need("f3_temp_parcels"),
+        "params": _need("f3L_corner_min_table"),
+        "winners": _need("f3_corner_winners"),
+        "forced": _need("f3L_forced_offset"),
+        "setback": float(_need("f3L_setback_default")),
+        "gA": _need("f3_G_values"),
+        "poolA": _need("f3_wd2_pool_diag"),
+    }
+
+
+def _wf_tag_of(setback):
+    """退縮 float → 引擎情境 tag。硬對應 UC9898 雙情境；非 {0,3.5} 時 loud。"""
+    if abs(float(setback) - 0.0) < 1e-9:
+        return "0m"
+    if abs(float(setback) - 3.5) < 1e-9:
+        return "3.5m"
+    raise RuntimeError(f"🔴 七級調配：退縮 {setback} 非 UC9898 雙情境（0/3.5），引擎凍結錨不適用")
+
+
+def _is_uc9898(ss):
+    """裁定①：§7 引擎為 UC9898 凍結真相。以穩定指紋判本案（R1-R6 街廓 ＋ 33 歸戶群）。"""
+    try:
+        blocks = {b.get("label") for b in (ss.get("f3_classified_blocks") or [])}
+        groups = ss.get("t8_ownership_groups") or {}
+        temp = ss.get("f3_temp_parcels") or []
+        return ({"R1", "R2", "R3", "R4", "R5", "R6"} <= blocks
+                and len(groups) == 33 and len(temp) > 0)
+    except Exception:
+        return False
+
+
 # ============ 主程式 ============
 def main():
     st.title("🏗️ 市地重劃地價估算系統")
@@ -12825,6 +12952,8 @@ def main():
                 'right_side_new':    r.get('right_side_new', False),
             })
         sb = calc_special_burden_total(road_data, C_for_calc)
+        # W-G G.1：純加性曝值（供「七級調配」區 live 組 ctx；harvest 保留 main() 但不呼叫→零 diff）
+        st.session_state['f3_sb_rows'] = sb['rows']
 
         if sb['rows']:
             st.markdown("##### 📋 各街廓臨街地負擔計算")
@@ -12938,6 +13067,8 @@ def main():
                              if F3_CATEGORY_BURDEN.get(tp['街廓分類'], '') == '可建築土地'
                              # 🆕 V13 修正 #1：排除已整併之公設地（仍保留供視覺化）
                              and not tp.get('_merged_into_g', False)]
+            # W-G G.1：純加性曝值（供「七級調配」區 live 組 ctx）
+            st.session_state['f3_build_parcels'] = build_parcels
 
             if not build_parcels:
                 st.info("目前沒有可建築街廓之暫編地號，無法進行 G 值迭代。")
@@ -16368,6 +16499,107 @@ def main():
             _sync_areas_to_tabs()  # 連同四項面積一起同步
             st.success(f"✅ 已推送參數與 B={B_value:.6f} 至 財務分析（含四項面積同步至 預期開發分析法/地價區段分析）")
             st.rerun()
+
+        # ---------- W-G G.1：七級調配（§7 引擎接線；單一真相源＝verify/wf_f0~f4）----------
+        st.markdown("---")
+        st.markdown("#### 🔷 七級調配（§7 引擎）")
+        st.caption("單一真相源＝verify/wf_f0~f4；本區以 live session 注入呼叫**同一引擎模組**（禁 fork、禁重寫調配邏輯）。")
+        _wg_ss = st.session_state
+        if not _wg_ss.get('f3_G_values'):
+            st.info("ℹ️ 請先完成 **Step G（G 值計算）**，再執行七級調配。")
+        elif not _is_uc9898(_wg_ss):
+            st.warning(
+                "⚠️ §7 七級調配引擎為 **UC9898 本案凍結法定真相**（內含 67 項案例錨定斷言，如六格 G(Σa)、"
+                "SNAP_WAVG、楔形面積錨）。目前載入資料非 UC9898，引擎**不適用**、暫不執行（避免觸錨崩潰）。"
+                "通用化（去錨）列 **未來『泛化波』backlog**——引擎不得為 UI 妥協。")
+        else:
+            with st.expander("📌 誠實圍欄：財務 ctx 來源＝β 混源（live 幾何 ＋ 快照凍結財務）", expanded=True):
+                st.caption("裁定②（KL 2026-07-12）：live 幾何/宗地/Step-G 輸出 ＋ **快照 財務接線_v3**"
+                           "（verify/case_params_UC9898.json）。app live 財務值無法逐位複現 KL 授權精度"
+                           "（如總面積精確 34949.888 反推），故財務採快照凍結值；下表明示差異、非阻斷、禁靜默混源。")
+                try:
+                    _fin = _wf_load_snapshot(__file__)["財務接線_v3"]
+                    _live = {
+                        "重劃前均價(元/㎡)": _wg_ss.get('pre_land_price_sqm'),
+                        "重劃後均價(元/㎡)": _wg_ss.get('weighted_price_sqm'),
+                        "單位工程費(元/㎡)": _wg_ss.get('_sv_b_cost') or _wg_ss.get('b_cost'),
+                        "拆遷費(元/㎡)":     _wg_ss.get('_sv_k_cost') or _wg_ss.get('k_cost'),
+                        "行政費(元/㎡)":     _wg_ss.get('_sv_c_cost') or _wg_ss.get('c_cost'),
+                    }
+                    _snap_v = {
+                        "重劃前均價(元/㎡)": _fin["重劃前平均地價_元每m2"],
+                        "重劃後均價(元/㎡)": _fin["重劃後平均地價_元每m2"],
+                        "單位工程費(元/㎡)": _fin["單位工程費_元每m2"],
+                        "拆遷費(元/㎡)":     _fin["拆遷費_元每m2"],
+                        "行政費(元/㎡)":     _fin["行政費_元每m2"],
+                    }
+                    _fence_rows = []
+                    for _k, _sv in _snap_v.items():
+                        _lv = _live.get(_k)
+                        if _lv is None:
+                            _d = "— (app 未提供)"
+                        elif abs(float(_lv) - float(_sv)) < 1e-6:
+                            _d = "✅ 一致"
+                        else:
+                            _d = f"⚠️ 差異 (live {float(_lv):,.4f})"
+                        _fence_rows.append({"項目": _k, "快照凍結值(採用)": f"{float(_sv):,.4f}",
+                                            "app live": ("—" if _lv is None else f"{float(_lv):,.4f}"), "狀態": _d})
+                    _fence_rows.append({"項目": "重劃區總面積(㎡)",
+                                        "快照凍結值(採用)": f"{float(_fin['重劃區總面積_m2_精確']):,.3f}（反推·B/C 分母）",
+                                        "app live": "≈34950 (DXF/輸入)", "狀態": "⚠️ 反推精確值 app 無 live 源"})
+                    _fence_rows.append({"項目": "貸款利息(元)", "快照凍結值(採用)": f"{int(_fin['貸款利息_元']):,}",
+                                        "app live": "NPV×1e4 (精度較粗)", "狀態": "⚠️ 模型/精度不同源"})
+                    st.dataframe(pd.DataFrame(_fence_rows), use_container_width=True, hide_index=True)
+                    st.caption("🔒 全節凍結採用：重劃區總面積_m2_精確、後街廓/前區段面積單價、原地號_區段 等 財務接線_v3。")
+                except Exception as _e_fence:
+                    st.warning(f"誠實圍欄表生成失敗（不影響引擎）：{_e_fence}")
+
+            if st.button("🔷 執行七級調配（wf_f0 → f4 全鏈）", key="wg_run_seven", type="primary"):
+                try:
+                    import sys as _sys
+                    import os as _os
+                    _vdir = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "verify")
+                    if _vdir not in _sys.path:
+                        _sys.path.insert(0, _vdir)
+                    import wf_f0 as _wf0
+                    import wf_f1 as _wf1
+                    import wf_f2 as _wf2
+                    import wf_f3 as _wf3
+                    import wf_f4 as _wf4
+                    with st.spinner("執行七級調配（f0→f4 全鏈；含 7-5 最佳化與終態整形）…"):
+                        _tag = _wf_tag_of(_wg_ss['f3L_setback_default'])
+                        _cbt = {_tag: _build_wf_ctx(_wg_ss, _tag)}
+                        _f0r = _wf0.compute(_cbt)
+                        _wf1.compute(_cbt, _f0r)
+                        _f2r = _wf2.compute(_cbt, _f0r)
+                        _f3r = _wf3.compute(_cbt, _f2r)
+                        _f4r = _wf4.compute(_cbt, _f0r, _f2r, _f3r)
+                    _wg_ss['f3_wg_f4'] = _f4r[_tag]
+                    _wg_ss['f3_wg_tag'] = _tag
+                    st.success(f"✅ 七級調配完成（f0→f4 全鏈；情境 {_tag}）")
+                except Exception as _e_wg:
+                    import traceback as _tb
+                    st.error(f"🔴 七級調配停機（引擎斷言/合約）：{_e_wg}")
+                    st.code(_tb.format_exc()[-1500:])
+
+            _f4o = _wg_ss.get('f3_wg_f4')
+            if _f4o:
+                st.markdown(f"##### 終態摘要（情境 {_wg_ss.get('f3_wg_tag', '')}）")
+                _wtabs = st.tabs(["7-4 三級調配", "7-5 雙出口", "池終態", "終態整形", "33 群總決算"])
+                with _wtabs[0]:
+                    st.dataframe(pd.DataFrame(_f4o.get("conv_rows", [])), use_container_width=True, hide_index=True)
+                with _wtabs[1]:
+                    st.dataframe(pd.DataFrame(_f4o.get("exit_rows", [])), use_container_width=True, hide_index=True)
+                    st.caption("意思決定項（§7-5 雙出口／增配>0／拆單候選）**照旗標呈現、不自動裁**（合議制作業介面覆寫）。")
+                with _wtabs[2]:
+                    st.dataframe(pd.DataFrame(_f4o.get("pool_rows", [])), use_container_width=True, hide_index=True)
+                    st.caption("池三則：各塊 0 或 ≥MinA。")
+                with _wtabs[3]:
+                    st.dataframe(pd.DataFrame(_f4o.get("reshape_rows", [])), use_container_width=True, hide_index=True)
+                with _wtabs[4]:
+                    st.dataframe(pd.DataFrame(_f4o.get("ledger_rows", [])), use_container_width=True, hide_index=True)
+                st.caption("🖼️ 逐代圖層切換／池·碎片·雙出口 GIS 視覺化為 **G.2**；本區＝引擎接線＋表格終態。"
+                           "雙路同源終驗（app live vs wf/f4 baseline 逐格）為 **G.3**。")
 
 if __name__ == "__main__":
     main()

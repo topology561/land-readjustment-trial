@@ -1023,6 +1023,67 @@ def main():
         import traceback
         results.append(("W-F F.4", False, [f"[F.4] {_e_f4}", traceback.format_exc()[-700:]]))
 
+    # ── W-G G.1：§7 引擎接線層 ctx-builder 同源閘 ──
+    #   證 app `_build_wf_ctx`（harvested）由 session_state 忠實組出引擎所需 ctx。
+    #   seed＝native _ctx["0m"] 反投影＋run_step_g 寫入 fake_st 之鍵；f3_sb_rows 用合成列
+    #   （測 snap.blocks 欄名映射、去循環：非取自快照/native）。全鏈 f0→f4 終態對拍留 G.3。
+    print("… W-G G.1 接線層 ctx-builder 同源（app _build_wf_ctx vs native _ctx；0m）")
+    try:
+        _nat = _ctx["0m"]
+        _cad = _nat["cad"]
+        _fss = fake_st.session_state
+        _lbl0 = next(iter(_nat["cb_by"]))
+        _seed = {
+            "f3_G_values": _nat["gA"], "f3_corner_winners": _nat["winners"],
+            "f3L_corner_min_table": _nat["params"], "f3L_forced_offset": _nat["forced"],
+            "f3_classified_blocks": list(_nat["cb_by"].values()), "f3_temp_parcels": _nat["temp"],
+            "t8_ownership_map": _nat["omap"], "t8_ownership_groups": _fss.get("t8_ownership_groups", {}),
+            "f3_wd2_pool_diag": _nat["poolA"], "f3_build_parcels": _nat["build"],
+            "f3_alloc_depth_by_label": _fss["f3_alloc_depth_by_label"],
+            "f3_min_width_by_label": _fss["f3_min_width_by_label"],
+            "f3L_setback_default": _nat["setback"],
+            "f3_cad_front_lengths": _cad["front_lengths"],
+            "f3_cad_side_lengths_by_side": _cad["side_lengths_by_side"],
+            "f3_cad_front_lines": _cad["front_lines"],
+            "f3_cad_side_lines_by_side": _cad.get("side_lines_by_side", {}),
+            "f3_cad_alloc_dir": _cad.get("alloc_dir_by_block", {}),
+            "f3_manual_road_centerlines": _cad.get("centerlines", {}),
+            "f3_sb_rows": [{"街廓": _lbl0,
+                            "正面路寬(m)": 12.0, "正街尺度": 0.0, "正面長度(m)": 87.3, "正面面積(㎡)": 0.0,
+                            "左側路寬(m)": 8.0, "左側尺度": 1.0, "左側長度(m)": 33.2, "左側面積(㎡)": 33.2,
+                            "右側路寬(m)": 8.0, "右側尺度": 1.0, "右側長度(m)": 33.3, "右側面積(㎡)": 33.3}],
+        }
+        _bctx = ns["_build_wf_ctx"](_seed, "0m", ns["__file__"])
+        _vg1 = []
+        if set(ns["_WF_NS_NAMES"]) - set(_bctx["ns"]):
+            _vg1.append("ns 13 真符號不全")
+        if not isinstance(_bctx["cb_by"], dict) or set(_bctx["cb_by"]) != set(_nat["cb_by"]):
+            _vg1.append("cb_by list→dict 不符")
+        if _bctx["cad"].get("centerlines") != _cad.get("centerlines"):
+            _vg1.append("cad centerlines 漏/不符")
+        if set(_bctx["cad"]["front_lengths"]) != set(_cad["front_lengths"]):
+            _vg1.append("cad front_lengths 鍵不符")
+        if _bctx["gA"] != _nat["gA"]:
+            _vg1.append("gA 不符")
+        if _bctx["winners"] != _nat["winners"]:
+            _vg1.append("winners 不符")
+        if _bctx["snap"]["財務接線_v3"] != snapshot["財務接線_v3"]:
+            _vg1.append("β 財務源 ≠ 快照 財務接線_v3")
+        if len(_bctx["build"]) != len(_nat["build"]) or len(_bctx["temp"]) != len(_nat["temp"]):
+            _vg1.append("build/temp 數不符")
+        _sb0 = _bctx["snap"]["blocks"].get(_lbl0, {})
+        if not (_sb0.get("正面", {}).get("負擔尺度_輸入") == 0.0
+                and _sb0.get("左側", {}).get("負擔尺度_輸入") == 1.0):
+            _vg1.append("snap.blocks 負擔尺度 欄名映射錯")
+        if not ns["_is_uc9898"](_seed):
+            _vg1.append("_is_uc9898 指紋誤判本案")
+        results.append(("W-G G.1 接線層 ctx-builder 同源（cb_by/cad+centerlines/gA/winners/β財務/blocks欄名/指紋）",
+                        not _vg1, _vg1))
+    except Exception as _e_g1:
+        import traceback
+        results.append(("W-G G.1 接線層 ctx-builder 同源", False,
+                        [f"[G.1] {_e_g1}", traceback.format_exc()[-700:]]))
+
     print("=" * 60)
     allok = True
     for name, ok, viol in results:
