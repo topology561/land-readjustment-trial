@@ -2252,6 +2252,8 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
                 text=f"原地號 {tp.get('原地號', '')}",
                 showlegend=False,
                 name=f"_clk_{tp.get('原地號', '')}",
+                # 🚧 點選白名單（前瞻鉤·現 inert）：以暫編地號綁定；待升級 streamlit-plotly-events 轉發 customdata 方生效（見 #18）
+                customdata=[f"__clk__{tp.get('暫編地號', '')}"] * len(xs_c),
             ))
 
     # ─── 任務二：高亮指定暫編地號（亮紅 + 粗邊框 + 質心標記 + 自動縮放）───
@@ -2352,6 +2354,7 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
             marker=dict(size=4, color='rgba(0,0,0,0.4)'),
             hoverinfo='text', text=_ghost_hover_text,
             name='_ghost_hover', showlegend=False,
+            customdata=['__ghost__'] * len(_ghost_hover_pts_x),   # 🆕 ghost 白名單標記（消費端顯式丟棄）
         ))
 
     fig.update_layout(
@@ -3086,6 +3089,7 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
             hoverinfo='text',
             text=f"暫編 {tp.get('暫編地號','')}<br>原地號 {tp.get('原地號','')}<br>面積 {tp.get('分攤登記面積_m2', tp.get('面積_m2', 0)):.2f} ㎡",
             showlegend=False, name=f"_clk_{tp.get('暫編地號','')}",
+            customdata=[f"__clk__{tp.get('暫編地號', '')}"] * len(xs_t),   # 🚧 前瞻鉤·現 inert（0.0.6 不轉發 customdata，見 #18）
         ))
         valid_clk_parcels.append(tp)
 
@@ -3122,6 +3126,7 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
             marker=dict(size=4, color='rgba(0,0,0,0.4)'),
             hoverinfo='text', text=_ghost_text_u,
             name='_ghost_hover_unified', showlegend=False,
+            customdata=['__ghost__'] * len(_ghost_pts_x_u),   # 🆕 ghost 白名單標記（消費端顯式丟棄）
         ))
 
     fig.update_layout(
@@ -12444,14 +12449,23 @@ def main():
                 cn = ev.get('curveNumber')
                 cx, cy = ev.get('x'), ev.get('y')
 
-                # ── 點擊解析：優先用 curveNumber 對到 click target trace；
-                #               否則用 x/y + shapely 後援 ──
+                # ── 點擊解析（KL 2026-07-13 活抓·根治：與渲染 z 序解耦）──
+                #   **當前有效根治**＝curveNumber 範圍命中 → cn=None 才 x/y shapely 後援 → cn 指向非點擊靶 trace
+                #   （碎屑 marker/歸戶填色 z-top，其 ev.x/y 為 trace 之點非點擊位置）**丟棄**、禁靠 z 序猜。
+                #   🚧 customdata 白名單分支＝**前瞻鉤·現 inert**：streamlit-plotly-events 0.0.6 前端不轉發
+                #      customdata（ev.get('customdata') 恆 None）→ 待升級套件方生效（見 failure-archaeology #18）。
                 _matched = None
-                if cn is not None and _clk_offset <= cn < _clk_offset + len(_clk_parcels):
+                _cd_u = ev.get('customdata')
+                _cd0_u = (_cd_u[0] if isinstance(_cd_u, (list, tuple)) and _cd_u else _cd_u)
+                if isinstance(_cd0_u, str) and _cd0_u.startswith('__clk__'):
+                    _pid_u = _cd0_u[len('__clk__'):]
+                    _matched = next((tp for tp in _clk_parcels
+                                     if str(tp.get('暫編地號', '')) == _pid_u), None)
+                elif cn is not None and _clk_offset <= cn < _clk_offset + len(_clk_parcels):
                     _matched = _clk_parcels[cn - _clk_offset]
-                elif cx is not None and cy is not None:
-                    # 後援：可能點到非 click-target trace（如歸戶填色），改 shapely 解析
+                elif cn is None and cx is not None and cy is not None:
                     _matched = _resolve_clicked_parcel(cx, cy, temp_parcels)
+                # else：cn 指向非點擊靶 trace → 丟棄（_matched=None，下方動作分流會提示重點）
 
                 # ── 動作分流 ──
                 if _action_now == '🔍 瀏覽':
@@ -12876,8 +12890,12 @@ def main():
                         cx_click = ev.get('x')
                         cy_click = ev.get('y')
                         matched_parcel = None
+                        # 🚨 對齊修（KL 2026-07-13 活抓）：須與圖面點擊靶 trace 同集——
+                        #   點擊靶排除 ghost（2239）＋len<3；消費端 valid_parcels 亦須排 ghost，
+                        #   否則 curveNumber→index 錯位（ghost 前置使映射跳位）。
                         valid_parcels = [tp for tp in temp_parcels
-                                         if len((tp.get('polygon_coords') or [])) >= 3]
+                                         if not tp.get('_is_ghost_sliver', False)
+                                         and len((tp.get('polygon_coords') or [])) >= 3]
                         # 圖層順序：街廓填色(N)→ 紅線(1)→ 區段分群(1+uniq_zones)→ 點擊靶(N_parcels)
                         # 🆕 Task E：依 visible_layers 動態調整 offset
                         _vl_off = st.session_state.get('f3_visible_layers', {}) or {}
@@ -12888,16 +12906,28 @@ def main():
                         n_uniq_zones = len({v for v in _zmap.values() if v})
                         n_zone_traces = (1 + n_uniq_zones) if _show_cad_off else 0
                         click_offset = n_blocks + n_red_line + n_zone_traces
+                        # 根治（KL 2026-07-13 localhost 活抓）：點選判定與渲染 z 序**解耦**。
+                        #   **當前有效**＝curveNumber 範圍命中（valid_parcels 已同排 ghost、與圖面點擊靶同源）；
+                        #   cn 指向 ghost/區段等 z-top trace 時，其 ev.x/y 為**該 trace 之點**非點擊位置 → **丟棄**、
+                        #   禁用其 x/y 做 shapely（否則跳位 ghost 歸屬主體）；cn=None 才用 x/y 後援。
+                        #   🚧 _is_clicktarget（customdata 白名單）分支＝**前瞻鉤·現 inert**（0.0.6 不轉發 customdata，見 #18）。
+                        _cd = ev.get('customdata')
+                        _cd0 = (_cd[0] if isinstance(_cd, (list, tuple)) and _cd else _cd)
+                        _is_clicktarget = (isinstance(_cd0, str) and _cd0.startswith('__clk__'))
                         if cn is not None and click_offset <= cn < click_offset + len(valid_parcels):
                             matched_parcel = valid_parcels[cn - click_offset]
-                        else:
-                            # 備援：x/y + shapely
+                        elif _is_clicktarget:
+                            _pid_cd = _cd0[len('__clk__'):]
+                            matched_parcel = next((tp for tp in valid_parcels
+                                                   if str(tp.get('暫編地號', '')) == _pid_cd), None)
+                        elif cn is None:
+                            # 僅無 trace 資訊時才用 x/y shapely 後援
                             try:
                                 from shapely.geometry import Point as _SPoint, Polygon as _SPoly
                                 if cx_click is not None and cy_click is not None:
                                     pt = _SPoint(float(cx_click), float(cy_click))
                                     best_area = None
-                                    for tp in temp_parcels:
+                                    for tp in valid_parcels:
                                         coords = tp.get('polygon_coords') or []
                                         if len(coords) < 3:
                                             continue
@@ -12912,6 +12942,9 @@ def main():
                                             continue
                             except Exception:
                                 pass
+                        else:
+                            # cn 指向非點擊靶 trace（碎屑/區段 z-top）→ 丟棄、提示重點（禁靠 z 序猜）
+                            st.toast("👆 點到非地號圖層（碎屑/區段等），請點在地號多邊形上再試", icon="⚠️")
                         if matched_parcel is not None:
                             _zmap[matched_parcel['原地號']] = current_zone
                             st.session_state['f3_parcel_zones'] = _zmap
