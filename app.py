@@ -8051,6 +8051,225 @@ def _is_uc9898(ss):
         return False
 
 
+# ============ W-G G.2：GIS 終態顯示（純呈現層：只讀引擎曝出幾何，禁重算；座標→plotly 為明許變換）============
+_WG_GEN_LABELS = [
+    ("v3", "v3 配地基準"),
+    ("f0", "f0 同街廓合併＋梯3釋池"),
+    ("f1", "f1 R1楔形整形"),
+    ("f2", "f2 跨街廓a′"),
+    ("f3", "f3 公設調配"),
+    ("E",  "E 終態（7-5最佳化＋終態整形）"),
+]
+_WG_C_ALLOC = "#2CA02C"     # 私人分配（NEW_PARCEL 綠慣例）
+_WG_C_POOL = "#F5C400"      # 池/抵費地（OFFSET_LAND 黃慣例）
+_WG_C_RESHAPE = "#FF7F0E"   # 整形新形（橙）
+_WG_C_WEDGE = "#D62728"     # 楔形（紅）
+_WG_C_OTHER = "#B0BEC5"     # 其他（孤立公設/現金補償等）
+_WG_GID_PALETTE = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD',
+                   '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF']
+
+
+def _wg_add_poly(fig, coords, fill_color, hover, line_color="#455A64",
+                 width=1.0, dash=None, opacity=0.55, show_fill=True):
+    """單一多邊形 trace（座標→plotly 變換；不動數值）。"""
+    import plotly.graph_objects as _go
+    xs = [float(p[0]) for p in coords] + [float(coords[0][0])]
+    ys = [float(p[1]) for p in coords] + [float(coords[0][1])]
+    fig.add_trace(_go.Scatter(
+        x=xs, y=ys, mode="lines",
+        fill=("toself" if show_fill else None), fillcolor=fill_color,
+        opacity=opacity, line=dict(color=line_color, width=width, dash=dash),
+        hoverinfo="text", text=hover, showlegend=False))
+
+
+def _wg_block_outlines(fig, cb_by):
+    for lbl, b in (cb_by or {}).items():
+        vs = b.get("vertices") or []
+        if len(vs) >= 3:
+            _wg_add_poly(fig, vs, None, f"街廓 {lbl}（{b.get('category', '')}）",
+                         line_color="#9E9E9E", width=1.0, opacity=1.0, show_fill=False)
+
+
+def _wg_fig_layout(fig, title):
+    fig.update_layout(title=title, height=560, margin=dict(l=10, r=10, t=48, b=10),
+                      plot_bgcolor="white", showlegend=True,
+                      legend=dict(orientation="h", yanchor="bottom", y=1.0, x=0))
+    fig.update_yaxes(scaleanchor="x", scaleratio=1, showgrid=False, zeroline=False,
+                     showticklabels=False)
+    fig.update_xaxes(showgrid=False, zeroline=False, showticklabels=False)
+    return fig
+
+
+def _wg_legend_stub(fig, name, color, dash=None):
+    import plotly.graph_objects as _go
+    fig.add_trace(_go.Scatter(x=[None], y=[None], mode="lines", name=name,
+                              line=dict(color=color, width=6, dash=dash)))
+
+
+def _wg_gen_figure(rows, cb_by, reshape_polys=None, wedge_coords=None,
+                   title="", compare_mode=False):
+    """世代地圖。只讀 g_rows.cut_coords／整形新形座標。
+    交辦②去重：整形宗以新形取代原形（呈現層去重、非重算）；compare_mode=True 時被取代
+    之原形改畫虛線外框（前後對照用），False 時不畫（防殘影）。"""
+    import plotly.graph_objects as _go
+    fig = _go.Figure()
+    _wg_block_outlines(fig, cb_by)
+    rp = dict(reshape_polys or {})
+    drawn = set()
+    for r in rows or []:
+        pid = r.get("暫編地號", "")
+        if pid in drawn:
+            continue
+        side = str(r.get("推進側別", "") or "")
+        orig = r.get("cut_coords") or []
+        hover_base = (f"{pid}｜原 {r.get('原地號', '')}｜{r.get('所屬街廓', '')}"
+                      f"｜G={r.get('G(㎡)', '')}㎡｜{side}")
+        if pid in rp:
+            new_coords = rp.pop(pid)
+            if compare_mode and len(orig) >= 3:
+                _wg_add_poly(fig, orig, None, hover_base + "｜整形前原形",
+                             line_color="#78909C", width=1.2, dash="dot",
+                             opacity=1.0, show_fill=False)
+            if len(new_coords) >= 3:
+                _wg_add_poly(fig, new_coords, _WG_C_RESHAPE,
+                             hover_base + "｜整形新形", opacity=0.65)
+            drawn.add(pid)
+            continue
+        if len(orig) < 3:
+            continue
+        if side == "抵費地":
+            color = _WG_C_POOL
+        elif side in ("left", "right"):
+            color = _WG_C_ALLOC
+        else:
+            color = _WG_C_OTHER
+        _wg_add_poly(fig, orig, color, hover_base)
+        drawn.add(pid)
+    for pid, coords in rp.items():   # 僅存在於整形集之宗（防漏）
+        if len(coords) >= 3:
+            _wg_add_poly(fig, coords, _WG_C_RESHAPE, f"{pid}｜整形新形", opacity=0.65)
+    if wedge_coords and len(wedge_coords) >= 3:
+        _wg_add_poly(fig, wedge_coords, None, "R1 楔形（f1 消滅對象）",
+                     line_color=_WG_C_WEDGE, width=2.0, dash="dash",
+                     opacity=1.0, show_fill=False)
+    _wg_legend_stub(fig, "私人分配", _WG_C_ALLOC)
+    _wg_legend_stub(fig, "池/抵費地", _WG_C_POOL)
+    if reshape_polys:
+        _wg_legend_stub(fig, "整形新形", _WG_C_RESHAPE)
+    if wedge_coords:
+        _wg_legend_stub(fig, "楔形", _WG_C_WEDGE, dash="dash")
+    return _wg_fig_layout(fig, title)
+
+
+def _wg_block_centroid(cb_by, lbl):
+    b = (cb_by or {}).get(lbl) or {}
+    c = b.get("centroid")
+    if c and len(c) >= 2:
+        return float(c[0]), float(c[1])
+    vs = b.get("vertices") or []
+    if not vs:
+        return None
+    return (sum(float(p[0]) for p in vs) / len(vs),
+            sum(float(p[1]) for p in vs) / len(vs))
+
+
+def _wg_theme_pool_flow(pool_rows, conv_rows, cb_by, title):
+    """池流向：各塊 池_D→池_E3 差額標注 ＋ 源塊→目標塊 箭頭（conv_rows 只讀）。"""
+    import plotly.graph_objects as _go
+    fig = _go.Figure()
+    _wg_block_outlines(fig, cb_by)
+    for pr in pool_rows or []:
+        lbl = pr.get("街廓", "")
+        ct = _wg_block_centroid(cb_by, lbl)
+        if not ct:
+            continue
+        d = float(pr.get("池_D(㎡)", 0) or 0)
+        e = float(pr.get("池_E3整形後(㎡)", 0) or 0)
+        fig.add_annotation(x=ct[0], y=ct[1],
+                           text=(f"<b>{lbl}</b><br>池 {d:,.1f}→{e:,.1f}"
+                                 f"<br>Δ{e - d:+,.1f}｜{pr.get('三則', '')}"),
+                           showarrow=False, font=dict(size=11),
+                           bgcolor="rgba(255,255,255,0.75)")
+    for cr in conv_rows or []:
+        src, tgt = cr.get("源塊", ""), cr.get("目標塊", "")
+        if not src or not tgt or src == tgt:
+            continue
+        p1, p2 = _wg_block_centroid(cb_by, src), _wg_block_centroid(cb_by, tgt)
+        if not p1 or not p2:
+            continue
+        fig.add_annotation(x=p2[0], y=p2[1], ax=p1[0], ay=p1[1],
+                           xref="x", yref="y", axref="x", ayref="y",
+                           showarrow=True, arrowhead=3, arrowwidth=1.4,
+                           arrowcolor="#1565C0", opacity=0.7)
+    _wg_legend_stub(fig, "藍箭頭＝a′ 源塊→目標塊", "#1565C0")
+    return _wg_fig_layout(fig, title)
+
+
+def _wg_gid_of_row(r, omap):
+    o = str(r.get("原地號", "") or "")
+    if o.startswith("74·"):
+        return o[3:].split("@")[0]
+    return (omap or {}).get(o)
+
+
+def _wg_theme_exit(rows_E, exit_rows, cb_by, omap, title):
+    """7-5 雙出口：增配/≥½配地/<½補償 著色（旗標明確標記，非自動裁語氣）。"""
+    import plotly.graph_objects as _go
+    exit_by_gid = {str(x.get("歸戶", "")): x for x in (exit_rows or [])}
+    fig = _go.Figure()
+    _wg_block_outlines(fig, cb_by)
+    for r in rows_E or []:
+        coords = r.get("cut_coords") or []
+        if len(coords) < 3:
+            continue
+        gid = _wg_gid_of_row(r, omap)
+        x = exit_by_gid.get(str(gid))
+        if x is None:
+            _wg_add_poly(fig, coords, "#ECEFF1",
+                         f"{r.get('暫編地號', '')}（非 7-5 標的）", opacity=0.35)
+            continue
+        out = str(x.get("出口", ""))
+        if "增配" in out:
+            color, tagx = _WG_C_RESHAPE, "🚩增配>0（意思決定·未裁）"
+        elif "現金補償" in out:
+            color, tagx = _WG_C_WEDGE, "🚩<½ 現金補償（§53 意思決定·未裁）"
+        else:
+            color, tagx = _WG_C_ALLOC, "≥½ 配地 G(a′)"
+        _wg_add_poly(fig, coords, color,
+                     f"{r.get('暫編地號', '')}｜歸戶 {gid}｜{out}｜{tagx}"
+                     f"｜{x.get('意思決定', '') or '—'}", opacity=0.6)
+    _wg_legend_stub(fig, "增配§31-1-2（旗標）", _WG_C_RESHAPE)
+    _wg_legend_stub(fig, "≥½ 配地", _WG_C_ALLOC)
+    _wg_legend_stub(fig, "<½ 現金補償（旗標）", _WG_C_WEDGE)
+    return _wg_fig_layout(fig, title)
+
+
+def _wg_theme_ledger(rows_E, ledger_rows, cb_by, omap, title):
+    """33 群總決算：歸戶著色（gid palette 慣例）＋ hover 應走/實走鏈。"""
+    import plotly.graph_objects as _go
+    led = {str(x.get("歸戶", "")): x for x in (ledger_rows or [])}
+    gids = sorted(led)
+    cmap = {g: _WG_GID_PALETTE[i % len(_WG_GID_PALETTE)] for i, g in enumerate(gids)}
+    fig = _go.Figure()
+    _wg_block_outlines(fig, cb_by)
+    for r in rows_E or []:
+        coords = r.get("cut_coords") or []
+        if len(coords) < 3:
+            continue
+        gid = str(_wg_gid_of_row(r, omap) or "")
+        L = led.get(gid)
+        if L is None:
+            _wg_add_poly(fig, coords, "#ECEFF1",
+                         f"{r.get('暫編地號', '')}（池/非歸戶）", opacity=0.3)
+            continue
+        _wg_add_poly(
+            fig, coords, cmap.get(gid, _WG_C_OTHER),
+            f"{r.get('暫編地號', '')}｜<b>{gid}</b>（{L.get('軌別', '')}·梯{L.get('梯次', '')}）"
+            f"<br>應走：{L.get('應走', '')}<br>實走：{L.get('實走鏈', '')}"
+            f"<br>歸因：{L.get('歸因', '')}", opacity=0.6)
+    return _wg_fig_layout(fig, title)
+
+
 # ============ 主程式 ============
 def main():
     st.title("🏗️ 市地重劃地價估算系統")
@@ -16570,12 +16789,26 @@ def main():
                         _tag = _wf_tag_of(_wg_ss['f3L_setback_default'])
                         _cbt = {_tag: _build_wf_ctx(_wg_ss, _tag)}
                         _f0r = _wf0.compute(_cbt)
-                        _wf1.compute(_cbt, _f0r)
+                        _f1r = _wf1.compute(_cbt, _f0r)
                         _f2r = _wf2.compute(_cbt, _f0r)
                         _f3r = _wf3.compute(_cbt, _f2r)
                         _f4r = _wf4.compute(_cbt, _f0r, _f2r, _f3r)
                     _wg_ss['f3_wg_f4'] = _f4r[_tag]
                     _wg_ss['f3_wg_tag'] = _tag
+                    # G.2：逐代圖層資料（只讀引擎曝出之原始列/新形座標；禁重算）
+                    _e_resh = {}
+                    for _blk_p in (_f4r[_tag].get("reshape_polys") or {}).values():
+                        _e_resh.update(_blk_p)
+                    _wg_ss['f3_wg_gens'] = {
+                        "v3": {"rows": _cbt[_tag]["gA"]},
+                        "f0": {"rows": _f0r[_tag]["sgB_rows"]},
+                        "f1": {"rows": _f0r[_tag]["sgB_rows"],
+                               "reshape_polys": _f1r[_tag]["reshape_polys"],
+                               "wedge": _f1r[_tag]["wedge_coords"]},
+                        "f2": {"rows": _f2r[_tag]["sgC_rows"]},
+                        "f3": {"rows": _f3r[_tag]["sgD_rows"]},
+                        "E":  {"rows": _f4r[_tag]["sgE_rows"], "reshape_polys": _e_resh},
+                    }
                     st.success(f"✅ 七級調配完成（f0→f4 全鏈；情境 {_tag}）")
                 except Exception as _e_wg:
                     import traceback as _tb
@@ -16584,21 +16817,69 @@ def main():
 
             _f4o = _wg_ss.get('f3_wg_f4')
             if _f4o:
-                st.markdown(f"##### 終態摘要（情境 {_wg_ss.get('f3_wg_tag', '')}）")
+                _wg_tag_disp = _wg_ss.get('f3_wg_tag', '')
+                _wg_gens = _wg_ss.get('f3_wg_gens') or {}
+                _wg_cb = {b["label"]: b for b in (_wg_ss.get("f3_classified_blocks") or [])}
+                _wg_omap = _wg_ss.get('t8_ownership_map') or {}
+
+                # ---- G.2 ①：逐代圖層切換（語意標籤；純呈現、只讀引擎曝出幾何） ----
+                st.markdown(f"##### 🗺️ 逐代圖層（情境 {_wg_tag_disp}）")
+                _gen_disp = st.radio("世代", [lb for _, lb in _WG_GEN_LABELS],
+                                     horizontal=True, key="wg_gen_sel",
+                                     label_visibility="collapsed")
+                _gen_key = next(k for k, lb in _WG_GEN_LABELS if lb == _gen_disp)
+                _gd = _wg_gens.get(_gen_key)
+                if _gd:
+                    st.plotly_chart(
+                        _wg_gen_figure(_gd.get("rows"), _wg_cb,
+                                       reshape_polys=_gd.get("reshape_polys"),
+                                       wedge_coords=_gd.get("wedge"),
+                                       title=_gen_disp,
+                                       compare_mode=(_gen_key == "f1")),
+                        use_container_width=True)
+                else:
+                    st.info("ℹ️ 請重新執行七級調配以生成逐代圖層資料。")
+
+                # ---- G.2 ③：五表與圖聯動 ----
+                st.markdown("##### 終態摘要（五表＋專題圖）")
                 _wtabs = st.tabs(["7-4 三級調配", "7-5 雙出口", "池終態", "終態整形", "33 群總決算"])
+                _rows_E = (_wg_gens.get("E") or {}).get("rows") or []
                 with _wtabs[0]:
+                    st.plotly_chart(
+                        _wg_theme_pool_flow(_f4o.get("pool_rows", []), _f4o.get("conv_rows", []),
+                                            _wg_cb, "池流向（各塊 池_D→池_E3 差額＋a′ 源→目標）"),
+                        use_container_width=True)
                     st.dataframe(pd.DataFrame(_f4o.get("conv_rows", [])), use_container_width=True, hide_index=True)
                 with _wtabs[1]:
+                    st.plotly_chart(
+                        _wg_theme_exit(_rows_E, _f4o.get("exit_rows", []), _wg_cb, _wg_omap,
+                                       "7-5 雙出口（🚩＝意思決定旗標·不自動裁）"),
+                        use_container_width=True)
                     st.dataframe(pd.DataFrame(_f4o.get("exit_rows", [])), use_container_width=True, hide_index=True)
-                    st.caption("意思決定項（§7-5 雙出口／增配>0／拆單候選）**照旗標呈現、不自動裁**（合議制作業介面覆寫）。")
+                    st.caption("意思決定項（§7-5 雙出口／增配>0／§53-2 放棄／拆單候選）**照旗標呈現、不自動裁**（合議制作業介面覆寫）。")
                 with _wtabs[2]:
+                    st.plotly_chart(
+                        _wg_gen_figure(_rows_E, _wg_cb,
+                                       title="池終態（黃＝池/抵費地；池三則：各塊 0 或 ≥MinA）"),
+                        use_container_width=True)
                     st.dataframe(pd.DataFrame(_f4o.get("pool_rows", [])), use_container_width=True, hide_index=True)
-                    st.caption("池三則：各塊 0 或 ≥MinA。")
                 with _wtabs[3]:
+                    _f1d = _wg_gens.get("f1") or {}
+                    st.plotly_chart(
+                        _wg_gen_figure(_f1d.get("rows"), _wg_cb,
+                                       reshape_polys=_f1d.get("reshape_polys"),
+                                       wedge_coords=_f1d.get("wedge"),
+                                       title="碎片與整形（虛線＝整形前原形、橙＝新形、紅虛線＝楔形）",
+                                       compare_mode=True),
+                        use_container_width=True)
                     st.dataframe(pd.DataFrame(_f4o.get("reshape_rows", [])), use_container_width=True, hide_index=True)
                 with _wtabs[4]:
+                    st.plotly_chart(
+                        _wg_theme_ledger(_rows_E, _f4o.get("ledger_rows", []), _wg_cb, _wg_omap,
+                                         "33 群總決算（歸戶著色；hover＝應走/實走鏈）"),
+                        use_container_width=True)
                     st.dataframe(pd.DataFrame(_f4o.get("ledger_rows", [])), use_container_width=True, hide_index=True)
-                st.caption("🖼️ 逐代圖層切換／池·碎片·雙出口 GIS 視覺化為 **G.2**；本區＝引擎接線＋表格終態。"
+                st.caption("🖼️ 本區＝G.2 純呈現層（只讀引擎曝出幾何、禁重算）。"
                            "雙路同源終驗（app live vs wf/f4 baseline 逐格）為 **G.3**。")
 
 if __name__ == "__main__":

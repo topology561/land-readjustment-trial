@@ -1084,6 +1084,50 @@ def main():
         results.append(("W-G G.1 接線層 ctx-builder 同源", False,
                         [f"[G.1] {_e_g1}", traceback.format_exc()[-700:]]))
 
+    # ── W-G G.2：世代幾何曝出契約＋只寫不讀（0m）──
+    #   (a) 曝出契約：v3/f0/f2/f3/E 各代原始列帶逐宗 cut_coords、f1/f4 整形新形座標曝出
+    #       ＝G.2 純呈現層「只讀不重算」之資料前提（KL 裁定 2026-07-12 純加性曝值第四例）。
+    #   (b) 只寫不讀（靜態圍欄②）：新曝鍵於引擎檔僅出現於曝出寫點（每檔恰 1 次）、
+    #       他引擎檔零越界＝「引擎只寫、UI 只讀」機檢化。
+    print("… W-G G.2 世代幾何曝出契約＋只寫不讀（0m）")
+    try:
+        _vg2 = []
+        for _nm2, _rows2 in (("v3.gA", _ctx["0m"]["gA"]),
+                             ("f0.sgB_rows", _f0["0m"]["sgB_rows"]),
+                             ("f2.sgC_rows", _f2["0m"]["sgC_rows"]),
+                             ("f3.sgD_rows", _f3["0m"]["sgD_rows"]),
+                             ("E.sgE_rows", _f4["0m"]["sgE_rows"])):
+            _ngeo = sum(1 for r in _rows2
+                        if r.get("推進側別") in ("left", "right", "抵費地")
+                        and len(r.get("cut_coords") or []) >= 3)
+            if not _ngeo:
+                _vg2.append(f"{_nm2} 無逐宗 cut_coords")
+        if not _f1["0m"].get("reshape_polys"):
+            _vg2.append("f1.reshape_polys 空")
+        if len(_f1["0m"].get("wedge_coords") or ()) < 3:
+            _vg2.append("f1.wedge_coords 缺")
+        if not isinstance(_f4["0m"].get("reshape_polys"), dict):
+            _vg2.append("f4.reshape_polys 缺")
+        for _fn2, _keys2 in (("wf_f1.py", ("reshape_polys", "wedge_coords")),
+                             ("wf_f2.py", ("sgC_rows",)),
+                             ("wf_f4.py", ("sgE_rows", "reshape_polys"))):
+            _src2 = open(os.path.join(HERE, _fn2), encoding="utf-8").read()
+            for _k2 in _keys2:
+                _n2 = _src2.count(f'"{_k2}"')
+                if _n2 != 1:
+                    _vg2.append(f"{_fn2}:{_k2} 出現 {_n2} 次≠1（只寫不讀破）")
+        for _fn2 in ("wf_f0.py", "wf_f3.py", "stepg_pipeline.py", "selection_pipeline.py"):
+            _src2 = open(os.path.join(HERE, _fn2), encoding="utf-8").read()
+            for _k2 in ("sgC_rows", "sgE_rows", "wedge_coords"):
+                if f'"{_k2}"' in _src2:
+                    _vg2.append(f"{_fn2} 出現 {_k2}（越界）")
+        results.append(("W-G G.2 世代幾何曝出契約＋只寫不讀（v3/f0/f1/f2/f3/E 逐宗座標·靜態越界=0）",
+                        not _vg2, _vg2))
+    except Exception as _e_g2:
+        import traceback
+        results.append(("W-G G.2 世代幾何曝出契約", False,
+                        [f"[G.2] {_e_g2}", traceback.format_exc()[-700:]]))
+
     print("=" * 60)
     allok = True
     for name, ok, viol in results:

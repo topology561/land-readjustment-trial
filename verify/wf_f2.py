@@ -259,6 +259,7 @@ def compute(ctx_by_tag, f0_out):
         out[tag] = {"conv_rows": conv_rows, "g_tab": g_tab, "pool_rows": pool_rows,
                     "anchors": anchors, "blk_avg": blk_avg, "pre_price": pre_price,
                     "f2_parcels": f2_parcels,   # 🆕 F.3 消費（trunk C parcels＝公設 a′ 灌入母體；純加性）
+                    "sgC_rows": copy.deepcopy(sgC["g_rows"]),  # 🆕 G.2 消費（原始列含 cut_coords；純加性·深拷貝防 UI 反灌）
                     "poolC_diag": {l: sgC["pool_diag"][l] for l in sgC["pool_diag"]}}
     return out
 

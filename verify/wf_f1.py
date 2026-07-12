@@ -349,5 +349,9 @@ def compute(ctx_by_tag, f0_out):
             "pool_delta": round(pool_new - pool_B, 2),
         }
         out[tag] = {"reshape_rows": reshape_rows, "frag_rows": frag_rows,
-                    "pool_rows": pool_rows, "anchors": anchors}
+                    "pool_rows": pool_rows, "anchors": anchors,
+                    # 🆕 G.2 消費（R1 整形新形＋楔形本體座標；純加性·tuple 凍結防 UI 反灌）
+                    "reshape_polys": {k: tuple(map(tuple, v.exterior.coords))
+                                      for k, v in new_polys.items()},
+                    "wedge_coords": tuple(map(tuple, wedge.exterior.coords))}
     return out

@@ -803,7 +803,12 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         }
         out[tag] = {"conv_rows": conv_rows, "exit_rows": exit_rows, "g_tab": g_tab,
                     "pool_rows": pool_rows, "reshape_rows": reshape_rows,
-                    "ledger_rows": ledger_rows, "anchors": anchors}
+                    "ledger_rows": ledger_rows, "anchors": anchors,
+                    # 🆕 G.2 消費（trunk E 原始列含 cut_coords＋E3 整形新形；純加性·深拷貝/tuple 凍結防 UI 反灌）
+                    "sgE_rows": copy.deepcopy(sgE["g_rows"]),
+                    "reshape_polys": {blk: {pid: tuple(map(tuple, p.exterior.coords))
+                                            for pid, p in polys.items()}
+                                      for blk, polys in new_polys_by_blk.items()}}
     return out
 
 

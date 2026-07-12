@@ -58,3 +58,10 @@
 
 v3／wf/f0／f1／f2／f3／f4 baseline byte 不動（git diff 空證）。F.5 additive-刪除（只刪 app.py 死/舊碼，
 harness 零觸）。CLAUDE.md 已鎖入裁示1(a) governs＋Q3 修正式（F.4 收官）。
+
+## 六、W-G G.2 補曝附記（KL 裁定 2026-07-12）
+
+G.2 補曝＝**純加性曝值第四例**（承 sgB_rows／sgD_rows／f0_parcels 先例）：wf_f2 `sgC_rows`、
+wf_f4 `sgE_rows`＋`reshape_polys`、wf_f1 `reshape_polys`＋`wedge_coords`（皆深拷貝/tuple 凍結、
+該代計算完成後曝、baseline CSV 不吃 out 鍵）——**run_all 全代零 diff 為證**；「只寫不讀」靜態圍欄
+入 run_verification G.2 閘（每檔恰 1 寫點、他檔零越界）。供 app G.2 純呈現層（禁重算）消費。
