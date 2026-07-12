@@ -41,6 +41,14 @@ KL 是都市計畫領域專家、非程式設計師。分支：claude/fix-cad-to
   （verify/baselines）、docs 規格/PROVENANCE 歷史「TabN」稱呼、session_state 鍵（小寫 `t4`/`t5`）。
   G.0 僅改 app.py **使用者可見文案**，未觸上述。
 
+## §7 引擎接線鐵律（W-G G.1 起，app 呼叫 verify/wf_f0~f4）
+
+- **單一真相源＝`verify/wf_f0~f4`**；app 接線＝以 live session ctx 注入呼叫**同一引擎模組**，**禁 fork、禁在 app 重寫調配邏輯**。
+- **ns＝`globals()` 取 13 真符號，非 `harvest()`**——app 內呼叫 `harvest()` 會 `exec(app.py)` **再入**（app_harvest 之 harvest 專供 headless harness）。接線層 `_build_wf_ctx(ss,tag)` 為 module 級純函式（harvest 可取、+1 gate 可測）。
+- **引擎 UC9898-凍結**（67 raise 斷言＋硬寫錨 GSA_EXPECT/SNAP_WAVG/TIER3…）：接線區以 `_is_uc9898` 圍欄，非本案不硬跑；通用化（去錨）＝**引擎不得為 UI 妥協**、列泛化波 backlog。
+- **財務 ctx＝β 混源**（live 幾何/宗地/Step-G ＋ 快照 `財務接線_v3`）＋**誠實圍欄**（凍結值清單＋live-vs-快照差異表、禁靜默混源）——app live 財務值無法逐位複現 KL 授權精度（34949.888 反推等）。
+- **接線層純加性**（session 曝值/新函式不動既有碼路徑）；harvest 保留 `main()` 但**從不呼叫**（走 stepg）→ tab body 內新碼零 baseline diff。
+
 ## 目前進度
 
 v3.1 規格定稿。分波實作 W-A→W-A.3→W-B→W-C→W-D→W-E→W-F，不可跳波：
