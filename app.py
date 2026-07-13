@@ -15531,6 +15531,37 @@ def main():
                         use_container_width=True, hide_index=True,
                     )
 
+                    # 🆕 W-G Y 波診斷專用（KL 2026-07-14 交辦·非產品功能）：
+                    # live g_rows JSON dump 供 sub-cent 定位。
+                    # 純加·輸出 st.session_state['f3_G_values'] 原始物件（全精度、未捨入、
+                    # 含 Patch B-2 4 欄與 ghost 列）。禁 round／to_csv／走既有下載鏈。
+                    # Y 波收官後可選擇保留（dev 工具）或撤除（Y 波遺留）。
+                    try:
+                        import json as _json_yd
+                        _yd_setback = float(st.session_state.get('f3L_setback_default', 3.5))
+                        if abs(_yd_setback - 0.0) < 1e-9:
+                            _yd_tag = '0m'
+                        elif abs(_yd_setback - 3.5) < 1e-9:
+                            _yd_tag = '3.5m'
+                        else:
+                            _yd_tag = f'{_yd_setback}m'
+                        _yd_bytes = _json_yd.dumps(
+                            st.session_state['f3_G_values'],
+                            ensure_ascii=False, indent=2, default=str
+                        ).encode('utf-8')
+                        st.download_button(
+                            label='📥 下載 g_rows JSON（Y 波診斷用·全精度）',
+                            data=_yd_bytes,
+                            file_name=f'f3_G_values_退縮{_yd_tag}_livedump.json',
+                            mime='application/json',
+                            key=f'yd_dump_gvalues_{_yd_tag}',
+                            help='W-G Y 波「live 財務→§7 全鏈重烤」sub-cent 定位專用；'
+                                 '輸出 session_state[f3_G_values] 原始物件（未捨入、含 Patch B-2 4 欄與 ghost 列）；'
+                                 '非產品功能。'
+                        )
+                    except Exception as _e_yd:
+                        st.warning(f'Y 波 dump 按鈕出錯（非致命·僅診斷用）：{_e_yd}')
+
                     # 🆕 W-D.2 §3：滑池槽診斷（k 選位／J／ΣRw 前後／守恆拆帳 ledger）
                     _wd2_diag = st.session_state.get('f3_wd2_pool_diag', {}) or {}
                     if _wd2_diag:
