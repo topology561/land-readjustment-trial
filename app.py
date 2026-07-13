@@ -5407,6 +5407,10 @@ def _resolve_clicked_parcel(cx, cy, temp_parcels, tolerance: float = 0.5):
     🆕 Phase 4 補充 3：點擊解析含 0.5m 容差，避免邊界點選漏接。
 
     回傳被點擊到的 parcel dict；同樣容差內取面積最大者（避免小碎片優先）。
+
+    🚨 GIS 區段點選第二破口修（KL 2026-07-13 localhost 活抓·獨立於 024915b）：候選集**排除 ghost**
+       （`_is_ghost_sliver`）。ghost 無自身區段代碼，容差 buffer 命中後會誤配/落空；此為 cn=None
+       shapely 後援端之破口（024915b 修的是 curveNumber 判定路徑）。純幾何過濾、禁重算。
     """
     from shapely.geometry import Point as _SP, Polygon as _SPoly
     if cx is None or cy is None:
@@ -5418,6 +5422,8 @@ def _resolve_clicked_parcel(cx, cy, temp_parcels, tolerance: float = 0.5):
     pt_buf = pt.buffer(tolerance)
     candidates = []
     for tp in (temp_parcels or []):
+        if tp.get('_is_ghost_sliver'):
+            continue
         coords = tp.get('polygon_coords') or []
         if len(coords) < 3:
             continue
