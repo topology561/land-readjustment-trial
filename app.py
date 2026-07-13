@@ -2248,7 +2248,7 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
                 fill='toself',
                 fillcolor='rgba(0,0,0,0.001)',  # 幾乎透明但可點擊
                 line=dict(color='rgba(0,0,0,0)', width=0),
-                hoverinfo='text',
+                hoverinfo='text', hoveron='fills',   # 🚨 KL 2026-07-13 修：填色內部整片可點/可 hover（非僅頂點）
                 text=f"原地號 {tp.get('原地號', '')}",
                 showlegend=False,
                 name=f"_clk_{tp.get('原地號', '')}",
@@ -2321,7 +2321,6 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
     # ═══ 🚨 Patch E-0.3：Ghost Sliver 染灰渲染（一致性保證）═══
     # 跨所有圖層保持一致：ghost sliver 永遠灰色 (碎) 標籤、半透明
     _ghost_xs, _ghost_ys = [], []
-    _ghost_hover_pts_x, _ghost_hover_pts_y, _ghost_hover_text = [], [], []
     for tp in (temp_parcels or []):
         if not tp.get('_is_ghost_sliver', False):
             continue
@@ -2332,14 +2331,8 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
         ys_g = [c[1] for c in coords] + [coords[0][1], None]
         _ghost_xs.extend(xs_g)
         _ghost_ys.extend(ys_g)
-        _ghost_hover_pts_x.append(float(tp.get('centroid_x', 0)))
-        _ghost_hover_pts_y.append(float(tp.get('centroid_y', 0)))
-        _ghost_hover_text.append(
-            f"碎屑：{tp.get('原地號', '')}(碎)<br>"
-            f"歸屬於 {tp.get('_attached_to', '')}<br>"
-            f"面積已合至主體（{tp.get('_ghost_area_m2', 0):.2f} ㎡）"
-        )
     if _ghost_xs:
+        # ghost 灰填色（純視覺·hoverinfo='skip' 不攔截點擊·讓點擊穿透至點擊靶）
         fig.add_trace(go.Scatter(
             x=_ghost_xs, y=_ghost_ys, mode='lines',
             fill='toself', fillcolor='rgba(184, 184, 184, 0.6)',  # 中性灰半透明
@@ -2349,13 +2342,9 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
             hoverinfo='skip',
             showlegend=True,
         ))
-        fig.add_trace(go.Scatter(
-            x=_ghost_hover_pts_x, y=_ghost_hover_pts_y, mode='markers',
-            marker=dict(size=4, color='rgba(0,0,0,0.4)'),
-            hoverinfo='text', text=_ghost_hover_text,
-            name='_ghost_hover', showlegend=False,
-            customdata=['__ghost__'] * len(_ghost_hover_pts_x),   # 🆕 ghost 白名單標記（消費端顯式丟棄）
-        ))
+        # 🚨 KL 2026-07-13 修（與 _render_f3_unified_map 同修·步驟D 圖面·勿留第三破口）：
+        #   **移除 ghost hover marker trace**（`_ghost_hover`）——z-top 可點·攔截 plotly click 致「未對到」。
+        #   ghost 灰填色（上）保留作視覺；ghost 質心≠點擊位（024915b 教訓）故無法由其解正確宗地。
 
     fig.update_layout(
         height=height,
@@ -3086,7 +3075,7 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
             x=xs_t, y=ys_t, mode='lines', fill='toself',
             fillcolor='rgba(0,0,0,0.001)',         # 幾乎透明
             line=dict(color='rgba(0,0,0,0)', width=0),
-            hoverinfo='text',
+            hoverinfo='text', hoveron='fills',     # 🚨 KL 2026-07-13 修：填色內部整片可點/可 hover（非僅頂點）
             text=f"暫編 {tp.get('暫編地號','')}<br>原地號 {tp.get('原地號','')}<br>面積 {tp.get('分攤登記面積_m2', tp.get('面積_m2', 0)):.2f} ㎡",
             showlegend=False, name=f"_clk_{tp.get('暫編地號','')}",
             customdata=[f"__clk__{tp.get('暫編地號', '')}"] * len(xs_t),   # 🚧 前瞻鉤·現 inert（0.0.6 不轉發 customdata，見 #18）
@@ -3095,7 +3084,6 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
 
     # ═══ 🚨 Patch E-0.3：Ghost Sliver 染灰渲染（一致性保證）═══
     _ghost_xs_u, _ghost_ys_u = [], []
-    _ghost_pts_x_u, _ghost_pts_y_u, _ghost_text_u = [], [], []
     for tp in (temp_parcels or []):
         if not tp.get('_is_ghost_sliver', False):
             continue
@@ -3104,14 +3092,8 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
             continue
         _ghost_xs_u.extend([c[0] for c in coords] + [coords[0][0], None])
         _ghost_ys_u.extend([c[1] for c in coords] + [coords[0][1], None])
-        _ghost_pts_x_u.append(float(tp.get('centroid_x', 0)))
-        _ghost_pts_y_u.append(float(tp.get('centroid_y', 0)))
-        _ghost_text_u.append(
-            f"碎屑：{tp.get('原地號', '')}(碎)<br>"
-            f"歸屬於 {tp.get('_attached_to', '')}<br>"
-            f"面積已合至主體（{tp.get('_ghost_area_m2', 0):.2f} ㎡）"
-        )
     if _ghost_xs_u:
+        # ghost 灰填色（純視覺·hoverinfo='skip' 不攔截點擊·讓點擊穿透至點擊靶）
         fig.add_trace(go.Scatter(
             x=_ghost_xs_u, y=_ghost_ys_u, mode='lines',
             fill='toself', fillcolor='rgba(184, 184, 184, 0.6)',
@@ -3121,13 +3103,10 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
             hoverinfo='skip',
             showlegend=True,
         ))
-        fig.add_trace(go.Scatter(
-            x=_ghost_pts_x_u, y=_ghost_pts_y_u, mode='markers',
-            marker=dict(size=4, color='rgba(0,0,0,0.4)'),
-            hoverinfo='text', text=_ghost_text_u,
-            name='_ghost_hover_unified', showlegend=False,
-            customdata=['__ghost__'] * len(_ghost_pts_x_u),   # 🆕 ghost 白名單標記（消費端顯式丟棄）
-        ))
+        # 🚨 KL 2026-07-13 修（實據 cn=134=_ghost_hover_unified 攔截近 ghost 之點擊→「未對到」）：
+        #   **移除 ghost hover marker trace**——它 z-top 於點擊靶且可點·攔截 plotly click；ghost 質心≠點擊位
+        #   （024915b 教訓）故無法由其 x/y 解正確宗地。ghost 灰填色（上）保留作視覺·僅失 ghost 明細 tooltip。
+        #   （failure-archaeology #18 之「z 序脆弱」根因於此坐實：頂層可點 trace 必奪 click。）
 
     fig.update_layout(
         height=height,
