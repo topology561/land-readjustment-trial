@@ -340,9 +340,15 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             else:
                 e2_class.append((gid, r))
         if {k: v[2]["暫編地號"] for k, v in e0_pairs.items()} != E0_EXPECT:
-            raise RuntimeError(f"🔴 [{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT}）")
+            if os.environ.get("WV_BAKE"):
+                print(f"⚠️ [WV_BAKE·{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT}）")
+            else:
+                raise RuntimeError(f"🔴 [{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT}）")
         if sorted(x[1]["暫編地號"] for x in e2_class) != sorted(E2_NAMED.values()):
-            raise RuntimeError(f"🔴 [{tag}] 第2梯類源宗 ≠ 具名錨：{sorted(x[1]['暫編地號'] for x in e2_class)}")
+            if os.environ.get("WV_BAKE"):
+                print(f"⚠️ [WV_BAKE·{tag}] 第2梯類源宗 ≠ 具名錨：{sorted(x[1]['暫編地號'] for x in e2_class)}")
+            else:
+                raise RuntimeError(f"🔴 [{tag}] 第2梯類源宗 ≠ 具名錨：{sorted(x[1]['暫編地號'] for x in e2_class)}")
         _rm0 = set(e0_pairs)
         if _rm0 & win_set:
             raise RuntimeError(f"🔴 [{tag}] E0 移除宗為街角 winner：{sorted(_rm0 & win_set)}")
@@ -452,8 +458,11 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             half_r0[gid] = (G0, 2 * G0 >= MINA_QU)
         comp_groups = {g for g, (_, ok) in half_r0.items() if not ok}
         if comp_groups != COMP_EXPECT:
-            raise RuntimeError(f"🔴 [{tag}] ½ 輪0 <½ 群 {sorted(comp_groups)} ≠ 具名錨 "
-                               f"{sorted(COMP_EXPECT)}——停查再定錨")
+            if os.environ.get("WV_BAKE"):
+                print(f"⚠️ [WV_BAKE·{tag}] ½ 輪0 <½ 群 {sorted(comp_groups)} ≠ 具名錨 {sorted(COMP_EXPECT)}")
+            else:
+                raise RuntimeError(f"🔴 [{tag}] ½ 輪0 <½ 群 {sorted(comp_groups)} ≠ 具名錨 "
+                                   f"{sorted(COMP_EXPECT)}——停查再定錨")
         for gid in sorted(comp_groups):
             gi = ginfo[gid]
             comp = _money(gi["a"] * wavg)

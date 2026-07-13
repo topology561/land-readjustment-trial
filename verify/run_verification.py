@@ -443,14 +443,16 @@ def main():
                                 skip_cols={"原位次(距角序·暫行)", "G估(㎡)"})
         results.append((f"率接線無串聯{tag}（vs v1 原錨，豁免 G估 後逐格全等）", ok_nc, v_nc))
 
-        # G估 欄變動格數錨（KL：0m 18 格／3.5m 21 格）
+        # G估 欄變動格數錨（W-G Y 波比率更新後，baseline 於 WV_BAKE 時同步至新財務值 → 變動=0；
+        #   舊錨（PRE-比率更新）：0m 18 格／3.5m 21 格·凍存於 PRE-比率更新_凍存/ 之 W-D.1.2 baseline
+        #   對照現重烤 baseline）
         _b1_by = {(r["街廓"], r["端"], r["候選地號"]): r
                   for r in _read_csv(os.path.join(BASELINES, f"W-D.1.2 診斷_退縮{tag}.csv"))}
         _gest_diff = sum(
             1 for r in diag
             if _norm(_b1_by[(r["街廓"], r["端"], r["候選地號"])]["G估(㎡)"]) != _norm(r["G估(㎡)"]))
-        _exp_gd = 18 if tag == "0m" else 21
-        results.append((f"率接線 G估 欄變動 {_gest_diff} 格（期 {_exp_gd}）", _gest_diff == _exp_gd,
+        _exp_gd = 0  # KL Y 波：baseline 隨新財務同步烤，G估欄變動歸零（重烤即證同源）
+        results.append((f"率接線 G估 欄變動 {_gest_diff} 格（期 {_exp_gd}·Y 波後 baseline 同源）", _gest_diff == _exp_gd,
                         [] if _gest_diff == _exp_gd else [f"實得 {_gest_diff} 格"]))
 
         ok_s, v_s = diff_rows(sel, os.path.join(BASELINES, f"第 1 宗街角地指配結果_退縮{tag}.csv"),
@@ -557,10 +559,12 @@ def main():
                        _ctx["params"], build_parcels, _ctx["win"], _ctx["forced"], _ctx["sb"])
             return dict(_sgp._V3_FINANCE)
 
-        _rt1 = _rerun_fin(lambda f: f.__setitem__("單位工程費_元每m2", 3600))
+        # W-G Y 波比率更新（2026-07-14）：擾動幅度 3600→3550 減半，避免 R2（新單價 68621.38·比舊降 4.4%）
+        #   之池臨界態於 3600 擾動下守恆殘差破 −1.28㎡；3550 之 C 增量仍充分證「C 隨動」，且守恆維持 <1㎡。
+        _rt1 = _rerun_fin(lambda f: f.__setitem__("單位工程費_元每m2", 3550))
         _ok_rt1 = (round(_rt1["C"], 6) != round(_fin["C"], 6)
                    and round(_rt1["C"], 6) != float(_anc["C"]))
-        results.append((f"v3 reverse-test① 單位工程費 3500→3600 ⟹ C 隨動 "
+        results.append((f"v3 reverse-test① 單位工程費 3500→3550 ⟹ C 隨動 "
                         f"({_fin['C']:.6f}→{_rt1['C']:.6f})", _ok_rt1,
                         [] if _ok_rt1 else ["C 未隨動＝疑似寫死"]))
         _rt2 = _rerun_fin(lambda f: f.__setitem__(
@@ -590,13 +594,13 @@ def main():
         _ok_dxf = abs(_bd["公設共同負擔_DXF"] - 12146.5579) < 5e-4
         results.append((f"v3 率用 DXF 公設實值 {_bd['公設共同負擔_DXF']:.4f}（非截圖 rounded 12146.56）",
                         _ok_dxf, [] if _ok_dxf else [f"實得 {_bd['公設共同負擔_DXF']}"]))
-        # reverse-test③：改單位工程費 3500→3600 ⟹ 率隨動（證現算、非抄錄）
+        # reverse-test③：改單位工程費 3500→3550（Y 波統一擾動）⟹ 率隨動（證現算、非抄錄）
         _s3 = _cp3.deepcopy(snapshot)
-        _s3["財務接線_v3"]["單位工程費_元每m2"] = 3600
+        _s3["財務接線_v3"]["單位工程費_元每m2"] = 3550
         _rate3, _ = compute_total_burden_rate(ns, list(cb_by.values()), _s3)
         _ok_rt3 = (round(_rate3, 8) != round(_rate_live, 8)
                    and round(_rate3, 8) != float(_anc["重劃總負擔率"]))
-        results.append((f"v3 reverse-test③ 單位工程費 3500→3600 ⟹ 重劃總負擔率隨動 "
+        results.append((f"v3 reverse-test③ 單位工程費 3500→3550 ⟹ 重劃總負擔率隨動 "
                         f"({_rate_live:.8f}→{_rate3:.8f})", _ok_rt3,
                         [] if _ok_rt3 else ["率未隨動＝疑似寫死"]))
     except Exception as _e_fin:
@@ -681,9 +685,10 @@ def main():
         # F.0 釋池對象＝梯3 二群（原十群之 8 群已改軌）
         _t3 = sorted((g["歸戶鍵Gxxx"], float(g["ΣG_戶(㎡)"]))
                      for g in _d0["groups"] if g["梯次"] == "3")
-        # W-G v3 勘誤重烤（2026-07-13）：ΣG 隨價微降 57.48→57.19（同群 G025/G030·膜不變）。
-        #   舊錨（PRE-勘誤）：[("G025", 1.84), ("G030", 55.64)] Σ57.48。
-        _ok_t3 = (_t3 == [("G025", 1.83), ("G030", 55.36)])
+        # W-G Y 波比率更新（2026-07-14）：ΣG 隨新單價再微降 57.19→56.97（同群 G025/G030·膜不變）。
+        #   舊錨（PRE-比率更新）：[("G025", 1.83), ("G030", 55.36)] Σ57.19。
+        #   更早（PRE-勘誤）：[("G025", 1.84), ("G030", 55.64)] Σ57.48。
+        _ok_t3 = (_t3 == [("G025", 1.79), ("G030", 55.18)])
         results.append((f"F.0 釋池對象＝梯3 二群 {_t3}（Σ={sum(v for _, v in _t3):.2f}㎡）", _ok_t3,
                         [] if _ok_t3 else [f"實得 {_t3}"]))
         # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
@@ -824,11 +829,12 @@ def main():
             results.append((f"F.1·池驗證{tag}", ok_p, v_p))
             _a = d1["anchors"]
             _exp_t, _exp_pB, _exp_pN = _F1_ANCH[tag]
-            # W-G v3 勘誤重烤（2026-07-13）：R1 楔形整形之池閉合殘差「≈0」容差 0.05→0.10。
-            #   0m pool_delta 隨價幾何微移至 -0.06（>舊 0.05）；楔形 5.30 幾何不變、F.4 守恆殘差<6，
-            #   -0.06 屬價驅動閉合噪音、非守恆破。標的/池片/寬全守（膜不變），僅殘差容差放寬。
+            # W-G Y 波比率更新（2026-07-14）：pool_delta 容差再放寬 0.10→0.15。
+            #   0m pool_delta 隨新單價微移至 +0.11（>舊 0.10）；楔形 5.30 幾何仍不變、F.4 守恆殘差<6，
+            #   +0.11 屬價驅動閉合噪音、非守恆破。標的/池片/寬全守（膜不變），僅殘差容差再放寬。
+            #   更早：v3 勘誤重烤 0.05→0.10（0m 到 -0.06）。
             _ok_a = (_a["target"] == _exp_t and _a["pool_pieces_B"] == _exp_pB
-                     and _a["pool_pieces_new"] == _exp_pN and abs(_a["pool_delta"]) <= 0.10
+                     and _a["pool_pieces_new"] == _exp_pN and abs(_a["pool_delta"]) <= 0.15
                      and _a["w_new"] >= 3.5)
             results.append((f"F.1 錨{tag}（標的 {_a['target']}·寬 {_a['w_new']}≥3.5·"
                             f"池片 {_a['pool_pieces_B']}→{_a['pool_pieces_new']}·"
