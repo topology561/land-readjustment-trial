@@ -2200,18 +2200,51 @@ def _render_f3_overlay_figure(classified_blocks, temp_parcels, zones_map,
     for z in uniq_zones:
         groups[z] = {'xs': [], 'ys': [], 'color': zone_color_map[z], 'width': 2.5}
 
+    # 重劃前地籍線（原地號級·KL 2026-07-13 裁 A）：按原地號 dissolve（unary_union）→ 去暫編間 BLOCK 內切線
+    #   → 顯純 628-x 原地籍（符 DXF·與 assign 單位一致）。與 _render_f3_unified_map 圖層2 同修。
+    from shapely.geometry import Polygon as _SPolyC2
+    from shapely.ops import unary_union as _uunionC2
+    _cad_by_orig = {}
     for tp in temp_parcels:
         # 🚨 Patch E-0.3：ghost sliver 由 consolidated 渲染處染灰，此處跳過
         if tp.get('_is_ghost_sliver', False):
             continue
         coords = tp.get('polygon_coords') or []
-        if not coords:
+        if len(coords) < 3:
             continue
-        zname = zones_map.get(tp['原地號'], '') or '(未標註)'
+        _cad_by_orig.setdefault(tp.get('原地號', ''), []).append(coords)
+    for _orig, _cl in _cad_by_orig.items():
+        _polys = []
+        for _c in _cl:
+            try:
+                _p = _SPolyC2(_c)
+                if not _p.is_valid:
+                    _p = _p.buffer(0)
+                if not _p.is_empty:
+                    _polys.append(_p)
+            except Exception:
+                continue
+        if not _polys:
+            continue
+        try:
+            # buffer-close（ε=0.05m·消 union 未消融之 spur/微縫·不變主形；同原地號內·不跨併）
+            _merged = _uunionC2(_polys).buffer(0.05).buffer(-0.05)
+            if _merged.is_empty:
+                _merged = _uunionC2(_polys)
+        except Exception:
+            _merged = None
+        if _merged is None or _merged.is_empty:
+            continue
+        zname = zones_map.get(_orig, '') or '(未標註)'
         g = groups.setdefault(zname, {'xs': [], 'ys': [], 'color': '#2C2C2C', 'width': 0.8})
-        for x, y in coords:
-            g['xs'].append(x); g['ys'].append(y)
-        g['xs'].append(None); g['ys'].append(None)
+        _geoms = list(_merged.geoms) if _merged.geom_type == 'MultiPolygon' else [_merged]
+        for _gp in _geoms:
+            if _gp.geom_type != 'Polygon':
+                continue
+            for _ring in [_gp.exterior] + list(_gp.interiors):
+                _rx, _ry = _ring.xy
+                g['xs'].extend(list(_rx)); g['ys'].extend(list(_ry))
+                g['xs'].append(None); g['ys'].append(None)
 
     # 統一畫分群線條（interactive 與 preview 均相同，避免重複 trace）
     # _show_cad 控制地籍線是否顯示；_show_zones 控制有色區段是否使用色彩
@@ -2657,8 +2690,12 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
                 name='街廓分配線', hoverinfo='skip',
             ))
 
-    # ═══ 圖層 2：重劃前地籍線（按區段分群著色） ═══
+    # ═══ 圖層 2：重劃前地籍線（原地號級·KL 2026-07-13 裁 A） ═══
+    #   按原地號 dissolve（unary_union 同原地號之暫編）→ 去暫編間 BLOCK 內切線 → 顯純 628-x 原地籍
+    #   （符 DXF CADASTRAL_BOUND；且與「指定地價區段」assign 單位＝原地號 一致）。純顯示層、著色/click 不動。
     if _show_cad:
+        from shapely.geometry import Polygon as _SPolyC
+        from shapely.ops import unary_union as _uunionC
         palette = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD',
                    '#8C564B', '#E377C2', '#17BECF', '#BCBD22']
         uniq_zones = sorted({v for v in zones_map.values() if v})
@@ -2666,18 +2703,47 @@ def _render_f3_unified_map(classified_blocks, temp_parcels, zones_map=None,
         groups = {'(未標註)': {'xs': [], 'ys': [], 'color': '#666666', 'width': 0.7}}
         for z in uniq_zones:
             groups[z] = {'xs': [], 'ys': [], 'color': zone_color_map[z], 'width': 2.5}
+        _cad_by_orig = {}
         for tp in (temp_parcels or []):
             # 🚨 Patch E-0.3：ghost sliver 由 consolidated 渲染處染灰
             if tp.get('_is_ghost_sliver', False):
                 continue
             coords = tp.get('polygon_coords') or []
-            if not coords:
+            if len(coords) < 3:
                 continue
-            zname = zones_map.get(tp.get('原地號', ''), '') or '(未標註)'
+            _cad_by_orig.setdefault(tp.get('原地號', ''), []).append(coords)
+        for _orig, _cl in _cad_by_orig.items():
+            _polys = []
+            for _c in _cl:
+                try:
+                    _p = _SPolyC(_c)
+                    if not _p.is_valid:
+                        _p = _p.buffer(0)
+                    if not _p.is_empty:
+                        _polys.append(_p)
+                except Exception:
+                    continue
+            if not _polys:
+                continue
+            try:
+                # buffer-close（ε=0.05m·消 union 未消融之 spur/微縫·不變主形；同原地號內·不跨併）
+                _merged = _uunionC(_polys).buffer(0.05).buffer(-0.05)
+                if _merged.is_empty:
+                    _merged = _uunionC(_polys)
+            except Exception:
+                _merged = None
+            if _merged is None or _merged.is_empty:
+                continue
+            zname = zones_map.get(_orig, '') or '(未標註)'
             g = groups.setdefault(zname, {'xs': [], 'ys': [], 'color': '#666666', 'width': 0.7})
-            for x, y in coords:
-                g['xs'].append(x); g['ys'].append(y)
-            g['xs'].append(None); g['ys'].append(None)
+            _geoms = list(_merged.geoms) if _merged.geom_type == 'MultiPolygon' else [_merged]
+            for _gp in _geoms:
+                if _gp.geom_type != 'Polygon':
+                    continue
+                for _ring in [_gp.exterior] + list(_gp.interiors):
+                    _rx, _ry = _ring.xy
+                    g['xs'].extend(list(_rx)); g['ys'].extend(list(_ry))
+                    g['xs'].append(None); g['ys'].append(None)
         for zname, g in groups.items():
             if not g['xs']:
                 continue
@@ -8033,7 +8099,13 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
         "winners": _need("f3_corner_winners"),
         "forced": _need("f3L_forced_offset"),
         "setback": float(_need("f3L_setback_default")),
-        "gA": _need("f3_G_values"),
+        # 🚨 KL 2026-07-13 修：還原 raw G（app Patch B-2 寬度驗證於 16177-16185 把寬<min_width 宗之
+        #   G(㎡) 壓成 min_area-0.01 觸發舊合併，原 G 存 _G_before_width_violation）。引擎 trunk A 要 raw G
+        #   ——harness run_step_g 無此壓縮，故 live gA 須還原否則 GSA 錨破（G014 131.79 vs 133.22）；
+        #   寬度違規由引擎 f4 裁示1(a)/Q3 增配處理、非 trunk A。拷貝列、不改 session_state。
+        "gA": [({**_r, "G(㎡)": _r["_G_before_width_violation"]}
+                if _r.get("_G_before_width_violation") is not None else _r)
+               for _r in _need("f3_G_values")],
         "poolA": _need("f3_wd2_pool_diag"),
     }
 
@@ -8136,6 +8208,25 @@ def _wg_gen_figure(rows, cb_by, reshape_polys=None, wedge_coords=None,
     _wg_block_outlines(fig, cb_by)
     rp = dict(reshape_polys or {})
     drawn = set()
+
+    def _fmt_dim_gen(r):
+        """KL 2026-07-14 交辦：hover 加 S/G；抵費地/池片顯幾何面積。"""
+        try:
+            _g = float(r.get("G(㎡)", 0) or 0)
+        except (TypeError, ValueError):
+            _g = 0.0
+        if _g > 0.0:
+            try:
+                _s = float(r.get("S(m)", 0) or 0)
+            except (TypeError, ValueError):
+                _s = 0.0
+            return f"S={_s:.2f}m｜G={_g:.2f}㎡"
+        try:
+            _ga = float(r.get("幾何面積(㎡)", 0) or 0)
+        except (TypeError, ValueError):
+            _ga = 0.0
+        return f"幾何面積={_ga:.2f}㎡"
+
     for r in rows or []:
         pid = r.get("暫編地號", "")
         if pid in drawn or _wg_is_ghost(r):   # G.2 補①：濾 ghost
@@ -8143,7 +8234,7 @@ def _wg_gen_figure(rows, cb_by, reshape_polys=None, wedge_coords=None,
         side = str(r.get("推進側別", "") or "")
         orig = r.get("cut_coords") or []
         hover_base = (f"{pid}｜原 {r.get('原地號', '')}｜{r.get('所屬街廓', '')}"
-                      f"｜G={r.get('G(㎡)', '')}㎡｜{side}")
+                      f"｜{_fmt_dim_gen(r)}｜{side}")
         if pid in rp:
             new_coords = rp.pop(pid)
             if compare_mode and len(orig) >= 3:
@@ -8233,20 +8324,40 @@ def _wg_gid_of_row(r, omap):
 
 
 def _wg_theme_exit(rows_E, exit_rows, cb_by, omap, title):
-    """7-5 雙出口：增配/≥½配地/<½補償 著色（旗標明確標記，非自動裁語氣）。"""
+    """7-5 雙出口：增配/≥½配地/<½補償 著色（旗標明確標記，非自動裁語氣）。
+    KL 2026-07-14 交辦：hover 加 S(m)/G(㎡)（分配宗）或幾何面積（池/抵費地）。"""
     import plotly.graph_objects as _go
     exit_by_gid = {str(x.get("歸戶", "")): x for x in (exit_rows or [])}
     fig = _go.Figure()
     _wg_block_outlines(fig, cb_by)
+
+    def _fmt_dim_ex(r):
+        try:
+            _g = float(r.get("G(㎡)", 0) or 0)
+        except (TypeError, ValueError):
+            _g = 0.0
+        if _g > 0.0:
+            try:
+                _s = float(r.get("S(m)", 0) or 0)
+            except (TypeError, ValueError):
+                _s = 0.0
+            return f"S={_s:.2f}m｜G={_g:.2f}㎡"
+        try:
+            _ga = float(r.get("幾何面積(㎡)", 0) or 0)
+        except (TypeError, ValueError):
+            _ga = 0.0
+        return f"幾何面積={_ga:.2f}㎡"
+
     for r in rows_E or []:
         coords = r.get("cut_coords") or []
         if len(coords) < 3 or _wg_is_ghost(r):   # G.2 補①：濾 ghost
             continue
         gid = _wg_gid_of_row(r, omap)
         x = exit_by_gid.get(str(gid))
+        dim = _fmt_dim_ex(r)
         if x is None:
             _wg_add_poly(fig, coords, "#ECEFF1",
-                         f"{r.get('暫編地號', '')}（非 7-5 標的）", opacity=0.35)
+                         f"{r.get('暫編地號', '')}（非 7-5 標的）<br>{dim}", opacity=0.35)
             continue
         out = str(x.get("出口", ""))
         if "增配" in out:
@@ -8257,7 +8368,7 @@ def _wg_theme_exit(rows_E, exit_rows, cb_by, omap, title):
             color, tagx = _WG_C_ALLOC, "≥½ 配地 G(a′)"
         _wg_add_poly(fig, coords, color,
                      f"{r.get('暫編地號', '')}｜歸戶 {gid}｜{out}｜{tagx}"
-                     f"｜{x.get('意思決定', '') or '—'}", opacity=0.6)
+                     f"<br>{dim}｜{x.get('意思決定', '') or '—'}", opacity=0.6)
     _wg_legend_stub(fig, "增配§31-1-2（旗標）", _WG_C_RESHAPE)
     _wg_legend_stub(fig, "≥½ 配地", _WG_C_ALLOC)
     _wg_legend_stub(fig, "<½ 現金補償（旗標）", _WG_C_WEDGE)
@@ -8265,26 +8376,52 @@ def _wg_theme_exit(rows_E, exit_rows, cb_by, omap, title):
 
 
 def _wg_theme_ledger(rows_E, ledger_rows, cb_by, omap, title):
-    """33 群總決算：歸戶著色（gid palette 慣例）＋ hover 應走/實走鏈。"""
+    """33 群總決算：歸戶著色（gid palette 慣例）＋ hover 應走/實走鏈＋S/G/幾何面積。
+
+    KL 2026-07-14 交辦：hover 顯示 S(m) 寬度、G(㎡) 分配後面積。
+    - 分配宗（G>0）：顯示 S/G。
+    - 抵費地／池／非歸戶（G=0）：顯示幾何面積（＝該片池體/抵費地實面積）。
+    """
     import plotly.graph_objects as _go
     led = {str(x.get("歸戶", "")): x for x in (ledger_rows or [])}
     gids = sorted(led)
     cmap = {g: _WG_GID_PALETTE[i % len(_WG_GID_PALETTE)] for i, g in enumerate(gids)}
     fig = _go.Figure()
     _wg_block_outlines(fig, cb_by)
+
+    def _fmt_dim(r):
+        """hover 用尺寸字串：G>0→顯 S/G；否則→顯幾何面積（抵費地/池片）。"""
+        try:
+            _g = float(r.get("G(㎡)", 0) or 0)
+        except (TypeError, ValueError):
+            _g = 0.0
+        if _g > 0.0:
+            try:
+                _s = float(r.get("S(m)", 0) or 0)
+            except (TypeError, ValueError):
+                _s = 0.0
+            return f"S={_s:.2f}m｜G={_g:.2f}㎡"
+        try:
+            _ga = float(r.get("幾何面積(㎡)", 0) or 0)
+        except (TypeError, ValueError):
+            _ga = 0.0
+        return f"幾何面積={_ga:.2f}㎡"
+
     for r in rows_E or []:
         coords = r.get("cut_coords") or []
         if len(coords) < 3 or _wg_is_ghost(r):   # G.2 補①：濾 ghost
             continue
         gid = str(_wg_gid_of_row(r, omap) or "")
         L = led.get(gid)
+        dim = _fmt_dim(r)
         if L is None:
             _wg_add_poly(fig, coords, "#ECEFF1",
-                         f"{r.get('暫編地號', '')}（池/非歸戶）", opacity=0.3)
+                         f"{r.get('暫編地號', '')}（池/非歸戶）<br>{dim}", opacity=0.3)
             continue
         _wg_add_poly(
             fig, coords, cmap.get(gid, _WG_C_OTHER),
             f"{r.get('暫編地號', '')}｜<b>{gid}</b>（{L.get('軌別', '')}·梯{L.get('梯次', '')}）"
+            f"<br>{dim}"
             f"<br>應走：{L.get('應走', '')}<br>實走：{L.get('實走鏈', '')}"
             f"<br>歸因：{L.get('歸因', '')}", opacity=0.6)
     return _wg_fig_layout(fig, title)
@@ -12765,7 +12902,9 @@ def main():
             if 'f3_parcel_zones' not in st.session_state:
                 st.session_state['f3_parcel_zones'] = {}
 
-            all_original_parcels = sorted({tp['原地號'] for tp in temp_parcels})
+            # 🚨 KL 2026-07-13 修：排除 ghost sliver（原地號=_GHOST）——否則進度分母多算 1（53→54）
+            all_original_parcels = sorted({tp['原地號'] for tp in temp_parcels
+                                           if not tp.get('_is_ghost_sliver', False)})
             _zmap_d = dict(st.session_state.get('f3_parcel_zones', {}))
             _labeled = sum(1 for op in all_original_parcels if _zmap_d.get(op))
             _total = len(all_original_parcels)
