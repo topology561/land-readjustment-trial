@@ -1,0 +1,128 @@
+# W-G.4 終態幾何消解波 · 偵察報告（禁假設）
+
+- 日期：2026-07-15；基準 HEAD＝`1490a44`（規格入倉後）；規格＝`docs/specs/終態幾何消解波_規格.md`（KL 2026-07-14 三題裁示鎖 ground truth）。
+- 目的：偵察三重點（交辦文）實查完成，識別施工侵入面與架構張力，供 plan 具體化。**未施工**。
+
+## 一、偵察1：F.1「等 G 遞補整形」0m 真做／3.5m 未執行分歧點
+
+### 實查結論（file:line 引）
+
+**分歧不是 0m/3.5m 之分，而是「街廓之分」＋「層次之分」**：
+
+1. **F.1（`wf_f1.py`）硬編只處理 R1**：`wf_f1.py:145` `lbl = "R1"`。R1 碎片（R1-抵費地-2 ≈5.30㎡）於**兩情境**（0m/3.5m）都真做（標的宗吞楔形＋後續前移）。`TARGET_ANCHOR = {"0m": "628-37(1)", "3.5m": "628-36(1)"}`（L30）。
+2. **其他街廓碎片（R6/R3）於兩情境都僅「標記」**：`wf_f1.py:188-192` else 分支 → 「標記·待 F.4 終態遞補整形（角落失格業主未離場，KL 裁定 2026-07-11）」，**零幾何動作**。
+3. **F.4 E3 有通用整形 `_reshape_block`**（`wf_f4.py:1074`），可處理任意街廓×左右側（R1 機制通用化）。E3 於 `wf_f4.py:682-732` 用 `wf_f1._classify_fragments` 重分類 sgE 碎片，對判為「碎片」者呼叫 `_reshape_block`。
+4. **關鍵：整形只改 `reshape_polys`（幾何呈現層），不改 `g_tab`**。`g_tab, _, _ = build_step_g_tables(sgE)`（`wf_f4.py:791`）——g_tab 直接來自 sgE 的 run_step_g 結果，**含所有抵費地碎片列**（R1-抵費地-2、R6-抵費地-2 等）。整形輸出到獨立的 `reshape_polys`（`wf_f4.py:818` G.2 消費）。
+
+### 為何 KL 在 GIS 見到細碎抵費地
+
+GIS 圖層（`app.py:_wg_theme_ledger` 等）render `rows_E`（= g_tab）之**全列**。g_tab 含 R1-抵費地-2 (5.30)、R6-抵費地-2 (85.66)，故 hover 可見。整形的幾何消解（reshape_polys）**未反映到 g_tab**。
+
+### 為何 R6-抵費地-2 (85.66) 未被 E3 `_reshape_block` 消解
+
+（實測診斷·scratchpad/wg4_e3_classify2.py）：
+- R6 右有側街但 **`right_forced_offset=False`**（兩情境）。
+- E3 複驗（`wf_f4.py:724-729`）對 S=0 池片：若 forced 角落 → `continue`（豁免）；否則 raise。R6-抵費地-2 若被判「碎片」應進 `_reshape_block`；若被判「forced角落鎖定」或「池主體」則跳過。**需 plan 階段跑 E3 內實際分類坐實**（trunk D 近似不足，須 sgE 終態）。
+- **規格 §1.4 定性 R6-抵費地-2 為「末筆非街角未臨正街片」**——這是 `_classify_fragments` 未涵蓋的新類別（現有三分類：forced角落鎖定／碎片／池主體）。
+
+## 二、偵察2：solve_G_binary / _block_strip baseline_pt / S_front 呼叫鏈
+
+### `_block_strip`（`app.py:6658-6703`）
+
+- `cut = block_poly.intersection(strip)`（L6700）——**已對真實街廓多邊形取交集**。
+- **規格 §1.5-1 印證**：末筆未臨正街多邊形若落於 strip 帶內，會**自動被 intersection 納入 area_geom**，無須外加常數項。**現有機制已支援**。
+- strip 帶由 `baseline_pt` 沿 `d_hat` 推進 S、兩側 `n_hat=rot90(allocation_dir)` 張開（L6693-6698）。
+
+### `solve_G_binary`（`app.py:6706-6837+`）
+
+- **area_geom**（L6756）＝`_block_strip(..., S_guess, ...)` 交集面積。
+- **G_target**（L6774-6776）：
+  ```python
+  G_target = max(0.0, (a * (1.0 - A * B) - Rw * F * l_side - S_guess * l_front) * (1.0 - C))
+  ```
+  - 正街負擔項＝`S_guess * l_front`（**整段推進距離** × 正街尺度 l_front〔即 l₂〕）。
+  - **規格 §1.5-2 要改為 `S_front × l_front`**，其中 S_front ＝ 切割帶 ∩ FRONT_LINE 之實際臨街投影長。
+  - ⚠️ 規格 §1.5-2 寫 `S_front·l₁`，但 code 正街項用 `l_front`（=l₂ 正面尺度）；側街項才用 `l_side`（=l₁）。**規格下標疑筆誤**——語意為「正街負擔用實際臨街長」，實作對應 `S_front × l_front`。**列待 KL/claude.ai 一字覆核**。
+- **二分方向**（L6795-6798）：`diff = area_geom - G_target`；diff>0 → S_max=S_guess（縮小），diff<0 → S_min=S_guess。f(S)=area_geom(S)−G_target 單調。
+
+### `_reshape_block` 之 baseline_pt 先例（`wf_f4.py:1094-1116`）
+
+- **right side 已用「終端 corner + 反向 dh」**：`corner = p1 + max(proj)*d_hat`、`dh = -d_hat`（L1101-1105）。
+- **規格 §1.5-1「baseline_pt 設街廓終端」已有實作先例**——末筆宗地可沿用此 pattern。
+
+### 最小侵入面評估
+
+| §1.5 修改 | 現況 | 侵入面 |
+|---|---|---|
+| 1. baseline_pt 街廓終端 | `_reshape_block` right side 已有 | **零新增**（沿用 pattern） |
+| 2. 正街項用 S_front | solve_G_binary 用 `S_guess * l_front` | **主侵入**：需在 solve_G_binary 或末筆專用 solver 加 S_front 計算（cut ∩ FRONT_LINE 投影長）；對一般臨街宗 S_front==S_guess 故不變 |
+| 3. Z 反解初值 | 現二分 [0, S_max] | **非必要**（規格明示） |
+
+**⚠️ 生產碼影響**：solve_G_binary 是 app.py 真函式（app live + harness 同源）。若直接改其 G_target，影響**所有**宗地求解。安全做法＝**末筆專用分支**（is_tail 旗標或獨立 wrapper），一般宗地路徑 byte 不變、保 G.3 同源。
+
+## 三、偵察3：七錨點 REPL 坐實（禁心算·scratchpad/wg4_anchors.py）
+
+| 錨點 | 來源 | 坐實值 |
+|---|---|---|
+| 5.30 | R1-抵費地-2 幾何面積（baseline F.4 3.5m） | ✅ 5.3 |
+| 85.66 | R6-抵費地-2 幾何面積 | ✅ 85.66 |
+| 309.05 | R2【左】街角規定範圍（退縮3.5m參數） | ✅ 309.05（=R2-抵費地-2 補足後） |
+| 442.98 | R2-抵費地-1（中央池·調前） | ✅ 442.98 |
+| 75.31 | 調配量＝442.98−367.67 | ✅ 75.31（233.74+75.31=309.05·442.98−75.31=367.67） |
+| 367.67 | R2-抵費地-1 調後（須 ≥ MinA_區 153.65） | ✅ 367.67 > 153.65 |
+| 273.35 | R6-抵費地-1 帳併（187.69+85.66） | ✅ 273.35 |
+| 776.72 | 628-4(1) G（面積不變·形狀滑動） | ✅ G=776.72 幾何=776.73 |
+
+**forced 狀態坐實**（scratchpad/wg4_e3_classify2.py）：
+- **3.5m**：R2 **左 forced**（min_area 309.05）、R3 **右 forced**（308.93）、R6 右有側街但**未 forced**。
+- **0m**：R2/R3/R6 **皆未 forced**（街角有合格宗）。R2-抵費地=785.22（單片·未切街角）。
+
+**關鍵**：Q2 之 R2 街角補足問題**僅 3.5m 情境**（forced 才有街角保留池片）。0m 情境 R2 街角有合格宗、無 forced、無此問題。
+
+## 四、三大架構張力（plan 須具體處理）
+
+### T1：g_tab 重構 vs baseline byte-perfect（G.3 45/45）
+
+- **現狀**：整形只改 reshape_polys，g_tab 保持 sgE 原始（含碎片列）→ G.3 靠 g_tab==baseline byte-perfect 綠。
+- **規格要求**：§1.3「帳目：細碎片面積併入同 Ri 中間池片」＋§3-1「守恆：帳目級＋幾何級；**F.4 帳證同步更新**」→ **明確授權改 g_tab**（碎片列消失、面積帳併主體池、宗地列 cut_coords 更新）。
+- **後果**：g_tab 變 → baseline 全鏈重烤（如 Y 波機械性重烤）→ G.3 對**重烤後** baseline byte-perfect（同源證明不變、僅基準更新）。
+- **判定**：規格已授權，非缺口。plan 須含 baseline 重烤子波。
+
+### T2：末筆規定範圍（§1.4）＋ G-S 求解（§1.5）全新演算法
+
+- §1.4 末筆規定範圍幾何構造（FRONT∩BLOCK 交點沿 FRONT 取 3.5m→ALLOC 方向線封閉多邊形·面積 Z）＝**新增正典幾何函式**。
+- §1.4 第1宗選定（投影序逐一檢查 G(i)≥Z）＝**新增選定邏輯**（不評比·異於街角三指標）。
+- §1.5 末筆 G-S 求解＝solve_G_binary **末筆專用分支**（S_front 項）。
+- **KL 待覆核旗標**（交辦文·施工可先行依預設）：§1.4-3 檢查順序＝嚴格投影序（5→3→4）；§1.4-4 交集皆 G<Z → 抵費地充當末筆第1宗（面積=Z）。
+
+### T3：街角補足調配（§1.2）新調配階段
+
+- R2 街角補足：從中央池（R2-抵費地-1 442.98）調 75.31 給街角池片（R2-抵費地-2 233.74→309.05）。
+- §1.2 來源順序：同 Ri 最大池片（調至 MinA 為止）→同 Ri 次大→同實體街廓其他 Ri→跨街廓。
+- ＝**新增 F.4 之後（或 E3 內）之池際面積重分階段**，涉及守恆、位次、池三則。
+- ⚠️ **R2 街角池片為何終態僅 233.74 而非 forced 範圍 309.05**：需 plan 階段坐實（stepg forced buffer 幾何切分之既有行為？中央池切分規則？）——影響 §1.2 補足的起點與位置。
+
+## 五、施工路徑草案（分子波·plan 具體化）
+
+| 子波 | 內容 | 侵入 | 硬閘 |
+|---|---|---|---|
+| **G.4.0** | 坐實 R2 街角池片 233.74 成因 + R6-抵費地-2 之 E3 實際分類（診斷·禁假設） | 純診斷 | — |
+| **G.4.1** | §1.4 末筆規定範圍幾何函式 + 第1宗選定（新增·harness 層） | 新函式 | 末筆第1宗 G≥Z |
+| **G.4.2** | §1.5 末筆 G-S 求解（solve_G_binary 末筆分支或 wrapper·S_front） | app.py 生產碼（末筆分支·一般路徑不變） | 末筆 area_geom−G_target≤0.01·no-silent-fallback |
+| **G.4.3** | §1.3 細碎片消解（R1/R6 帳併主體池 + 幾何等 G 滑動·g_tab 反映） | wf_f4 E3 擴充 | 守恆·等 G 逐宗·位次·合併 Σa 重解 |
+| **G.4.4** | §1.2 街角補足調配（R2 案·池際重分） | wf_f4 新階段 | 街角第1宗≥範圍·池三則·守恆·位次 |
+| **G.4.5** | §1.7 抵費地 hover S（純 UI 加·app.py） | app.py UI | — |
+| **G.4.6** | §1.6 0m 同機制重跑 + baseline 全鏈重烤（T1） | baseline | run_all 155+新閘 ALL GREEN·G.3 對重烤 baseline |
+| **G.4.7** | §5 正典入倉（skill 檔擴充：街角選定「末筆非街角」章·G-formula S_front 定義） | docs/skills | — |
+
+## 六、待決/上呈（plan 前或施工中 escalate）
+
+1. **§1.5-2 下標覆核**（正街項 l_front〔l₂〕vs 規格寫 l₁）——一字覆核，語意為「正街用實際臨街長」。
+2. **R2 街角池片 233.74 成因**——G.4.0 診斷坐實；若非 forced buffer 既有行為而是 bug，補足邏輯位置須調整。
+3. **T1 baseline 重烤路徑**——規格 §3-1 已授權改 g_tab；plan 採「機械性重烤（WV_BAKE）+ G.3 對重烤 baseline」（同 Y 波框架）。
+4. **§1.4-3/§1.4-4 KL 覆核旗標**——交辦文明示施工可先行依預設；plan 依嚴格投影序 + 抵費地充當末筆第1宗。
+
+## 七、下一步
+
+依交辦文節奏：本偵察報告 → **plan 具體化（分子波·每子波 diff 目標）** → redistribution-reviewer 獨立審 plan → 逐子波施工。
+G.4.0 診斷（R2 233.74 成因 + R6 E3 分類）為施工前置，先做。
