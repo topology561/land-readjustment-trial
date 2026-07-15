@@ -1,3 +1,5 @@
+> ⚠️ **plan v1 經 reviewer 退回重寫（8ff6394）·規格已升 v3**。本檔保留為歷史·plan v2 依 v3 另出。
+
 # W-G.4 終態幾何消解波 · 施工 plan（CC 撰·待 reviewer 審）
 
 - 規格：`docs/specs/終態幾何消解波_規格.md` **v1.1**（KL 三張力全裁·唯一依據）
