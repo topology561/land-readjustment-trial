@@ -1641,7 +1641,10 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
                         post_avg_price: float = 0.0,
                         engineering_cost: float = 0.0,
                         redev_cost: float = 0.0,
-                        loan_interest: float = 0.0) -> bytes:
+                        loan_interest: float = 0.0,
+                        scenario_tag: str = '',
+                        stage_tag: str = '',
+                        front_lines: dict = None) -> bytes:
     """
     🆕 Phase 7 Module 4：匯出三大法定報表 Excel
 
@@ -1650,6 +1653,20 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     Sheet 3：公共設施用地負擔統計表
 
     回傳：xlsx bytes
+
+    **🆕 (乙) 匯出升級七項（W-G.4 S0b·plan §6·純 UI 層·不碰引擎）**
+    本檔為**丙時序第 2 步之錨定載體**（KL pull → UI 實跑 → 匯出＝新錨）。依 N0-16，
+    其效力為**④接線對拍**（證 UI 接線／session_state／參數餵法／呼叫順序），
+    **非** T2 正確性之證明（後者靠 ②不變量閘＋③預測差量閘）。
+
+      1. **街廓面積欄**——否則鋪滿閘 `|Σ全片幾何−街廓面積|≤0.01` 與 `池帳＝街廓−ΣG` 皆無從驗。
+      2. **數值 2dp → 4dp**——628(5) 應配 223.44／幾何 223.45 差 0.01＝**整個閘寬**，2dp 即吃掉閘。
+      3. `scenario_tag`（0m／3.5m）——兩情境匯出撞名、無法辨識。
+      4. `stage_tag`（trunk A/B/E）——缺標記之直接代價：claude.ai 曾差點誤判 F.0 檔為終態。
+      5. 終態（trunk E）匯出——§N1 forced=range／池三則／鋪滿閘**全發生於終態**；F.0 與 E **兩錨都要**。
+      6. `front_lines` → **池片穩定 key ＝ s_rel 起訖**（N0-19：身分鍵＝s 區間·出生即定）。
+         **對拍禁以序號名稱為 key**：UI `R5-抵費地-2` 與 F.4 `R5-抵費地-1` 可為同一片。
+      7. 池片幾何**另立欄**（入「幾何分配」欄）——舊碼塞「原面積」欄、G 欄 NaN，對拍腳本必踩雷。
     """
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -1662,39 +1679,77 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     ws1.title = "對照清冊"
     ws1['A1'] = '重劃前後土地分配對照清冊'
     ws1['A1'].font = Font(size=14, bold=True)
-    ws1.merge_cells('A1:H1')
-    headers1 = ['原地號', '原面積(㎡)', '所屬街廓', '暫編地號',
-                 '應分配G(㎡)', '幾何分配(㎡)', '增減(㎡)', '街角地']
+    ws1.merge_cells('A1:K1')
+    ws1['A2'] = (f'情境：{scenario_tag or "（未標）"}　｜　階段：{stage_tag or "（未標）"}'
+                 f'　｜　數值精度：4dp（乙-2：2dp 會吃掉 0.01 之閘寬）')
+    ws1['A2'].font = Font(size=10, italic=True)
+    # 乙-1 街廓面積欄／乙-3 情境／乙-4 階段（欄序：辨識欄在前，便於對拍腳本 groupby）
+    headers1 = ['情境', '階段', '原地號', '原面積(㎡)', '所屬街廓', '街廓面積(㎡)',
+                '暫編地號', '應分配G(㎡)', '幾何分配(㎡)', '增減(㎡)', '街角地']
     _setup_xlsx_header(ws1, headers1, row=3)
+
+    def _s_rel_key(_r):
+        """乙-6：池片穩定 key ＝ **s_rel 起訖**（N0-19 身分鍵＝s 區間·出生即定）。
+        s_rel ＝ 頂點於 FRONT_LINE 之正規化投影（同 `_classify_fragments` 之 s_rel 慣例）。
+        缺 front_lines → 退回序號名並**明示標記**（no-silent-fallback：不得讓對拍誤以為是穩定 key）。"""
+        _blk = str(_r.get('所屬街廓', ''))
+        _nm = str(_r.get('暫編地號', ''))
+        _fl = (front_lines or {}).get(_blk) or {}
+        _p1, _p2 = _fl.get('p1'), _fl.get('p2')
+        _cc = _r.get('cut_coords') or []
+        if not (_p1 and _p2 and len(_cc) >= 3):
+            return f'{_nm}（⚠️ 無 s_rel·缺 FRONT_LINE/幾何·序號非穩定 key）'
+        try:
+            from shapely.geometry import LineString as _LS_k, Point as _PT_k
+            _seg = _LS_k([tuple(_p1), tuple(_p2)])
+            if _seg.length <= 0:
+                return f'{_nm}（⚠️ 無 s_rel·FRONT_LINE 長度 0）'
+            _ts = [_seg.project(_PT_k(float(c[0]), float(c[1]))) / _seg.length for c in _cc]
+            return f'{_blk}-抵費地@s[{min(_ts):.4f},{max(_ts):.4f}]'
+        except Exception:
+            return f'{_nm}（⚠️ 無 s_rel·投影失敗）'
+
     row = 4
     for r in (g_rows or []):
         if r.get('推進側別') == '抵費地':
             continue
         a = float(r.get('a 面積(㎡)', 0) or 0)
         g = float(r.get('G(㎡)', 0) or 0)
-        ws1.cell(row=row, column=1, value=str(r.get('原地號', '')))
-        ws1.cell(row=row, column=2, value=round(a, 2))
-        ws1.cell(row=row, column=3, value=str(r.get('所屬街廓', '')))
-        ws1.cell(row=row, column=4, value=str(r.get('暫編地號', '')))
-        ws1.cell(row=row, column=5, value=round(g, 2))
-        ws1.cell(row=row, column=6, value=round(float(r.get('幾何面積(㎡)', 0) or 0), 2))
-        ws1.cell(row=row, column=7, value=round(g - a, 2))
-        ws1.cell(row=row, column=8, value=str(r.get('街角地', '否')))
+        ws1.cell(row=row, column=1, value=scenario_tag)
+        ws1.cell(row=row, column=2, value=stage_tag)
+        ws1.cell(row=row, column=3, value=str(r.get('原地號', '')))
+        ws1.cell(row=row, column=4, value=round(a, 4))
+        ws1.cell(row=row, column=5, value=str(r.get('所屬街廓', '')))
+        ws1.cell(row=row, column=6, value=round(float(r.get('街廓面積(㎡)', 0) or 0), 4))
+        ws1.cell(row=row, column=7, value=str(r.get('暫編地號', '')))
+        ws1.cell(row=row, column=8, value=round(g, 4))
+        ws1.cell(row=row, column=9, value=round(float(r.get('幾何面積(㎡)', 0) or 0), 4))
+        ws1.cell(row=row, column=10, value=round(g - a, 4))
+        ws1.cell(row=row, column=11, value=str(r.get('街角地', '否')))
         row += 1
-    # 抵費地另起一段
+    # 抵費地另起一段（乙-6 穩定 key／乙-7 幾何另立欄）
     _offsets = [r for r in (g_rows or []) if r.get('推進側別') == '抵費地']
     if _offsets:
         row += 1
-        ws1.cell(row=row, column=1, value='─── 抵費地 ───').font = Font(bold=True)
+        ws1.cell(row=row, column=1, value='─── 抵費地（池片）───').font = Font(bold=True)
         row += 1
         for r in _offsets:
-            ws1.cell(row=row, column=1, value=str(r.get('暫編地號', '')))
-            ws1.cell(row=row, column=2, value=round(float(r.get('幾何面積(㎡)', 0) or 0), 2))
-            ws1.cell(row=row, column=3, value=str(r.get('所屬街廓', '')))
-            ws1.cell(row=row, column=8, value='抵費地')
+            ws1.cell(row=row, column=1, value=scenario_tag)
+            ws1.cell(row=row, column=2, value=stage_tag)
+            ws1.cell(row=row, column=3, value='—')            # 乙-7：原地號 明確標「—」
+            ws1.cell(row=row, column=4, value='—')            # 乙-7：原面積 不再被池片幾何佔用
+            ws1.cell(row=row, column=5, value=str(r.get('所屬街廓', '')))
+            ws1.cell(row=row, column=6, value=round(float(r.get('街廓面積(㎡)', 0) or 0), 4))
+            ws1.cell(row=row, column=7, value=_s_rel_key(r))  # 乙-6：s_rel 起訖穩定 key
+            ws1.cell(row=row, column=8, value='—')            # 乙-7：應分配G 明確標「—」（非 NaN）
+            ws1.cell(row=row, column=9,                        # 乙-7：池片幾何入「幾何分配」欄
+                     value=round(float(r.get('幾何面積(㎡)', 0) or 0), 4))
+            ws1.cell(row=row, column=10, value='—')
+            ws1.cell(row=row, column=11, value='抵費地')
             row += 1
     # 欄寬
-    for col_letter, width in zip('ABCDEFGH', [16, 14, 14, 18, 14, 14, 12, 12]):
+    for col_letter, width in zip('ABCDEFGHIJK',
+                                 [8, 10, 16, 14, 12, 14, 30, 14, 14, 12, 12]):
         ws1.column_dimensions[col_letter].width = width
     _apply_xlsx_page_setup(ws1, orientation='landscape', fit_to_width=1)
 
@@ -6708,6 +6763,46 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
 #   單一真相源——stepg／app／wf_f1／wf_f4 四處皆呼叫本組函式（根絕 #20「抄寫複本各自漂移」）。
 # ═══════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════
+# §N3-0 帳對幾何閘（**兩級化**·KL 2026-07-16 裁·補丁三 §二）＝閘寬之單一真相源
+#   ⚠️ 前版「`宗數×0.005`（／＋圍堵界）」**已廢**——claude.ai 之**維度錯**：以 G 之**面積**量子
+#      冒充 S 之**長度**量子×深度（≈45 倍）→ 四閘同破（停機③ `b68e7c1` 實測坐實）。
+#   **N0-18 推論三補文**：量子項須依**該捨入所作用之維度**換算——
+#      面積捨入（round(G_conv,2)）→ 直取 0.005㎡；
+#      長度捨入（round(S_conv,2)）→ **× d(面積)/d(長度) ＝ 分配深度**。
+#   本組常數/函式為**唯一真相源**（stepg／app／run_verification／wf_f4 皆經 ns 取用），
+#   根絕「同一式抄多處各自漂移」（失敗考古 #20）。
+# ═══════════════════════════════════════════════════════════════════════
+
+_G_ROUND_HALF = 0.005      # G 之**面積**捨入半量子（`round(G_conv, 2)`·app.py:6836）
+_S_ROUND_HALF = 0.005      # S 之**長度**捨入半量子（`round(S_conv, 2)`·S0c 實切）
+_BISECT_TOL = 0.01         # `solve_G_binary` 之收斂容差（tol 預設）
+
+
+def _acct_geom_tol_per_lot(depth, with_tol=True):
+    """
+    §N3-0 **逐宗主閘**之原理閘寬：`|G_i − 幾何_i| ≤ 0.005×分配深度 ＋ tol(0.01) ＋ 0.005`
+
+    三項依據（**皆已 ruled·無新常數**）：
+      · `_S_ROUND_HALF × depth` ＝ S 長度捨入半量子 × d(面積)/dS（N0-18 推論三補文）
+      · `_BISECT_TOL`           ＝ bisect 收斂容差（`solve_G_binary` 之 tol）
+      · `_G_ROUND_HALF`         ＝ G 面積捨入半量子
+
+    **作用**＝任何**非捨入成因**之病灶於逐宗層立紅，**不被街廓 Σ 之正負相消淹沒**。
+    **域框架（N0-18 補記·KL 已認）**：本差＝對照清冊「增減(㎡)」欄、**由差額地價找補之法定常態**
+    （≈0.17–0.23㎡ ≈16,600 元/宗），**係 N0-18 公分慣例之算術投影、非容忍誤差**。
+    斜交因子 ≤1.004 由 tol 項吸收，不另立項。
+    `with_tol=False` 供**整形**類（重切既有宗·不經 bisect）＝E3（`wf_f4`·補丁三 §三-1）。
+    """
+    return _S_ROUND_HALF * float(depth) + (_BISECT_TOL if with_tol else 0.0) + _G_ROUND_HALF
+
+
+def _acct_geom_tol_block(n_lots, depth, with_tol=True):
+    """§N3-0 **逐街廓 Σ 閘**之原理閘寬 ＝ 逐宗上界之和（三角不等式）。
+    `|ΣG ＋ 池幾何 − 街廓| ≤ 宗數 × (0.005×深度 ＋ tol ＋ 0.005)`；全區級＝各街廓本式之加總。"""
+    return int(n_lots) * _acct_geom_tol_per_lot(depth, with_tol)
+
+
 # s 區間退化界（**數值極限**類·N0-17-a「依據須與誤差來源同類」）
 #   ＝ T1 之退化界（`buffer(-1e-4)` 由兩側各侵蝕 ε → 帶寬 < 2ε 即空）：**2 × 1e-4**。
 #   依據＝**T1 之 ε＝1e-4（數值極限·min_width 3.5m 之 ~1/35000·§N3-0 T1 已定）**，非另立新常數。
@@ -6810,8 +6905,14 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
     （＝業主宗 s-區間聯集於街廓 s 域內之補區間，by construction 即 maximal run）；
     **身分鍵＝s 區間、出生即定**；連通分量＝舊 boolean 實作之 artifact，不再作為片之定義。
 
-    回傳 list[Polygon]，依 **s 起點**排序（＝N0-19 身分鍵之自然序，較舊「面積 desc」穩定：
-    面積隨 net_leak 變，s 區間出生即定）。
+    回傳 list[Polygon]，**依面積遞減排序**——**與舊 boolean 式之慣例逐字一致**
+    （`sorted(offset_land.geoms, key=area, reverse=True)`），使 g_rows 抵費地列之
+    `{blk}-抵費地-{i}` 序號**不因本波而改**（plan §11 scope guard：「g_rows 抵費地列不動」）。
+    ⚠️ **N0-19 之「身分鍵＝s 區間」不在此實現**——其正確落點為**乙-6 之匯出 s_rel key**
+    （`export_legal_excel._s_rel_key`）；序號本就不是穩定 key（乙-6 明文「對拍禁以名稱為 key」），
+    故**不應**改序號去承載身分——改之只會令既有名錨（如 W-D.4 `R6-抵費地-2`）錯位，
+    且屬本波未授權之範圍。
+    （內部仍以 s 序建構、供 T2-DIAG 與縫/退化診斷；僅**回傳**改面積序。）
 
     內建自檢（§N3-0）：①' 覆蓋 0.01／②-池 1e-6／②-宗圍堵 (宗數−1)×0.005×深度／Σ 式診斷／T1 退化網。
     """
@@ -6949,7 +7050,10 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
             print(f"🔴 [T2-MP] 街廓 {_label}：池片 {_mp} 非單一 Polygon "
                   f"（{[pieces[i].geom_type for i in _mp]}）——下游 `_g.exterior` 將靜默吞幾何，須處置")
 
-    return pieces
+    # 回傳序＝**面積遞減**（逐字沿用舊 boolean 式慣例 `sorted(..., key=area, reverse=True)`）
+    #   → g_rows 之 `{blk}-抵費地-{i}` 序號不因本波而改（plan §11）。
+    #   ⚠️ 上方診斷/縫偵測用之 s 序為**內部**構造，與回傳序無關。
+    return sorted(pieces, key=lambda g: g.area, reverse=True)
 
 
 def solve_G_binary(a: float, A: float, B: float, C: float,
@@ -8262,6 +8366,8 @@ _WF_NS_NAMES = [
     "alloc_normal_axis", "_block_strip",
     # §N3-0 T2：池片建構單一真相源（stepg／app／wf_f1／wf_f4 四處共用·根絕抄寫複本漂移 #20）
     "_pool_strips_for_block",
+    # §N3-0 帳對幾何閘（兩級化·補丁三 §二）：閘寬單一真相源（stepg／run_verification／wf_f4 共用）
+    "_acct_geom_tol_per_lot", "_acct_geom_tol_block",
 ]
 
 
@@ -15522,7 +15628,7 @@ def main():
                                 #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
                                 #   單一真相源＝`_pool_strips_for_block`；**與 stepg_pipeline 逐字同構**
                                 #   （N0-16 同源同碼·G.3 三重確立之基礎），四處共用根絕抄寫漂移（#20）。
-                                #   回傳依 s 起點排序（N0-19 身分鍵；較舊「面積 desc」穩定）。
+                                #   回傳序＝面積遞減（逐字沿用舊慣例）→ g_rows 抵費地序號不因本波改（plan §11）。
                                 offset_geoms = _pool_strips_for_block(
                                     blk_poly, d_hat, corner_pt, allocation_dir_block,
                                     allocated_polys, _label=blk_label, _depth=avg_depth_default)
@@ -15584,10 +15690,24 @@ def main():
 
                         # ── 🆕 W-D.2 §3：守恆 ledger（M3 接線・消費端）──
                         # 角落抵費地／中央池＝幾何剩餘之「拆帳呈示」（池重定位、非新增面積）。
-                        # 守恆：ΣG（配地）＋池總（幾何剩餘）＝街廓 DXF 面積，殘差 <1㎡。
+                        # 守恆：ΣG（配地）＋池總（幾何剩餘）＝街廓 DXF 面積。
+                        #   閘寬＝§N3-0 帳對幾何閘（兩級化·補丁三 §二）；⚠️ 舊「殘差 <1㎡」已廢（殘餘定閘）。
                         _sum_G_blk = sum(float(r.get('G(㎡)', 0) or 0) for r in _adv_final['rows'])
                         _sum_geom_blk = sum(float(r.get('幾何面積(㎡)', 0) or 0)
                                             for r in _adv_final['rows'])
+
+                        # ── §N3-0 逐宗主閘（緊閘·與 stepg 逐字同構·N0-16 同源同碼）──
+                        _tol_lot = _acct_geom_tol_per_lot(avg_depth_default)
+                        for _r_lot in _adv_final['rows']:
+                            _dev = abs(float(_r_lot.get('G(㎡)', 0) or 0)
+                                       - float(_r_lot.get('幾何面積(㎡)', 0) or 0))
+                            if _dev > _tol_lot:
+                                st.error(
+                                    f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 "
+                                    f"{_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > "
+                                    f"上界 {_tol_lot:.4f}（0.005×深度{avg_depth_default:.2f}"
+                                    f" ＋ tol 0.01 ＋ 0.005）——超出捨入量子可解釋範圍＝另有病，停機上呈")
+                                st.stop()
                         _corner_off_L = (float(_v2_res.get('left_corner_offset_area', 0.0) or 0.0)
                                          if _v2_res else 0.0)
                         _corner_off_R = (float(_v2_res.get('right_corner_offset_area', 0.0) or 0.0)
@@ -15603,8 +15723,11 @@ def main():
                         _t_star = _row_at.get(_k_star, {})
                         _t_naive = _row_at.get(_k_naive, {})
                         if _pool_total_blk is not None:
+                            # §N3-0 守恆-帳幾何級（逐街廓 Σ 閘·與 stepg 逐字同構）
                             _resid_wd2 = round(_sum_G_blk + _pool_total_blk - blk_area, 2)
-                            _verdict_wd2 = ('✅' if abs(_resid_wd2) < 1.0 else '🔴 守恆破')
+                            _tol_blk = _acct_geom_tol_block(len(_adv_final['rows']),
+                                                            avg_depth_default)
+                            _verdict_wd2 = ('✅' if abs(_resid_wd2) <= _tol_blk else '🔴 守恆破')
                         else:
                             _resid_wd2 = None
                             _verdict_wd2 = '—（無街廓幾何）'
@@ -15640,9 +15763,11 @@ def main():
                         }
                         if _verdict_wd2 == '🔴 守恆破':
                             st.error(
-                                f"🔴 停機③（守恆破）街廓 {blk_label}：ΣG {_sum_G_blk:.2f}＋池 "
+                                f"🔴 停機③（守恆-帳幾何級破）街廓 {blk_label}：ΣG {_sum_G_blk:.2f}＋池 "
                                 f"{_pool_total_blk:.2f} vs 街廓 {blk_area:.2f}"
-                                f"（殘差 {_resid_wd2:+.2f}㎡ ≥1㎡）— 停、上呈 KL＋claude.ai。"
+                                f"（|Σ(G−幾何)| {_resid_wd2:+.2f}㎡ > 上界 {_tol_blk:.4f}"
+                                f"＝宗數{len(_adv_final['rows'])}×(0.005×深度{avg_depth_default:.2f}"
+                                f" ＋ tol 0.01 ＋ 0.005)）— 停、上呈 KL＋claude.ai。"
                             )
 
                     # 🆕 V12 模組 1 補強 B：孤立公設地虛擬 G 值結算
@@ -15760,7 +15885,11 @@ def main():
                                     float(_largest.get('幾何面積(㎡)', 0) or 0)
                                     + float(_s.get('幾何面積(㎡)', 0) or 0), 2
                                 )
-                                # 合併 cut_coords（防護二：buffer 雙向消縫隙）
+                                # 合併 cut_coords
+                                #   **補償-3 已拆（§N3-0 T2·plan §4.3·reviewer 定案「最小案」）**：
+                                #   舊 `.buffer(0.001).buffer(-0.001)` 之「防護二·雙向 buffer 消縫隙」
+                                #   與 wf_f1:_fuse／wf_f4:_fuse **同族**——皆為對 stepg 1mm 侵蝕縫之補償。
+                                #   T2 精確鋪滿後**無縫可消** → 同成過度校正，連根拆。
                                 try:
                                     _l_coords = _largest.get('cut_coords') or []
                                     _s_coords = _s.get('cut_coords') or []
@@ -15771,14 +15900,24 @@ def main():
                                             _poly_l = _poly_l.buffer(0)
                                         if not _poly_s.is_valid:
                                             _poly_s = _poly_s.buffer(0)
-                                        # 雙向 buffer 消除浮點縫隙
-                                        _merged = _uu_off([_poly_l, _poly_s]).buffer(0.001).buffer(-0.001)
+                                        _merged = _uu_off([_poly_l, _poly_s])
                                         if (_merged.geom_type == 'Polygon'
                                             and not _merged.is_empty):
                                             _largest['cut_coords'] = list(
                                                 _merged.exterior.coords
                                             )
                                         elif _merged.geom_type == 'MultiPolygon':
+                                            # ⚠️ T2 後池片為精確 s-帶：同塊之兩池片（如 forced 帶＋中央帶）
+                                            #   **s-不相鄰** → union 成 MultiPolygon → 此路徑「取最大 geom」
+                                            #   **丟小片幾何、保其面積入帳**＝帳/幾何分岔（正是 T2 欲消者）。
+                                            #   依 plan §4.3：**不靜默** take-largest，loud warn＋由 §閘③
+                                            #   （池帳−池幾何）把關；若因此紅即為真訊號、上呈（§N5 重審）。
+                                            st.warning(
+                                                f"⚠️ Phase 8 抵費地碎片合併產生 MultiPolygon"
+                                                f"（{len(_merged.geoms)} 片·街廓 {blk_label}）→ 現碼取最大片、"
+                                                f"小片幾何丟失而面積留帳＝帳/幾何分岔。**§N5 重審標的**"
+                                                f"（`<5㎡` 亦為殘餘定閘候選·甲-2 #10）。"
+                                            )
                                             _largest_geom = max(
                                                 _merged.geoms, key=lambda g: g.area
                                             )
@@ -16426,36 +16565,76 @@ def main():
                         )
                     except Exception as _eDXF:
                         _ec1.error(f"DXF 匯出失敗：{_eDXF}")
-                    # Excel 匯出
+                    # Excel 匯出（🆕 乙：七項升級·plan §6）
                     try:
-                        _xls_bytes_p7 = export_legal_excel(
-                            g_rows=st.session_state.get('f3_G_values', []),
-                            ownership_map=st.session_state.get('t8_ownership_map', {}),
-                            ownership_groups=st.session_state.get('t8_ownership_groups', {}),
-                            B_value=float(B_value or 0),
-                            C_value=float(C_for_calc or 0),
-                            total_area=float(sum(
-                                b.get('area_m2', 0) or 0 for b in classified_blocks
-                            )),
-                            pre_avg_price=float(st.session_state.get('pre_land_price_sqm', 0) or 0),
-                            post_avg_price=float(st.session_state.get('weighted_price_sqm', 0) or 0),
-                            engineering_cost=float(st.session_state.get(
-                                'f3_engineering_cost_from_finance', 0) or 0),
-                            redev_cost=float(st.session_state.get(
-                                'f3_redev_cost_from_finance', 0) or 0),
-                            loan_interest=float(st.session_state.get(
-                                'f3_loan_interest_from_finance', 0) or 0),
-                        )
+                        # 乙-3：情境標記（0m／3.5m）——兩情境匯出否則撞名
+                        _p7_sb = float(st.session_state.get('f3L_setback_default', 3.5))
+                        if abs(_p7_sb - 0.0) < 1e-9:
+                            _p7_scn = '0m'
+                        elif abs(_p7_sb - 3.5) < 1e-9:
+                            _p7_scn = '3.5m'
+                        else:
+                            _p7_scn = f'{_p7_sb}m'
+                        # 乙-6：s_rel 穩定 key 之 FRONT_LINE 源
+                        _p7_fls = st.session_state.get('f3_cad_front_lines', {}) or {}
+
+                        def _mk_xls(_rows, _stage):
+                            return export_legal_excel(
+                                g_rows=_rows,
+                                ownership_map=st.session_state.get('t8_ownership_map', {}),
+                                ownership_groups=st.session_state.get('t8_ownership_groups', {}),
+                                B_value=float(B_value or 0),
+                                C_value=float(C_for_calc or 0),
+                                total_area=float(sum(
+                                    b.get('area_m2', 0) or 0 for b in classified_blocks
+                                )),
+                                pre_avg_price=float(st.session_state.get('pre_land_price_sqm', 0) or 0),
+                                post_avg_price=float(st.session_state.get('weighted_price_sqm', 0) or 0),
+                                engineering_cost=float(st.session_state.get(
+                                    'f3_engineering_cost_from_finance', 0) or 0),
+                                redev_cost=float(st.session_state.get(
+                                    'f3_redev_cost_from_finance', 0) or 0),
+                                loan_interest=float(st.session_state.get(
+                                    'f3_loan_interest_from_finance', 0) or 0),
+                                scenario_tag=_p7_scn,          # 乙-3
+                                stage_tag=_stage,              # 乙-4
+                                front_lines=_p7_fls,           # 乙-6
+                            )
+
+                        # 階段 A（trunk A／F.0＝Step G 原位次分配·現行行為）
+                        _xls_bytes_p7 = _mk_xls(st.session_state.get('f3_G_values', []),
+                                                'trunk A（F.0·Step G）')
                         _ec2.download_button(
-                            label="📥 下載法定報表 Excel（3 表）",
+                            label=f"📥 法定報表 Excel（trunk A·{_p7_scn}）",
                             data=_xls_bytes_p7,
-                            file_name="重劃法定報表.xlsx",
+                            file_name=f"重劃法定報表_trunkA_{_p7_scn}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             key='dl_p7_xls',
                             use_container_width=True,
                             type='primary',
-                            help="Sheet 1: 對照清冊 + Sheet 2: 歸戶負擔 + Sheet 3: 公設統計（橫向 A4）",
+                            help="Sheet 1: 對照清冊（含情境/階段/街廓面積/4dp/池片 s_rel key）"
+                                 " + Sheet 2: 歸戶負擔 + Sheet 3: 公設統計（橫向 A4）",
                         )
+
+                        # 乙-5：**終態（trunk E）匯出**——§N1 forced=range／池三則／鋪滿閘全在終態
+                        #   → **F.0 與 E 兩錨都要**。只讀 §7 引擎曝出之 sgE_rows（G.2 純加性·禁重算）。
+                        _p7_E = ((st.session_state.get('f3_wg_gens') or {}).get('E') or {}).get('rows')
+                        if _p7_E:
+                            _p7_Etag = st.session_state.get('f3_wg_tag', _p7_scn)
+                            _xls_bytes_E = _mk_xls(_p7_E, 'trunk E（F.4 終態）')
+                            _ec2.download_button(
+                                label=f"📥 法定報表 Excel（**trunk E 終態**·{_p7_Etag}）",
+                                data=_xls_bytes_E,
+                                file_name=f"重劃法定報表_trunkE終態_{_p7_Etag}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                key='dl_p7_xls_E',
+                                use_container_width=True,
+                                help="終態（七級調配後）對照清冊——§N1/池三則/鋪滿閘皆發生於此階段。"
+                                     "需先於 Tab 3 跑完七級調配（f0→f4）。",
+                            )
+                        else:
+                            _ec2.caption("ℹ️ **trunk E 終態匯出**：需先於「🏢 房地交易分析」分頁跑完"
+                                         "七級調配（f0→f4）——終態錨（§N1／池三則／鋪滿閘）方可匯出。")
                     except Exception as _eXLS:
                         _ec2.error(f"Excel 匯出失敗：{_eXLS}")
 

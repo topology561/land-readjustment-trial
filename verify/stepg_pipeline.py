@@ -239,6 +239,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _spatial_order_parcels_v2 = ns["_spatial_order_parcels_v2"]
     _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
     _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2：池片單一真相源
+    _acct_geom_tol_per_lot = ns["_acct_geom_tol_per_lot"]   # §N3-0 帳對幾何閘：閘寬單一真相源
+    _acct_geom_tol_block = ns["_acct_geom_tol_block"]
 
     g_rows = []
     detail_trace = {}
@@ -710,7 +712,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
                 #   單一真相源＝app 之 `_pool_strips_for_block`（ns harvest·同 `_block_strip` 先例）
                 #   → stepg／app／wf_f1／wf_f4 四處同源，根絕抄寫複本各自漂移（#20 根因）。
-                #   回傳依 s 起點排序（N0-19 身分鍵；較舊「面積 desc」穩定）。
+                #   回傳序＝面積遞減（逐字沿用舊慣例）→ g_rows 抵費地序號不因本波改（plan §11）。
                 offset_geoms = _pool_strips_for_block(
                     blk_poly, d_hat, corner_pt, allocation_dir_block,
                     allocated_polys, _label=blk_label, _depth=avg_depth_default)
@@ -761,6 +763,22 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         _sum_G_blk = sum(float(r.get('G(㎡)', 0) or 0) for r in _adv_final['rows'])
         _sum_geom_blk = sum(float(r.get('幾何面積(㎡)', 0) or 0)
                             for r in _adv_final['rows'])
+
+        # ── §N3-0 逐宗主閘（緊閘·KL 2026-07-16 裁·補丁三 §二）──────────────
+        #   `|G_i − 幾何_i| ≤ 0.005×分配深度 ＋ tol(0.01) ＋ 0.005`
+        #   成因＝S0c 令實切用捨入 S（N0-18 公分慣例）而 G 定於未捨入 S_conv → 兩者必差
+        #   ≤ S 捨入半量子 × d(面積)/dS。**此差＝對照清冊「增減(㎡)」欄之法定常態**（N0-18 補記）。
+        #   **作用＝非捨入成因之病灶於逐宗層立紅，不被下方街廓 Σ 之正負相消淹沒。**
+        _tol_lot = _acct_geom_tol_per_lot(avg_depth_default)
+        for _r_lot in _adv_final['rows']:
+            _dev = abs(float(_r_lot.get('G(㎡)', 0) or 0)
+                       - float(_r_lot.get('幾何面積(㎡)', 0) or 0))
+            if _dev > _tol_lot:
+                raise RuntimeError(
+                    f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 {_r_lot.get('暫編地號', '?')}："
+                    f"|G − 幾何| = {_dev:.4f} > 上界 {_tol_lot:.4f}"
+                    f"（0.005×深度{avg_depth_default:.2f} ＋ tol 0.01 ＋ 0.005）"
+                    f"——**超出捨入量子可解釋範圍＝另有病**，停")
         _corner_off_L = (float(_v2_res.get('left_corner_offset_area', 0.0) or 0.0)
                          if _v2_res else 0.0)
         _corner_off_R = (float(_v2_res.get('right_corner_offset_area', 0.0) or 0.0)
@@ -804,8 +822,15 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                         f"🔴 結構閘 理論＝實跑 破：街廓 {blk_label} {_sd_tag2} 側 "
                         f"理論@k*={_th:.2f} ≠ 實跑={_re:.2f}（Δ={abs(_th - _re):.3f} >0.1）")
         if _pool_total_blk is not None:
+            # ── §N3-0 守恆-帳幾何級（逐街廓 Σ 閘·KL 2026-07-16 裁·補丁三 §二）──
+            #   `|ΣG ＋ 池幾何 − 街廓| ≤ 宗數×(0.005×深度 ＋ tol ＋ 0.005)` ＝逐宗上界之和（三角不等式）。
+            #   ⚠️ 舊 `<1.0` 廢（殘餘定閘·N0-17）；⚠️ 補丁一/二之 `宗數×0.005（＋圍堵界）` 亦廢
+            #      （維度錯：以 G 面積量子冒充 S 長度量子×深度·≈45 倍 → 停機③ b68e7c1）。
+            #   註：T2 令 `池幾何 = 街廓 − Σ宗幾何`（①' 覆蓋閘證之）→ 本殘差恆等於 `Σ(G−幾何)`
+            #       ＝Σ增減；真幾何守恆另由 ①' 覆蓋閘（0.01·志向不變）把關。
             _resid_wd2 = round(_sum_G_blk + _pool_total_blk - blk_area, 2)
-            _verdict_wd2 = ('✅' if abs(_resid_wd2) < 1.0 else '🔴 守恆破')
+            _tol_blk = _acct_geom_tol_block(len(_adv_final['rows']), avg_depth_default)
+            _verdict_wd2 = ('✅' if abs(_resid_wd2) <= _tol_blk else '🔴 守恆破')
         else:
             _resid_wd2 = None
             _verdict_wd2 = '—（無街廓幾何）'
@@ -838,7 +863,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         }
         if _verdict_wd2 == '🔴 守恆破':
             raise RuntimeError(
-                f"停機③（守恆破）街廓 {blk_label}：殘差 {_resid_wd2:+.2f}㎡ ≥1㎡")
+                f"停機③（守恆-帳幾何級破）街廓 {blk_label}：|Σ(G−幾何)| = {_resid_wd2:+.2f}㎡ "
+                f"> 上界 {_tol_blk:.4f}＝宗數{len(_adv_final['rows'])}×"
+                f"(0.005×深度{avg_depth_default:.2f} ＋ tol 0.01 ＋ 0.005)")
 
     return {'g_rows': g_rows, 'pool_diag': pool_diag}
 

@@ -706,20 +706,35 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         for blk, npolys in new_polys_by_blk.items():
             old_area = sum(_poly_of_row(E[k]).area for k in npolys if k in E)
             new_area = sum(p.area for p in npolys.values())
-            if abs(new_area - old_area) > 0.1:
-                raise RuntimeError(f"🔴 [{tag}] E3 {blk} 整形未守恆：Σ新形 {new_area:.2f} ≠ Σ原 {old_area:.2f}")
+            # §N3-0 帳對幾何閘·E3 整形級（KL 2026-07-16 裁·補丁三 §三-1）
+            #   ⚠️ 舊 `0.1` 廢（甲-2 #11「待歸因」→ **已歸因＝量子項**）：其破因即 S 之 cm 捨入
+            #   （停機③ 實測 R1 0.16 ≈ 0.005×32.97 = 0.165）。
+            #   閘寬＝**整形涉及宗數 × (0.005×深度 ＋ 0.005)**（範圍限整形集合）；
+            #   **無 tol 項**——整形係「重切既有宗」、不經 bisect 收斂。
+            _e3_depth = float(snap["blocks"][blk]["街廓分配深度_m"])
+            _e3_tol = ns["_acct_geom_tol_block"](len(npolys), _e3_depth, False)
+            if abs(new_area - old_area) > _e3_tol:
+                raise RuntimeError(
+                    f"🔴 [{tag}] E3 {blk} 整形未守恆：Σ新形 {new_area:.2f} ≠ Σ原 {old_area:.2f}"
+                    f"（Δ={abs(new_area - old_area):.4f} > 上界 {_e3_tol:.4f}＝整形宗數{len(npolys)}×"
+                    f"(0.005×深度{_e3_depth:.2f} ＋ 0.005)）")
             pool_final[blk] = poolE[blk]             # Σ配地面積守恆 → 池總量不變
             bpoly = Polygon(cb_by[blk]["vertices"])
             if not bpoly.is_valid:
                 bpoly = bpoly.buffer(0)
-            au = unary_union(list(npolys.values())).buffer(0.001)
-            pool_g = bpoly.difference(au)
-            if not pool_g.is_valid:
-                pool_g = pool_g.buffer(0)
-            pieces = ([g for g in pool_g.geoms if g.area >= 1.0]
-                      if pool_g.geom_type == "MultiPolygon"
-                      else ([pool_g] if pool_g.area >= 1.0 else []))
             fl = (cad.get("front_lines") or {}).get(blk) or {}
+            # ── §N3-0 T2（第四處病灶·plan §1.4）：池片改用同機制·同切線 ──
+            #   ⚠️ 舊式 `unary_union(list(npolys.values())).buffer(0.001)` → `difference`
+            #      → `area>=1.0` **已廢**（與 stepg/app/wf_f1 同族之抄寫複本·#20）。
+            #   **為何仍須改（縱使現 pieces 僅供下方 S=0 診斷、不進 g_tab）**：§N5 令 reshape
+            #      回寫 g_tab 後 E3 幾何即進終態、此漏原路返回 → #20「修一次到位」。
+            _p1 = np.array(fl["p1"], float)
+            _p2 = np.array(fl["p2"], float)
+            _dh = (_p2 - _p1) / float(np.linalg.norm(_p2 - _p1))
+            _ad = ns["alloc_normal_axis"]((cad.get("alloc_dir_by_block") or {}).get(blk))
+            pieces = ns["_pool_strips_for_block"](
+                bpoly, _dh, _p1.copy(), _ad, list(npolys.values()),
+                _label=f"{blk}·E3[{tag}]", _depth=_e3_depth)
             fseg = wf_f1._seg(fl)
             for g in pieces:
                 if wf_f1._front_len_of(g, fseg, bpoly) < 0.5:
@@ -780,6 +795,12 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             raise RuntimeError(f"🔴 [{tag}] 位次序破：{pos_viol[:2]}")
         cons = abs(sum(float(r["G(㎡)"]) for r in E.values()) + sum(pool_final.values())
                    - sum(float(cb_by[l].get("area_m2", 0) or 0) for l in pool_final))
+        # §N3-0 全區級帳對幾何閘（補丁三 §二）＝逐街廓加總；舊 `<6` 廢（殘餘定閘·N0-17）
+        cons_tol = sum(
+            ns["_acct_geom_tol_block"](
+                sum(1 for _r in E.values() if _r.get("所屬街廓") == l),
+                float(snap["blocks"][l]["街廓分配深度_m"]))
+            for l in pool_final)
 
         # ══ E5：總決算（33 群 應走 vs 實走） ══
         ledger_rows, unattr = _ledger(tag, HERE, omap, E, mina, events,
@@ -802,6 +823,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             "rounds": rounds, "spill_75": sorted({s[0] for s in spill_75}),
             "pool_final": {l: round(v, 2) for l, v in sorted(pool_final.items())},
             "resh_targets": dict(resh_targets), "cons_resid": round(cons, 2),
+            "cons_tol": round(cons_tol, 4),      # §N3-0 全區閘寬（逐街廓加總·補丁三 §二）
             "flags_end": 0, "pos_viol": [], "b1_ok": True,
             "med_dist": round(med, 1),
             "e2_opt": {k: e2_opt[k] for k in ("assign", "opt_cost", "opt_inc", "opt_dist",
@@ -1141,10 +1163,8 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
         raise RuntimeError(f"🔴 [{tag}] E3 {blk} 原語自檢破：S_chk={S_chk:.4f}≠{S_B}")
 
     def _fuse(a, b):
-        u = unary_union([a, b])
-        if u.geom_type != "Polygon":
-            u = u.buffer(0.0011).buffer(-0.0011)
-        return u
+        # **補償-2 已拆（plan §4.2）**；縫之處置一律走 wf_f1._fuse_strict（單一真相源·防 #20）
+        return wf_f1._fuse_strict(a, b, tag, f"E3 {blk}（side={side}·tgt={target_row['暫編地號']}）")
 
     def union_area(S):
         cut, _ = strip_at(0.0, S)

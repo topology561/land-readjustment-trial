@@ -223,6 +223,16 @@ def compute(ctx_by_tag, f0_out):
         block_area = sum(float(cb_by[l].get("area_m2", 0) or 0)
                          for l in poolC)
         cons_resid = abs(tot_C - block_area)
+        # §N3-0 全區級帳對幾何閘（KL 2026-07-16 裁·補丁三 §二）＝**逐街廓加總**
+        #   ⚠️ 舊 `<6.0` 廢（殘餘定閘·43 萬元·N0-17）；⚠️ `Σ宗數×0.005` 亦廢（維度錯·停機③）。
+        _n_by_blk = {}
+        for _r in C.values():
+            _b = _r.get("所屬街廓")
+            _n_by_blk[_b] = _n_by_blk.get(_b, 0) + 1
+        cons_tol = sum(
+            ns["_acct_geom_tol_block"](_n_by_blk.get(l, 0),
+                                       float(snap["blocks"][l]["街廓分配深度_m"]))
+            for l in poolC)
 
         # ── 目標宗 G ≥ MinA ──
         for tid in inject:
@@ -249,6 +259,7 @@ def compute(ctx_by_tag, f0_out):
             "targets": {t: round(v, 2) for t, v in inject.items()},
             "verdict_all_green": all("🔴" not in str(v) for v in verdC.values()),
             "cons_resid": round(cons_resid, 2),
+            "cons_tol": round(cons_tol, 4),      # §N3-0 全區閘寬（逐街廓加總·補丁三 §二）
             "f1_orthogonal": f1_ok, "pos_viol": pos_viol,
             "g021_m1": next((cr["模式一a′(㎡)"] for cr in conv_rows if cr["歸戶"] == "G021"), None),
             "g021_m2": next((cr["模式二a′(㎡)"] for cr in conv_rows if cr["歸戶"] == "G021"), None),

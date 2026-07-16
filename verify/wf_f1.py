@@ -31,6 +31,56 @@ TARGET_ANCHOR = {"0m": "628-37(1)", "3.5m": "628-36(1)"}   # KL 裁定錨
 WEDGE_AREA_ANCHOR = 5.30                                    # R1 楔形斷言錨（±0.05；量測為準，W2）
 PERP_TOL = 0.10
 
+# §N3-0 T2：strip↔楔形之「切線同源殘差」界＝**數值極限**（＝②-池 閘之同一常數與依據，非新立）
+#   成因：wedge 與 strip 係**兩次獨立 `_block_strip` 呼叫**建構**同一條**切線——
+#     wedge 之遠邊 ＝ `p1 + (−w)·d̂ + w·d̂`，浮點下 **≠ p1** 逐位（殘差 ~1e-13）
+#     → 兩多邊形相距 ~1e-13、shapely `unary_union` 遂不合併（回 MultiPolygon）。
+#   實證：**同一構造，R1 合併、R6 不合併**（`dist=0.000000`／parts=[776.9034, 85.7064]）
+#     ——差別僅在浮點捨入方向（疊→併／縫→不併）＝**噪訊之簽名，非幾何**。
+#   ⚠️ **與舊補償（`buffer(±0.0011)`）之別（勿混為一談）**：舊者橋接 **1.1mm**＝`buffer(0.001)`
+#     侵蝕之**真縫**（已知 bug 之遮蓋·依據＝殘餘）；本界 1e-6 **低其 3 個數量級**，
+#     **真 1mm 縫仍必紅**——故非補償復辟。
+_FUSE_EPS = 1e-6
+
+
+def _fuse_strict(a, b, tag, label):
+    """§N3-0 T2：strip ∪ 楔形 → **單一 Polygon**（wf_f1／wf_f4 共用·單一真相源·防 #20）。
+
+    **補償碼已連根拆**（plan §4.1/§4.2）：舊 `u.buffer(0.0011).buffer(-0.0011)` 閉運算
+    係對 stepg `allocated_union.buffer(0.001)` 之 **1mm 侵蝕縫**之形態學補償——T2 消滅侵蝕源
+    後即成過度校正，不得保留。
+
+    **惟實測撞出另一非侵蝕之縫源（CC 補正③·上呈覆核）**：wedge 與 strip 係**兩次獨立
+    `_block_strip` 呼叫**建構**同一條切線**，浮點殘差 ~1e-13 → shapely 不合併。
+    此與 T1 之「s 域端點退化」同型：**規格「T2 後裸 union 必為單一 Polygon」之推論，
+    於浮點下偽**。故於**數值極限**（`_FUSE_EPS`＝1e-6·＝②-池 閘之同一常數與依據）內 snap；
+    **超出即真縫、立紅停機**（舊 1mm 侵蝕縫仍必紅——本界低其 3 個數量級）。
+    """
+    from shapely.ops import snap as _snap_op
+    u = unary_union([a, b])
+    if u.geom_type == "Polygon":
+        return u
+    d = float(a.distance(b))
+    if d > _FUSE_EPS:
+        raise RuntimeError(
+            f"🔴 [{tag}] {label} T2 後 _fuse 仍非單一 Polygon（{u.geom_type}）："
+            f"strip.area={a.area:.4f}／wedge.area={b.area:.4f}／dist={d:.9f}m"
+            f"／parts={[round(g.area, 4) for g in u.geoms]}"
+            f"——dist > {_FUSE_EPS}＝**真縫**（非切線同源浮點殘差）→ T2 未做乾淨，停")
+    u2 = unary_union([a, _snap_op(b, a, _FUSE_EPS)])
+    if u2.geom_type != "Polygon":
+        raise RuntimeError(
+            f"🔴 [{tag}] {label} snap(數值極限 {_FUSE_EPS}) 後仍非單一 Polygon（{u2.geom_type}）："
+            f"dist={d:.9f}m／parts={[round(g.area, 4) for g in u2.geoms]}"
+            f"——非浮點殘差可解釋，停（no-silent-fallback）")
+    # 面積不變性：snap 僅動 ~1e-13 級頂點，面積須逐位守恆（破＝snap 吃掉真面積）
+    _da = abs(u2.area - (a.area + b.area))
+    if _da > _FUSE_EPS:
+        raise RuntimeError(
+            f"🔴 [{tag}] {label} snap 後面積不守恆：Δ={_da:.9f} > {_FUSE_EPS}"
+            f"（{u2.area:.6f} vs {a.area:.6f}+{b.area:.6f}）——snap 動到真幾何，停")
+    return u2
+
 
 def _seg(dd):
     p1, p2 = (dd or {}).get("p1"), (dd or {}).get("p2")
@@ -232,15 +282,13 @@ def compute(ctx_by_tag, f0_out):
                                "（重建幾何與 stepg 不一致）")
 
         # ── 標的重切：bisect fuse(strip(S′), wedge).area == G_B（W2） ──
-        #   楔形＝trunk B 池殘片、已被 stepg `allocated_union.buffer(0.001)` 侵蝕 1mm
-        #   → 與 strip 有 1mm 縫、裸 union 成 MultiPolygon（首烤實證）。
-        #   閉運算（buffer +0.0011/−0.0011）彌合侵蝕縫成單一 Polygon；縫面積（~0.03㎡）
-        #   由 bisect 對 G_B 定面積吸收（本就屬未侵蝕前之真實池楔），正確 by construction。
+        #   **補償-1 已拆（§N3-0 T2·plan §4.1）**：舊註解自承「楔形＝trunk B 池殘片、**已被 stepg
+        #   `allocated_union.buffer(0.001)` 侵蝕 1mm** → 與 strip 有 1mm 縫、裸 union 成 MultiPolygon」，
+        #   遂以閉運算（buffer +0.0011/−0.0011）彌合之——**該侵蝕係已知而選擇繞過、非未知**。
+        #   T2 消滅侵蝕源（池片改同切線切出·無 buffer 膨脹）→ 楔形與 strip **連續、裸 union 本即單一
+        #   Polygon** → 補償即成**過度校正**，須連根拆（不留 fallback·舊邏輯整段刪）。
         def _fuse(a, b):
-            u = unary_union([a, b])
-            if u.geom_type != "Polygon":
-                u = u.buffer(0.0011).buffer(-0.0011)
-            return u
+            return _fuse_strict(a, b, tag, f"F.1 {lbl}")
 
         def union_area(S):
             cut, _ = strip_at(0.0, S)
@@ -319,13 +367,13 @@ def compute(ctx_by_tag, f0_out):
         if oB != oN:
             raise RuntimeError(f"🔴 [{tag}] R1 位次序變動：{oB} → {oN}")
 
-        # ── 池重算（stepg 同式：buffer(0.001) 差集、≥1㎡）＋裁示 1(b) F.1 段 ──
-        alloc_union = unary_union(list(new_polys.values())).buffer(0.001)
-        pool = block_poly.difference(alloc_union)
-        if not pool.is_valid:
-            pool = pool.buffer(0)
-        pieces = ([g for g in pool.geoms if g.area >= 1.0] if pool.geom_type == "MultiPolygon"
-                  else ([pool] if pool.area >= 1.0 else []))
+        # ── 池重算（§N3-0 T2：同機制·同切線）＋裁示 1(b) F.1 段 ──
+        #   ⚠️ 舊式 `unary_union(...).buffer(0.001)` → `difference` → `area>=1.0` **已廢**
+        #      （本處係「stepg 同式」之**抄寫複本**·失敗考古 #20 之根因；註解原文自承）。
+        #   改呼叫**同一 helper**（app.py·ns harvest）→ stepg／app／wf_f1／wf_f4 四處單一真相源。
+        pieces = ns["_pool_strips_for_block"](
+            block_poly, d_hat, corner_pt, alloc_dir,
+            list(new_polys.values()), _label=f"{lbl}·F.1[{tag}]", _depth=avg_depth)
         fseg_r1 = _seg(fl)
         pool_rows, s0_left = [], 0
         for i, g in enumerate(pieces):
