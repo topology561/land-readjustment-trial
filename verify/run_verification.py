@@ -885,8 +885,13 @@ def main():
             _a2 = d2["anchors"]
             results.append((f"F.2 結構永久閘{tag}（trunk C 守恆全綠）", _a2["verdict_all_green"],
                             [] if _a2["verdict_all_green"] else ["守恆破"]))
-            results.append((f"F.2 跨街廓守恆{tag}（源池增/目標池減/全區殘差 {_a2['cons_resid']}<6㎡）",
-                            _a2["cons_resid"] < 6.0, [] if _a2["cons_resid"] < 6.0 else [str(_a2["cons_resid"])]))
+            # §N3-0 全區級帳對幾何閘＝逐街廓加總（KL 2026-07-16 裁·補丁三 §二）
+            #   ⚠️ 舊 `<6.0` 廢＝殘餘定閘（432,352 元·N0-17）；⚠️ `Σ宗數×0.005` 亦廢（維度錯·停機③）
+            results.append((f"F.2 跨街廓守恆{tag}（源池增/目標池減/全區 |Σ(G−幾何)| "
+                            f"{_a2['cons_resid']} ≤ {_a2['cons_tol']}＝Σ街廓 宗數×(0.005×深度＋tol＋0.005)）",
+                            _a2["cons_resid"] <= _a2["cons_tol"],
+                            [] if _a2["cons_resid"] <= _a2["cons_tol"]
+                            else [f"{_a2['cons_resid']} > {_a2['cons_tol']}"]))
             results.append((f"F.2 位次序不變{tag}（投影序∖移除宗）", not _a2["pos_viol"],
                             [str(x) for x in _a2["pos_viol"][:3]]))
             results.append((f"F.2 F.1 正交{tag}（{wf_f2.F1_TARGET[tag]} B→C 全等）",
@@ -947,9 +952,12 @@ def main():
             _ok59 = (_a3["n_pub"] == 59 and _a3["n_in"] == 35 and _a3["n_74"] == 24)
             results.append((f"F.3 零遺漏{tag}（59＝併入{_a3['n_in']}＋轉7-4{_a3['n_74']}）", _ok59,
                             [] if _ok59 else [str({k: _a3[k] for k in ('n_pub', 'n_in', 'n_74')})]))
-            results.append((f"F.3 結構永久閘{tag}（trunk D 守恆綠·殘差{_a3['cons_resid']}）",
-                            _a3["verdict_all_green"] and _a3["cons_resid"] < 6,
-                            [] if _a3["verdict_all_green"] and _a3["cons_resid"] < 6 else [str(_a3["cons_resid"])]))
+            # §N3-0 全區級＝逐街廓加總（補丁三 §二）；舊 `<6` 廢（殘餘定閘）
+            _c3ok = _a3["verdict_all_green"] and _a3["cons_resid"] <= _a3["cons_tol"]
+            results.append((f"F.3 結構永久閘{tag}（trunk D 守恆綠·|Σ(G−幾何)| "
+                            f"{_a3['cons_resid']} ≤ {_a3['cons_tol']}）", _c3ok,
+                            [] if _c3ok else [f"{_a3['cons_resid']} > {_a3['cons_tol']}"
+                                              f"／all_green={_a3['verdict_all_green']}"]))
             results.append((f"F.3 位次序不變{tag}", not _a3["pos_viol"], [str(x) for x in _a3["pos_viol"][:3]]))
             # 五則①切半 5 筆全 RD2（40 灌入項）
             _ok1 = (_a3["straddle"] == sorted(wf_f3.STRADDLE) and _a3["n_inject_items"] == 40)
@@ -1005,9 +1013,12 @@ def main():
                 results.append((f"F.4·{nm}{tag}", ok, v))
             a4 = d4["anchors"]
             # 結構永久閘（trunk E 守恆全綠）＋全區守恆殘差
-            results.append((f"F.4 結構永久閘{tag}（trunk E 守恆綠·殘差{a4['cons_resid']}）",
-                            a4["verdict_all_green"] and a4["cons_resid"] < 6,
-                            [] if a4["verdict_all_green"] and a4["cons_resid"] < 6 else [str(a4["cons_resid"])]))
+            # §N3-0 全區級＝逐街廓加總（補丁三 §二）；舊 `<6` 廢（殘餘定閘）
+            _c4ok = a4["verdict_all_green"] and a4["cons_resid"] <= a4["cons_tol"]
+            results.append((f"F.4 結構永久閘{tag}（trunk E 守恆綠·|Σ(G−幾何)| "
+                            f"{a4['cons_resid']} ≤ {a4['cons_tol']}）", _c4ok,
+                            [] if _c4ok else [f"{a4['cons_resid']} > {a4['cons_tol']}"
+                                              f"／all_green={a4['verdict_all_green']}"]))
             # 終態全域：旗標=0、位次序不變、B-1 窮舉閘、池三則
             results.append((f"F.4 終態旗標=0·位次序·B-1{tag}",
                             a4["flags_end"] == 0 and not a4["pos_viol"] and a4["b1_ok"],
@@ -1097,7 +1108,7 @@ def main():
         _bctx = ns["_build_wf_ctx"](_seed, "0m", ns["__file__"])
         _vg1 = []
         if set(ns["_WF_NS_NAMES"]) - set(_bctx["ns"]):
-            _vg1.append("ns 13 真符號不全")
+            _vg1.append("ns 16 真符號不全")
         if not isinstance(_bctx["cb_by"], dict) or set(_bctx["cb_by"]) != set(_nat["cb_by"]):
             _vg1.append("cb_by list→dict 不符")
         if _bctx["cad"].get("centerlines") != _cad.get("centerlines"):

@@ -206,6 +206,12 @@ def compute(ctx_by_tag, f2_out):
             "groups_74": sorted({gof(t["原地號"]) for t in pub_74}),
             "cons_resid": round(abs(sum(float(r["G(㎡)"]) for r in D.values())
                                     + sum(poolD.values()) - 22803.33), 2),
+            # §N3-0 全區級帳對幾何閘（補丁三 §二）＝逐街廓加總；舊 `<6` 廢（殘餘定閘）
+            "cons_tol": round(sum(
+                ns["_acct_geom_tol_block"](
+                    sum(1 for _r in D.values() if _r.get("所屬街廓") == l),
+                    float(snap["blocks"][l]["街廓分配深度_m"]))
+                for l in poolD), 4),
         }
         out[tag] = {"conv_rows": conv_rows, "to74_rows": to74_rows, "g_tab": g_tab,
                     "pool_rows": pool_rows, "anchors": anchors,
