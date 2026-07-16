@@ -6703,6 +6703,255 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
         return None, 0.0
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# §N3-0 T2：池片建構（與業主宗同機制·同切線·精確鋪滿）
+#   單一真相源——stepg／app／wf_f1／wf_f4 四處皆呼叫本組函式（根絕 #20「抄寫複本各自漂移」）。
+# ═══════════════════════════════════════════════════════════════════════
+
+# s 區間退化界（**數值極限**類·N0-17-a「依據須與誤差來源同類」）
+#   ＝ T1 之退化界（`buffer(-1e-4)` 由兩側各侵蝕 ε → 帶寬 < 2ε 即空）：**2 × 1e-4**。
+#   依據＝**T1 之 ε＝1e-4（數值極限·min_width 3.5m 之 ~1/35000·§N3-0 T1 已定）**，非另立新常數。
+#
+#   **為何濾於區間層、而非留給 T1**（CC 補正·上呈 claude.ai 覆核）：
+#   §N3-0 T1 曰「T2 做對則 **boolean 毛刺** 根本不產生 → T1 應永不觸發；觸發即代表 T2 未做乾淨」。
+#   然 s-帶分解另有一**非 boolean** 之退化源：**街廓 s 域端點與最外側宗之切線重合**
+#   （實測：R2 末宗迄 ＝ s_max 100.0274；R3 首宗起 ＝ s_min −0.0000 → p1/p2 楔形帶寬 ≈0
+#   ＝「該端本無楔形」之正常情形）。此時 T1 觸發，但 T2 實為乾淨（覆蓋 0.0000／疊 0／縫 0）
+#   → **「T1 觸發 ⟹ T2 未做乾淨」之推論於此偽**。造出退化帶再令 T1 銷毀之，徒然摧毀 T1 之訊號值。
+#   故濾於區間層：**不造退化帶** → T1 回復「應永不觸發」之不變量、其觸發重獲回歸訊號意義。
+#   面積影響：每帶 ≤ 2e-4 × 分配深度 ≤ 2e-4 × 45.04 ＝ **0.009㎡ < ①' 覆蓋閘 0.01**
+#   → **可證落於閘內**（非靜默丟棄：仍由 ①' 覆蓋閘把關，且 T2-DIAG 印出退化帶數／面積）。
+_S_EPS = 2.0e-4
+
+def _strip_axis(d_hat, allocation_dir=None):
+    """
+    回傳 (m_hat, denom)＝`_block_strip` 之**切線座標軸**。
+
+    `_block_strip` 之切帶係以 **n_hat = rot90(allocation_dir)** 為邊界方向之**平行四邊形**；
+    ALLOC 僅在繪圖公差內 ⊥ FRONT（UC9898 實測 2.6°–5.3°）→ 切線**斜交**。
+    設點 p = bp + t·d_hat + u·n_hat，取 m_hat = rot90(n_hat)（∴ n_hat·m_hat = 0）：
+        **t = ((p − bp)·m_hat) / (d_hat·m_hat)**   ← 該點所在切線之 s 座標
+
+    ⚠️ **禁以正交投影 `(p−bp)·d_hat` 量 s**——斜交下量不到切線位置。
+    實測（R1）：正交式 Σ[(街廓∩slab)−宗] = 346.89㎡、鋪滿殘差 93.21㎡；
+                改本式後 → 0.0000／0.1547（餘量＝第四源·宗 S 2dp 捨入）。
+    教訓＝失敗考古 #7：首版合成測用 `alloc ∥ d_hat`（正交）全綠＝只測了自己的想像；
+    **斜交是本案常態（CLAUDE.md §8），正交才是特例。**
+
+    n_hat 之取法**逐字對映 `_block_strip`**（含 allocation_dir 缺值／零向量退 rot90(d_hat)
+    之正交近似）——否則切線與被切體不同源，§N3-0 T2「同一組切線」之前提即破。
+    """
+    import numpy as np
+    d = np.asarray(d_hat, dtype=float)
+
+    # ── 以下逐字對映 _block_strip（n_hat 之取法）·勿與其分岔 ──
+    if allocation_dir is not None:
+        ad = np.asarray(allocation_dir, dtype=float)
+        ad_n = float(np.linalg.norm(ad))
+        if ad_n < 1e-9:
+            n_hat = np.array([-d[1], d[0]])
+        else:
+            ad = ad / ad_n
+            n_hat = np.array([-ad[1], ad[0]])
+    else:
+        n_hat = np.array([-d[1], d[0]])
+    if not np.any(np.isfinite(n_hat)) or float(np.linalg.norm(n_hat)) < 1e-9:
+        n_hat = np.array([-d[1], d[0]])
+    # ── 對映結束 ──
+
+    m_hat = np.array([-n_hat[1], n_hat[0]])          # rot90(n_hat) ⇒ n_hat·m_hat = 0
+    denom = float(np.dot(d, m_hat))
+    if abs(denom) < 1e-9:
+        raise RuntimeError(
+            "🔴 _strip_axis：d_hat·m_hat ≈ 0（切線 ∥ 推進向 → s 座標不可定義）。"
+            "街廓幾何或 ALLOC 方向異常，停（no-silent-fallback）")
+    return m_hat, denom
+
+
+def _strip_s_range(geom, d_hat, corner_pt, allocation_dir=None):
+    """
+    geom 全部頂點於**切線座標**（`_strip_axis`）上之 (s_min, s_max)；s 相對 corner_pt。
+    恆等：s(corner_pt + s0·d_hat) ≡ s0 → 與 `_block_strip(bp=corner_pt+s0·d_hat, S)` 逐位對映。
+    geom 為 None／空 → 回傳 None。
+    """
+    import numpy as np
+    if geom is None or getattr(geom, 'is_empty', True):
+        return None
+    m_hat, denom = _strip_axis(d_hat, allocation_dir)
+    bp = np.asarray(corner_pt, dtype=float)
+
+    pts = []
+    for g in (list(geom.geoms) if hasattr(geom, 'geoms') else [geom]):
+        ext = getattr(g, 'exterior', None)
+        if ext is not None:
+            pts.extend(list(ext.coords))
+    if not pts:
+        return None
+
+    ts = [float(np.dot(np.asarray(p, dtype=float)[:2] - bp, m_hat)) / denom
+          for p in pts]
+    return (min(ts), max(ts))
+
+
+def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
+                           biz_polys, _label='', _depth=None, _verbose=True):
+    """
+    §N3-0 T2（主修法）：**池片改用與業主宗完全相同之 `_block_strip` 機制、以同一組切線直接切出。**
+
+    廢止（本函式一律不用）：
+      · `block.difference(allocated_union.buffer(0.001))` ——buf_leak／gap_union／sliver 三漏之源
+      · `area >= 1.0` 濾網 ——§N3-0 T1：面積是二維量之投影，不得用以判一維退化
+
+    街廓 = [p1 楔形] + [宗帶…] + [池帶…] + [宗帶…] + [p2 楔形]，各片以**同一組切線**分界
+    → 精確鋪滿·無 boolean·無膨脹·無間縫。末筆楔形之非矩形係 ALLOC 與 BLOCK/BASELINE
+    不平行之**真實幾何**（非毛刺），一律計入池。
+
+    **N0-19（KL 2026-07-16 晚裁·池片定義）**：原子＝s-帶；**池片＝相鄰池 s-帶之極大聯集**
+    （＝業主宗 s-區間聯集於街廓 s 域內之補區間，by construction 即 maximal run）；
+    **身分鍵＝s 區間、出生即定**；連通分量＝舊 boolean 實作之 artifact，不再作為片之定義。
+
+    回傳 list[Polygon]，依 **s 起點**排序（＝N0-19 身分鍵之自然序，較舊「面積 desc」穩定：
+    面積隨 net_leak 變，s 區間出生即定）。
+
+    內建自檢（§N3-0）：①' 覆蓋 0.01／②-池 1e-6／②-宗圍堵 (宗數−1)×0.005×深度／Σ 式診斷／T1 退化網。
+    """
+    import numpy as np
+    from shapely.ops import unary_union
+
+    if block_poly is None or block_poly.is_empty:
+        raise RuntimeError(f"🔴 _pool_strips_for_block[{_label}]：block_poly 缺，停")
+    if _depth is None or float(_depth) <= 0:
+        # N0-17／no-silent-fallback：分配深度為街廓級參數，缺值不得以常數兜底（W-B `or 3.5` 陷阱）
+        raise RuntimeError(
+            f"🔴 _pool_strips_for_block[{_label}]：缺分配深度（②-宗 圍堵閘之上界依據），"
+            f"不得以常數兜底，停")
+
+    blk_area = float(block_poly.area)
+    _biz = [p for p in (biz_polys or []) if p is not None and not p.is_empty]
+
+    # ── 1. s 域：街廓頂點於同一 s 軸之完整值域（§N3-0「鋪滿之 s 域須涵蓋街廓在 ALLOC_LINE 投影之完整值域」）
+    #        由本函式**內部**自 block_poly 現算 → 不倚賴閉包內之 actual_max_proj（reviewer WARNING B）
+    _dom = _strip_s_range(block_poly, d_hat, corner_pt, allocation_dir)
+    if _dom is None:
+        raise RuntimeError(f"🔴 _pool_strips_for_block[{_label}]：街廓 s 域不可定義，停")
+    s_min, s_max = _dom
+
+    # ── 2. 業主宗之 s 區間（同一切線座標 → 與其 _block_strip 切線逐位一致）
+    biz_iv = []
+    for p in _biz:
+        r = _strip_s_range(p, d_hat, corner_pt, allocation_dir)
+        if r is not None:
+            biz_iv.append(r)
+    biz_iv.sort()
+
+    # ── 3. 業主宗區間之聯集（第四源致相鄰宗 s 區間可重疊 ≤0.005；union 吸收之）
+    merged = []
+    for a, b in biz_iv:
+        if merged and a <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], b))
+        else:
+            merged.append((a, b))
+
+    # ── 4. 補區間＝池 s-帶（N0-19：每一補區間即一「池片」＝相鄰池 s-帶之極大聯集）
+    pool_iv = []
+    cur = s_min
+    for a, b in merged:
+        if a > cur:
+            pool_iv.append((cur, min(a, s_max)))
+        cur = max(cur, b)
+    if cur < s_max:
+        pool_iv.append((cur, s_max))
+    # 退化區間濾除（`_S_EPS`＝T1 之退化界·數值極限）：兩類退化帶於此濾除，**不留給 T1**
+    #   （T1 係殘餘防護網、應永不觸發；令其代掃即掩蓋「T2 是否乾淨」之訊號）：
+    #   ① 宗-宗界面：S0c 後共用同一條捨入切線 → 殘寬為浮點噪訊（~1e-13）
+    #   ② s 域端點：街廓 s 極值與最外側宗切線重合 → p1/p2 楔形帶寬 ≈0（＝該端本無楔形）
+    _degen_iv = [(a, b) for a, b in pool_iv if (b - a) <= _S_EPS]
+    pool_iv = [(a, b) for a, b in pool_iv if (b - a) > _S_EPS]
+
+    # ── 5. 以同一 `_block_strip`／同切線切出池帶
+    pieces, kept_iv = [], []
+    for (a, b) in pool_iv:
+        bp = np.asarray(corner_pt, dtype=float) + a * np.asarray(d_hat, dtype=float)
+        g, _ = _block_strip(block_poly, d_hat, bp, b - a, allocation_dir=allocation_dir)
+        if g is None or g.is_empty:
+            continue
+        # T1（§N3-0）：寬度退化判定取代 `area >= 1.0`。T2 做對則毛刺不產生 → **T1 應永不觸發**；
+        #   觸發即 loud warn（no-silent-fallback）——其代表 T2 未做乾淨＝回歸訊號。
+        if g.buffer(-1e-4).is_empty:
+            print(f"🔴 T1 觸發[{_label}]：s∈[{a:.4f},{b:.4f}] 之池帶退化（buffer(-1e-4) 空）→ 消除。"
+                  f"　⚠️ T2 精確鋪滿下不應發生＝回歸訊號，入報告")
+            continue
+        pieces.append(g)
+        kept_iv.append((a, b))
+
+    # ── 6. 自檢
+    _all = _biz + pieces
+    _uni = unary_union(_all) if _all else None
+
+    # ①' 覆蓋閘：|union(全片) − 街廓| ≤ 0.01（依據＝幾何精度上限）·測「無地消失／無地憑空」
+    cover_resid = abs(float(_uni.area) - blk_area) if _uni is not None else blk_area
+    if cover_resid > 0.01:
+        raise RuntimeError(
+            f"🔴 ①' 覆蓋閘破[{_label}]：|union(宗+池) − 街廓| = {cover_resid:.4f} > 0.01"
+            f"（union {_uni.area if _uni is not None else 0:.4f} vs 街廓 {blk_area:.4f}）")
+
+    # ②-池：池-池／池-宗交集 ≤ 1e-6（依據＝數值極限·T2 同切線構造應精確）
+    pool_x = 0.0
+    for i in range(len(pieces)):
+        for j in range(i + 1, len(pieces)):
+            pool_x += float(pieces[i].intersection(pieces[j]).area)
+    for pg in pieces:
+        for bg in _biz:
+            pool_x += float(pg.intersection(bg).area)
+    if pool_x > 1e-6:
+        raise RuntimeError(
+            f"🔴 ②-池 不重疊閘破[{_label}]：池-池／池-宗交集 = {pool_x:.9f} > 1e-6"
+            f"（T2 同切線構造應精確）")
+
+    # ②-宗 圍堵閘：宗-宗重疊 ≤ (宗數−1)×0.005×分配深度
+    #   依據＝2dp 捨入半量子 0.005m × 深度（N0-18 推論一之機制推導上界）。
+    #   作用＝證明重疊全額可由第四源解釋；超出即另有病、立紅停機。S0c 後收 ≤1e-6。
+    biz_x = 0.0
+    for i in range(len(_biz)):
+        for j in range(i + 1, len(_biz)):
+            biz_x += float(_biz[i].intersection(_biz[j]).area)
+    n_biz = len(_biz)
+    bound = max(0, n_biz - 1) * 0.005 * float(_depth)
+    if biz_x > bound + 1e-9:
+        raise RuntimeError(
+            f"🔴 ②-宗 圍堵閘破[{_label}]：宗-宗重疊 = {biz_x:.4f} > 上界 {bound:.4f}"
+            f"（(宗數{n_biz}−1)×0.005×深度{float(_depth):.2f}）——**超出捨入量子可解釋範圍＝另有病**，停")
+
+    # Σ 式診斷（降為輸出·不作閘）：供 S0c 驗收對照——S0c 後縫與疊應歸 0
+    gap_iv = [(a, b) for (a, b) in kept_iv
+              if a > s_min + 1e-9 and b < s_max - 1e-9 and (b - a) <= 0.005]
+    gap_area = 0.0
+    for (a, b) in gap_iv:
+        for g, iv in zip(pieces, kept_iv):
+            if iv == (a, b):
+                gap_area += float(g.area)
+    if _verbose:
+        sigma = float(sum(p.area for p in _all)) - blk_area
+        _w = '  '.join(f'{b - a:.4f}' for a, b in kept_iv)
+        _ar = '  '.join(f'{p.area:.4f}' for p in pieces)
+        _mp = [i for i, g in enumerate(pieces) if g.geom_type != 'Polygon']
+        print(f"[T2-DIAG] 街廓 {_label}｜宗數 {n_biz}｜池帶 {len(pieces)} 片｜"
+              f"池帶 s 寬 [{_w}]｜池帶面積 [{_ar}]｜Σ池 {sum(p.area for p in pieces):.4f}｜"
+              f"覆蓋殘差 {cover_resid:.4f}｜"
+              f"Σ 殘差 {sigma:+.4f}｜宗-宗疊 {biz_x:.4f}（上界 {bound:.4f}）｜"
+              f"內部縫 {len(gap_iv)} 帶／{gap_area:.4f}㎡｜"
+              f"退化帶 {len(_degen_iv)} 個{('（s 寬 ' + ', '.join(f'{b - a:.2e}' for a, b in _degen_iv) + '）') if _degen_iv else ''}｜"
+              f"s 域 [{s_min:.4f},{s_max:.4f}]")
+        if _mp:
+            # N0-19 下池片＝s 區間，其幾何**可** disconnected → 下游 g_rows 之
+            #   `_g.exterior.coords`（try/except: []）會靜默吞掉幾何＝帳/幾何分岔。
+            #   本案 UC9898 實測未發生；發生即須處置（no-silent-fallback）。
+            print(f"🔴 [T2-MP] 街廓 {_label}：池片 {_mp} 非單一 Polygon "
+                  f"（{[pieces[i].geom_type for i in _mp]}）——下游 `_g.exterior` 將靜默吞幾何，須處置")
+
+    return pieces
+
+
 def solve_G_binary(a: float, A: float, B: float, C: float,
                    l_front: float, l_side: float, F: float,
                    block_poly, d_hat, baseline_pt,
@@ -6814,12 +7063,34 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         except Exception:
             ad_out = None
 
-    # 🆕 任務七 A：以收斂後 S_conv 再切一次，取得最終 cut polygon 之頂點座標
+    # 🆕 任務七 A：以收斂後 S 再切一次，取得最終 cut polygon 之頂點座標
     #     用以下游「重劃後試分配地籍圖」之 Plotly fill='toself' 渲染
+    #
+    # ══ §N3-0c S0c（第四源同源修·KL 2026-07-16 裁·N0-18 推論二）══════════════
+    #   病：**推進與實切不同源**——推進吃 `round(S_conv,2)`（stepg:547/638 之 `res['S']`），
+    #       而實切用**未捨入** `S_conv` → 相鄰宗切線錯開 ≤0.005m → 宗-宗重疊／間隙
+    #       （R1 實測：0m 0.1547㎡／3.5m 0.2597㎡）。舊 `difference(union(...))` 因 union
+    #       去重而全程掩蓋之（失敗考古 #21 同型再現）。
+    #   正解＝**實切改用捨入後 S**（非推進改吃未捨入值）——N0-18：法定成果精度慣例
+    #       ＝面積㎡／長度 m 皆取至 2 位（公分），**S 之 2dp 捨入本身非病**。
+    #   ⚠️ **不動 G**：G 為財務目標值（`G_conv` 定於上方 6792/6804 之 `G_target`），
+    #       在本切之前即已定 → 預測差量閘①「業主宗 G 一字不變」**全程有效·S0c 不豁免**。
+    #   影響面僅：final_cut 幾何（cut_coords）＋ area_geom，每宗 ≤ 0.005×分配深度。
+    _S_cut = round(S_conv, 2)          # ← 與回傳 'S'(6836)／推進(stepg:547/638) 同源於 cm 值
     cut_coords = []
     try:
-        final_cut, _final_area = _block_strip(block_poly, d_hat, baseline_pt, S_conv,
+        final_cut, _final_area = _block_strip(block_poly, d_hat, baseline_pt, _S_cut,
                                                allocation_dir=allocation_dir)
+        # S0c 第 2 項：area_geom 改取**實切**（捨入 S）之幾何面積 → 帳實一致
+        #   （乙-2 之幾何分配 4dp 匯出即匯真值）。
+        #   ⚠️ `_final_area` 原為 dead value（全庫零消費）→ 本行係**新接線**。
+        #   無條件賦值（非「>0 才蓋」）——條件式即靜默 fallback：實切為空時
+        #   area_geom 之真值就是 0，不得悄悄留用 bisect 迴圈之未捨入值。
+        area_conv = float(_final_area or 0.0)
+        if _S_cut > 0 and area_conv <= 0:
+            # S_cut>0 卻切不出面積＝異常（本案 UC9898 業主宗 S 最小 0.07·不應發生）
+            print(f"🔴 S0c 異常：S_cut={_S_cut} > 0 但實切面積 = {area_conv}"
+                  f"（side={side_label}）——切帶與街廓不交？入報告（no-silent-fallback）")
         if final_cut is not None and not final_cut.is_empty:
             if hasattr(final_cut, 'geoms'):  # MultiPolygon → 取面積最大者
                 _biggest = max(list(final_cut.geoms), key=lambda g: g.area)
@@ -7989,6 +8260,8 @@ _WF_NS_NAMES = [
     "solve_G_binary", "iterate_G_S", "rw_from_width", "get_min_lot_size",
     "_select_pool_slot", "_projection_order", "_spatial_order_parcels_v2",
     "alloc_normal_axis", "_block_strip",
+    # §N3-0 T2：池片建構單一真相源（stepg／app／wf_f1／wf_f4 四處共用·根絕抄寫複本漂移 #20）
+    "_pool_strips_for_block",
 ]
 
 
@@ -14597,7 +14870,9 @@ def main():
                     # 2. 逐街廓處理（雙向夾擠 + 抵費地）— Task D 核心重構
                     import numpy as _np_d
                     from shapely.geometry import Polygon as _SP_d
-                    from shapely.ops import unary_union as _uunion_d
+                    # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
+                    #   `_uunion_d(allocated_polys).buffer(0.001)`（病灶·已廢）；留之即 dead import。
+                    #   （與 stepg_pipeline 同構拆除·N0-16 同源同碼）
                     import math as _math_d
 
                     def _build_g_row(_k, _tp, _blk_label, _blk_area, _front_len, _avg_depth,
@@ -15242,35 +15517,26 @@ def main():
                                                 allocated_polys.append(_p)
                                         except Exception:
                                             continue
-                                if allocated_polys:
-                                    # 補充 2：buffer(0.001) 消除浮點碎邊
-                                    allocated_union = _uunion_d(allocated_polys).buffer(0.001)
-                                    offset_land = blk_poly.difference(allocated_union)
-                                    if hasattr(offset_land, 'is_valid') and not offset_land.is_valid:
-                                        offset_land = offset_land.buffer(0)
-                                else:
-                                    offset_land = blk_poly
-
-                                # 處理 MultiPolygon 與面積過濾
-                                if offset_land.geom_type == 'MultiPolygon':
-                                    parts = sorted(offset_land.geoms,
-                                                   key=lambda g: g.area, reverse=True)
-                                    offset_geoms = [g for g in parts if g.area >= 1.0]
-                                elif offset_land.geom_type == 'Polygon':
-                                    offset_geoms = ([offset_land]
-                                                    if offset_land.area >= 1.0 else [])
-                                else:
-                                    offset_geoms = []
+                                # ── §N3-0 T2（主修法）：池片改用與業主宗**同機制·同切線**直接切出 ──
+                                #   廢：`_uunion_d(allocated_polys).buffer(0.001)` → `difference` → `area >= 1.0`
+                                #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
+                                #   單一真相源＝`_pool_strips_for_block`；**與 stepg_pipeline 逐字同構**
+                                #   （N0-16 同源同碼·G.3 三重確立之基礎），四處共用根絕抄寫漂移（#20）。
+                                #   回傳依 s 起點排序（N0-19 身分鍵；較舊「面積 desc」穩定）。
+                                offset_geoms = _pool_strips_for_block(
+                                    blk_poly, d_hat, corner_pt, allocation_dir_block,
+                                    allocated_polys, _label=blk_label, _depth=avg_depth_default)
 
                                 _pool_total_blk = float(sum(_g.area for _g in offset_geoms))  # 🆕 W-D.2 ledger
 
-                                # 極端防呆 4：抵費地碎裂孤島警告
+                                # 池片數 >1 之提示（語意已隨 T2 改變：不再是「夾擠 bug」，
+                                #   而係 forced 帶／末筆楔形／中央池等**正常之多 s-帶**（N0-19））
                                 if len(offset_geoms) > 1:
                                     _total_a = sum(g.area for g in offset_geoms)
-                                    st.warning(
-                                        f"⚠️ 街廓 {blk_label} 的抵費地因分配夾擠被分割成 "
-                                        f"{len(offset_geoms)} 塊不連續區域（總面積 {_total_a:.2f} ㎡），"
-                                        f"請檢視圖形是否合理，或考量手動調整分配基準線。"
+                                    st.info(
+                                        f"ℹ️ 街廓 {blk_label} 之抵費地為 {len(offset_geoms)} 個池片"
+                                        f"（總面積 {_total_a:.2f} ㎡）——依 N0-19，池片＝相鄰池 s-帶之極大聯集；"
+                                        f"多片屬正常（如 forced 帶＋中央池＋末筆楔形）。"
                                     )
 
                                 # 寫入 g_rows 作為「抵費地」項目

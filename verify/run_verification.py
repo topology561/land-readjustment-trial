@@ -1097,7 +1097,7 @@ def main():
         _bctx = ns["_build_wf_ctx"](_seed, "0m", ns["__file__"])
         _vg1 = []
         if set(ns["_WF_NS_NAMES"]) - set(_bctx["ns"]):
-            _vg1.append("ns 13 真符號不全")
+            _vg1.append("ns 14 真符號不全")
         if not isinstance(_bctx["cb_by"], dict) or set(_bctx["cb_by"]) != set(_nat["cb_by"]):
             _vg1.append("cb_by list→dict 不符")
         if _bctx["cad"].get("centerlines") != _cad.get("centerlines"):

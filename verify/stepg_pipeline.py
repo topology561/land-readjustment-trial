@@ -83,7 +83,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。"""
     import numpy as _np_d
     from shapely.geometry import Polygon as _SP_d
-    from shapely.ops import unary_union as _uunion_d
+    # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
+    #   `_uunion_d(allocated_polys).buffer(0.001)`（病灶·已廢）；留之即 dead import。
 
     ss = fake_st.session_state
     fcb = ns["F3_CATEGORY_BURDEN"]
@@ -237,6 +238,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _select_pool_slot = ns["_select_pool_slot"]
     _spatial_order_parcels_v2 = ns["_spatial_order_parcels_v2"]
     _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
+    _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2：池片單一真相源
 
     g_rows = []
     detail_trace = {}
@@ -703,22 +705,15 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                                 allocated_polys.append(_p)
                         except Exception:
                             continue
-                if allocated_polys:
-                    allocated_union = _uunion_d(allocated_polys).buffer(0.001)
-                    offset_land = blk_poly.difference(allocated_union)
-                    if hasattr(offset_land, 'is_valid') and not offset_land.is_valid:
-                        offset_land = offset_land.buffer(0)
-                else:
-                    offset_land = blk_poly
-                if offset_land.geom_type == 'MultiPolygon':
-                    parts = sorted(offset_land.geoms,
-                                   key=lambda g: g.area, reverse=True)
-                    offset_geoms = [g for g in parts if g.area >= 1.0]
-                elif offset_land.geom_type == 'Polygon':
-                    offset_geoms = ([offset_land]
-                                    if offset_land.area >= 1.0 else [])
-                else:
-                    offset_geoms = []
+                # ── §N3-0 T2（主修法）：池片改用與業主宗**同機制·同切線**直接切出 ──
+                #   廢：`_uunion_d(allocated_polys).buffer(0.001)` → `difference` → `area >= 1.0`
+                #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
+                #   單一真相源＝app 之 `_pool_strips_for_block`（ns harvest·同 `_block_strip` 先例）
+                #   → stepg／app／wf_f1／wf_f4 四處同源，根絕抄寫複本各自漂移（#20 根因）。
+                #   回傳依 s 起點排序（N0-19 身分鍵；較舊「面積 desc」穩定）。
+                offset_geoms = _pool_strips_for_block(
+                    blk_poly, d_hat, corner_pt, allocation_dir_block,
+                    allocated_polys, _label=blk_label, _depth=avg_depth_default)
                 _pool_total_blk = float(sum(_g.area for _g in offset_geoms))
                 _min_block = min(50.0, blk_area * 0.05)
                 for _i, _g in enumerate(offset_geoms):
