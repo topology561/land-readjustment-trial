@@ -86,16 +86,29 @@
 新增**模組級純函式**（建議置於 app.py `_block_strip` 鄰近·由 `ns` harvest·verify 端 `ns["_pool_strips_for_block"]` 取用；與 N0-16 同源原則一致）：
 
 ```
+_strip_axis(d_hat, allocation_dir) -> (m_hat, denom)
+_strip_s_range(geom, d_hat, corner_pt, allocation_dir) -> (s_min, s_max)
 _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
-                       biz_intervals) -> list[Polygon]
-  # biz_intervals: 已排序之業主宗 [s_start, s_end] list（由累積S給·非投影）
-  #   = 左組 [_left_buffer_S, left_cum_S] 之逐宗細分 ∪ 右組（自 end 內推·由 right_cum_S）
-  # s_domain 由 helper 內部現算：s_i = (v−corner_pt)·d_hat 對 block_poly 全頂點取 min/max
+                       biz_polys, _label='') -> list[Polygon]
+  # biz_polys: 業主宗**實際幾何** list[Polygon]（cut_coords 所建·同源）
+  #   → s 區間由 helper 自 biz_polys 之切線座標取得（非由呼叫端給累積 S）
+  #   → 免依賴各呼叫端相異之 buffer／cum_S 慣例；forced 帶／末筆楔形自然落入互補區間
+  # s_domain 由 helper 內部自 block_poly 頂點於同一 s 軸現算
   #   → 免倚賴閉包內之 actual_max_proj（reviewer WARNING B）
   # 回傳互補區間之 _block_strip 帶（p1楔形/forced/中央/p2楔形）
-  # 內建鋪滿自檢：|Σ(biz帶 + pool帶) − block_poly.area| ≤ 0.01 破則 loud raise
+  # 內建：鋪滿閘（以**實際宗幾何**校驗）＋不重疊閘（池-池／池-宗）＋T1 退化網（雙路 loud）
 ```
-- **入參皆在各呼叫點 scope**：`block_poly`/`d_hat`/`corner_pt`/`allocation_dir`（=allocation_dir_block）四者於 stepg:689／app:15229／wf_f1:322／wf_f4（`_reshape_block`/E3 由 `fl`+`cad` 重建·同 wf_f1:150-158 式）皆可取；`biz_intervals` 由已存累積 S 組（stepg/app 之 `left_cum_S`/`right_cum_S`/`_left_buffer_S`；wf_f1 之 `cum`）。**不需** 閉包內之 `actual_max_proj/end_pt/d_hat_rev`。
+- **⚠️ 實測校正（2026-07-16·取代本節原「對 d_hat 投影」之述）**：`_block_strip` 之切帶係以
+  **n_hat＝rot90(allocation_dir)** 為邊界方向之**平行四邊形**；ALLOC 僅在**繪圖公差內** ⊥ FRONT
+  （UC9898 實測 2.6°–5.3°，`stepg:344-349` 之 ⊥ 閘容差 0.15）→ 切線**斜交**。故**禁以正交投影
+  `(p−corner)·d_hat` 量 s**（量不到切線位置：實測 R1 `Σ[(街廓∩slab)−宗]＝346.89㎡`、鋪滿殘差
+  **93.21㎡**）。**正確式＝斜交切線座標**：點 p＝bp＋t·d̂＋u·n̂，取 m̂＝rot90(n̂)（∴n̂·m̂＝0）得
+  **`t ＝ ((p−bp)·m̂)/(d̂·m̂)`**（`_strip_axis`／`_strip_s_range`；n_hat 取法逐字對映 `_block_strip`，
+  含 allocation_dir 缺值退 rot90(d_hat) 之正交近似）。改用後 slab 差額 **346.89→0.0000**、
+  殘差 **93.21→0.1547**（餘量＝第四源·見 `docs/reports/W-G.4_S0b_第四源_宗S捨入_停機上呈.md`）。
+  **教訓**：首版合成測用 `alloc ∥ d_hat`（正交）全綠＝**失敗考古 #7**（fixture 自造只測自己的想像）；
+  **斜交是本案常態（CLAUDE.md §8 明載），正交才是特例** → 合成 fixture 必含斜交 2.6°/5.3°/12°。
+- **入參皆在各呼叫點 scope**：`block_poly`/`d_hat`/`corner_pt`/`allocation_dir`（=allocation_dir_block）四者於 stepg:689／app（池建構點）／wf_f1:322／wf_f4（`_reshape_block`/E3 由 `fl`+`cad` 重建·同 wf_f1:150-158 式）皆可取；`biz_polys` 即 `allocated_polys`／`new_polys.values()`／`npolys.values()`。**不需** 閉包內之 `actual_max_proj/end_pt/d_hat_rev`。
 
 - **同源保證**：#1(stepg)/#2(app) 直接呼叫；#3(wf_f1)/#4(wf_f4) 亦呼叫同一 harvested helper（`strip_at` 之等價·因 helper 內用 `_block_strip`＋同 corner/d_hat/alloc）。→ 四處**單一真相源**、根絕「抄寫複本各自漂移」（#20 根因）。
 - **⚠️ 設計裁決（送 reviewer）**：helper 置於 app.py 抑或獨立 `verify/` 模組——若置 app.py，wf_f1/wf_f4 經 `ns` 取（已有先例 `ns["_block_strip"]`）；若獨立模組，app.py `import`。**傾向前者**（同源、harvest 既有機制）。reviewer 核可置放點。
@@ -261,6 +274,7 @@ _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
 2. **Phase 8 <5㎡ 合併**（§4.3）：拆 buffer＋loud warn＋靠閘③把關（傾向·最小侵入）vs S0b 暫停用該合併（讓 §N5 統一）。
 3. **白縫閘 harness 落點**（§5.1）：等同鋪滿閘之推論（傾向）vs 獨立量測點。
 4. **piece 身分穩定性**：T2 是否可能改變某街廓池片**數目**（vs 現 baseline）→ 若改變則預測差量閘③（逐片對映）須改逐**街廓總量**對映＋片數差異列可歸因清單（⑤）。REPL 先驗片數。
+5. **s_max 現算 vs 舊 `actual_max_proj`（claude.ai 複驗加驗·對 WARNING B 修法之正確性關鍵）**：二者**構造上恆等**——`actual_max_proj = max((v−corner_pt)·d_hat for v in blk_meta['vertices'])`（stepg:563-569）而 `blk_poly = Polygon(blk_meta['vertices'])`（stepg:214/217）＝同一組頂點、同一投影式。**唯一分岔點**：217 之 `is_valid` 修復路徑 `buffer(0)` 可微改頂點。→ **重烤若在曾走 `buffer(0)` 修復之街廓出現 s_max 微差，屬 helper 更正確（切線與被切體同源）、非回歸。**
 
 **本 plan 無 KL 域裁題**：S0b 之 T1/T2/T3＋補償＋閘＋乙＋甲-2 皆 §N3-0/交辦已明定；D1/D2/D3（前版 plan 之 R5 街角補足/R6 私有宗/Rw 基準）屬 §N1/§N2＝S1/S2·**不在 S0b**。若施工中撞出未涵蓋之真實違規（如某街廓 T2 後鋪滿閘無法達 0.01 之幾何成因），**停機上呈**（§N8）。
 
