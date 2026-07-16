@@ -166,7 +166,21 @@
 
 ## 7. 現況
 
+### 重烤與 run_all（實測）
+
+| 步 | 結果 |
+|---|---|
+| PRE 凍存 | `verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/`（**60 CSV**·比照 `PRE-比率更新_凍存` 慣例） |
+| 單次重烤（`WV_BAKE`） | **155 PASS／0 FAIL**·覆寫 **38** 檔 |
+| **`run_all`（對新 baseline）** | **155 PASS／0 FAIL ＝ ALL GREEN** |
+| 池片命名／片數 vs 凍存 | **零變動**（0m 9→9／3.5m 11→11·名單逐字一致）＝§5-1 之 scope 已復原 |
+
+**⚠️ 此「綠」之效力上限（誠實聲明·N0-17 之自我適用）**：重烤後 `run_all` 綠**部分係 by construction**
+（baseline 即本次輸出）。**真正撐住重烤正當性者為預測差量閘**——其中 **①（絕對·G 0/92）** 與 **②**
+已完全兌現，**③④ 僅以改寫後之恆等式兌現**（§2）。故**在 §6-1 未裁前，本波不得以 run_all 綠自稱收官**。
+
 - **main ＝ `67618ff`**（doc-only·綠）。**生產碼未 merge main**——俟 §6-1 之一句裁定。
+- **wip 分支 ＝ `3d946b7`**（`wip/W-G.4-S0b-S0c`·已推遠端·KL 已授權 wip/* 推紅碼）。
 - 舊 baseline 已凍存 `verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/`（60 CSV·比照 `PRE-比率更新_凍存` 慣例）。
 - **重烤 FAIL 之意義**：重烤時 `diff_rows` 回綠不比對 → 該 run 之 FAIL 只可能是**真斷言**（§5-1 即由此照出）。
 - 次步（俟裁）：merge/push main → 本報告入倉 → claude.ai 第二輪獨立複驗（scope diff＋閘值坐實＋逐宗閘抽驗）
