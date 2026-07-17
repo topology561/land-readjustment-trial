@@ -1660,9 +1660,19 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     **非** T2 正確性之證明（後者靠 ②不變量閘＋③預測差量閘）。
 
       1. **街廓面積欄**——否則鋪滿閘 `|Σ全片幾何−街廓面積|≤0.01` 與 `池帳＝街廓−ΣG` 皆無從驗。
-      2. **數值 2dp → 4dp**——628(5) 應配 223.44／幾何 223.45 差 0.01＝**整個閘寬**，2dp 即吃掉閘。
+      2. **🔴 乙-2「2dp→4dp」已廢止（KL 2026-07-17 落章）**——數值欄**回 2dp**。兩理由：
+         **(i) N0-16 溶解其前提**：本匯出屬 **④ 接線對拍**層，**本就不負 0.01 級閘之舉證**
+         （幾何正確性由 ②不變量閘＋③預測差量閘證）→「2 位吃掉閘」之憂**不成立**。
+         **(ii) N0-18：法定成果面積本即 2dp** → **法定報表輸出 4dp 反與 N0-18 相衝**。
+         （併記：原實作 `round(x,4)` 亦為 **no-op**——源 `g_rows` 本即 2dp〔`stepg:276/277`〕；
+          「授權 g_rows 增未捨入欄＝引擎 schema 改」之選項已**駁回**。）
       3. `scenario_tag`（0m／3.5m）——兩情境匯出撞名、無法辨識。
-      4. `stage_tag`（trunk A/B/E）——缺標記之直接代價：claude.ai 曾差點誤判 F.0 檔為終態。
+      4. `stage_tag` ＋ **`G_原值(㎡)` 欄**——缺標記之直接代價：claude.ai 曾差點誤判 F.0 檔為終態。
+         **⚠️ 本階段之真名＝`trunk A′`（Step G ＋ 步驟 J 就地改寫後）**：Phase 7 匯出時
+         `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·`app.py:16717-16732`）就地壓 G**
+         （寬<法定最小者 `G(㎡)=round(min(orig_G, min_area−0.01),2)`·真值存 `_G_before_width_violation`）。
+         **標錯比不標更糟：不標時人會去查，標錯時人會信。**（丙第 2 步 KL 實跑照出·報告 §8.3-1）
+         → 併增 **`G_原值(㎡)`**（被壓者取 `_G_before_width_violation`）＋**`增減(㎡)` 改以原值計**。
       5. 終態（trunk E）匯出——§N1 forced=range／池三則／鋪滿閘**全發生於終態**；F.0 與 E **兩錨都要**。
       6. `front_lines` → **池片穩定 key ＝ s_rel 起訖**（N0-19：身分鍵＝s 區間·出生即定）。
          **對拍禁以序號名稱為 key**：UI `R5-抵費地-2` 與 F.4 `R5-抵費地-1` 可為同一片。
@@ -1679,14 +1689,27 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     ws1.title = "對照清冊"
     ws1['A1'] = '重劃前後土地分配對照清冊'
     ws1['A1'].font = Font(size=14, bold=True)
-    ws1.merge_cells('A1:K1')
+    ws1.merge_cells('A1:L1')
     ws1['A2'] = (f'情境：{scenario_tag or "（未標）"}　｜　階段：{stage_tag or "（未標）"}'
-                 f'　｜　數值精度：4dp（乙-2：2dp 會吃掉 0.01 之閘寬）')
+                 f'　｜　面積精度：2dp（N0-18 法定成果慣例）')
     ws1['A2'].font = Font(size=10, italic=True)
-    # 乙-1 街廓面積欄／乙-3 情境／乙-4 階段（欄序：辨識欄在前，便於對拍腳本 groupby）
+    # 乙-1 街廓面積欄／乙-3 情境／乙-4 階段＋G_原值（欄序：辨識欄在前，便於對拍腳本 groupby）
     headers1 = ['情境', '階段', '原地號', '原面積(㎡)', '所屬街廓', '街廓面積(㎡)',
-                '暫編地號', '應分配G(㎡)', '幾何分配(㎡)', '增減(㎡)', '街角地']
+                '暫編地號', '應分配G(㎡)', 'G_原值(㎡)', '幾何分配(㎡)', '增減(㎡)', '街角地']
     _setup_xlsx_header(ws1, headers1, row=3)
+
+    def _g_orig(_r):
+        """乙-4（KL 2026-07-17）：**G 之原值**——步驟 J（Patch B-2 寬度驗證·`app.py:16717-16732`）
+        對「寬 < 法定最小」者**就地壓 G**（`round(min(orig_G, min_area−0.01), 2)`）以觸發合併，
+        並將真值存於 `_G_before_width_violation`。本欄取其真值；未被壓者即 `G(㎡)` 自身。
+        **`增減(㎡)` 一律以本欄計**——以被壓 G 計必失真（實測 628-34(3)：−103.35 vs 真值 −65.76）。"""
+        _bw = _r.get('_G_before_width_violation')
+        if _bw is not None:
+            try:
+                return float(_bw)
+            except (TypeError, ValueError):
+                pass
+        return float(_r.get('G(㎡)', 0) or 0)
 
     def _s_rel_key(_r):
         """乙-6：池片穩定 key ＝ **s_rel 起訖**（N0-19 身分鍵＝s 區間·出生即定）。
@@ -1715,17 +1738,19 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
             continue
         a = float(r.get('a 面積(㎡)', 0) or 0)
         g = float(r.get('G(㎡)', 0) or 0)
+        g0 = _g_orig(r)                      # 乙-4：G 原值（步驟 J 壓 G 前之真值）
         ws1.cell(row=row, column=1, value=scenario_tag)
         ws1.cell(row=row, column=2, value=stage_tag)
         ws1.cell(row=row, column=3, value=str(r.get('原地號', '')))
-        ws1.cell(row=row, column=4, value=round(a, 4))
+        ws1.cell(row=row, column=4, value=round(a, 2))
         ws1.cell(row=row, column=5, value=str(r.get('所屬街廓', '')))
-        ws1.cell(row=row, column=6, value=round(float(r.get('街廓面積(㎡)', 0) or 0), 4))
+        ws1.cell(row=row, column=6, value=round(float(r.get('街廓面積(㎡)', 0) or 0), 2))
         ws1.cell(row=row, column=7, value=str(r.get('暫編地號', '')))
-        ws1.cell(row=row, column=8, value=round(g, 4))
-        ws1.cell(row=row, column=9, value=round(float(r.get('幾何面積(㎡)', 0) or 0), 4))
-        ws1.cell(row=row, column=10, value=round(g - a, 4))
-        ws1.cell(row=row, column=11, value=str(r.get('街角地', '否')))
+        ws1.cell(row=row, column=8, value=round(g, 2))       # 現值（步驟 J 後·可能被壓）
+        ws1.cell(row=row, column=9, value=round(g0, 2))      # 🆕 G_原值
+        ws1.cell(row=row, column=10, value=round(float(r.get('幾何面積(㎡)', 0) or 0), 2))
+        ws1.cell(row=row, column=11, value=round(g0 - a, 2))  # 增減＝以**原值**計（KL 2026-07-17）
+        ws1.cell(row=row, column=12, value=str(r.get('街角地', '否')))
         row += 1
     # 抵費地另起一段（乙-6 穩定 key／乙-7 幾何另立欄）
     _offsets = [r for r in (g_rows or []) if r.get('推進側別') == '抵費地']
@@ -1739,17 +1764,18 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
             ws1.cell(row=row, column=3, value='—')            # 乙-7：原地號 明確標「—」
             ws1.cell(row=row, column=4, value='—')            # 乙-7：原面積 不再被池片幾何佔用
             ws1.cell(row=row, column=5, value=str(r.get('所屬街廓', '')))
-            ws1.cell(row=row, column=6, value=round(float(r.get('街廓面積(㎡)', 0) or 0), 4))
+            ws1.cell(row=row, column=6, value=round(float(r.get('街廓面積(㎡)', 0) or 0), 2))
             ws1.cell(row=row, column=7, value=_s_rel_key(r))  # 乙-6：s_rel 起訖穩定 key
             ws1.cell(row=row, column=8, value='—')            # 乙-7：應分配G 明確標「—」（非 NaN）
-            ws1.cell(row=row, column=9,                        # 乙-7：池片幾何入「幾何分配」欄
-                     value=round(float(r.get('幾何面積(㎡)', 0) or 0), 4))
-            ws1.cell(row=row, column=10, value='—')
-            ws1.cell(row=row, column=11, value='抵費地')
+            ws1.cell(row=row, column=9, value='—')            # G_原值：池片無 G
+            ws1.cell(row=row, column=10,                       # 乙-7：池片幾何入「幾何分配」欄
+                     value=round(float(r.get('幾何面積(㎡)', 0) or 0), 2))
+            ws1.cell(row=row, column=11, value='—')
+            ws1.cell(row=row, column=12, value='抵費地')
             row += 1
     # 欄寬
-    for col_letter, width in zip('ABCDEFGHIJK',
-                                 [8, 10, 16, 14, 12, 14, 30, 14, 14, 12, 12]):
+    for col_letter, width in zip('ABCDEFGHIJKL',
+                                 [8, 30, 16, 14, 12, 14, 30, 14, 14, 14, 12, 12]):
         ws1.column_dimensions[col_letter].width = width
     _apply_xlsx_page_setup(ws1, orientation='landscape', fit_to_width=1)
 
@@ -7186,7 +7212,9 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         final_cut, _final_area = _block_strip(block_poly, d_hat, baseline_pt, _S_cut,
                                                allocation_dir=allocation_dir)
         # S0c 第 2 項：area_geom 改取**實切**（捨入 S）之幾何面積 → 帳實一致
-        #   （乙-2 之幾何分配 4dp 匯出即匯真值）。
+        #   （⚠️ 原註引「乙-2 之幾何分配 4dp 匯出即匯真值」——**乙-2 已廢止**
+        #    〔KL 2026-07-17：N0-16 溶解其前提＋N0-18 法定成果本即 2dp〕；
+        #    本項之理由**不繫於乙-2**：帳實一致本身即 S0c 之標的。）
         #   ⚠️ `_final_area` 原為 dead value（全庫零消費）→ 本行係**新接線**。
         #   無條件賦值（非「>0 才蓋」）——條件式即靜默 fallback：實切為空時
         #   area_geom 之真值就是 0，不得悄悄留用 bisect 迴圈之未捨入值。
@@ -16601,13 +16629,17 @@ def main():
                                 front_lines=_p7_fls,           # 乙-6
                             )
 
-                        # 階段 A（trunk A／F.0＝Step G 原位次分配·現行行為）
+                        # 階段 A′（⚠️ **非** raw trunk A·KL 2026-07-17 落章更正）：
+                        #   Phase 7 匯出時 `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·16717-16732）
+                        #   就地壓 G**（寬<法定最小者 → G=min(orig_G, min_area−0.01)，真值存
+                        #   `_G_before_width_violation`）→ 故階段之真名為 **trunk A′**。
+                        #   丙第 2 步 KL 實跑照出（報告 §8.3-1）：**標錯比不標更糟**。
                         _xls_bytes_p7 = _mk_xls(st.session_state.get('f3_G_values', []),
-                                                'trunk A（F.0·Step G）')
+                                                'trunk A′（Step G＋步驟J 就地改寫後）')
                         _ec2.download_button(
-                            label=f"📥 法定報表 Excel（trunk A·{_p7_scn}）",
+                            label=f"📥 法定報表 Excel（trunk A′·{_p7_scn}）",
                             data=_xls_bytes_p7,
-                            file_name=f"重劃法定報表_trunkA_{_p7_scn}.xlsx",
+                            file_name=f"重劃法定報表_trunkA_prime_{_p7_scn}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             key='dl_p7_xls',
                             use_container_width=True,
