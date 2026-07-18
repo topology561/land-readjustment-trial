@@ -1,158 +1,226 @@
-# W-G.4 S1 施工 plan **v2**（S0d ＋ step 0 amp 斜交修 ＋ §N1 buffer 幾何化）
+# W-G.4 S1 施工 plan **v3**（端部機制段·八項一次重烤：W 脫鉤＋step 0＋街角 band＋N0-20 末筆＋S0d＋查表化＋歸因閘）
 
-> **v1 經 reviewer 退回 BLOCKED**（`e367c71`）→ 本 v2 依 **KL 2026-07-17 補丁四**（N0-18b／S0d／三裁）全面改寫。
-> 依據：規格 **N0-18b**／**N0-18a（升格為內部全精度通則）**／**§N3-0e S0d**／**§N1**／**N0-7 重述**／**N0-10**＋補丁四 §四。
-> 基準 HEAD：`e367c71`+（補丁四入倉同 push）。
-> **狀態：plan v2·未動工**——波紀律＝plan → reviewer → claude.ai 複驗 → **KL 確認才動工**。
-> **範圍：S0d ＋ step 0 ＋ S1**（三者幾何連動 → **併一次重烤**·補丁四 §五）。**不動** §N2（S2）／§N3（S3）／§N5（S5）。
+> **v2 經 reviewer 退回 BLOCKED×5**（`7df38fe`）→ 本 v3 依 **KL 2026-07-17 補丁六**（W 正典＋首宗下限＋R4 裁＋查表化＋歸因閘）＋補丁五（N0-20 端部機制）全面改寫。
+> 依據：規格 **W 正典**（§一.4 δ 精確式·CC 已內積驗證·見下 §1 註）／**N0-20**／**首宗下限**（補丁六 §二）／**R4 態樣**（§三）／**查表化**（§四）／**S1 G 重定歸因閘**（§五）／**§N3-0e S0d**／**§N1**／**N0-10**。
+> 基準 HEAD：`5b479b6`+（補丁六＋δ 驗證入倉同 push）。**行號已依 `5b479b6` 全數重驗**（`a74fc28`→`5b479b6` 間無碼 commit·見 §0.1）。
+> **狀態：plan v3·未動工**——波紀律＝plan → **reviewer 自動路由**（CLAUDE.md 已立·不停等 KL）→ claude.ai 複驗 → **KL 確認才動工**。
+> **範圍：八項端部機制段·一次重烤**（補丁六 §六·權威清單）。**不動** §N2 名單（S2）／§N3 targeting（S3）／§N5 下游（S5·範圍隨 step 0＋N0-20 收縮）。
 
 ---
 
-## 0. v1 → v2 之變更（reviewer BLOCKED 三項全數處置）
+## 0. v2 → v3 之變更（BLOCKED×5 全數處置＋補丁六新增四項＋δ 發現）
 
-| v1 之錯 | v2 之改 |
+| v2 之死因／缺 | v3 之改 |
 |---|---|
-| **BLOCKED-1** bisect 無 `side` 參數、自 `corner_pt` 量 → R3右 388.92（+79.99≈576萬）；**而完全複現規格錨 R2 8.7157（左側塊）** | **§2 helper `side` 參數化**；目標函式改**真實池帶**：left→`[s_min, buf]`／right→`[amp−buf, s_max]`。**#25 入正典** |
-| **BLOCKED-2** 「S2 無縫承接」為偽（R1右/R6右 皆右側·誤差 −94.84/−182.21）；`wf_f1` 無 right 分支 | side 參數化即解；**`wf_f1` 補 right 分支**（§2 表 #3） |
-| **BLOCKED-3** 閘② 套套邏輯（量 helper 內部收斂 ⇒ 恆綠）；`f(0)=0` 恆真且右側正解下為偽（R3 f_true(0)=78.24） | **閘② 錨改 `F.0_G值` 抵費地列「幾何面積(㎡)」**（`_pool_strips_for_block` 之真實產物）；**刪 `f(0)=0`**、留 `f(hi) ≥ range` loud raise |
-| **W-1** 閘⑤「Σ池恆定」為偽 | **改 `ΔΣ池 = −ΔΣG` 恆等式閘**（N0-7 重述·散文閘轉真閘） |
-| **W-3** 楔形歸屬未定 | **裁入 S1 為 step 0**（補丁四 §三-(b)） |
-| **W-6** §N1 錨歸屬錯 | 規格錨句已改寫（389.85＝池片；標的＝buffer 帶 **311.61 → 308.93**） |
+| **BLOCKED-1** step 0 只消 R3 之 p2 楔形；R1/R6 楔形在 **p1 端**（`s_min<0`·`actual_max_proj` 碰不到） | **端型二分（補丁六 §六）**：**p1 端＝N0-20 末筆機制**（§4·非 step 0）／**p2 端＝街角+step 0**（§2-3）。step 0 **僅右組 s 域**·**不再宣稱消三楔形** |
+| **BLOCKED-2** 閘③ R3 錨 `5.2719` 被 step 0 作廢（→`8.7290`） | **閘③ 錨 post-step0 重取**（§3·錨＝重烤後 `F.0` 抵費地列·非 pre-step0 值）；**禁湊 5.2719**（=回 #25） |
+| **BLOCKED-3** 閘①「G 一字不變」為偽（0m 態 G 仍動 +8.19） | **閘① 失效並重立為 S1 G 重定歸因閘**（補丁六 §五·§7）——G 全數重定係四項落章之必然 |
+| **BLOCKED-4** step 0 漏 `wf_f4:1124-1126`（第三處） | **step 0 三處同步**（§2·含 `wf_f4:1124`·verified） |
+| **BLOCKED-5** ΔΣ池 基準 `2299.26`（pre-S0b/S0c） | **基準＝倉態 2298.80（3.5m）／2378.01（0m）**（§7·`d9a8b05`·引身分） |
+| （v2 無）W 脫鉤 | **§1 W 脫鉤重構**（W 正典·直算 mp→遠側界線垂距·脫鉤碼 telescoping） |
+| （v2 無）首宗下限／R4 | **§1 首宗 W 下限 loud 規制（≥7）＋R4 單街角宗態樣記錄** |
+| （v2 無）N0-20 末筆機制 | **§4 R_end 構造＋勝者規則＋常數項 bisect** |
+| （v2 無）查表化 | **§6 全庫寫死 3.5 → `get_min_lot_size`**（盤點三分類） |
+| **W-1~W-8**（reviewer WARNING） | 逐項處置（§各節·行號重驗／`_WF_NS_NAMES` 16→18／S0d 下游位移據實陳述／`W_far` 量化退路徑／閘② 身分鍵／`wf_f1` right 全鷹架／N1 左帶吞 p1 楔形） |
+
+### 0.1 行號重驗（跨波必重驗·v2 之 6821 教訓）
+`git log a74fc28..5b479b6 -- app.py verify/stepg_pipeline.py verify/wf_f1.py verify/wf_f4.py` = **空**（僅 docs commit）→ 碼行號自 `a74fc28` 未動。本 plan 所引行號皆已於 `5b479b6` `sed -n` 逐一坐實（見各節「✓verified」）。**⚠️ v2 之 `app:6821` 已作廢**——實切在 **`app:7209`**（`_S_cut = round(S_conv, 2)` ✓verified）。
 
 ---
 
-## 1. step 0：**amp 斜交修**（上游幾何域錯·補丁四 §三-(b)）
+## 1. 項① W 脫鉤重構（W 正典）＋首宗下限＋R4 態樣
 
-**病灶**：推進域用**正交**投影 `actual_max_proj = max(dot(v − corner_pt, d_hat))`（`stepg:563-569`／`app` 同構），
-而池域用**斜交切線座標** `s_max`（`_strip_axis`）→ **R3 差 3.4571m** → 產生 `s 域 ⊄ [0, amp]` 之楔形。
+**病灶**（`app.py:7143-7155` ✓verified·`solve_G_binary` 內）：
+```python
+W = W_prev + S_guess * _cos_dn          # 7147：telescoping·W_prev 由群起點 thread、首宗=0
+Rw = rw_increment(W_prev, W)            # 7148
+```
+註 `7141`「不可從 SIDE_LINE 中點絕對量」＝**舊 (ii) 語意·W 正典已推翻**。此式**寄生於 S 累積器**（虛胖陷阱）。
 
-**reviewer 坐實（三處·與 baseline 逐位相符）**：R1 `s_min=−0.3248`→楔 **5.3255**；R6 `s_min=−3.6068`→楔 **85.7064**；
-R3 `s_max−amp=3.4571`→楔 **78.2363**。→ **此即 W-D.3 §4 積欠碎片清單之真因**（非 §N5 下游碎片）。
+**改法（W 正典·直算）**：`W_i ＝ mp → 第 i 宗遠側分配界線之垂距`（獨立幾何量測·脫鉤 S 累積）。**等價最小改動＝群起點 `W_prev` 初值由 `0` 改 `(群起點 − mp)·â_定向`（＝ −δ_block）**，其後 telescoping 照舊 → W 即成「自 mp 絕對量」。
+- **δ_block ＝ (mp − 群起點)·â_定向**（**CC 已內積驗證·六塊 |Δ|≤0.006**·報告 §7·`delta_unified.py`）：群起點＝右組 `end_pt=p1+amp·d_hat`（`stepg:576`）／左組 `p1`；â_定向＝`alloc_normal_axis(alloc_dir)`（`app:5158`）沿群推進入街廓向定號（`adv·â>0`·adv=+d_hat 左／−d_hat 右）。
+- **⚠️ W 為 intrinsic（reference-free）**：KL W＝perp dist mp→實際遠側界線·**與群起點/amp 無關**（step 0 改 group_start 時 cum_S 補償·KL W 不變）。故 **item① 與 item②（step 0）解耦**——W 量測不受 amp 影響。**施工須以此為準：直量實切遠邊到 mp 之垂距**（非賭 group_start）；`−δ_block` 初值法僅為「與現 telescoping 架構相容之等價實作」·**須以六塊 δ 錨驗證**。
+- **零區（補丁六 §一.3）**：`R(W≤0)＝0` **碼已具**（`rw_from_width`·`app:5127` `if W <= 0: return 0.0` ✓verified·`W≥18→100%` ✓）→ **item① 無須改零區·僅確認 W 脫鉤後首宗 W 可為負而正確歸零**；`Rw=R(W_i)−R(W_{i−1})`·`ΣRw=R(W_末)−R(0)` 閉合。
 
-**改法**：`actual_max_proj` 改用**斜交切線座標**（＝`_strip_s_range(block_poly, d_hat, corner_pt, allocation_dir)` 之 `s_max`）
-——**複用 T2 之 helper**（plan §1.5 已證同型修法·斜交式 `t = ((p−bp)·m̂)/(d̂·m̂)`·**禁正交投影**）。
-→ 推進域與池域**同座標系** → **`s 域 ⊂ [s_min, s_max]` by construction** → 三楔形消滅。
+**首宗下限規制（補丁六 §二·裁「行」·自由解非恰等）**：
+- 達資格之街角首宗 `W₁ ≥ 側街退縮 ＋ 最小畸零寬`（本案 ≥7·查表 §6）——**碼中 loud 下限規制**（`W₁ < 下限 → 記錄/警示`·**禁硬釘 =7**）。
+- **恰等於 range** 僅「皆不達資格 → forced band=range」路徑（§3）。
+- 驗收斷言：重烤後首宗 KL W **≥7**（現值 6.92＝pre-重烤 artifact·報告 §2）。
 
-**⚠️ 但 side 參數化仍不可省**（補丁四 §三-(b) 明示）：**末端真楔形不因 step 0 消失**
-（ALLOC 與 BLOCK/BASELINE 不平行之真實幾何·§N3-0 T2 已明）——**#25 教訓：通式不得賭在單側退化**。
+**R4 單街角宗態樣（補丁六 §三·裁 (a) 照實·loud）**：
+- R4 街角側僅一宗（`628-1(1)`）·`W=13.98<18` → `ΣRw<100%`（碼 90.57%／KL 87.74%）→ **缺口由全區財務平衡吸收·不塊內歸一化·不重定影響帶**。
+- **ΣRw 驗收斷言改**：「**閉合·或屬單宗 <18 之已裁態樣**」（該態樣 **loud 記錄·禁靜默**）。
+- **WATCH**：N0-20 端部機制施後 R4 末端處置是否吸收此殘（§4）。
 
-**§N5 之範圍隨之收縮**：只留 step 0 後**真殘**之碎片。
-
----
-
-## 2. S0d：S0c 修向反轉（§N3-0e·依 N0-18b-2）
-
-| # | 標的 | 改法 |
-|---|---|---|
-| 1 | `app.py:6821` 實切 | **撤 `_S_cut`、回復未捨入 `S_conv`** |
-| 2 | 推進 | **改吃未捨入 S**：`res` 增攜全精度值（如 `'S_raw'`）；`stepg:541/632` `_S_actual` 改取之；`547/638` `cum += _S_actual` |
-| 3 | 顯示欄 | **`'S'`／`'累積S'` 照舊 `round(...,2)` 輸出**（N0-18：顯示 2dp） |
-| 4 | `area_conv` | **＝全精度實切面積**（顯示 2dp）；`增減` 收斂至 bisect tol 級 |
-
-- **同源於全精度** → 縫與疊仍 by construction 歸零 → **②-宗 圍堵閘維持 ≤1e-6**。
-- **閘① 不受影響**（G 為財務量·定於 `6792`/`6804`·在實切之前）。
-- **🔴 閘寬連動（單源函式改係數·一處改五處生效）**：`_acct_geom_tol_per_lot|_block`
-  → **`0.005×深度` 項歸零**：逐宗 `≤ tol(0.01) ＋ 0.005 = 0.015`；逐街廓 `≤ 宗數×0.015`；全區＝加總；
-  **E3 `≤ 整形宗數×0.005`**（無 tol 項·整形不經 bisect）。
-  **依據＝正典補條：量子項僅對「實際存在於計算路徑之量化」立項**——S0d 後 S 量化退出路徑。
+**W-4 處置**：`W_far=round(W_conv,2)`（`app:7240` ✓verified）＝一長度量化仍在 W→Rw→G 路徑 → 影響 §7 歸因閘殘差寬（列量子項·量化×深度）。
 
 ---
 
-## 3. §N1：buffer_S′ 幾何 bisect（**side 參數化**·單一真相源）
+## 2. 項② step 0：amp 正交→斜交（**僅右組 s 域**·三處同步）
 
-**新增模組級純函式**（`app.py` `_pool_strips_for_block` 鄰近·`ns` harvest）：
+**病灶**：推進域用**正交**投影 `actual_max_proj = max(dot(v − corner_pt, d_hat))`（三處 ✓verified）：`app:15475`／`stepg:573`／`wf_f4:1124-1126`（BLOCKED-4 第三處）。而池域用斜交切線座標 `s_max`（`_strip_s_range`·`app:6892`）→ 右組終點 `end_pt` 位移 → R3 之 p2 楔形 `78.24`。
 
+**改法**：`actual_max_proj` 改用**斜交切線座標 `s_max`**（＝`_strip_s_range(block_poly, d_hat, corner_pt, allocation_dir)` 之 `s_max`·複用 T2 helper·斜交式·禁正交）。**三處同步**（禁抄第三份漂移·#20）。
+
+**⚠️ 範圍收縮（BLOCKED-1 修正）**：
+- step 0 **僅界定右組 s 域終點**（`end_pt`·`d_hat_rev`）→ **只消 R3 之 p2 楔形（78.24）**。
+- **R1/R6 之 p1 端楔形（5.33／85.71）＝N0-20 領域（§4）·非 step 0**（`s_min<0`·左端·`actual_max_proj` 物理碰不到·reviewer 已證 `app:15475` 於左組迴圈外）。
+- **v2 之「step 0 消三楔形」宣稱作廢**；閘僅斷言「**R3 p2 楔形 → 0**」（§7）。
+- **side 參數化仍不可省**（#25·末端真楔形不因 step 0 消·通式不得賭單側退化）。
+
+**W-8 處置**：N1 左帶 `[s_min, buf]` 於 `s_min<0` 會吞 p1 楔形——現 forced 左側僅 R5(+0.27)/R2(+0.27)（不觸發）；**S1 left band 須夾 `[max(s_min,0), buf]` 或明示 p1 楔形歸 N0-20**（§4·與 §3 left band 邊界對齊）。
+
+---
+
+## 3. 項③ 街角 forced band：buffer_S′ 幾何 bisect（**side 參數化**·單一真相源）
+
+**病灶四處 ✓verified**（矩形近似 `buffer_S = range ÷ avg_depth`·#20 同族）：`app:15291/15298`／`stepg:421/428`／`wf_f1:216`（**無 right 分支**·BLOCKED-2/W-7）／`wf_f4:1121/1128`。
+
+**新增模組級純函式**（`app.py` `_pool_strips_for_block`〔`app:6917` ✓verified〕鄰近·`ns` harvest）：
 ```
 _corner_buffer_S(block_poly, d_hat, corner_pt, allocation_dir, range_area, side,
-                 tol=0.01, _label='') -> float
-  # §N1：bisect 解 buffer_S′ 使**真實池帶**面積 == range_area（|Δ| ≤ tol）
-  #   side='left'  → band = block ∩ s∈[s_min, buf]
-  #   side='right' → band = block ∩ s∈[amp − buf, s_max]     ← step 0 後 amp == s_max
-  # s_min/s_max ← _strip_s_range(block_poly, ...)（斜交切線座標·與 _pool_strips_for_block 同源）
-  # 回傳**全精度** float（N0-18a 升格後之通則：內部全精度·不捨入）
-  # range_area ≤ 0 → 回傳 0.0（無 forced）
-  # 斷言：**刪 f(0)=0**（恆真·且右側 f_true(0)=78.24≠0 會誤停）；
-  #       留 `f(hi) < range_area` → **loud raise**（街廓容不下 range·N0-10 無吸收機制）
+                 tol=0.01, _label='') -> float           # 全精度回傳（N0-18a）
+  # bisect 解 buffer_S′ 使**真實池帶**面積 == range_area（|Δ|≤tol）
+  #   side='left'  → band = block ∩ s∈[max(s_min,0), buf]      ← W-8：夾 0·防吞 p1 楔形
+  #   side='right' → band = block ∩ s∈[amp − buf, s_max]       ← step 0 後 amp==s_max
+  #   s_min/s_max ← _strip_s_range（斜交·與 _pool_strips_for_block 同源）
+  #   range_area ≤ 0 → 0.0（無 forced）
+  #   刪 f(0)=0（恆真·右側 f_true(0)=78.24≠0 誤停）；留 f(hi)<range_area → loud raise
 ```
+- **單調性**（reviewer v2 已證·採認）：strip(S₁)⊆strip(S₂)·集合包含·斜交亦成立（6 塊×4000 點·遞減 0）→ bisect 適用。
+- **⚠️ 錨 post-step0 重取（BLOCKED-2）**：v2 之 `R3右 5.2719` 係 pre-step0·**step 0 後位移至 `8.7290`**。**閘③ 錨改＝重烤後 `F.0_G值` 抵費地列之實際 buffer_S′**（非 pre-step0 硬值·**禁湊 5.2719**）；**必含右側**（#25·R2 左之 8.7157 對 side 零舉證力）。
+- **band≡range 幾何比對閘**（0.01·N0-10）：錨源＝`F.0_G值` 抵費地列「幾何面積(㎡)」（`_pool_strips_for_block` 真實產物·**禁 helper 內部收斂值**＝套套邏輯）；**身分鍵**（W-6）＝以 **s 區間** 認 forced 帶（`{blk}-抵費地-{i}` 係面積遞減 artifact·`app:6934`·禁裸序號）。
 
-- **單調性（reviewer 已證·採認）**：strip ＝ `[0,S]×[−big,big]` 之像、`big` 只依 `block_poly.bounds`
-  **與 S 無關** → `strip(S₁) ⊆ strip(S₂)` → 面積單調不減。**集合包含論證·不需凸性·斜交亦成立**
-  （數值：6 塊×4000 點·遞減點 **0**）。→ bisect 適用 ✅
-- **正解錨（reviewer 實跑·v2 施工後須命中）**：**R5左 8.6774／R2左 8.7157／R3右 5.2719**
-  → 帶面積 **300.52／309.05／308.93**（＝range·±0.01）。
-- **⚠️ R2 之 8.7157 對「side」零舉證力**（#25）→ **驗收<u>必含右側</u>**（R3右 5.2719）。
-
-**四處同步**（與 T2 完全同組）：
-
-| # | 檔:行 | 改為 |
+**四處同步**（T2 同組）：
+| # | 檔:行 ✓verified | 改 |
 |---|---|---|
-| 1 | `app.py:15291`／`:15298` | `_corner_buffer_S(..., float(_l_min), side='left')`／`side='right'` |
-| 2 | `stepg:421`／`:428` | 同上（**byte 級對映 app**·N0-16） |
-| 3 | `wf_f1:216` | 同上·**併補 `right_buffer_S` 分支**（現無·BLOCKED-2） |
-| 4 | `wf_f4:1121`／`:1128` | 同上（`_reshape_block` 內·`side` 已在 scope） |
+| 1 | `app:15291/15298` | `_corner_buffer_S(..., side='left'/'right')` |
+| 2 | `stepg:421/428` | 同上（byte 級對映 app·N0-16） |
+| 3 | `wf_f1:216` | 同上·**補 right 全鷹架**（`end_pt`/`d_hat_rev`/`max(proj)`·非只加變數·W-7） |
+| 4 | `wf_f4:1121/1128` | 同上（`_reshape_block` 內·side 已在 scope） |
 
-- **通式·禁寫死**：依 `forced_map` 動態；**0m 零 forced → `range_area=0` → 回 0.0**。
-- **`_WF_NS_NAMES` 16→17**；`run_verification:1111` 標籤 `ns 16`→`17`；`_wf_ns()` docstring（`app:8403`）「13」→「17」。
-
----
-
-## 4. scope guard
-
-- **不動** `_build_corner_range_v2`（range 之產生法·S1 只消費其面積）。
-- **不動** §N2 街角資格／forced **名單**（S2）；**不動** §N3 targeting（S3）；**不動** §N5 下游（S5·範圍隨 step 0 收縮）。
-- **不動** T2 之 `_pool_strips_for_block` **建構法**（step 0 令其 `s 域` 與推進同源·**值**變、法不變）。
-- **⚠️ WATCH（既存·不改·reviewer 核可此界線）**：`app:16215` Rw 診斷讀 rounded buffer_S 且未乘 `cos_dn`
-  → **診斷非閘**（出口 `st.dataframe`·無 raise；真 telescoping 閘在 `stepg:801-812`·用 raw `W0_*`）。
-- **⚠️ 既存·列 backlog（非本波）**：**app 根本無 telescoping 閘**（`_W0_left/Wf_left` 僅 stepg 有）；
-  `app:6053/6056` → 角落抵費地 L/R **以 range 記帳而幾何是 212.84**（**反向佐證 piece 讀法**）→ S1 後 `中央池` 值連動。
+- **`_WF_NS_NAMES` 16→18**（W-2·非 17）：`_strip_s_range`＋`_corner_buffer_S` 皆須入 ns；`run_verification:1111` 標籤／`_wf_ns()` docstring（`app:8403`）同步。
 
 ---
 
-## 5. 驗收（②不變量閘＋③預測差量閘）
+## 4. 項④ N0-20 末筆機制（p1 端·R_end 構造＋勝者規則＋常數項 bisect）
+
+**域裁**（N0-20·補丁五 §一）：**p1 端（無 SIDE_LINE）之端部機制**·與街角機制對稱（同族抽象＝端部規定範圍多邊形＋勝者規則＋嚴格等於之抵費地退路）。
+
+1. **R_end 構造**：`R_end = (p1 外未臨正街土地) ∪ (p1→pz 帶·pz=沿 FRONTLINE 向內 3.5m〔查表·§6〕)`。R6 實例 85.71＋166.57＝252.28㎡。**p1 端楔形（R1 5.33／R6 85.71／0m R3 78.19）＝R_end 之內部組成·非「碎片」**。
+2. **勝者規則**：與 R_end 有交集之重劃前土地·依投影排序·**首筆 `G ≥ area(R_end)` 吃下整個 R_end**（端帶＋未臨正街地·一宗到底）；**皆不達 → 末筆為抵費地·面積嚴格 = area(R_end)**。
+3. **常數項 bisect**：勝者之 bisect 改解 `strip_area(S) = G − wedge_area`（＝實配 = p1 起平行四邊形 ＋ 未臨正街地〔常數〕）。**現碼落點**：`wf_f1` 之楔形處理（`WEDGE_AREA_ANCHOR=5.30`〔`wf_f1:31`〕·`_fuse` strip∪wedge〔`wf_f1:47`〕·R3/R6 標記制〔`wf_f1:10`〕）→ **改為 N0-20 通式**（`R_end` 驅動·勝者/常數項）。
+4. **與 §3 邊界對齊**：left band 之 `[max(s_min,0), buf]`（§2 W-8）之 `s_min<0` 段（p1 楔形）**歸 N0-20**·不歸 forced band。
+
+**⚠️ 施工細節待 reviewer**：`R_end` 之「未臨正街土地」幾何來源（block ∖ FRONTLINE 投影域？）；勝者「投影排序」是否複用 `_projection_order`；標記制→通式之爆炸半徑（R3/R6 現為零幾何動作·改通式後動 F.4 遞補錨）。
+
+---
+
+## 5. 項⑤ S0d：S0c 修向反轉（實切回未捨入·同源全精度）
+
+| # | 標的 ✓verified | 改 |
+|---|---|---|
+| 1 | `app:7209`（`_S_cut = round(S_conv,2)`） | **撤 `_S_cut`·回復未捨入 `S_conv`** |
+| 2 | 推進（`stepg:545` `_S_actual=res.get('S')`／`stepg:636` 同·`551`/`642` `cum_S += _S_actual`） ✓verified | **`res` 增攜全精度 `'S_raw'`·`545/636` `_S_actual` 改取之·`551/642` cum += 全精度**（行號 W-1 更正確認：541/632→**545/636**·547/638→**551/642**） |
+| 3 | 顯示欄 `'S'`（`app:7239` `round(S_conv,2)`） | **照舊 2dp 輸出**（N0-18 顯示） |
+| 4 | `area_conv` | **＝全精度實切面積**（`6793` 收斂／`6807` 未收斂**兩路徑皆改**·後者現與 S_conv 不同源） |
+
+- **W-3 據實**：本宗 G 不動（G 定於實切前）✓；但「推進改吃未捨入 S」→ `cum_S` 動 ≤0.005·n → **下游宗 baseline_pt 位移 → S/W/Rw/G 全動**（量小·但**陳述須含此**·非「閘① 不受影響」）。
+- **W-4/W-5**：`W_far=round(W_conv,2)` 仍量化（S 之量化未全退路徑·通稱改「**S 之量化退出路徑**」）；`_acct_geom_tol_per_lot` docstring（`app:6818` 待核）之**作廢域框架須刪**（單源函式內留作廢法理＝下輪引用源）。
+- **閘寬連動**（單源函式改係數·一處生效）：`_acct_geom_tol_per_lot|_block` → `0.005×深度` 項歸零：逐宗 `≤tol(0.01)+0.005=0.015`；逐街廓 `≤宗數×0.015`；E3 `≤整形宗數×0.005`。**依據＝量子項僅對實在路徑之量化立項**（#24）。
+
+---
+
+## 6. 項⑥ 查表化（補丁六 §四·全庫寫死 3.5 → get_min_lot_size）
+
+**基礎設施 ✓verified**：`get_min_lot_size(category, front_road_width_m)`（`app:7267`）回傳 `{'min_width','min_depth','min_area','table_key'}`（**`min_width`＝欲取代硬編 3.5 者**）；`HUALIEN_MIN_LOT_TABLE`（`app:7252`）**外層 key＝使用分區·路寬選<u>列</u>（tuple[0] 上限）**——**⚠️ 補丁六 §四「表以正街道路寬為鍵」措辭不精確**（外層鍵是分區·非路寬·列記上呈）。
+
+**窮盡盤點（subagent·`3.5` 全庫 74 命中·識別子 12 項·N0-17-c 附後）**——真消費三分類：
+
+**A. min_width 真消費（→ `get_min_lot_size(...)['min_width']`·本波改）**：
+| 檔:行 ✓verified | 現碼 | 註 |
+|---|---|---|
+| **`app:7652/7653/7655`** ★ | `_lmw_raw = _blk_param_B4.get('法定最小寬(m)', 3.5)`＋else/except 兜底 | **★實際生效中**（`f3L_sb_rows_by_label` 全程無人寫入·`selection_pipeline:272` 坐實）→ `select_corner_lots_both_sides_v12` Patch B-4 街角範圍前置篩選之 min_width。**改查表**（分區＋正面路寬）。 |
+| §1/§2 之首宗下限畸零寬項 | （新碼·§1） | `≥ 退縮 + min_width`·min_width 走查表·**禁寫死 7** |
+| `MinA = min_width × 深度` 之 min_width | （凡硬編 3.5 因子處） | 走查表 |
+
+**B. 側街退縮（補丁六 §四「沿用既有輸入欄」·<u>不</u>查表·惟廢靜默 3.5 兜底）**：
+| 檔:行 ✓verified | 現碼 | 改 |
+|---|---|---|
+| `app:7629/7630/7632` | `_setback_raw = ...get('f3L_setback_default', 3.5)`＋else/except | 退縮源＝輸入欄（`f3L_setback_default`）**保留**；**`, 3.5)` 靜默兜底廢**（no-silent-fallback·W-B `or 3.5` 陷阱）→ 缺值 loud 警示·非編造 3.5 |
+| `app:13920` | `number_input` 起始 `get('f3L_setback_default', 3.5)` | 同上（UI 起始預設·弱） |
+| `app:16113/16599` | dump／Excel 匯出檔名 tag 讀退縮 fallback | **弱（僅檔名）**·列 WATCH·可留 |
+
+**C. UC9898 凍結／耦合（<u>勿</u>查表化·上呈 KL）**：
+- `app:8524` `_wf_tag_of`：`abs(setback−3.5)<1e-9 → "3.5m"`·否則 `raise`（硬對應 UC9898 雙情境 0/3.5）→ **退縮若改查表得非 3.5·此派發須同步處理**（上呈 KL）。
+- `verify` 之 `(3.5,"3.5m")` 情境驅動迴圈 6 處（`run_verification:350/422`·`wg_g3:118`·`wd4_tier_list:185`·`wd3_fragment_geom:90`·`y_dump_diff:291`）＝UC9898 凍結雙情境·**勿動**。
+- `run_verification:838` `_a["w_new"] >= 3.5`＝F.1 錨閘硬編 min-width 門檻·**改查表或標 UC9898 凍結**（上呈）。
+
+**D. 引擎層已查表化（✓·非本波·佐證方向）**：`wf_f0/f1/f4`·`wd3`·`wd4`·`stepg` 皆已 `ns["get_min_lot_size"](...)["min_width"]` 逐塊查表；app `16729`（判去留寬度）＋`13990-13993`（`f3_min_width_by_label`）亦已查表。**非硬編·非目標**。
+
+**其餘 55 命中**＝註解／docstring／tag 字串／表本體（`7254-7263` 正典值·勿改）／plotly 線寬（`17095` 無關）。
+
+**🔴 上呈 KL（域裁·並行送 reviewer）**：① 退縮＝既有輸入欄（§四已裁·非 min_width 查表值·subagent 疑點釐清）；② `verify:108` param table 用單一 global `法定最小寬_m`（fixture·非逐塊查表）——是否改逐塊 `get_min_lot_size`？③ `8524`/`:838` 之 UC9898 耦合處置。
+
+---
+
+## 7. 項⑦ 驗收閘（歸因閘為新絕對層＋不變量閘＋禁套套邏輯）
 
 | # | 閘 | 判準 |
 |---|---|---|
-| **①** | **業主宗 G 一字不變**（**絕對**） | G 為財務量·S0d/step0/S1 皆不動之 → **逐格 byte 相同**·一格不符即停 |
-| **①-0m** | **0m 全譜系一字不變**（**絕對**·reviewer 證成） | 0m 零 forced（病灶行在 `if _fo_left:` 內·`app:15287`／`left_forced_offset` 於 0m 恆 False）→ **step 0 除外**（amp 修影響全情境·見註） |
-| ② | **N0-10 幾何比對閘**：forced **帶**面積 == range（**0.01**） | R5左→300.52／R2左→309.05／**R3右→308.93**。**錨源＝`F.0_G值` 抵費地列「幾何面積(㎡)」**（禁用 helper 內部收斂值＝套套邏輯） |
-| ③ | `buffer_S′` 命中正解錨（±0.001） | R5 8.6774／R2 8.7157／**R3 5.2719**（**必含右側**·#25） |
-| ③' | **step 0：三楔形消滅** | R1 5.3255／R6 85.7064／R3 78.2363 → **0**（`s 域 ⊂ [s_min,s_max]` by construction） |
-| ④ | **`ΔΣ池 = −ΔΣG` 恆等式閘**（**N0-7 重述·散文閘轉真閘**） | 預測 ΔΣG **+3.62** → Σ池 2299.26 → **2295.64**；**逐街廓亦須恆等** |
-| ⑤ | T1 新留片／片數差異**逐片可歸因** | step 0 後楔形消滅 → 片數應**減**；須逐片對上 |
+| **①→歸因** | **~~業主宗 G 一字不變~~ 失效並重立（補丁六 §五）** | **逐宗 ΔG 須由附件二鏈逐項解釋**：`ΔG ≈ −ΔRw·F·l₁·(1−C)`〔W 路徑·**ΔRw 由 W 脫鉤後新垂距<u>獨立</u>量·非重跑 G solve**〕＋S/幾何路徑項〔step 0 amp／S0d／端部 wedge〕。**殘差寬**依「量子項僅對實在路徑之量化立項」（#24·含 `W_far` 量化×深度·§5）。**無法歸因 = 停機**（第 N 源） |
+| ② | **N0-10 幾何比對閘**：forced band 面積 == range（0.01） | 錨 **post-step0** 重取（BLOCKED-2）·**必含右側**·身分鍵＝s 區間（W-6） |
+| ③ | `buffer_S′` 命中 post-step0 錨（±0.001） | 重烤後 `F.0` 抵費地列實值（**禁湊 5.2719**） |
+| ③' | **step 0：R3 p2 楔形 → 0**（**僅此一楔·非三**） | R3 78.24 → 0（`s 域 ⊂ [s_min,s_max]` 右組 by construction）。**R1/R6 p1 楔形歸 N0-20〔§4〕·不在此閘** |
+| ④ | **N0-20 勝者規則＋band≡range**（0.01） | R_end 面積 == 252.28（R6）·勝者宗 G≥area(R_end) 或末筆抵費地嚴格=area |
+| ⑤ | **`ΔΣ池 = −ΔΣG` 恆等式閘**（N0-7·散文轉真閘） | **基準 2298.80（3.5m）／2378.01（0m）**〔`d9a8b05`·引身分·**非 2299.26**〕；逐街廓亦恆等。ΔΣG 之量待重烤實測（W 全數重定） |
 | ⑥ | **帳對幾何閘收緊**（S0d） | 逐宗 `≤0.015`／逐街廓 `≤宗數×0.015`／E3 `≤整形宗數×0.005` |
 
-**不變量閘**：①' 覆蓋 0.01／②-池 1e-6／**②-宗 ≤1e-6**（S0d 後·非 0.005×深度）／逐宗主閘／守恆兩級／**N0-10（新綠）**。
+**不變量閘**：①' 覆蓋 0.01／②-池 1e-6／②-宗 ≤1e-6（S0d 後）／逐宗主閘／守恆兩級／N0-10（新綠）。
 
-**⚠️ 註（閘①-0m 之範圍）**：**step 0 之 amp 斜交修影響<u>全情境</u>**（0m 亦有楔形：R1 5.3255／R6 85.7064）
-→ **0m 非零行為變更**！**閘①-0m 僅適用於「S1 之 buffer 段」，不適用於 step 0**。
-**改**：0m 之 **buffer 相關欄**（`角落抵費地L/R`）須一字不變；0m 之**池片幾何**則依 ③' 變動且須可歸因。
-**（此為 v1 之閘① 於 v2 下之範圍收縮——reviewer 證成之「0m 零 forced ⇒ 零行為變更」僅對 buffer 段成立。）**
-
-**⚠️ 量級預告**：3.5m forced 帶 R5 +87.68／R2 +75.26／R3 −80.92（對 range）→ 該側全體宗起點位移
-→ **3.5m baseline 大幅重定**；**0m 亦因 step 0 而動**。**此為標的本身、非回歸**——惟須逐項可歸因。
+**🔴 禁套套邏輯自查（reviewer 必查·v1 閘②／v2 閘③' 前科）**——逐閘答「**病灶未修時此閘是否已恆綠**」：
+- **歸因閘**：預測 ΔRw **獨立於** G solve（W 脫鉤後直接垂距）→ 有鏈外源時預測對不上實際 baseline-diff → 紅（非恆綠）✓。**⚠️ 若預測改由重跑引擎 Rw 得出＝退化恆等式＝恆綠＝作廢**——施工須證預測路徑與 G solve 不共用 Rw。
+- **閘③'**：v2 之「`s 域⊂[s_min,s_max]` by construction」在楔形還在時**今天就真**（`app:6984-6990` 無條件夾）→ **零舉證力**（BLOCKED-0 教訓）。**v3 改斷言「R3 p2 楔形面積 78.24→0」**（一具體幾何量·病灶在時 =78.24·修後 =0·有鑑別力）。
+- **②/N0-10**：錨源 `F.0` 抵費地列為真實產物（R5 212.84／R3 389.85 皆≠range → 現在就紅·有鑑別力）✓·非套套邏輯。
 
 ---
 
-## 6. 施工序（**S0d ＋ step 0 ＋ S1 併一次重烤**·補丁四 §五）
+## 8. scope guard
 
-1. **S0d**（§2）→ 閘寬單源函式改係數 → py_compile。
-2. **step 0**（§1·amp 改斜交）→ 驗 ③'（三楔形消滅）。
-3. **S1 helper `_corner_buffer_S`**（§3·side 參數化）＋四處接線＋`wf_f1` right 分支＋ns 17。
-4. 驗 ②③（含**右側** R3 5.2719）。
-5. **PRE 凍存** → **併一次重烤** → 閘①③'④⑤⑥＋不變量閘全綠 → run_all 綠。
-6. py_compile → grep 對照本 plan → **push**（嚴格 `git rev-parse origin/main` 驗）。
-7. 報告入倉·聊天僅 ping → claude.ai 複驗 → **KL 重新 UI 實跑錨定**（**幾何已動·前錨降級為歷史對照**·乙匯出照 trunk A′ 版）。
+- **不動** `_build_corner_range_v2`（range 產生法·S1 只消費面積）／§N2 名單（S2）／§N3 targeting（S3）。
+- **不動** T2 `_pool_strips_for_block` 建構法（step 0 令 s 域與推進同源·**值變法不變**）。
+- **WATCH（既存·不改）**：`app:16215` Rw 診斷讀 rounded buffer_S 未乘 cos_dn（**診斷非閘**·真閘在 `stepg:801-812`）；app 無 telescoping 閘（僅 stepg）；`app:6053/6056` 角落抵費地以 range 記帳而幾何 212.84 → S1 後 `中央池` 值連動。
 
 ---
 
-## 7. 送 reviewer（v2 之設計裁決／WATCH）
+## 9. 施工序（八項·一次重烤·補丁四 §五＋補丁六 §六）
 
-1. **step 0 之落點**：`actual_max_proj` 於 `stepg:563-569`＋app 同構——**改為 `_strip_s_range` 之 `s_max`**。
-   求驗：①是否**全部**消費端皆改（`end_pt`／`d_hat_rev`／`right_cum_S` 之基準）？②`app` 側同構是否逐字？
-2. **S0d 之 `S_raw` 攜帶**：`res` 增鍵（`'S_raw'`）vs 改 `'S'` 為全精度＋顯示層 round——**傾向前者**（顯示欄契約不動·baseline 欄名不變）。求覆核。
-3. **閘①-0m 之範圍收縮**（§5 註）：是否正確？0m 因 step 0 而動，**是否仍有「絕對閘」可用**？
-   （**傾向**：以 `G(㎡)` 欄之 0m 逐格 byte 相同為絕對閘——G 不隨幾何動。）
-4. **`ΔΣ池 = −ΔΣG` 閘之落點**：`run_verification` 之重烤驗收段 vs `stepg` ledger——**傾向前者**（跨代量·非代內）。
-5. **step 0 之爆炸半徑**：amp 改斜交 → `right_cum_S` 之基準變 → **右組全體宗位移**？求驗此預測。
+1. **查表化**（§6）→ 3.5 真消費點改 `get_min_lot_size` → py_compile。
+2. **S0d**（§5）→ 閘寬單源函式改係數。
+3. **step 0**（§2·僅右組 s 域·三處）→ 驗 ③'（R3 p2 楔形→0）。
+4. **W 脫鉤**（§1·`W_prev` 初值 −δ_block／直量 mp→遠側）＋首宗下限＋R4 態樣 → 驗六塊 δ 錨。
+5. **街角 band `_corner_buffer_S`**（§3·side 參數化）＋四處＋`wf_f1` right 鷹架＋ns 18。
+6. **N0-20 末筆機制**（§4·R_end／勝者／常數項）。
+7. **PRE 凍存** → **併一次重烤** → 歸因閘＋②③③'④⑤⑥＋不變量閘全綠 → run_all 綠。
+8. py_compile → grep 對照本 plan → **push**（`git rev-parse origin/main` 嚴格驗）。
+9. 報告入倉·聊天僅 ping → claude.ai 複驗 → **KL 重新 UI 實跑錨定**（幾何全動·前錨降歷史對照）。
 
-**本 plan 之 KL 域裁題：無**（補丁四已裁 N0-18b／S0d／三題）。撞出未涵蓋之真實違規 → **§N8 停機上呈**。
+---
+
+## 10. 送 reviewer（設計裁決／WATCH）＋上呈 KL（域裁題）
+
+**送 reviewer（碼面·自動路由）**：
+1. **W 脫鉤之落點**：`W_prev` 初值 −δ_block vs 直量遠邊——**傾向直量**（intrinsic·step0-robust）；求驗六塊 δ 錨命中＋首宗下限 loud 位置＋`R(W≤0)=0` 分支（`app:5123`）。
+2. **step 0 三處同步**：`app:15475`/`stepg:573`/`wf_f4:1124` 是否**全部**消費端改（`end_pt`/`d_hat_rev`/`right_cum_S` 基準）？
+3. **閘③ post-step0 重錨**：是否正確避開 #25（禁湊 5.2719·錨取重烤後實值）？
+4. **N0-20 標記制→通式之爆炸半徑**（§4）：R3/R6 現零幾何動作·改通式後 F.4 遞補錨動——求驗不越權（`W-D.4 遞補錨` 回歸閘）。
+5. **歸因閘之非套套邏輯**（§7）：預測 ΔRw 是否真獨立於 G solve？
+6. **S0d 下游位移**（§5·W-3）：`cum_S` 未捨入 → 下游宗 baseline 位移之量級與可歸因性。
+7. **`_WF_NS_NAMES` 16→18**（W-2）＋`wf_f1` right 全鷹架（W-7）。
+
+**上呈 KL（域裁題·CC 不自裁·並行送 reviewer 審碼面）**：
+1. **🔴 δ 精確式（補丁六 §一.4）**：CC 內積驗證 literal `(mp−p2)·â` **不對上**（R6 算 0 vs 3.469）·真式 `(mp−群起點)·â_定向`（六塊≤0.006·報告 §7）→ 求 KL 覆核精確式參照點（p2→群起點·右組 amp-based·pre-step0）。**不 block 本 plan**（δ 診斷性·W 脫鉤直量不用 δ）。
+2. **R4 單街角宗 ΣRw<100%**（§1·補丁六 §三已裁 (a)）：N0-20 施後 R4 末端處置是否吸收此殘（WATCH）。
+3. **N0-20 之「未臨正街土地」幾何來源**（§4）：block ∖ FRONTLINE 投影域之精確定義·求 KL 確認域語意。
+
+**本 plan 之未裁域裁題**：上三項（並行呈 KL·不停等·依 CLAUDE.md）。撞出未涵蓋之真實違規 → 停機上呈。
