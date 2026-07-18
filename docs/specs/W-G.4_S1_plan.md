@@ -40,7 +40,7 @@ Rw = rw_increment(W_prev, W)            # 7148
 **改法（W 正典·直算）**：`W_i ＝ mp → 第 i 宗遠側分配界線之垂距`（獨立幾何量測·脫鉤 S 累積）。**等價最小改動＝群起點 `W_prev` 初值由 `0` 改 `(群起點 − mp)·â_定向`（＝ −δ_block）**，其後 telescoping 照舊 → W 即成「自 mp 絕對量」。
 - **δ_block ＝ (mp − 群起點)·â_定向**（**CC 已內積驗證·六塊 |Δ|≤0.006**·報告 §7·`delta_unified.py`）：群起點＝右組 `end_pt=p1+amp·d_hat`（`stepg:576`）／左組 `p1`；â_定向＝`alloc_normal_axis(alloc_dir)`（`app:5158`）沿群推進入街廓向定號（`adv·â>0`·adv=+d_hat 左／−d_hat 右）。
 - **⚠️ W 為 intrinsic（reference-free）**：KL W＝perp dist mp→實際遠側界線·**與群起點/amp 無關**（step 0 改 group_start 時 cum_S 補償·KL W 不變）。故 **item① 與 item②（step 0）解耦**——W 量測不受 amp 影響。**施工須以此為準：直量實切遠邊到 mp 之垂距**（非賭 group_start）；`−δ_block` 初值法僅為「與現 telescoping 架構相容之等價實作」·**須以六塊 δ 錨驗證**。
-- **零區（補丁六 §一.3）**：`R(W≤0)＝0` **碼已具**（`rw_from_width`·`app:5127` `if W <= 0: return 0.0` ✓verified·`W≥18→100%` ✓）→ **item① 無須改零區·僅確認 W 脫鉤後首宗 W 可為負而正確歸零**；`Rw=R(W_i)−R(W_{i−1})`·`ΣRw=R(W_末)−R(0)` 閉合。
+- **零區（補丁六 §一.3）**：`R(W≤0)＝0` **碼已具**（`rw_from_width`·`app:5134` `if W <= 0: return 0.0` ✓verified〔reviewer 更正 5127→5134·5127 為 docstring〕·`W≥18→100%` `app:5138` ✓）→ **item① 無須改零區·僅確認 W 脫鉤後首宗 W 可為負而正確歸零**；`Rw=R(W_i)−R(W_{i−1})`·`ΣRw=R(W_末)−R(0)` 閉合。
 
 **首宗下限規制（補丁六 §二·裁「行」·自由解非恰等）**：
 - 達資格之街角首宗 `W₁ ≥ 側街退縮 ＋ 最小畸零寬`（本案 ≥7·查表 §6）——**碼中 loud 下限規制**（`W₁ < 下限 → 記錄/警示`·**禁硬釘 =7**）。
