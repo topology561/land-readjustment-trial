@@ -1121,9 +1121,11 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
         buf = (float(fo.get("left_corner_min_area", 0.0) or 0.0) / avg_depth
                if fo.get("left_forced_offset") and avg_depth > 0 else 0.0)
     else:
-        proj = [float(np.dot(np.array([v[0] - p1[0], v[1] - p1[1]]), d_hat))
-                for v in blkm["vertices"]]
-        corner = p1 + max(proj) * d_hat
+        # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）
+        _smax_f4 = ns["_oblique_s_max"](blkm["vertices"], d_hat, p1, alloc_dir)
+        if _smax_f4 is None:
+            raise RuntimeError(f"🔴 step0：_oblique_s_max 回 None（{blk} 右·退化幾何）·no-silent-fallback")
+        corner = p1 + _smax_f4 * d_hat
         dh = -d_hat
         buf = (float(fo.get("right_corner_min_area", 0.0) or 0.0) / avg_depth
                if fo.get("right_forced_offset") and avg_depth > 0 else 0.0)

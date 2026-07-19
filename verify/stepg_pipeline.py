@@ -239,6 +239,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _spatial_order_parcels_v2 = ns["_spatial_order_parcels_v2"]
     _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
     _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2：池片單一真相源
+    _oblique_s_max = ns["_oblique_s_max"]                   # step 0（正交→斜交 s_max）單一真相源·#20
     _acct_geom_tol_per_lot = ns["_acct_geom_tol_per_lot"]   # §N3-0 帳對幾何閘：閘寬單一真相源
     _acct_geom_tol_block = ns["_acct_geom_tol_block"]
 
@@ -567,16 +568,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 left_results.append((entry, res))
 
             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-                try:
-                    _proj_pts = [
-                        float(_np_d.dot(
-                            _np_d.array([v[0] - corner_pt[0], v[1] - corner_pt[1]]),
-                            d_hat
-                        )) for v in blk_meta['vertices']
-                    ]
-                    actual_max_proj = max(_proj_pts) if _proj_pts else S_block_max
-                except Exception:
-                    actual_max_proj = S_block_max
+                # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）
+                _smax_a = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block)
+                actual_max_proj = _smax_a if _smax_a is not None else S_block_max
                 end_pt = corner_pt + actual_max_proj * d_hat
                 d_hat_rev = -d_hat
             else:
@@ -693,14 +687,12 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
                 return float(_np_d.dot(_bp0 - _np_d.asarray(_mp, dtype=float), _ao))
             # 右組群起點 end_pt 於外層重算（_advance_block_with_split 內 end_pt 為其局部·此處不可見）。
-            #   ⚠️ amp 同式（`max((v−corner_pt)·d̂)`）與 stepg:577／app:15475／wf_f4:1124 同族（#20）·
-            #      step 0（正交→斜交 s_max）時**四處同改**——現階段 W脫鉤打樣仍正交（step0 未施）。
+            #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：與 stepg:577／app／wf_f4 **四處同源** `_oblique_s_max`（#20）。
             _end_pt_o = None; _dhr_o = None
             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-                _pp_o = [float(_np_d.dot(_np_d.asarray(v[:2], dtype=float) - corner_pt, d_hat))
-                         for v in blk_meta['vertices']]
-                if _pp_o:
-                    _end_pt_o = corner_pt + max(_pp_o) * _np_d.asarray(d_hat, dtype=float)
+                _smax_o = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block)
+                if _smax_o is not None:
+                    _end_pt_o = corner_pt + _smax_o * _np_d.asarray(d_hat, dtype=float)
                     _dhr_o = -_np_d.asarray(d_hat, dtype=float)
             _b_L0 = _mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left, allocation_dir_block)
             _b_R0 = _mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right, allocation_dir_block)

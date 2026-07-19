@@ -6914,6 +6914,28 @@ def _strip_s_range(geom, d_hat, corner_pt, allocation_dir=None):
     return (min(ts), max(ts))
 
 
+def _oblique_s_max(vertices, d_hat, corner_pt, allocation_dir=None):
+    """step 0（正交→斜交·補丁五 §五／plan v3 §2）：街廓頂點於**斜交切線軸**（`_strip_axis`）
+    之最大 s（相對 corner_pt）＝右組推進終點 `end_pt = corner_pt + s_max·d_hat` 之 s_max。
+
+    **取代正交 `max((v−corner_pt)·d_hat)`**——ALLOC 與 FRONT 斜交（UC9898 2.6°–5.3°）下
+    正交投影量不到切線終點（BLOCKED-1 之 p2 楔形源·R3 差 3.4571m）。與 `_strip_s_range` 之
+    `s_max` **同式同軸**（皆 `_strip_axis`）。**單一真相源**：stepg（577＋外層 W₀ end_pt）／
+    app（15475）／wf_f4（1124）四處皆呼叫本函式（根絕 #20「抄寫複本各自漂移」）。
+    缺頂點／corner／零 denom → 回 None（呼叫端退 `S_block_max`·不靜默編造）。
+    """
+    import numpy as np
+    if not vertices or d_hat is None or corner_pt is None:
+        return None
+    m_hat, denom = _strip_axis(d_hat, allocation_dir)
+    if abs(float(denom)) < 1e-12:
+        return None
+    bp = np.asarray(corner_pt, dtype=float)
+    s_vals = [float(np.dot(np.asarray(v[:2], dtype=float) - bp, m_hat)) / float(denom)
+              for v in vertices]
+    return max(s_vals) if s_vals else None
+
+
 def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
                            biz_polys, _label='', _depth=None, _verbose=True):
     """
@@ -8403,13 +8425,15 @@ _WF_NS_NAMES = [
     "alloc_normal_axis", "_block_strip",
     # §N3-0 T2：池片建構單一真相源（stepg／app／wf_f1／wf_f4 四處共用·根絕抄寫複本漂移 #20）
     "_pool_strips_for_block",
+    # step 0（正交→斜交 s_max）單一真相源（stepg／app／wf_f4 四處共用·plan v3 §2·#20）
+    "_oblique_s_max",
     # §N3-0 帳對幾何閘（兩級化·補丁三 §二）：閘寬單一真相源（stepg／run_verification／wf_f4 共用）
     "_acct_geom_tol_per_lot", "_acct_geom_tol_block",
 ]
 
 
 def _wf_ns():
-    """引擎經 ns 呼叫之 13 app 真符號 dict（直取本模組 globals，非 harvest）。"""
+    """引擎經 ns 呼叫之 app 真符號 dict（直取本模組 globals，非 harvest；清單＝`_WF_NS_NAMES`）。"""
     g = globals()
     ns = {}
     for n in _WF_NS_NAMES:
@@ -15475,13 +15499,11 @@ def main():
                             # 杜絕菱形/三角形/狹長傾斜街廓的懸空問題（無需試探）
                             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
                                 try:
-                                    _proj_pts = [
-                                        float(_np_d.dot(
-                                            _np_d.array([v[0] - corner_pt[0], v[1] - corner_pt[1]]),
-                                            d_hat
-                                        )) for v in blk_meta['vertices']
-                                    ]
-                                    actual_max_proj = max(_proj_pts) if _proj_pts else S_block_max
+                                    # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）
+                                    _smax_g = _oblique_s_max(blk_meta['vertices'], d_hat,
+                                                             corner_pt, allocation_dir_block)
+                                    actual_max_proj = (_smax_g if _smax_g is not None
+                                                       else S_block_max)
                                 except Exception:
                                     actual_max_proj = S_block_max
                                 end_pt = corner_pt + actual_max_proj * d_hat
