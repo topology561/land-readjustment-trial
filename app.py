@@ -6920,16 +6920,15 @@ def _oblique_s_max(vertices, d_hat, corner_pt, allocation_dir=None):
 
     **取代正交 `max((v−corner_pt)·d_hat)`**——ALLOC 與 FRONT 斜交（UC9898 2.6°–5.3°）下
     正交投影量不到切線終點（BLOCKED-1 之 p2 楔形源·R3 差 3.4571m）。與 `_strip_s_range` 之
-    `s_max` **同式同軸**（皆 `_strip_axis`）。**單一真相源**：stepg（577＋外層 W₀ end_pt）／
-    app（15475）／wf_f4（1124）四處皆呼叫本函式（根絕 #20「抄寫複本各自漂移」）。
-    缺頂點／corner／零 denom → 回 None（呼叫端退 `S_block_max`·不靜默編造）。
+    `s_max` **同式同軸**（皆 `_strip_axis`·恆等式 `s(corner_pt+s0·d̂)≡s0`）。**單一真相源**：
+    stepg（577＋外層 W₀ end_pt）／app（15499）／wf_f4（1124）四處皆呼叫本函式（根絕 #20 抄寫複本漂移）。
+    缺頂點／corner／d_hat → 回 None（呼叫端退 `S_block_max`）；**denom 退化（切線∥推進向）→ `_strip_axis`
+    <u>raise</u>**（no-silent-fallback·非本函式回 None·呼叫端須 loud 傳播·勿吞）。
     """
     import numpy as np
     if not vertices or d_hat is None or corner_pt is None:
         return None
-    m_hat, denom = _strip_axis(d_hat, allocation_dir)
-    if abs(float(denom)) < 1e-12:
-        return None
+    m_hat, denom = _strip_axis(d_hat, allocation_dir)   # denom<1e-9（切線∥推進）→ _strip_axis raise（loud）
     bp = np.asarray(corner_pt, dtype=float)
     s_vals = [float(np.dot(np.asarray(v[:2], dtype=float) - bp, m_hat)) / float(denom)
               for v in vertices]
@@ -15498,14 +15497,12 @@ def main():
                             # 補充 1（最後一哩路）：以街廓所有頂點在 d_hat 方向最大投影值精準定 end_pt，
                             # 杜絕菱形/三角形/狹長傾斜街廓的懸空問題（無需試探）
                             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-                                try:
-                                    # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）
-                                    _smax_g = _oblique_s_max(blk_meta['vertices'], d_hat,
-                                                             corner_pt, allocation_dir_block)
-                                    actual_max_proj = (_smax_g if _smax_g is not None
-                                                       else S_block_max)
-                                except Exception:
-                                    actual_max_proj = S_block_max
+                                # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）。
+                                #   退化幾何（切線∥推進）→ `_strip_axis` raise（**loud·同 stepg/wf_f4**·
+                                #   no-silent-fallback）——**不 try/except 吞掉**（KL 複驗指正·四處退化處置一致）。
+                                _smax_g = _oblique_s_max(blk_meta['vertices'], d_hat,
+                                                         corner_pt, allocation_dir_block)
+                                actual_max_proj = _smax_g if _smax_g is not None else S_block_max
                                 end_pt = corner_pt + actual_max_proj * d_hat
                                 d_hat_rev = -d_hat
                             else:
