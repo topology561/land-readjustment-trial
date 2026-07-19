@@ -7136,10 +7136,11 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         cut, area_geom = _block_strip(block_poly, d_hat, baseline_pt, S_guess,
                                        allocation_dir=allocation_dir)
 
-        # 🆕 W 正典（補丁六 §一〔da6acf1〕＋補丁七 §四·**脫鉤 S**）：
+        # 🆕 W 正典（補丁六 §一〔da6acf1〕＋補丁七 §四＋補丁八 §一·**脫鉤 S**·法源手冊 P93/P111）：
         #   W_i ＝ mp → 本宗**遠側**分配界線之垂距（**intrinsic 直量**·非 telescoping〔虛胖陷阱〕）。
-        #   遠側界線過 P_far = baseline_pt + S_guess·d̂（∥ALLOC）；近側界線過 baseline_pt → W_near。
-        #   â ＝ n_alloc 沿推進向定號（d̂·â≥0）使 W 隨 S 遞增；Rw = R(W)−R(W_near)〔rw_increment·R(W≤0)=0〕→ ΣRw 閉合。
+        #   遠側界線過 P_far = baseline_pt + S_guess·d̂（∥ALLOC）；近側界線過 baseline_pt → W_near（首宗 W₀=mp→corner·照實可負·禁 clamp）。
+        #   â ＝ n_alloc 沿推進向定號（d̂·â≥0·補丁八 §三主判準）使 W 隨 S 遞增；Rw = R(W)−R(W_near)〔rw_increment·R(W≤0)=0〕。
+        #   ⚠️ ΣRw<100% 於負δ/forced 塊係**誠實結果·非 bug**（補丁八 §二·缺口內含吸收於池 ΔΣ池=−ΔΣG）；「ΣRw 閉合 100%」僅飽和特例。
         #   舊註「不可從中點絕對量」係舊 (ii) 語意·W 正典已推翻（直量 mp 為零點；首宗下限另 loud 規制·見 stepg）。
         #   ⚠️ W_prev（外層 thread）自此**不入 W 計算**（保留簽章·回傳 'W_far'=W 供既有 thread·值等價 W）。
         if _n_alloc is not None and side_mid is not None and baseline_pt is not None:

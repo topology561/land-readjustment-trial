@@ -677,12 +677,39 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _adv_final = _advance_block_with_split(_k_star, True)
         else:
             _adv_base = _advance_block_with_split(_k_naive, False)
+            # 🆕 W 正典 W₀（補丁八 §一·脫鉤 S）：選槽理論之 forced 起始 W 改＝**首宗近側 KL W**
+            #   ＝(群起點 + buffer·d̂ − mp)·â_定向·取代舊 `buffer·cos_dn`（群起點 telescoping 約定·已作廢）。
+            #   使 _select_pool_slot 之理論 ΣRw 與實跑（solve_G_binary KL W）同源（理論＝實跑閘·禁 #20 脫鉤）。
+            def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
+                if _gs is None or _mp is None or _adir is None or _dv is None:
+                    return 0.0
+                _a = _np_d.asarray(_adir, dtype=float); _an = float(_np_d.linalg.norm(_a))
+                if _an < 1e-9:
+                    return 0.0
+                _a = _a / _an
+                _dv2 = _np_d.asarray(_dv, dtype=float); _dn = float(_np_d.linalg.norm(_dv2))
+                _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+                _ao = _a if float(_np_d.dot(_du, _a)) >= 0 else -_a
+                _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
+                return float(_np_d.dot(_bp0 - _np_d.asarray(_mp, dtype=float), _ao))
+            # 右組群起點 end_pt 於外層重算（_advance_block_with_split 內 end_pt 為其局部·此處不可見）。
+            #   ⚠️ amp 同式（`max((v−corner_pt)·d̂)`）與 stepg:577／app:15475／wf_f4:1124 同族（#20）·
+            #      step 0（正交→斜交 s_max）時**四處同改**——現階段 W脫鉤打樣仍正交（step0 未施）。
+            _end_pt_o = None; _dhr_o = None
+            if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+                _pp_o = [float(_np_d.dot(_np_d.asarray(v[:2], dtype=float) - corner_pt, d_hat))
+                         for v in blk_meta['vertices']]
+                if _pp_o:
+                    _end_pt_o = corner_pt + max(_pp_o) * _np_d.asarray(d_hat, dtype=float)
+                    _dhr_o = -_np_d.asarray(d_hat, dtype=float)
+            _b_L0 = _mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left, allocation_dir_block)
+            _b_R0 = _mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right, allocation_dir_block)
             _slot_res = _select_pool_slot(
                 _adv_base['widths'],
                 {'has': _has_left_corner, 'F': _F_left,
-                 'l1': _lside_left, 'b': _left_buffer_S * _cos_dn},
+                 'l1': _lside_left, 'b': _b_L0},
                 {'has': _has_right_corner, 'F': _F_right,
-                 'l1': _lside_right, 'b': _right_buffer_S * _cos_dn},
+                 'l1': _lside_right, 'b': _b_R0},
             )
             _k_star = int(_slot_res['k'])
             _J_by_k = {t['k']: t['J'] for t in _slot_res['table']}
@@ -816,6 +843,28 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     f"🔴 結構閘 telescoping 破：街廓 {blk_label} {_sd_tag} 側 "
                     f"ΣRw_實跑={_sum_rw_side:.2f} ≠ R(W_final={_sd_Wf:.2f})−R(W₀={_sd_W0:.2f})"
                     f"={_tele_exp:.2f}（Δ={abs(_sum_rw_side - _tele_exp):.3f} >0.1）")
+
+        # ── 結構閘 â 定向雙判準（補丁八 §三·主判準推進方向＋交叉核形心·不一致 escalate 禁靜默）──
+        #   主判準：â 沿推進向定號（右組 −d_hat／左組 +d_hat·stepg:577）；交叉核：(街廓形心−mp)·â>0。
+        #   δ 正負係 alloc_normal_axis 符號約定之產物·非幾何（#26②）；此閘證兩判準同源、方向不擲硬幣。
+        if allocation_dir_block is not None and d_hat is not None and blk_meta.get('centroid'):
+            _cen_a = _np_d.asarray(blk_meta['centroid'], dtype=float)
+            for _sd_a, _has_a, _mp_a, _adv_a in (
+                    ('left', _has_left_corner, _side_mid_left, d_hat),
+                    ('right', _has_right_corner, _side_mid_right, -_np_d.asarray(d_hat, dtype=float))):
+                if not _has_a or _mp_a is None:
+                    continue
+                _ah_a = _np_d.asarray(allocation_dir_block, dtype=float)
+                _nrm_a = float(_np_d.linalg.norm(_ah_a))
+                if _nrm_a < 1e-9:
+                    continue
+                _ah_a = _ah_a / _nrm_a
+                _ah_a = _ah_a if float(_np_d.dot(_np_d.asarray(_adv_a, float), _ah_a)) >= 0 else -_ah_a
+                _cross_a = float(_np_d.dot(_cen_a - _np_d.asarray(_mp_a, float), _ah_a))
+                if _cross_a <= 0:
+                    raise RuntimeError(
+                        f"🔴 â 定向雙判準不一致（補丁八 §三）：街廓 {blk_label} {_sd_a} 側 "
+                        f"推進定號後 (形心−mp)·â={_cross_a:.3f} ≤0 → escalate（禁靜默 fallback）")
 
         # ── 結構閘 理論＝實跑：滑池槽 k* 之理論 ΣRw 必等於實際推進之 ΣRw（逐側） ──
         #   破＝_select_pool_slot 之 widths 與實際推進不同源（選槽依據與落地結果脫鉤）。
