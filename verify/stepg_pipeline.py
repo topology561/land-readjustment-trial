@@ -499,12 +499,14 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
             left_cum_S = float(_left_buffer_S)
             right_cum_S = float(_right_buffer_S)
-            # W₀＝該側 Rw 累積起算點：forced 角落鎖定時＝buffer 之臨街投影，否則 0
-            #   （telescoping 閘用：ΣRw_側 = R(W_final) − R(W₀)）
-            _W0_left = (_left_buffer_S * _cos_dn) if _has_left_corner else 0.0
-            _W0_right = (_right_buffer_S * _cos_dn) if _has_right_corner else 0.0
-            _W_prev_left = _W0_left
-            _W_prev_right = _W0_right
+            # W₀＝該側 Rw 累積起算點（telescoping 閘用：ΣRw_側 = R(W_final) − R(W₀)）。
+            #   🆕 W 正典（脫鉤 S·da6acf1/補丁七）：W₀ 改＝**首宗近側 KL W**（mp→首宗近側界線＝
+            #   res['W_near']）·非舊 `buffer·cos_dn`（群起點 telescoping 約定·已隨 W 脫鉤作廢）。
+            #   首宗解出後捕獲（首宗＝角落宗·其近側＝buffer 之遠緣）。
+            _W0_left = 0.0; _W0_right = 0.0
+            _W0_left_set = False; _W0_right_set = False
+            _W_prev_left = 0.0
+            _W_prev_right = 0.0
             first_corner_used_left = False
             left_results = []
             for entry in left_group:
@@ -541,6 +543,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _W_prev=_W_prev_left,
                 )
                 if _has_left_corner:
+                    if not _W0_left_set:
+                        _W0_left = float(res.get('W_near', 0.0)); _W0_left_set = True
                     _W_prev_left = float(res.get('W_far', _W_prev_left))
                 _S_actual = float(res.get('S', 0.0))
                 _G_target = float(res.get('G', 0.0))
@@ -632,6 +636,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                             res, solver_label = _r2, _sl2
                             break
                 if _has_right_corner:
+                    if not _W0_right_set:
+                        _W0_right = float(res.get('W_near', 0.0)); _W0_right_set = True
                     _W_prev_right = float(res.get('W_far', _W_prev_right))
                 _S_actual = float(res.get('S', 0.0))
                 _G_target = float(res.get('G', 0.0))

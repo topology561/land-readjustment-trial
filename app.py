@@ -7128,6 +7128,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     trace = []
     converged = False
     S_conv = 0.0; G_conv = 0.0; W_conv = 0.0; Rw_conv = 0.0; area_conv = 0.0
+    _W_near_out = 0.0                # W 正典：本宗近側界線之 KL W（mp→近側·供 stepg telescoping 閘 W₀ 用）
     last_W = 0.0; last_Rw = 0.0; last_G_target = 0.0; last_area = 0.0
     it = 0
     for it in range(1, max_iter + 1):
@@ -7135,17 +7136,23 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         cut, area_geom = _block_strip(block_poly, d_hat, baseline_pt, S_guess,
                                        allocation_dir=allocation_dir)
 
-        # 🆕 W-C §1/§3：W 累積 = W_prev + 本筆臨街增量（附件二「向宗地分配線作垂線」之垂距）。
-        #   增量 = 本筆 S 在 n_alloc(臨街向)上的投影 = S_guess·|d_hat·n_alloc|
-        #   （= 相鄰兩地界線之垂距；首筆 W_prev=0 → 從側街起算，telescoping ΣRw=100%）。
-        #   注意：不可從 SIDE_LINE 中點絕對量（中點在半深處，會使首筆 W_prev≠0、ΣRw<100%）。
-        #   side_mid 之有無僅作「角側 gate」（None=非角側→W/Rw=0）；W_prev 由外層 thread。
-        if _n_alloc is not None and side_mid is not None:
+        # 🆕 W 正典（補丁六 §一〔da6acf1〕＋補丁七 §四·**脫鉤 S**）：
+        #   W_i ＝ mp → 本宗**遠側**分配界線之垂距（**intrinsic 直量**·非 telescoping〔虛胖陷阱〕）。
+        #   遠側界線過 P_far = baseline_pt + S_guess·d̂（∥ALLOC）；近側界線過 baseline_pt → W_near。
+        #   â ＝ n_alloc 沿推進向定號（d̂·â≥0）使 W 隨 S 遞增；Rw = R(W)−R(W_near)〔rw_increment·R(W≤0)=0〕→ ΣRw 閉合。
+        #   舊註「不可從中點絕對量」係舊 (ii) 語意·W 正典已推翻（直量 mp 為零點；首宗下限另 loud 規制·見 stepg）。
+        #   ⚠️ W_prev（外層 thread）自此**不入 W 計算**（保留簽章·回傳 'W_far'=W 供既有 thread·值等價 W）。
+        if _n_alloc is not None and side_mid is not None and baseline_pt is not None:
             _dh = np.asarray(d_hat, dtype=float)
             _dhn = float(np.linalg.norm(_dh))
-            _cos_dn = abs(float(np.dot(_dh / _dhn, _n_alloc))) if _dhn > 1e-9 else 1.0
-            W = W_prev + S_guess * _cos_dn
-            Rw = rw_increment(W_prev, W)
+            _dhu = (_dh / _dhn) if _dhn > 1e-9 else _dh
+            _ahat = _n_alloc if float(np.dot(_dhu, _n_alloc)) >= 0.0 else -_n_alloc
+            _bp_w = np.asarray(baseline_pt, dtype=float)
+            _mp_w = np.asarray(side_mid, dtype=float)
+            _W_near = float(np.dot(_bp_w - _mp_w, _ahat))
+            W = float(np.dot(_bp_w + S_guess * _dhu - _mp_w, _ahat))
+            _W_near_out = _W_near                    # 常數（不隨 S_guess）·供 telescoping 閘 W₀
+            Rw = rw_increment(_W_near, W)
             Rw_pct = Rw * 100.0
         else:
             W = 0.0; Rw_pct = 0.0; Rw = 0.0
@@ -7237,7 +7244,8 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
 
     return {
         'G': round(G_conv, 2), 'S': round(S_conv, 2),
-        'W': round(W_conv, 2), 'W_far': round(W_conv, 2),  # W_far：本筆遠側累積 W（供外層 thread）
+        'W': round(W_conv, 2), 'W_far': round(W_conv, 2),  # W_far：本宗遠側 KL W（mp→遠側·脫鉤後 intrinsic）
+        'W_near': round(_W_near_out, 2),                    # W 正典：本宗近側 KL W（供 stepg telescoping 閘 W₀）
         'Rw_pct': round(Rw_conv, 2),
         'area_geom': round(area_conv, 2),
         'iterations': it, 'converged': converged, 'trace': trace,
