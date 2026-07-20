@@ -6939,6 +6939,110 @@ def _oblique_s_max(vertices, d_hat, corner_pt, allocation_dir=None):
     return max(s_vals) if s_vals else None
 
 
+def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
+                     tol=0.01, _label=''):
+    """
+    §3 街角 forced band（plan v3 §3·補丁九）：**bisect 解 `buf` 使「真實池帶面積 == range_area」**
+    （|Δ| ≤ tol）。**全精度回傳**（N0-18a·不 round）。取代舊矩形近似 `range_area ÷ avg_depth`
+    （四處同族病灶·#20：app／stepg／wf_f1／wf_f4）。
+
+    ── 🔴 方位契約（BLOCKED-2·**釘死·勿違**）────────────────────────────────────
+    `front_p1`／`d_hat` **一律**傳 FRONT_LINE 之 **p1** 與 **+d̂**（p1→p2 單位向量），**左右側皆同**；
+    **端之選擇只由 `side` 決定**。⚠️ **禁傳 reversed 對**（如 `wf_f4` 局部 scope 之
+    `corner = p1 + s_max·d̂`／`dh = −d̂`）——傳入後帶會整個跑到街廓**另一端**（實測 R1/R3/R6 皆落 p1 端）
+    ＝失敗考古 **#25 全額重演**。s 域對此**無法自證**（正反兩框之 (s_min,s_max) 量級相同），
+    故本契約靠**呼叫端正確**＋下列 assert 之粗篩，**不可倚賴函式自行糾正**。
+
+    ── 帶之構造（side 參數化＝#25 之修·補丁九 約束 2）────────────────────────────
+      `side='left'`  → 帶 `s ∈ [max(s_min, 0), buf]`   ← **上界＝`buf`**（**非** `lo+buf`·BLOCKED-1）
+                        ∵ 消費端 `left_cum_S = buf` ⇒ 首宗自 `s=buf` 起 ⇒ 保留區恆為 `[s_min, buf]`
+      `side='right'` → 帶 `s ∈ [s_max − buf, s_max]`   ← step 0 後 `amp == s_max`（`_oblique_s_max`）
+    兩側語意**刻意不對稱**（左 `buf`＝絕對 s 上界／右 `buf`＝自 `s_max` 起之寬），**與消費端逐位對映**。
+
+    ── 斜交（補丁九 約束 1·施工核已驗）──────────────────────────────────────────
+    s 座標與切帶一律走 `_strip_s_range`／`_block_strip`＝**∥ALLOC 斜交**（`n_hat = rot90(allocation_dir)`）；
+    **禁垂直投影**（`_strip_axis` docstring 載實測：正交式殘差 346.89㎡／93.21㎡ → 斜交後 0.0000）。
+    `allocation_dir` 缺值/零向量時 `_strip_axis`/`_block_strip` 會**退 `rot90(d_hat)` 正交近似**——
+    依約束 1「禁假設 `d̂ ⊥ â`」，本函式**不走該退路**：缺值即 **loud raise**（no-silent-fallback）。
+
+    ── 泛用（補丁九 §二·禁本案常數）────────────────────────────────────────────
+    `range_area`（逐案由 `_build_corner_range_v2` 算）／`allocation_dir`（逐塊自該塊 ALLOC）／
+    `side`（由該塊實際側街定）**皆為參數**——碼內**無**任何本案值（309.05／43.9／「R2左R3右」等）。
+    """
+    import numpy as np
+
+    if range_area is None or float(range_area) <= 0:
+        return 0.0                      # 無 forced（該側無強制抵費地）→ 不進 bisect
+    range_area = float(range_area)
+
+    if side not in ('left', 'right'):
+        raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：side 須為 'left'/'right'，得 {side!r}")
+
+    # 約束 1：禁靜默走正交退路
+    if allocation_dir is None:
+        raise RuntimeError(
+            f"🔴 _corner_buffer_S[{_label}]：缺 allocation_dir → `_block_strip` 將退 rot90(d_hat) "
+            f"正交近似（補丁九 約束 1 禁假設 d̂⊥â·本案實測偏離垂直 4–5°、殘差 7–14㎡），停")
+    _ad = np.asarray(allocation_dir, dtype=float)
+    if float(np.linalg.norm(_ad)) < 1e-9:
+        raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：allocation_dir 為零向量（同上·禁正交退路），停")
+
+    _d = np.asarray(d_hat, dtype=float)
+    if abs(float(np.linalg.norm(_d)) - 1.0) > 1e-6:
+        raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：d_hat 非單位向量（方位契約·須傳 FRONT p1→p2 之 +d̂），停")
+
+    _dom = _strip_s_range(block_poly, d_hat, front_p1, allocation_dir)
+    if _dom is None:
+        raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：街廓 s 域不可定義（退化幾何），停")
+    s_min, s_max = float(_dom[0]), float(_dom[1])
+    if not (s_max > 0):
+        raise RuntimeError(
+            f"🔴 _corner_buffer_S[{_label}·{side}]：s_max={s_max:.4f} ≤0——方位契約疑破"
+            f"（front_p1/d_hat 應為 FRONT p1 與 +d̂），停")
+
+    _lo = max(s_min, 0.0)               # W-8：左帶下界夾 0·防吞 p1 楔形
+    if side == 'left' and s_min < 0:
+        # 補丁九 裁 2：`s_min<0` 段歸 §4 N0-20（末端 ALLOCLINE 半平面判別）·不歸 forced band。
+        # 中間態（§3 先於 §4 落地）為內部態·可接受；惟**禁靜默夾 0**（#18④ 未證分支）→ loud 記錄。
+        print(f"🟡 _corner_buffer_S[{_label}·left]：s_min={s_min:.4f} <0，左帶下界夾 0 "
+              f"（p1 楔形 {abs(s_min):.4f}m 段待 §4 N0-20 切出·補丁九 裁 2 中間態·非靜默吞差）")
+
+    def _band_area(buf):
+        """真實池帶面積（∥ALLOC 斜交·與 `_pool_strips_for_block` 逐字同源之 s 區間→實帶式）。"""
+        a, b = (_lo, float(buf)) if side == 'left' else (s_max - float(buf), s_max)
+        w = b - a
+        if w <= 0:
+            return 0.0
+        bp = np.asarray(front_p1, dtype=float) + a * _d
+        _g, _ar = _block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+        return float(_ar or 0.0)
+
+    # bisect 區間：左＝buf 為絕對 s 上界 [lo, s_max]／右＝buf 為寬 [0, s_max−s_min]
+    b_lo, b_hi = (_lo, s_max) if side == 'left' else (0.0, s_max - s_min)
+    # **刪 f(lo)==0 前置**（恆真式·`_block_strip` 於 S≤0 即回 (None,0.0)）——#21/BLOCKED-0：恆真閘零舉證力。
+    _f_hi = _band_area(b_hi)
+    if _f_hi < range_area:
+        raise RuntimeError(
+            f"🔴 _corner_buffer_S[{_label}·{side}]：帶吃滿全街廓仍不足 range"
+            f"（f(hi)={_f_hi:.4f} < range={range_area:.4f}）——幾何前提破（range 大於可用 s 域），停")
+
+    for _ in range(200):                # 單調遞增（reviewer 已 6 塊×兩側×4000 點復現·遞減 0）
+        mid = (b_lo + b_hi) / 2.0
+        if _band_area(mid) < range_area:
+            b_lo = mid
+        else:
+            b_hi = mid
+        if (b_hi - b_lo) < 1e-12:
+            break
+    buf = (b_lo + b_hi) / 2.0
+    _resid = abs(_band_area(buf) - range_area)
+    if _resid > float(tol):
+        raise RuntimeError(
+            f"🔴 _corner_buffer_S[{_label}·{side}]：bisect 未收斂至 tol"
+            f"（|band−range|={_resid:.6f} > {tol}），停")
+    return float(buf)                   # 全精度（N0-18a·呼叫端勿 round）
+
+
 def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
                            biz_polys, _label='', _depth=None, _verbose=True):
     """
@@ -8438,6 +8542,9 @@ _WF_NS_NAMES = [
     "_pool_strips_for_block",
     # step 0（正交→斜交 s_max）單一真相源（stepg／app／wf_f4 四處共用·plan v3 §2·#20）
     "_oblique_s_max",
+    # §3 街角 forced band：幾何 bisect（band≡range）·side 參數化單一真相源
+    #   （app／stepg／wf_f1／wf_f4 四處共用·plan v3 §3·補丁九·#25/#20）；`_strip_s_range` 為其 s 域基元
+    "_strip_s_range", "_corner_buffer_S",
     # §N3-0 帳對幾何閘（兩級化·補丁三 §二）：閘寬單一真相源（stepg／run_verification／wf_f4 共用）
     "_acct_geom_tol_per_lot", "_acct_geom_tol_block",
 ]
@@ -15335,18 +15442,25 @@ def main():
                         _left_buffer_S = 0.0
                         _right_buffer_S = 0.0
                         if _row_for_buffer and avg_depth_default > 0:
+                            # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth`，改 `_corner_buffer_S`
+                            #   幾何 bisect（**真實斜交池帶面積 == range**）·side 參數化（#25）。
+                            #   方位契約：一律傳 FRONT p1(`corner_pt`)＋`+d̂`(`d_hat`)，端由 side 定。
                             if _fo_left:
                                 _l_min = _row_for_buffer.get('【左】街角最小面積(㎡)')
                                 try:
                                     if _l_min is not None and _l_min != float('inf'):
-                                        _left_buffer_S = float(_l_min) / avg_depth_default
+                                        _left_buffer_S = _corner_buffer_S(
+                                            blk_poly, d_hat, corner_pt, allocation_dir_block,
+                                            float(_l_min), 'left', _label=blk_label)
                                 except (TypeError, ValueError):
                                     _left_buffer_S = 0.0
                             if _fo_right:
                                 _r_min = _row_for_buffer.get('【右】街角最小面積(㎡)')
                                 try:
                                     if _r_min is not None and _r_min != float('inf'):
-                                        _right_buffer_S = float(_r_min) / avg_depth_default
+                                        _right_buffer_S = _corner_buffer_S(
+                                            blk_poly, d_hat, corner_pt, allocation_dir_block,
+                                            float(_r_min), 'right', _label=blk_label)
                                 except (TypeError, ValueError):
                                     _right_buffer_S = 0.0
                         # 顯示通知

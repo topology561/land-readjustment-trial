@@ -240,6 +240,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
     _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2：池片單一真相源
     _oblique_s_max = ns["_oblique_s_max"]                   # step 0（正交→斜交 s_max）單一真相源·#20
+    _corner_buffer_S = ns["_corner_buffer_S"]               # §3 街角 band 幾何 bisect·side 參數化·單一真相源·#20
     _acct_geom_tol_per_lot = ns["_acct_geom_tol_per_lot"]   # §N3-0 帳對幾何閘：閘寬單一真相源
     _acct_geom_tol_block = ns["_acct_geom_tol_block"]
 
@@ -415,18 +416,24 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         _left_buffer_S = 0.0
         _right_buffer_S = 0.0
         if _row_for_buffer and avg_depth_default > 0:
+            # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth` → `_corner_buffer_S`
+            #   幾何 bisect（真實斜交池帶面積 == range）·side 參數化（#25）·byte 級對映 app（N0-16）。
             if _fo_left:
                 _l_min = _row_for_buffer.get('【左】街角最小面積(㎡)')
                 try:
                     if _l_min is not None and _l_min != float('inf'):
-                        _left_buffer_S = float(_l_min) / avg_depth_default
+                        _left_buffer_S = _corner_buffer_S(
+                            blk_poly, d_hat, corner_pt, allocation_dir_block,
+                            float(_l_min), 'left', _label=blk_label)
                 except (TypeError, ValueError):
                     _left_buffer_S = 0.0
             if _fo_right:
                 _r_min = _row_for_buffer.get('【右】街角最小面積(㎡)')
                 try:
                     if _r_min is not None and _r_min != float('inf'):
-                        _right_buffer_S = float(_r_min) / avg_depth_default
+                        _right_buffer_S = _corner_buffer_S(
+                            blk_poly, d_hat, corner_pt, allocation_dir_block,
+                            float(_r_min), 'right', _label=blk_label)
                 except (TypeError, ValueError):
                     _right_buffer_S = 0.0
 

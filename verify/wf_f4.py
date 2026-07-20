@@ -1115,11 +1115,16 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
     _block_strip = ns["_block_strip"]
     side = "left" if (frag["s"] is not None and frag["s"] < 0.5) else "right"
     fo = (forced or {}).get(blk, {}) or {}
+    # 🆕 §3（plan v3 §3·補丁九）：buf 廢矩形近似 `range ÷ avg_depth` → `_corner_buffer_S` 幾何 bisect。
+    #   ⚠️ **方位契約**：`_corner_buffer_S` 一律傳 **FRONT p1（`p1`）＋ `+d̂`（`d_hat`）**、端由 `side` 定——
+    #      **禁**傳本 scope 之 reversed 對（`corner`／`dh`），否則帶跑到街廓另一端＝#25 全額重演（BLOCKED-2）。
     if side == "left":
         corner = p1.copy()
         dh = d_hat
-        buf = (float(fo.get("left_corner_min_area", 0.0) or 0.0) / avg_depth
-               if fo.get("left_forced_offset") and avg_depth > 0 else 0.0)
+        buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,
+                                      float(fo.get("left_corner_min_area", 0.0) or 0.0),
+                                      'left', _label=f"{blk}·E3")
+               if fo.get("left_forced_offset") else 0.0)
     else:
         # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）
         _smax_f4 = ns["_oblique_s_max"](blkm["vertices"], d_hat, p1, alloc_dir)
@@ -1127,8 +1132,10 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
             raise RuntimeError(f"🔴 step0：_oblique_s_max 回 None（{blk} 右·退化幾何）·no-silent-fallback")
         corner = p1 + _smax_f4 * d_hat
         dh = -d_hat
-        buf = (float(fo.get("right_corner_min_area", 0.0) or 0.0) / avg_depth
-               if fo.get("right_forced_offset") and avg_depth > 0 else 0.0)
+        buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,
+                                      float(fo.get("right_corner_min_area", 0.0) or 0.0),
+                                      'right', _label=f"{blk}·E3")
+               if fo.get("right_forced_offset") else 0.0)
 
     def strip_at(cum_S, S):
         cut, area = _block_strip(block_poly, dh, corner + (buf + cum_S) * dh, S,

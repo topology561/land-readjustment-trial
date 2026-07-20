@@ -1107,8 +1107,10 @@ def main():
         }
         _bctx = ns["_build_wf_ctx"](_seed, "0m", ns["__file__"])
         _vg1 = []
-        if set(ns["_WF_NS_NAMES"]) - set(_bctx["ns"]):
-            _vg1.append("ns 16 真符號不全")
+        _ns_missing = sorted(set(ns["_WF_NS_NAMES"]) - set(_bctx["ns"]))
+        if _ns_missing:
+            # 訊息自述缺名·**不寫死名目數**（舊 "ns 16" 於 17 時即過期·N0-17-b 散文/死字串同族）
+            _vg1.append(f"ns 真符號不全（缺 {_ns_missing}）")
         if not isinstance(_bctx["cb_by"], dict) or set(_bctx["cb_by"]) != set(_nat["cb_by"]):
             _vg1.append("cb_by list→dict 不符")
         if _bctx["cad"].get("centerlines") != _cad.get("centerlines"):

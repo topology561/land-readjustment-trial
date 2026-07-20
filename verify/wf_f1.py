@@ -208,12 +208,24 @@ def compute(ctx_by_tag, f0_out):
         cos_dn = abs(float(np.dot(d_hat, np.asarray(alloc_dir, float))))
         mw = float(gm(blk["category"], float(snap["blocks"][lbl]["正面"]["路寬_m"]))["min_width"])
         avg_depth = float(snap["blocks"][lbl]["街廓分配深度_m"])
-        # left buffer（通式，依 forced_map；R1 雙情境實為 0 但不寫死）
+        # 🆕 §3（plan v3 §3·補丁九）：left buffer 廢矩形近似 `range ÷ avg_depth` → `_corner_buffer_S`
+        #   幾何 bisect（真實斜交池帶面積 == range）。方位契約：傳 FRONT p1（`corner_pt`）＋ `+d̂`。
         fo = (c["forced"] or {}).get(lbl, {}) or {}
         left_buffer_S = 0.0
         if fo.get("left_forced_offset"):
-            _ma = fo.get("left_corner_min_area", 0.0)
-            left_buffer_S = float(_ma) / avg_depth if avg_depth > 0 else 0.0
+            left_buffer_S = ns["_corner_buffer_S"](
+                block_poly, d_hat, corner_pt, alloc_dir,
+                float(fo.get("left_corner_min_area", 0.0) or 0.0), 'left', _label=f"{lbl}·F.1")
+        # TODO(泛化波)：wf_f1 右支架 deferred·泛化波補·本波以 loud raise 取代 plan §3:99·KL 2026-07-20 裁。
+        # ⚠️ **W-7 處置與 plan §3「補 right 全鷹架」不同·KL 已裁 deferred**：本檔推進為**結構性左向**
+        #   （`strip_at` 恆 `corner_pt + (buf+cum_S)·d̂`）且 `lbl` **硬釘 "R1"**（:195·本檔非跨塊通式）；
+        #   而 R1 雙情境**兩側皆非 forced** → 右鷹架今日恆不執行、**無法被任何閘證**。依 #18④
+        #   「制度記憶只准記已驗證生效者為根治」→ **不補無法驗證之死碼**，改立 **loud 閘**：
+        #   右側若真 forced 即停機（勝於以未證碼靜默走左向邏輯）。泛用波令本檔跨塊化時再補真鷹架。
+        if fo.get("right_forced_offset"):
+            raise RuntimeError(
+                f"🔴 [{tag}] F.1 {lbl}：right_forced_offset 為真，然本檔推進結構為左向（且硬釘 R1）"
+                f"——右鷹架未實作（W-7·#18④ 禁補未證死碼）。撞到即停機上呈·禁靜默走左向邏輯。")
 
         def strip_at(cum_S, S):
             cut, area = _block_strip(block_poly, d_hat,
