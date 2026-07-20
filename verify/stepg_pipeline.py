@@ -506,6 +506,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             #   首宗解出後捕獲（首宗＝角落宗·其近側＝buffer 之遠緣）。
             _W0_left = 0.0; _W0_right = 0.0
             _W0_left_set = False; _W0_right_set = False
+            _Wfirst_left = 0.0; _Wfirst_right = 0.0   # 首宗下限（補丁六 §二）：首宗角落宗 KL W（=res['W']=W_far）
             _W_prev_left = 0.0
             _W_prev_right = 0.0
             first_corner_used_left = False
@@ -546,8 +547,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 if _has_left_corner:
                     if not _W0_left_set:
                         _W0_left = float(res.get('W_near', 0.0)); _W0_left_set = True
+                        _Wfirst_left = float(res.get('W', 0.0))   # 首宗下限：首宗角落宗 KL W（=W_far）
                     _W_prev_left = float(res.get('W_far', _W_prev_left))
-                _S_actual = float(res.get('S', 0.0))
+                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改）
                 _G_target = float(res.get('G', 0.0))
                 _area_actual = float(res.get('area_geom', 0.0))
                 if (abs(_S_actual - S_remain) < 0.05 and _G_target > 0
@@ -632,8 +634,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 if _has_right_corner:
                     if not _W0_right_set:
                         _W0_right = float(res.get('W_near', 0.0)); _W0_right_set = True
+                        _Wfirst_right = float(res.get('W', 0.0))   # 首宗下限：首宗角落宗 KL W（=W_far）
                     _W_prev_right = float(res.get('W_far', _W_prev_right))
-                _S_actual = float(res.get('S', 0.0))
+                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改）
                 _G_target = float(res.get('G', 0.0))
                 _area_actual = float(res.get('area_geom', 0.0))
                 if (abs(_S_actual - S_remain) < 0.05 and _G_target > 0
@@ -660,6 +663,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 'left_results': left_results, 'right_results': right_results,
                 'W0_left': _W0_left, 'W0_right': _W0_right,
                 'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
+                'Wfirst_left': _Wfirst_left, 'Wfirst_right': _Wfirst_right,   # 首宗下限（補丁六 §二）
             }
 
         # 選槽 orchestration（app 同構）
@@ -835,6 +839,24 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     f"🔴 結構閘 telescoping 破：街廓 {blk_label} {_sd_tag} 側 "
                     f"ΣRw_實跑={_sum_rw_side:.2f} ≠ R(W_final={_sd_Wf:.2f})−R(W₀={_sd_W0:.2f})"
                     f"={_tele_exp:.2f}（Δ={abs(_sum_rw_side - _tele_exp):.3f} >0.1）")
+
+        # ── 首宗下限 loud（補丁六 §二·plan §1）：達資格街角首宗 KL W ≥ 側街退縮 ＋ 最小畸零寬 ──
+        #   首宗 W₁ ＝ 首宗角落宗 res['W']（=W_far·打樣「首宗W」；非 W0=W_near）；
+        #   下限＝setback（輸入欄）＋ 查表 min_width（f3_min_width_by_label·禁字面 7/3.5）。
+        #   loud 下限規制·非恰等（bisect 於下限上自由解）·非硬釘＝7；不達＝loud 記錄/警示（禁靜默·禁 clamp）。
+        #   驗收：重烤後應 ≥ 下限（現值 pre-重烤 artifact 6.92 待重生）。非 raise（合法邊界案不硬阻·補丁六 §二「記錄/警示」）。
+        _mw_blk_z = float((ss.get('f3_min_width_by_label', {}) or {}).get(blk_label, 0.0) or 0.0)
+        if _mw_blk_z > 0:
+            _first_floor = float(setback) + _mw_blk_z
+            for _sd_z, _has_z, _Wf1_z in (
+                    ('left', _has_left_corner, _adv_final.get('Wfirst_left', 0.0)),
+                    ('right', _has_right_corner, _adv_final.get('Wfirst_right', 0.0))):
+                if not _has_z:
+                    continue
+                if float(_Wf1_z) + 1e-9 < _first_floor:
+                    print(f"🔴 首宗下限未達（補丁六 §二）：街廓 {blk_label} {_sd_z} 側 首宗 KL W="
+                          f"{float(_Wf1_z):.2f} < 退縮({float(setback):.2f})＋畸零寬({_mw_blk_z:.2f})"
+                          f"={_first_floor:.2f}——loud 記錄·禁靜默/禁 clamp（重烤後應 ≥ 下限）")
 
         # ── 結構閘 â 定向雙判準（補丁八 §三·主判準推進方向＋交叉核形心·不一致 escalate 禁靜默）──
         #   主判準：â 沿推進向定號（右組 −d_hat／左組 +d_hat·stepg:577）；交叉核：(街廓形心−mp)·â>0。

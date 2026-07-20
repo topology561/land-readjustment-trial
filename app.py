@@ -6801,31 +6801,35 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
 # ═══════════════════════════════════════════════════════════════════════
 
 _G_ROUND_HALF = 0.005      # G 之**面積**捨入半量子（`round(G_conv, 2)`·app.py:6836）
-_S_ROUND_HALF = 0.005      # S 之**長度**捨入半量子（`round(S_conv, 2)`·S0c 實切）
+_S_ROUND_HALF = 0.005      # S 長度捨入半量子·**S0d 後不再入帳幾何閘**（S 量化退出計算路徑·#24）；保留為概念記錄·供下方 docstring 論述引用
 _BISECT_TOL = 0.01         # `solve_G_binary` 之收斂容差（tol 預設）
 
 
 def _acct_geom_tol_per_lot(depth, with_tol=True):
     """
-    §N3-0 **逐宗主閘**之原理閘寬：`|G_i − 幾何_i| ≤ 0.005×分配深度 ＋ tol(0.01) ＋ 0.005`
+    §N3-0 **逐宗主閘**之原理閘寬（S0d 後·補丁四 §二/N0-18b）：`|G_i − 幾何_i| ≤ tol(0.01) ＋ 0.005`
 
-    三項依據（**皆已 ruled·無新常數**）：
-      · `_S_ROUND_HALF × depth` ＝ S 長度捨入半量子 × d(面積)/dS（N0-18 推論三補文）
-      · `_BISECT_TOL`           ＝ bisect 收斂容差（`solve_G_binary` 之 tol）
-      · `_G_ROUND_HALF`         ＝ G 面積捨入半量子
+    兩項依據（**皆已 ruled·無新常數**）：
+      · `_BISECT_TOL`   ＝ bisect 收斂容差（`solve_G_binary` 之 tol）
+      · `_G_ROUND_HALF` ＝ G 面積捨入半量子（`round(G_conv,2)`）
 
+    ⚠️ **S0d（補丁四 §二）令舊 `_S_ROUND_HALF × depth` 項歸零**：S 已回復未捨入 S_conv
+       （實切＋推進同源全精度）→ S 量化**退出計算路徑** → 依「量子項僅對實在路徑之量化立項」
+       （#24），S 長度量子×深度不再立項。`depth` 參數保留（簽名相容·消費端 avg_depth_default 不改）。
+    ⚠️ N0-18b（補丁四 §一.3）：舊註「逐宗差 ≤0.005×深度＝差額地價找補之法定常態」**作廢**——
+       差額地價法定範圍窄（僅歸戶合併後未達 MinA/2 者），非一般性帳-幾何差吸收機制。
     **作用**＝任何**非捨入成因**之病灶於逐宗層立紅，**不被街廓 Σ 之正負相消淹沒**。
-    **域框架（N0-18 補記·KL 已認）**：本差＝對照清冊「增減(㎡)」欄、**由差額地價找補之法定常態**
-    （≈0.17–0.23㎡ ≈16,600 元/宗），**係 N0-18 公分慣例之算術投影、非容忍誤差**。
     斜交因子 ≤1.004 由 tol 項吸收，不另立項。
     `with_tol=False` 供**整形**類（重切既有宗·不經 bisect）＝E3（`wf_f4`·補丁三 §三-1）。
     """
-    return _S_ROUND_HALF * float(depth) + (_BISECT_TOL if with_tol else 0.0) + _G_ROUND_HALF
+    # S0d：S 量化退出路徑 → 移除舊 `_S_ROUND_HALF × float(depth)` 項（#24·原式見 git 史）
+    return (_BISECT_TOL if with_tol else 0.0) + _G_ROUND_HALF
 
 
 def _acct_geom_tol_block(n_lots, depth, with_tol=True):
     """§N3-0 **逐街廓 Σ 閘**之原理閘寬 ＝ 逐宗上界之和（三角不等式）。
-    `|ΣG ＋ 池幾何 − 街廓| ≤ 宗數 × (0.005×深度 ＋ tol ＋ 0.005)`；全區級＝各街廓本式之加總。"""
+    `|ΣG ＋ 池幾何 − 街廓| ≤ 宗數 × (tol ＋ 0.005)`（S0d 後·`_acct_geom_tol_per_lot`
+    已移除 0.005×深度 項）；全區級＝各街廓本式之加總。"""
     return int(n_lots) * _acct_geom_tol_per_lot(depth, with_tol)
 
 
@@ -7225,22 +7229,24 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     # 🆕 任務七 A：以收斂後 S 再切一次，取得最終 cut polygon 之頂點座標
     #     用以下游「重劃後試分配地籍圖」之 Plotly fill='toself' 渲染
     #
-    # ══ §N3-0c S0c（第四源同源修·KL 2026-07-16 裁·N0-18 推論二）══════════════
-    #   病：**推進與實切不同源**——推進吃 `round(S_conv,2)`（stepg:547/638 之 `res['S']`），
+    # ══ §N3-0c S0c→S0d（第四源同源修·KL 2026-07-16 S0c／補丁四 §二 S0d 修向反轉）════
+    #   病（S0c 診斷·史實不改）：**推進與實切不同源**——推進吃 `round(S_conv,2)`（res['S']），
     #       而實切用**未捨入** `S_conv` → 相鄰宗切線錯開 ≤0.005m → 宗-宗重疊／間隙
     #       （R1 實測：0m 0.1547㎡／3.5m 0.2597㎡）。舊 `difference(union(...))` 因 union
     #       去重而全程掩蓋之（失敗考古 #21 同型再現）。
-    #   正解＝**實切改用捨入後 S**（非推進改吃未捨入值）——N0-18：法定成果精度慣例
-    #       ＝面積㎡／長度 m 皆取至 2 位（公分），**S 之 2dp 捨入本身非病**。
-    #   ⚠️ **不動 G**：G 為財務目標值（`G_conv` 定於上方 6792/6804 之 `G_target`），
-    #       在本切之前即已定 → 預測差量閘①「業主宗 G 一字不變」**全程有效·S0c 不豁免**。
-    #   影響面僅：final_cut 幾何（cut_coords）＋ area_geom，每宗 ≤ 0.005×分配深度。
-    _S_cut = round(S_conv, 2)          # ← 與回傳 'S'(6836)／推進(stepg:547/638) 同源於 cm 值
+    #   🔄 S0d 修向反轉（補丁四 §二·N0-18b 內部全精度·取代 S0c 之「實切改捨入」正解）：
+    #       **實切回復未捨入 S_conv·推進亦吃全精度 S_raw**（顯示欄 'S'/area_geom 照舊 2dp）——
+    #       縫/疊仍 by construction 歸零（推進與實切**同源於全精度**·②-宗圍堵閘 ≤1e-6）；
+    #       目標＝盡量不產生差額地價（N0-18b：可分配宗之實配-應配差不得帶入 0.005×深度容差）。
+    #       ⚠️ 推進四處同改（#20·app:_advance_block_with_split 左/右＋stepg 左/右·res['S_raw']）。
+    #   ⚠️ **不動 G**：G 為財務目標值（`G_conv` 定於本切前）→ S1 G 重定歸因閘由鏈解釋、此切不新增 G 變。
+    #   影響面：final_cut 幾何（cut_coords）＋ area_geom（全精度實切）；帳對幾何閘之 S 量子項歸零（6823）。
+    _S_cut = S_conv                    # S0d：未捨入實切 S（＝推進 S_raw·全精度同源·補丁四 §二）
     cut_coords = []
     try:
         final_cut, _final_area = _block_strip(block_poly, d_hat, baseline_pt, _S_cut,
                                                allocation_dir=allocation_dir)
-        # S0c 第 2 項：area_geom 改取**實切**（捨入 S）之幾何面積 → 帳實一致
+        # S0c 第 2 項（S0d 沿用）：area_geom 改取**實切**（S0d：未捨入 S_conv）之幾何面積 → 帳實一致
         #   （⚠️ 原註引「乙-2 之幾何分配 4dp 匯出即匯真值」——**乙-2 已廢止**
         #    〔KL 2026-07-17：N0-16 溶解其前提＋N0-18 法定成果本即 2dp〕；
         #    本項之理由**不繫於乙-2**：帳實一致本身即 S0c 之標的。）
@@ -7250,7 +7256,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         area_conv = float(_final_area or 0.0)
         if _S_cut > 0 and area_conv <= 0:
             # S_cut>0 卻切不出面積＝異常（本案 UC9898 業主宗 S 最小 0.07·不應發生）
-            print(f"🔴 S0c 異常：S_cut={_S_cut} > 0 但實切面積 = {area_conv}"
+            print(f"🔴 S0d 異常：S_cut(未捨入)={_S_cut} > 0 但實切面積 = {area_conv}"
                   f"（side={side_label}）——切帶與街廓不交？入報告（no-silent-fallback）")
         if final_cut is not None and not final_cut.is_empty:
             if hasattr(final_cut, 'geoms'):  # MultiPolygon → 取面積最大者
@@ -7266,6 +7272,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
 
     return {
         'G': round(G_conv, 2), 'S': round(S_conv, 2),
+        'S_raw': S_conv,   # S0d（補丁四 §二）：'S' 為 2dp 顯示·'S_raw' 全精度供推進同源（app/stepg 四處推進讀之）
         'W': round(W_conv, 2), 'W_far': round(W_conv, 2),  # W_far：本宗遠側 KL W（mp→遠側·脫鉤後 intrinsic）
         'W_near': round(_W_near_out, 2),                    # W 正典：本宗近側 KL W（供 stepg telescoping 閘 W₀）
         'Rw_pct': round(Rw_conv, 2),
@@ -7653,36 +7660,41 @@ def select_corner_lots_both_sides_v12(
     # 只保留 polygon 與該 corner_polygon 有「實體交集」之候選。
     # 這彌補 V12 僅用「質心投影距離」分流之缺陷（候選與實際街角範圍未對齊）。
     from shapely.geometry import Polygon as _SP_B4
-    try:
-        import streamlit as _st_B4
-        # 🚨 W-B 修正：退縮 0 陷阱——不可用 `or 3.5`（0.0 是 falsy 會被竄改成 3.5）
-        _setback_raw = _st_B4.session_state.get('f3L_setback_default', 3.5)
-        _setback_B4 = float(_setback_raw) if _setback_raw is not None else 3.5
-    except Exception:
-        _setback_B4 = 3.5
-    # 🚨 Patch E-1.8：corner_polygon 深度改用「街廓分配深度」（不是法定最小深度 14m）
-    try:
-        import streamlit as _st_B4_d
-        _sb_rows_B4 = _st_B4_d.session_state.get('f3L_sb_rows_by_label', {}) or {}
-        _this_blk_B4 = (_st_B4_d.session_state.get('f3_current_pk_block', '') or '')
-        _blk_param_B4 = _sb_rows_B4.get(_this_blk_B4, {})
-        _legal_depth_B4 = float(_blk_param_B4.get('街廓分配深度(m)', 0.0) or 0.0)
-        if _legal_depth_B4 <= 0 and candidates:
-            _legal_depth_B4 = float(
-                candidates[0].get('平均深度(m)', 0)
-                or candidates[0].get('街廓分配深度(m)', 0)
-                or 14.0
-            )
-        if _legal_depth_B4 <= 0:
-            _legal_depth_B4 = 14.0
-    except Exception:
+    import streamlit as _st_B4
+    _ss_B4 = _st_B4.session_state
+    _this_blk_B4 = (_ss_B4.get('f3_current_pk_block', '') or '')
+    # 側街退縮（補丁六 §四／補丁七 §五）：源＝既有輸入欄 f3L_setback_default（保留）；
+    #   no-silent-fallback：缺值 loud raise，禁靜默編造 3.5（W-B `or 3.5` 陷阱）；0.0 合法（0m 情境·不竄改）。
+    _setback_raw = _ss_B4.get('f3L_setback_default')
+    if _setback_raw is None:
+        raise RuntimeError(
+            f"🔴 f3L_setback_default 未設（街廓 {_this_blk_B4}）·補丁六 §四 no-silent-fallback：禁靜默 3.5 兜底")
+    _setback_B4 = float(_setback_raw)
+    # 🚨 Patch E-1.8：corner_polygon 深度改用「街廓分配深度」（非法定最小深度 14m）·非本波 §6 標的（深度域·保留現行）
+    _sb_rows_B4 = _ss_B4.get('f3L_sb_rows_by_label', {}) or {}
+    _blk_param_B4 = _sb_rows_B4.get(_this_blk_B4, {})
+    _legal_depth_B4 = float(_blk_param_B4.get('街廓分配深度(m)', 0.0) or 0.0)
+    if _legal_depth_B4 <= 0 and candidates:
+        _legal_depth_B4 = float(
+            candidates[0].get('平均深度(m)', 0)
+            or candidates[0].get('街廓分配深度(m)', 0)
+            or 14.0
+        )
+    if _legal_depth_B4 <= 0:
         _legal_depth_B4 = 14.0
-    try:
-        # 🚨 W-B 修正：同 setback 防呆寫法（避免 0 被 `or` 竄改）
-        _lmw_raw = _blk_param_B4.get('法定最小寬(m)', 3.5)
-        _legal_min_width_B4 = float(_lmw_raw) if _lmw_raw is not None else 3.5
-    except Exception:
-        _legal_min_width_B4 = 3.5
+    # 法定最小寬（🆕 S1 §6 查表化·補丁六 §四）：走 get_min_lot_size（分區×正面路寬）逐塊查表值，
+    #   由 PK 呼叫端（app／selection_pipeline）以 f3_pk_legal_min_width 注入（單一真相源·app==engine）。
+    #   廢舊 _blk_param_B4.get('法定最小寬(m)', 3.5)（f3L_sb_rows_by_label 全程無人寫入→恆 3.5）。
+    #   no-silent-fallback：缺值 loud raise，禁靜默 3.5（UC9898 住宅區×8/12m 恰同檔 3.50·巧合非常數·case_params:26）。
+    _lmw_pk = _ss_B4.get('f3_pk_legal_min_width')
+    if _lmw_pk is None:
+        raise RuntimeError(
+            f"🔴 f3_pk_legal_min_width 未注入（街廓 {_this_blk_B4}）·S1 §6：PK 呼叫端須先以 "
+            f"get_min_lot_size(分區,正面路寬)['min_width'] 設之·no-silent-fallback 禁 3.5")
+    _legal_min_width_B4 = float(_lmw_pk)
+    if _legal_min_width_B4 <= 0:
+        raise RuntimeError(
+            f"🔴 f3_pk_legal_min_width={_legal_min_width_B4} ≤0（街廓 {_this_blk_B4}·非可建築?）·S1 §6 loud")
 
     # 🚨 W-B §5：讀 session 資料，以模組級 _build_corner_range_v2 建街角規定範圍
     try:
@@ -14257,6 +14269,13 @@ def main():
                             _blk_meta_for_side = next(
                                 (b for b in _build_blocks if b.get('label') == _lbl), None
                             )
+                            # 🆕 S1 §6 查表化：注入本塊法定最小寬（get_min_lot_size 分區×正面路寬）供 v12 B-4
+                            #   前置篩選（單一真相源·app==engine·廢 v12 內硬編 3.5·UC9898 住宅區×8/12m→3.50 byte-identical）。
+                            st.session_state['f3_pk_legal_min_width'] = float(
+                                get_min_lot_size(
+                                    (_blk_meta_for_side.get('category', '') if _blk_meta_for_side else ''),
+                                    float(_row.get('正面路寬(m)', 0.0) or 0.0)
+                                ).get('min_width', 0.0) or 0.0)
                             _cad_fl_lstep = (st.session_state.get(
                                 'f3_cad_front_lines', {}) or {}).get(_lbl, {})
                             _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
@@ -15471,7 +15490,7 @@ def main():
                                 )
                                 if _has_left_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_left = float(res.get('W_far', _W_prev_left))
-                                _S_actual = float(res.get('S', 0.0))
+                                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
                                 # 極端防呆 3：S_remain 觸頂
                                 _G_target = float(res.get('G', 0.0))
                                 _area_actual = float(res.get('area_geom', 0.0))
@@ -15571,7 +15590,7 @@ def main():
                                             break
                                 if _has_right_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_right = float(res.get('W_far', _W_prev_right))
-                                _S_actual = float(res.get('S', 0.0))
+                                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
                                 # 極端防呆 3：S_remain 觸頂
                                 _G_target = float(res.get('G', 0.0))
                                 _area_actual = float(res.get('area_geom', 0.0))

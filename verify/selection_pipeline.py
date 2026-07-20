@@ -298,6 +298,10 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         if _row is None:
             continue
         ss['f3_current_pk_block'] = _lbl
+        # 🆕 S1 §6 查表化：注入本塊法定最小寬（get_min_lot_size 分區×正面路寬）供 v12 B-4（app==engine 同源）
+        ss['f3_pk_legal_min_width'] = float(
+            ns["get_min_lot_size"](b.get('category', ''), float(_row.get('正面路寬(m)', 0.0) or 0.0))
+            .get('min_width', 0.0) or 0.0)
         _cad_fl_lstep = (ss.get('f3_cad_front_lines', {}) or {}).get(_lbl, {})
         _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
         _fl_p2_lstep = _cad_fl_lstep.get('p2') if _cad_fl_lstep else None
