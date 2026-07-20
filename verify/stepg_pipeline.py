@@ -425,7 +425,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                         _left_buffer_S = _corner_buffer_S(
                             blk_poly, d_hat, corner_pt, allocation_dir_block,
                             float(_l_min), 'left', _label=blk_label)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as _e_cb:
+                    # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
+                    print(f"🔴 街廓 {blk_label} 左街角 range={_l_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
                     _left_buffer_S = 0.0
             if _fo_right:
                 _r_min = _row_for_buffer.get('【右】街角最小面積(㎡)')
@@ -434,7 +436,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                         _right_buffer_S = _corner_buffer_S(
                             blk_poly, d_hat, corner_pt, allocation_dir_block,
                             float(_r_min), 'right', _label=blk_label)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as _e_cb:
+                    # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
+                    print(f"🔴 街廓 {blk_label} 右街角 range={_r_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
                     _right_buffer_S = 0.0
 
         # 角側常數（W-C §3；F/l₁ 與 J 權重三處一源）
