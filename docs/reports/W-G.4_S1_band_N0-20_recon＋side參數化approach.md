@@ -136,7 +136,15 @@ _corner_buffer_S(block_poly, d_hat, corner_pt, allocation_dir, range_area, side,
 - **潛伏數波·S0d 照出**：舊閘 `0.005×深度×15≈3.5` 遠寬於 0.28 → 藏；S0d 收至 0.225 → 露。**＝#21「原理閘照出潛伏 bug」正例·S0d 閘寬正確、非過緊**（0.28 非 irreducible 殘差·係真 bug）。
 - **附帶**：`停機③` raise 訊息字面仍載舊式 `(0.005×深度43.90＋tol＋0.005)` 但值用 0.225（我 S0d 改值未改該字串·同 `_acct_geom_tol_block` docstring 之漂移）→ 順修。
 
-**提議修（送 reviewer·未動工）**：`allocated_polys` 之 `area≥0.5` → 收至 sliver ε（如 `>1e-9`·納所有合法 owner cut·含 628-43）；兩處（app:15811／stepg:742）同改（#20）。⚠️ **先核 `0.5` 是否另有目的**（#26(a) 引常數先問其職·恐為 cut 失敗之退化守衛）——若純 sliver 濾則收 ε 安全。**此屬 S0d 收尾（非 §3）·施工前另 recon＋reviewer。**
+**修已施＋驗（KL 2026-07-20 收此區·兩約束照驗·待 KL 複驗 diff）**：
+- **約束2（#26a·先核 0.5 之職）✅**：`0.5` 係 `1b290e4 初始遷移`（零歷史）遺留·**無註解、無記載之職**；退化守衛係 **`len≥3`＋`is_valid/buffer(0)`＋`is_empty`**（與 0.5 相互獨立）→ 0.5 純 sliver-area 濾·**非退化守衛**·安全廢。
+- **約束1（判準對齊 ΣG 成員）✅**：改「凡 `left_results+right_results`（＝ΣG 成員）之 owner cut，只要 valid 非空即入 `allocated_polys`」（**廢 area≥0.5**·非「改小」）；ΣG 成員若無可扣幾何（退化/失敗）→ **loud print `🔴 停機③-家族`**（no-silent·防靜默雙計）。
+- **兩處同改（#20·byte-identical）**：`app.py:15811`＝`stepg:742`；殘留 `area>=0.5` 於 allocated_polys grep **0**（`15698/638` 之 `area_geom>=0.5` 係 retry-acceptance 別義·未觸）。
+- **順修** `停機③` raise 訊息之過期字串（`0.005×深度…` → `tol 0.01＋G捨入 0.005`·S0d 後）。
+- **驗（實跑）**：`run_step_g` 0m/3.5m **皆無 raise**；R2 殘差 **0.28 → +0.0200**（≪ 上界 0.225）·雙計 0.2681 已除。py_compile app/stepg 綠。
+- **此屬 S0d 收尾（非 §3）·已 push 至 wip 供 KL grep 複驗**（KL 只驗 push 之碼·工作區 diff 不採信）。
+
+**§3 之一 WATCH（KL 複驗給·非阻斷·CC 待辦）**：app/stepg 之 `_corner_buffer_S` 呼叫端外層 `try/except (TypeError,ValueError)→0.0`（四處）——若 range 值型別壞會**靜默跳過該街角**（實務前有 `is not None/!=inf` 擋·極罕觸·但嚴格係靜默路徑）。**CC 待改 loud/收窄**（no-silent-fallback）·bundle §4 前置或另小 commit。
 
 ---
 

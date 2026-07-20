@@ -732,17 +732,28 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         if blk_poly is not None:
             try:
                 allocated_polys = []
+                _missing_owner = []   # 停機③ 修（KL 2026-07-20）：ΣG 成員但無可扣幾何→池雙計·no-silent
                 for _entry, _res in (left_results + right_results):
                     _coords = _res.get('cut_coords') or []
+                    _p = None
                     if len(_coords) >= 3:
                         try:
                             _p = _SP_d(_coords)
                             if not _p.is_valid:
                                 _p = _p.buffer(0)
-                            if not _p.is_empty and _p.area >= 0.5:
-                                allocated_polys.append(_p)
                         except Exception:
-                            continue
+                            _p = None
+                    # 停機③ 修（KL 2026-07-20·約束1「判準對齊 ΣG 成員」）：凡算進 ΣG 之 owner 宗皆須自
+                    #   池扣其幾何——**廢 area≥0.5 sliver 濾**（1b290e4 遷移遺留·無職·退化守衛係
+                    #   len≥3/is_valid/is_empty·非此常數·#26a 已核）。舊 area≥0.5 剔除合法小宗（R2 628-43(1)
+                    #   0.27㎡）致池雙計 → 停機③ |Σ(G−幾何)|=0.28（=0.0124 owner 殘差＋0.2681 雙計宗·逐位）。
+                    if _p is not None and not _p.is_empty:
+                        allocated_polys.append(_p)
+                    else:
+                        _missing_owner.append(((_entry or {}).get('tp') or {}).get('暫編地號', '?'))
+                if _missing_owner:
+                    print(f"🔴 停機③-家族：街廓 {blk_label} ΣG 成員無可扣幾何 {_missing_owner}"
+                          f"（實切退化/失敗→池將雙計其面積·no-silent-fallback）·入報告")
                 # ── §N3-0 T2（主修法）：池片改用與業主宗**同機制·同切線**直接切出 ──
                 #   廢：`_uunion_d(allocated_polys).buffer(0.001)` → `difference` → `area >= 1.0`
                 #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
@@ -940,8 +951,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         if _verdict_wd2 == '🔴 守恆破':
             raise RuntimeError(
                 f"停機③（守恆-帳幾何級破）街廓 {blk_label}：|Σ(G−幾何)| = {_resid_wd2:+.2f}㎡ "
-                f"> 上界 {_tol_blk:.4f}＝宗數{len(_adv_final['rows'])}×"
-                f"(0.005×深度{avg_depth_default:.2f} ＋ tol 0.01 ＋ 0.005)")
+                f"> 上界 {_tol_blk:.4f}＝宗數{len(_adv_final['rows'])}×(tol 0.01 ＋ G捨入 0.005)"
+                f"〔S0d 後·S 量化退出計算路徑·舊 0.005×深度 項歸零·補丁四 §二〕")
 
     return {'g_rows': g_rows, 'pool_diag': pool_diag}
 
