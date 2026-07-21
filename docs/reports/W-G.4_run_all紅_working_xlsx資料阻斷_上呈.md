@@ -1,5 +1,7 @@
 # W-G.4 run_all 紅：working xlsx（07-19 未 commit·−900KB）致 F.0 錨破·§3 held·上呈 KL
 
+> ❌ **KL 2026-07-21 更正·本上呈誤判·勿據行動**：F.0 紅 `G007 359.43≠362.08` 係**過期錨**——錨 362.08 由 `0c9b7e7`（07-17·註明「不動錨」）設，而 **W脫鉤(07-19)＋S0d(07-20) 之後改了 G 之 W/S 輸入項 → 359.43 係預期新值**。**非資料壞、非 regression、非施工可致**。committed xlsx（blob `80f75ee`·12.38MB）完好、整波未變。**勿動 data/xlsx、勿追此紅**；錨待波末重烤（含 KL UI 錨）更新。branch `wip/s1-endpart` ＝**准紅碼**。
+
 - 日期：2026-07-21；branch `wip/s1-endpart`（`b7ecbbd` ＋ **未 commit** 之 wf_f4 §3 edit）
 - 事件：§3（rebake 註解·zero-behavior）施工後跑 `run_all` → **RESULT: FAIL** → **§3 held（不綠不推）**。
 - 性質：**環境/資料阻斷**（非設計、非碼）——與 prior 🚩「data xlsx 本機異動未入 commit」同源。

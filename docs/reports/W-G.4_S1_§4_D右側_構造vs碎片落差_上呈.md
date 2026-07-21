@@ -2,6 +2,11 @@
 
 > reviewer 獨立複現駁斥·屬設計／意思裁定層（非同模型 reviewer 能拍板）·上呈 KL＋claude.ai
 
+> ✅ **KL 2026-07-21 裁定·本上呈已回覆·勿據原文行動（掛錯波次）**：
+> ① R3 末端邊(D→E) **∥ALLOCLINE（實測 0.00°）→ R3 無未臨正街**；R3-右 78.24 係**街角(§3)碎片**（production 已正確處理）→ **D-右側 從 §4 剔除**（不補右端鏡像·作廢 probe R3 右段·不改街角碼）。
+> ② 是非題1 ＝ **乙**：未臨正街「面積實體」＝實際碎片 `frag["poly"]`（半平面僅判別語意）。③ 是非題2 ＝ **`frag["s"]` 確認可**（資料驅動·非 hardcode）。是非題3 moot（R3 非末端案）。
+> canonical spec → `docs/specs/W-G.4_規格v3補丁十_N0-20末端塊fallback定案.md`。
+
 - 日期：2026-07-21；branch `wip/s1-endpart`（HEAD `e343139`）
 - 觸發：純技術批 plan（`W-G.4_S1_§4_純技術批_plan.md`）送 redistribution-reviewer → reviewer 依 **plan 自身 §1.2 公式**獨立複現·**駁斥 §1（D-右側）兩主張**。
 - 性質：**新域邊界**（撞到才上呈·白話是非題）；與兩 PENDING fallback 裁（approach §8-1／§8-2）**相連**。
