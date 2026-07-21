@@ -56,7 +56,22 @@ reframing 確立（claude.ai 亦逐條 grep 坐實）：F.1 死路·通式已在
 乙 winner 選定後·bisect 仍 `union(strip(S),wedge=未臨正街).area==G_B`（strip=G_B−未臨正街·末端帶⊂strip 被吞·∵G≥area(R_end)）。**UC9898：winner G≫area(R_end)**（R6 776.72≫252.28·R3 614≫154）→ 選同 target·**終態 diff=0**（WATCH：重烤實證；若連帶池變動·毛/淨兩欄規則）。
 
 ### 0.5.3 送 reviewer（KL 指定）
-驗 **winner 乙門檻 `G≥area(R_end)` 是否正確攔截「吞不下」情形** ＋ **無-winner fallback（末筆抵費地嚴格＝R_end）設計守恆**（末端帶⊥垂距已 PASS）。合成夾具設計。
+驗 **winner 乙門檻 `G≥area(R_end)` 是否正確攔截「吞不下」情形** ＋ **無-winner fallback（末筆抵費地嚴格＝R_end）設計守恆**（末端帶⊥垂直已 PASS）。合成夾具設計。
+
+## 0.6 reviewer 二審 verdict（REVISED 設計·CC grep 坐實）＋兩域/spec 上呈
+
+**winner 路徑（UC9898）reviewer 自驗 PASS**：落點碼面對映正確·終態 **diff=0 有 live baseline 實證**（F.4_整形 S_new 不變·R6 628-4(1) G=776.72／R3 614／R1 272.84 皆 ≫ area(R_end)·門檻恆真·winner 同現）·py_compile 過·遞補錨閘確與 §4 解耦。
+
+**🔴 兩 BLOCKED（gate 施工·CC 自理技術 + 上呈域/spec）**：
+- **BLOCKED-C（fallback 守恆模型未定義·#15 族·＝域裁）**：無-winner fallback「末筆抵費地嚴格＝area(R_end)」——R_end＝未臨正街(85.66·已抵費地)∪末端帶(166.57)·**末端帶幾何與相鄰建地重疊**（s=0 線內側 W 帶＝建地所在）。設計未訂末端帶(166.57)之**面積歸屬** → 守恆模型缺·夾具無從測。**上呈 KL（見 §8-1）**。
+- **BLOCKED-provenance（reviewer 誤報·CC 更正）**：reviewer 搜 `*probe_rend*` 空判「未入倉」——**實已入倉**（`git ls-files docs/reports/probes/`＝probe_§4_R_end.py＋probe_§4_s0_pin.py·reviewer 搜舊 scratchpad 名）。**惟報告 §90 引過期名已更正**（→實名）；R3 右側鏡像/R1 未於腳本複現屬實（D-右側·CC 補）。
+
+**技術修（CC 自理·裁後施工前補）**：
+- **A(a) 雙表示（WARNING·CC grep 坐實）**：現 `wedge=frag["poly"]`（`wf_f1:133 _poly_of(抵費地列)`＝DXF 實體）**≠** `_end_region_R` 之 `block∩{s<0}` 構造（R6 frag 85.66 vs 構造 85.7064·Δ~0.05）。門檻用構造、bisect 用 frag ⇒ 吃兩個未臨正街值。**修：二者取同一物件**（bisect wedge 亦用構造·或斷言 `|frag−構造|<tol` 釘安全向）。
+- **B-2 面積→包含跳躍（WARNING）**：§0.5.2「G≥area(R_end)→strip⊇末端帶」reviewer 證**同族(∥cad_alloc)+共 s=0 近邊+單調下成立·非普適**；反例＝**forced buf>0**（strip 近邊離 s=0 線 buf·cos_dn·R3 右側可能 right_forced_offset）／非凸街廓。**修：施工加顯式幾何包含斷言 `末端帶.difference(strip).area<tol`（取代面積不等式）＋述 buf×末端帶 交互**。
+- **D-右側（WARNING）**：§1 構造式全 p1/{s<0} 本位·**R3 是右側案**（未臨正街=block∩{s>s_max}·末端帶自 s_max 線 −W 平移）未顯式給式且未複現。**修：補右側鏡像式＋probe 複現 R3（153.77）**。
+- **#20 wd4 sync（WARNING·潛伏）**：`_reshape_block` target 搜尋 vs `wd4:315` 遞補錨搜尋＝同機制兩份·REVISE 只加門檻於前者。UC9898 一致（G≫area）·但邊界案可分岔。**惟 wd4 對 §4 恒綠**（reframing 已證）→ 記 WATCH·非本波阻斷。
+- **_end_region_R 新失敗面**：degenerate 幾何 loud raise 勿打紅現行綠 winner 案（winner 路徑純加性·僅 fallback 判定消費其 area）。
 
 ---
 
@@ -70,7 +85,7 @@ reframing 確立（claude.ai 亦逐條 grep 坐實）：F.1 死路·通式已在
 
 **① 未臨正街**（補丁七 §一.1 半平面）：
 > `未臨正街 = block ∩ {s < 0}`。**s=0 線** ＝ 過 `p1` 且 ∥`cad_alloc` 之直線（＝末端 ALLOCLINE）；`{s<0}` ＝ 該線**離街廓形心**之半平面。
-> 實作：`_block_strip(block, d̂, bp=p1+s_min·d̂, S=−s_min, allocation_dir=rot90(cad_alloc))`（＝ block∩{s∈[s_min,0]}）。**驗**：_block_strip 與直接半平面 clip 逐位同（`probe_rend4` Δ=0.0000）。
+> 實作：`_block_strip(block, d̂, bp=p1+s_min·d̂, S=−s_min, allocation_dir=rot90(cad_alloc))`（＝ block∩{s∈[s_min,0]}）。**驗**：_block_strip 與直接半平面 clip 逐位同（`probe_§4_s0_pin.py` Δ=0.0000）。
 
 **② 末端帶**（補丁七 §二.2 平移·**⊥垂距·非 s-strip**）：
 > `末端帶 = block ∩ (末端 ALLOCLINE 與其 ⊥平移線 之帶)`。**⊥平移** ＝ 過 `p1` 之 s=0 線·沿 `rot90(cad_alloc)`（**指向街廓形心**）平移**垂距 W = 畸零寬**；帶 ＝ 兩平行線（皆 ∥`cad_alloc`）間之區域。
@@ -79,7 +94,7 @@ reframing 確立（claude.ai 亦逐條 grep 坐實）：F.1 死路·通式已在
 
 **③ R_end** ＝ `未臨正街 ∪ 末端帶`（s<0 與 s≥0 側·共 s=0 界·**不疊**·union＝sum）。
 
-**三塊錨（純幾何·`probe_rend3`·CAD-可重現）**——**approach 之權威為上文構造式·數字僅本案坐實（禁入碼）**：
+**三塊錨（純幾何·`probe_§4_R_end.py`·CAD-可重現）**——**approach 之權威為上文構造式·數字僅本案坐實（禁入碼）**：
 
 | 塊 | 未臨正街(s<0) | 末端帶(⊥W=畸零寬) | R_end∪ | 錨 |
 |---|---|---|---|---|
@@ -87,7 +102,7 @@ reframing 確立（claude.ai 亦逐條 grep 坐實）：F.1 死路·通式已在
 | R3 | 0.0001 | 153.7720 | 153.7721 | — |
 | R1 | 5.3255 | 109.8135 | 115.1390 | R1 未臨正街＝`WEDGE_AREA_ANCHOR` 5.30 ✅ |
 
-> claude.ai 先錨複驗：未臨正街構造✓（其 85.6883 vs 85.7064 Δ0.018＝block polygon 資料源差〔pipeline vs 原始 CAD〕·非構造·上文兩法逐位同已證）。`probe_rend3.py`/`probe_rend4.py` commit 入倉作次要參照。
+> claude.ai 先錨複驗：未臨正街構造✓（其 85.6883 vs 85.7064 Δ0.018＝block polygon 資料源差〔pipeline vs 原始 CAD〕·非構造·上文兩法逐位同已證）。已 commit 入倉作次要參照：`docs/reports/probes/probe_§4_R_end.py`（R6 逐位）＋`probe_§4_s0_pin.py`（s=0 釘準·R6 左側；⚠️ R3 右側鏡像/R1 未於腳本複現·見 §0.6 D-右側）。
 
 ## 2. 勝者規則（plan §4-2·待 reviewer 覆核投影排序源）
 
@@ -143,3 +158,21 @@ reframing 確立（claude.ai 亦逐條 grep 坐實）：F.1 死路·通式已在
 3. **winner 門檻**：「首筆 G≥area(R_end) 方為 winner」是 **N0-20 正典本意**，還是通式化時**不加**（現 `_reshape_block` 無門檻·target 有效即吃碎片）？（此門檻引入 UC9898 未觸發之新分岔·spec 意思決定）。
 
 **次步待裁**：KL/claude.ai 裁 1–3 後·我 revise approach（落點改 F.4 E3·刪爆炸半徑/遞補錨閘·winner 複用 `_reshape_block` target 搜尋·末筆抵費地 fallback 加合成夾具）→ 再送 reviewer → 施工。**純技術部分**（末端帶⊥垂距構造已 PASS·B 盒 bounds 導·投影排序改源）我可先備·惟 §4 之**範圍與交付**（1-3）係意思決定·裁前不施工（必答題未裁先施工＝停機）。
+
+---
+
+## 8. 🔴 上呈 KL＋claude.ai（reviewer 二審撞出·fallback 守恆觸地劃本意＝新域邊界·白話是非題）
+
+§7 三裁後 revise 送 reviewer 二審——winner 路徑（UC9898）PASS，但 **no-winner fallback 之守恆模型觸「地劃本意」**（reviewer BLOCKED-C），係新域邊界·上呈。
+
+**現況**：無-winner fallback「末筆抵費地嚴格＝area(R_end)」。`R_end ＝ 未臨正街(85.66·已是抵費地) ∪ 末端帶(166.57)`。**末端帶(166.57)幾何與相鄰建地重疊**（s=0 線內側 W 帶＝建地所在）。
+
+**問題**：無-winner 時·末端帶(166.57)之**面積歸屬未定**——(a) 原屬**池** → R_end 純「池打標籤成抵費地」·守恆不動·`pool_final` 免改；(b) 原屬**建地** → 劃成抵費地＝從建地扣面積·建地 G 固定 → 須**前移建地釋出**（機制未述）·否則破守恆或末端帶雙計（抵費地＋重疊建地）。
+
+**土地影響+數字**：UC9898 winner G≫R_end（R6 776.72≫252.28）·**fallback 不觸發**（latent·無夾具）·終態 diff=0。此裁只影響**未來有小末端地（首筆合格宗 G<area(R_end)）之案**。
+
+**是非題（請 KL／claude.ai 裁）**：
+1. **fallback 地劃本意（域裁·補丁七 §一.3「未臨正街必隨末筆抵費地」）**：無-winner 時·末端帶(166.57)由**池吸收**（甲·守恆不動·R_end 純池標籤·`pool_final` 免改）·還是**建地前移釋出**（乙·需前移機制+守恆）？
+2. **乙搜尋語意（spec 意思決定）**：「首筆合格宗 G<area(R_end)→無 winner」是否**允許跳到下一筆合格宗**（其 G≥area(R_end) 即為 winner），還是**嚴格首筆合格宗**（其 G<area(R_end) 即無 winner·不續搜）？
+
+**次步待裁**：KL/claude.ai 裁 1-2 後·我完成 fallback 守恆模型＋合成夾具→送 reviewer→施工。**純技術修**（A(a) 雙表示取同物件·B-2 顯式包含斷言+buf 交互·D-右側鏡像式+R3 複現·provenance 名已修）我先備·惟 fallback 之範圍（1-2）係意思/域裁·裁前不施工（必答題未裁先施工＝停機）。
