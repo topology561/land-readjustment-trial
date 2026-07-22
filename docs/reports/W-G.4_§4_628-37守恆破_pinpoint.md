@@ -1,0 +1,39 @@
+# W-G.4 §4 波末：628-37(1) 守恆破 pinpoint（純診斷·勿改引擎/勿烤/勿收綠）
+
+> bisect 收斂至 **{S0d `ca4985e`, §3 `5b80f9d`}**·§3 為機制主嫌（直改 wf_f4 reshape）。**揭「哪個幾何/量法才對」＝域判斷 → 停機上呈 KL／claude.ai。**
+
+- 日期：2026-07-22；branch `wip/s1-endpart`（HEAD `5dea5e2`）；承軌A F.4 628-37 停機上呈。
+
+## 一、bisect（worktree + WV_BAKE 跑到 F.4·記 628-37(1) 0m 吞楔形 Δ面積）
+
+| commit | 步 | 628-37(1) 0m | 判 |
+|---|---|---|---|
+| （凍存 b2166b7 F.4 收官） | 波前 | G_E=272.84·新形=272.84·Δ=−0.003 | ✅ conserved |
+| `d0d450d` | W脫鉤 | G_E=273.41·新形=273.41·**Δ=0.0** | ✅ conserved |
+| `02eb4c2` | step-0 | G_E=273.41·新形=273.41·**Δ=0.0** | ✅ conserved（step-0＝右側 s_max·628-37＝R1 左·合理不動）|
+| `ca4985e` | **S0d** | **F.4 blocked**（R2 `|Σ(G−幾何)|=0.28>0.225` 停機③·trunk A fail） | ⛔ 不可測 |
+| `5b80f9d` | **§3** | **F.4 blocked**（同 R2 0.28·commit msg 自載） | ⛔ 不可測 |
+| `3403ba1` | 停機③修 | R2 修 → F.4 跑 → 逐宗主閘 raise（新閘·此後 628-37 7.9） | — |
+| `b4ba9d3` | §4（零行為） | 逐宗主閘 |G−幾何|=**7.9** | 🔴 broken |
+
+- **W脫鉤／step-0 排除**（conserved）。**破在 {S0d `ca4985e`, §3 `5b80f9d`}**。
+- **不可直接隔離 S0d vs §3**：二者皆被 **R2 停機③（0.28）** 擋 F.4（該 R2 破係 S0d 閘活抓之 pre-existing bug·3403ba1 方修）；且**逐宗主閘（per-宗）3403ba1 才加**·之前無 per-宗 gate。**KL 令「勿改引擎」→ 不可繞 R2 閘量 S0d/§3。**
+
+## 二、機制（git diff 坐實·§3 為主嫌）
+
+- **§3 `5b80f9d` 直改 `wf_f4` reshape（+15）**：新增 `_corner_buffer_S`·「四處接線：app 左右／stepg 左右／wf_f1 左／**wf_f4 左右**」——即 reshape 之 `buf`（forced 街角帶）。
+- **628-37(1) ＝ R1 左側街角地 winner**（frozen：街角地=是·街角側別=左側·第1宗街角 winner 0.5741）→ reshape 之 `buf = _corner_buffer_S(...·left)`。**§3 改 _corner_buffer_S ⇒ 改 628-37(1) reshape buf ⇒ 動其幾何。**
+- **S0d `ca4985e`（可能共因）**：改 S 全精度（「推進四處改讀 S_raw」·app＋stepg·**未觸 wf_f4**）→ 經 strip/run_step_g 之 G 重算間接影響。
+- ⇒ **§3（直改 reshape 幾何·街角 band）＞ S0d（間接 S 量法）** 為主嫌；惟因 R2 閘擋·未能逐位隔離。
+
+## 三、域判斷（KL／claude.ai·停機上呈）
+
+**「哪個幾何/量法才對」**：628-37(1)（R1 左街角 winner·吞楔形）之 reshape 於本波後 |G−幾何|=7.9——
+1. **§3 之側參數化 `_corner_buffer_S`（新街角 band 幾何）** 令 winner reshape 之 buf/strip 位移·G（run_step_g 重算）未跟 → 破？**新 band 幾何是否即正確**（則 G 重算/逐宗主閘須對齊），**抑或 §3 band 移錯了 winner 幾何**（則 §3 有 bug）？
+2. **S0d 之 S_raw 量法** 是否令 run_step_g 之 G 定於未捨入 S、而 reshape 幾何用捨入 S → 差（惟該差應 ≤ 捨入量子·非 7.9）？
+3. **是非題**：(甲) §3 街角 band 幾何為對·逐宗主閘/reshape-G 對齊即可（技術·非破）；(乙) §3 band 移錯 winner 幾何＝真 bug（須改 §3·惟 KL 令勿改引擎→需解凍）；(丙) S0d S_raw 或他因。
+
+## 四、次步（候裁·勿修/勿烤/勿收綠）
+
+- **隔離 S0d-vs-§3 需繞 R2 停機③閘**（勿改引擎下不可）——若 KL 許「診斷用 cherry-pick 3403ba1 之 R2 修 onto ca4985e/5b80f9d 量 628-37」則我可逐位隔離（純診斷·不入倉）。
+- 未裁前：不動引擎·不烤 F.4·不收綠·G006 錨不動。候 KL／claude.ai 裁（甲/乙/丙 ＋ 是否許診斷 cherry-pick 隔離）。
