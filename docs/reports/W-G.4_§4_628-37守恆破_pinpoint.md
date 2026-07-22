@@ -33,7 +33,28 @@
 2. **S0d 之 S_raw 量法** 是否令 run_step_g 之 G 定於未捨入 S、而 reshape 幾何用捨入 S → 差（惟該差應 ≤ 捨入量子·非 7.9）？
 3. **是非題**：(甲) §3 街角 band 幾何為對·逐宗主閘/reshape-G 對齊即可（技術·非破）；(乙) §3 band 移錯 winner 幾何＝真 bug（須改 §3·惟 KL 令勿改引擎→需解凍）；(丙) S0d S_raw 或他因。
 
-## 四、次步（候裁·勿修/勿烤/勿收綠）
+## 四、次步（原文·已由 §五 定案取代）
 
-- **隔離 S0d-vs-§3 需繞 R2 停機③閘**（勿改引擎下不可）——若 KL 許「診斷用 cherry-pick 3403ba1 之 R2 修 onto ca4985e/5b80f9d 量 628-37」則我可逐位隔離（純診斷·不入倉）。
-- 未裁前：不動引擎·不烤 F.4·不收綠·G006 錨不動。候 KL／claude.ai 裁（甲/乙/丙 ＋ 是否許診斷 cherry-pick 隔離）。
+- ~~隔離 S0d-vs-§3 需繞 R2 停機③閘~~ → **§五已做**（診斷 cherry-pick·不入倉）。
+
+## 五、定案（claude.ai 裁技術修·非域判斷；快查＋S0d 隔離·CC 純診斷）
+
+> claude.ai 裁：**非域判斷**（band 幾何域鎖補丁九·逐宗主閘硬守恆·臨街負擔已在 G 公式）；(乙) 降級為**兩路對齊技術修**。
+
+### 5.1 快查：兩路 `_corner_buffer_S` 實參 **全一致**（非 §3 接線 arg 差）
+| arg | stepg（G·:425） | wf_f4（幾何·:1131） | 判 |
+|---|---|---|---|
+| front_p1 | `corner_pt`＝`_p1_fl`＝`cad.front_lines[blk].p1` | `p1`＝`cad.front_lines[blk].p1` | **一致** |
+| range_area | `【左】街角最小面積(㎡)`（raw） | `left_corner_min_area`＝`round(【左】街角最小面積,2)`（`_l_disp_min`→`_fo_min_area`）| **一致（≤2dp）** |
+| allocation_dir | `alloc_normal_axis(f3_cad_alloc_dir[blk])` | `alloc_normal_axis(alloc_dir_by_block[blk])` | **一致**（`run_verification:96`：`f3_cad_alloc_dir = alloc_dir_by_block`）|
+| block_poly/d_hat/side | 同 | 同 | 一致 |
+→ **|Δbuf|≈0（args 同源）·非 §3 之 front_p1/range_area 接線差**。
+
+### 5.2 S0d 隔離（診斷 cherry-pick `3403ba1` R2 修 onto `ca4985e`·不入倉·compile OK）
+- **S0d 單（無 §3）→ 628-37(1) `Δ=0.0` conserved**（F.4 baked·`G_E=273.41=新形273.41`）。
+- ⇒ **S0d 非兇**（S_raw 假設 refuted）。**§3 `5b80f9d` 為兇**（S0d-iso conserved·b4ba9d3〔含§3〕7.9）。
+
+### 5.3 收斂結論
+- **兇＝§3 `5b80f9d`**（bisect＋S0d 隔離定案）。**非** front_p1/range_area/allocation_dir arg 差（5.1 全一致）·**非** S0d（5.2 conserved）。
+- ⇒ **§3 之新 `_corner_buffer_S` buf 值**（幾何 bisect·取代舊 `range÷avg_depth`）令 628-37(1)（R1 左街角 winner）之 **E3-reshape 幾何 與 F.4-run_step_g G 重算 不一致**（7.9）——非兩路 arg 差、係**新 buf 值在 F.4 兩階段（E3 整形 vs run_step_g）之套用不一致**。確切不一致點（哪階段用新 buf、哪階段未跟）→ **claude.ai grep 兩路 F.4 用 buf 處＋CAD 坐實 628-37(1) 幾何**·寫定點修。
+- 未修前：不動引擎·不烤 F.4·不收綠·G006 錨不動。
