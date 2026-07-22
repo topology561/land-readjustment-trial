@@ -7211,6 +7211,52 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
     return sorted(pieces, key=lambda g: g.area, reverse=True)
 
 
+def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''):
+    """§4 末端塊 R_end 構造（補丁十 §一·canonical）：`R_end = 未臨正街 ∪ 末端帶`。
+
+    · **未臨正街「面積實體」= `frag_poly`**（＝`_poly_of` 之實際碎片·補丁十「乙」；「半平面僅判別、
+      不供面積」——是否**存在**由呼叫端 gate〔條件1 無 SIDELINE ＋ 條件2 block∩{s<0}>ε〕判，
+      本函式只在**已確認觸發**時被叫·禁在此重判）。
+    · **末端帶** = 過 `end_pt`（未臨正街端之 FRONT 端點·落末端 ALLOCLINE 上）·∥`cad_alloc` 之末端
+      ALLOCLINE·向街廓內 **⊥垂距** `min_width` 之平行帶 ∩ block（reviewer PASS·R6 166.57；
+      ⊥垂距·**非** s-strip——斜交下 s-strip 差 1/cos·補丁七 §二.2）。
+
+    回傳 `(末端帶, R_end, area(R_end))`。缺 `cad_alloc`／零向量／`frag_poly` 空／`min_width`≤0／
+    末端帶∩block 空 → **loud raise**（no-silent-fallback）。`B`（帶沿 ALLOC 之半長）由 block
+    bounds 導·**禁硬編 500**。
+    """
+    import numpy as np
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union
+    if cad_alloc is None:
+        raise RuntimeError(f"🔴 _end_region_R[{_label}]：缺 cad_alloc（宗地分配線方向）——no-silent-fallback")
+    _ca = np.asarray(cad_alloc, dtype=float)[:2]
+    _n = float(np.linalg.norm(_ca))
+    if _n < 1e-9:
+        raise RuntimeError(f"🔴 _end_region_R[{_label}]：cad_alloc 為零向量")
+    ca = _ca / _n
+    if frag_poly is None or getattr(frag_poly, 'is_empty', True):
+        raise RuntimeError(f"🔴 _end_region_R[{_label}]：frag_poly 空——未臨正街面積實體缺（gate 應已確認存在）")
+    if min_width is None or float(min_width) <= 0:
+        raise RuntimeError(f"🔴 _end_region_R[{_label}]：min_width={min_width}（畸零寬須>0·禁預設）")
+    e = np.asarray(end_pt, dtype=float)[:2]
+    nrm = np.array([-ca[1], ca[0]])                       # rot90(cad_alloc)：⊥ALLOC
+    cen = np.asarray(block_poly.centroid.coords[0], dtype=float)
+    if float(np.dot(cen - e, nrm)) < 0:                   # 定號：法向指街廓形心（向內）
+        nrm = -nrm
+    minx, miny, maxx, maxy = block_poly.bounds            # B ＝ 街廓對角線（禁硬編 500）
+    B = float(np.hypot(maxx - minx, maxy - miny)) + 1.0
+    band = Polygon([e - B * ca, e + B * ca,
+                    e + B * ca + float(min_width) * nrm,
+                    e - B * ca + float(min_width) * nrm]).intersection(block_poly)
+    if band.is_empty:
+        raise RuntimeError(f"🔴 _end_region_R[{_label}]：末端帶 ∩ block 空——退化幾何/end_pt 出界")
+    r_end = unary_union([g for g in (frag_poly, band) if not g.is_empty])
+    if r_end.is_empty:
+        raise RuntimeError(f"🔴 _end_region_R[{_label}]：R_end 空")
+    return band, r_end, float(r_end.area)
+
+
 def solve_G_binary(a: float, A: float, B: float, C: float,
                    l_front: float, l_side: float, F: float,
                    block_poly, d_hat, baseline_pt,

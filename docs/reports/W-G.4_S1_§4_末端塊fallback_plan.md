@@ -32,7 +32,8 @@ _end_region_R(block_poly, d̂, end_pt, cad_alloc, min_width, frag_poly, _label)
 於 `_reshape_block`（側別已由 `frag["s"]` 定·:1116），**呼叫 `_end_region_R` 之前**先 gate：
 - **條件1（無 SIDELINE 那一側）**：該側 `has_side==False`（`forced_offset['left/right_has_side']`·資料驅動·＝spec §一「無 SIDELINE 那一側」）。**R3 之 frag(628-45(2)) 係街角碎片 → 該側有 SIDELINE → 條件1 假 → 乾淨跳過**（不呼叫 `_end_region_R`·不 raise·R3 走現街角/§3 路徑）。—— 由 KL [0-2]「R3＝街角」直接背書。
 - **條件2（有未臨正街）**：該端 `block∩{s<0 半平面}`（＝補丁七 §一.1 **判別語意**·補丁十「半平面僅判別、不供面積」）面積 `> ε`。R6/R1（無 SIDELINE 側·85.7/5.3 > ε）→真。（末端邊∥ALLOCLINE 之無 SIDELINE 側 → ≈0 → 假·跳過。）
-- **禁硬編塊名/側別**——`has_side`／`frag["s"]`／半平面面積 皆資料驅動。**execution 驗延波末重烤**（harness 現受 xlsx 阻·§四）→ 施工以 baseline/reason 對錨、reviewer-on-diff 獨立複核。
+- **禁硬編塊名/側別**——`has_side`／`frag["s"]`／半平面面積 皆資料驅動。
+- **R3 diff=0 之理由（KL 〔C〕更正）**：R3 靠**條件1 gate 跳過**（有 SIDELINE→不進末端 winner 搜尋·直走現街角/§3）·**非**「門檻恆真·選同 target」。（reviewer「R3 614≫154 選同 target」略偏·結論對·理由更正。）
 
 ### 1.3 勝者搜尋（補丁十 §一·§8-2 往後找·**複用現 target 搜尋·勿用 `_projection_order`**）
 現 `_reshape_block` target 搜尋（wf_f4:1155-1161）＝`grp`（該側·累積S 序）首筆合格（S>0.01·寬≥mw·not flagged）。**改**：
@@ -51,7 +52,7 @@ _end_region_R(block_poly, d̂, end_pt, cad_alloc, min_width, frag_poly, _label)
 
 ### 1.6 施工注意（reviewer 二審·施工／夾具階段驗收·非放行）
 1. **帳對閘隔離抵費地(末)**：無勝者 fallback 之 抵費地(末)=area(R_end) 須記為**池**（**不入 `npolys` 宗和**）·否則 E3 帳對閘（Σlot_new＝Σlot_old·wf_f4:716）誤紅。守恆＝抵費地(末) 由池搬、非新宗。
-2. **合成夾具真構造真跑**：UC9898 winner G≫area(R_end) → fallback **latent 永不觸發**·此為 fallback **唯一**驗路。夾具須真構造「全合格候選 G<area(R_end)」·並實現「末端-跨占建地內移騰讓、抵費地末與內移宗**不疊**」·實跑驗守恆。
+2. **合成夾具真構造真跑（KL 〔B〕：現在即可跑·不必等波末）**：UC9898 winner G≫area(R_end) → fallback **latent 永不觸發**·此為 fallback **唯一**驗路。夾具係**獨立單測**（自造幾何·**不碰 pipeline/xlsx/錨**）→ 寫完**現在就實跑驗守恆**。須真構造「全合格候選 G<area(R_end)」·並實現「末端-跨占建地內移騰讓、抵費地末與內移宗**不疊**」。
 3. **得以分配濾保 `寬≥mw`**：§1.3 得以分配（G≥`mina[blk]`）須與現 `寬≥mw`（wf_f4:1157）**給同一候選集**（spec §一 簡化式 各段深度>畸零最小深 ⟹ W≥畸零寬 ⟺ G≥MinA 背書）·否則候選集變動可能**自破 diff=0**（與門檻無關）。施工保 `寬≥mw` 或先證同集。
 
 ---
@@ -74,9 +75,9 @@ _end_region_R(block_poly, d̂, end_pt, cad_alloc, min_width, frag_poly, _label)
 ## 4. 驗證（§四·走 harness／直讀 baselines·**非 run_all 全綠**）
 
 - **靶 a**：UC9898 winner 路徑終態 **diff=0**——直讀 `verify/baselines/wf/f4/`（整形檔 S_new 不變·R6 628-4(1)/R1 winner G≫area(R_end)）。
-- **靶 b**：觸發街廓守恆 ΣG＋池＝街廓——合成夾具 + E3 帳對閘 PASS。
+- **靶 b**：觸發街廓守恆 ΣG＋池＝街廓——**合成夾具（獨立單測·現在即可實跑）+ E3 帳對閘 PASS**（KL 〔B〕：fixture 不碰 pipeline·不必等波末）。
 - **靶 c**：幾何閘不因新碼誤紅現行綠案——`_end_region_R` degenerate loud raise 僅 fallback 判定消費·winner 純加性。
-- **run_all F.0 紅（G007 359.43≠362.08）＝過期錨·預期·勿追**（准紅碼·波末重烤處理）；驗「無**新**破（本碼所致）」而非「全綠」。
+- **run_all F.0 紅（G007 359.43≠362.08）＝過期錨·預期·勿追**（准紅碼·波末重烤處理）。**F.4 無法經全跑驗證＝F.0 紅級聯（存在性守衛）致 F.4 被跳過·與 xlsx 無關**（KL 〔B〕更正：committed xlsx 完好·claude.ai 跑得動 run_all；好 xlsx 也照跳）。驗「無**新**破（本碼所致）」而非「全綠」；winner diff=0 之 execution 證延波末重烤（錨更新後 F.4 方跑得到）。
 - **no-silent-fallback**：缺 cad_alloc／退化 loud raise。
 
 ---

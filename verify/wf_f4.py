@@ -704,21 +704,28 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         #   R3/R6 多宗致 −0.45/+0.14 假影）。
         pool_final = dict(poolE)
         for blk, npolys in new_polys_by_blk.items():
-            old_area = sum(_poly_of_row(E[k]).area for k in npolys if k in E)
-            new_area = sum(p.area for p in npolys.values())
+            # 🆕 §4 fallback（[B]·補丁十 §一 §8-1·KL 完整恆等式旗）：抵費地(末) 為 **new key（不在 E）**
+            #   → 池重定位·排除帳對閘宗和；`pool_final=poolE−area(R_end)`。winner 時 _new_abate={}
+            #   （npolys 全在 E）→ pool_final=poolE·**零行為**。守恆完整式＝
+            #   `ΣG＋pool_final＋抵費地街角＋抵費地末＝街廓`（frag 只在 poolE、不雙計·KL 旗）。
+            _new_abate = {k: p for k, p in npolys.items() if k not in E}
+            _in_E = {k: p for k, p in npolys.items() if k in E}
+            old_area = sum(_poly_of_row(E[k]).area for k in _in_E)
+            new_area = sum(p.area for p in _in_E.values())      # 只核既有宗（抵費地末=池·排除）
+            _end_abate_area = sum(p.area for p in _new_abate.values())
             # §N3-0 帳對幾何閘·E3 整形級（KL 2026-07-16 裁·補丁三 §三-1）
-            #   ⚠️ 舊 `0.1` 廢（甲-2 #11「待歸因」→ **已歸因＝量子項**）：其破因即 S 之 cm 捨入
-            #   （停機③ 實測 R1 0.16 ≈ 0.005×32.97 = 0.165）。
-            #   閘寬＝**整形涉及宗數 × (0.005×深度 ＋ 0.005)**（範圍限整形集合）；
-            #   **無 tol 項**——整形係「重切既有宗」、不經 bisect 收斂。
+            #   閘寬＝`_acct_geom_tol_block(整形宗數, 深度, with_tol=False)`＝**整形宗數 × 0.005**
+            #   （`_G_ROUND_HALF`·G 面積捨入半量子）；**無 tol 項**（with_tol=False·整形重切既有宗、不經 bisect）。
+            #   ⚠️ 舊述「× (0.005×深度 ＋ 0.005)」**S0d 後作廢**（補丁四 §二·#24）：舊 `_S_ROUND_HALF×深度`
+            #     量子項因 S 回復未捨入全精度、量化退出計算路徑而歸零（`depth` 僅存簽名相容）——
+            #     權威式＋理由見 `app.py _acct_geom_tol_per_lot` docstring（勿於此重述致漂移·#20）。
             _e3_depth = float(snap["blocks"][blk]["街廓分配深度_m"])
-            _e3_tol = ns["_acct_geom_tol_block"](len(npolys), _e3_depth, False)
+            _e3_tol = ns["_acct_geom_tol_block"](len(_in_E), _e3_depth, False)
             if abs(new_area - old_area) > _e3_tol:
                 raise RuntimeError(
                     f"🔴 [{tag}] E3 {blk} 整形未守恆：Σ新形 {new_area:.2f} ≠ Σ原 {old_area:.2f}"
-                    f"（Δ={abs(new_area - old_area):.4f} > 上界 {_e3_tol:.4f}＝整形宗數{len(npolys)}×"
-                    f"(0.005×深度{_e3_depth:.2f} ＋ 0.005)）")
-            pool_final[blk] = poolE[blk]             # Σ配地面積守恆 → 池總量不變
+                    f"（Δ={abs(new_area - old_area):.4f} > 上界 {_e3_tol:.4f}＝整形宗數{len(_in_E)}×0.005）")
+            pool_final[blk] = poolE[blk] - _end_abate_area      # 🆕 抵費地(末) 由池重定位（fallback；winner=0→不變）
             bpoly = Polygon(cb_by[blk]["vertices"])
             if not bpoly.is_valid:
                 bpoly = bpoly.buffer(0)
@@ -1151,15 +1158,88 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
     other = [r for r in lots if r["推進側別"] != side]
     flagged = {r["暫編地號"] for r in lots if str(r.get("畸零地旗標", "")).strip()}
     wedge = frag["poly"]
+    # ── 🆕 §4 末端塊 gate（補丁十 §一·**二條件皆真**才觸發末端 winner 門檻/fallback；缺一走現邏輯，如 R3 街角）──
+    #   條件1：無 SIDELINE 那側（`has_side==False`·資料驅動）；條件2：block∩{s<0} 半平面 >ε（判別語意·**非**「有 frag」）。
+    _has_side_key = "left_has_side" if side == "left" else "right_has_side"
+    _cond1 = not bool(fo.get(_has_side_key))
+    _sdom = ns["_strip_s_range"](block_poly, d_hat, p1, alloc_dir)
+    _smin0 = float(_sdom[0]) if _sdom else 0.0
+    _unfront_area = (float(_block_strip(block_poly, d_hat, p1 + _smin0 * d_hat, -_smin0,
+                                        allocation_dir=alloc_dir)[1] or 0.0)
+                     if _smin0 < -1e-6 else 0.0)
+    _end_gate = _cond1 and (_unfront_area > 1e-3)                 # ε＝1e-3㎡
+    _area_rend = None
+    if _end_gate:                                                # 缺 cad_alloc → loud（winner 純加性·不打紅綠案·靶c）
+        _endpt = p1 if side == "left" else p2                    # 未臨正街端之 FRONT 端點（frag["s"] 側）
+        _, _, _area_rend = ns["_end_region_R"](
+            block_poly, (cad.get("alloc_dir_by_block") or {}).get(blk), _endpt, mw, wedge,
+            _label=f"{blk}·E3[{tag}]")
     target_row, skipped = None, []
     for r in grp:
-        if (float(r.get("S(m)", 0) or 0) > 0.01
-                and float(r.get("宗地寬度(m)", 0) or 0) >= mw
-                and r["暫編地號"] not in flagged):
-            target_row = r
+        _qual = (float(r.get("S(m)", 0) or 0) > 0.01               # 得以分配（保 `寬≥mw`·#1.6-3·與現候選集同）
+                 and float(r.get("宗地寬度(m)", 0) or 0) >= mw
+                 and r["暫編地號"] not in flagged)
+        if _qual and (not _end_gate or float(r.get("G(㎡)", 0) or 0) >= _area_rend):
+            target_row = r                                        # gate 真：首個 G≥area(R_end)·**往後找**（補丁十 §8-2）
             break
         skipped.append(r["暫編地號"])
     if target_row is None:
+        if _end_gate:
+            # ── 🆕 無勝者 fallback（補丁十 §一·§8-1 甲·池重定位·latent；UC9898 winner G≫area(R_end)→不觸發）──
+            #   抵費地(末)＝R_end（frag∪末端帶）·占末端位·**new key**（E3 caller 以「不在 E」判之→池重定位·
+            #   排除帳對閘宗和·pool_final=poolE−area(R_end)）；候選（得以分配建地）內移·G 不變·排 R_end 內側·非疊；
+            #   守恆 ΣG＋pool_final＋抵費地街角＋抵費地末＝街廓（frag 只在 poolE、不雙計——見 plan §2/KL 旗）。
+            _, _rend_poly, _rend_area = ns["_end_region_R"](
+                block_poly, (cad.get("alloc_dir_by_block") or {}).get(blk), _endpt, mw, wedge,
+                _label=f"{blk}·E3[{tag}]·fb")
+            if _rend_poly.geom_type != "Polygon":
+                _rend_poly = _rend_poly.buffer(0)
+            _abate_key = f"{blk}-抵費地末"
+            fb_polys = {_abate_key: _rend_poly}
+            fb_rows = [{"情境": tag, "街廓": blk, "暫編地號": _abate_key,
+                        "角色": f"抵費地(末)(無勝者·池重定位·{side})", "G_E(㎡)": 0.0,
+                        "新形面積(㎡)": round(float(_rend_area), 2), "S_E(m)": 0.0,
+                        "S_new(m)": 0.0, "宗地寬度_new(m)": 0.0,
+                        "Δ面積(㎡)": round(float(_rend_area), 2)}]
+            _rd = ns["_strip_s_range"](_rend_poly, dh, corner, alloc_dir)
+            cum = (float(_rd[1]) - buf) if _rd else 0.0        # 候選自 R_end 之 s-max 起（排 R_end 內側·非疊）
+            for r in grp:
+                G_i, S_i_B = float(r["G(㎡)"]), float(r["S(m)"])
+                S_i, a_i = wf_f1._bisect_area(lambda S, _c=cum: strip_at(_c, S)[1], G_i, 0.0, S_i_B + 2.0)
+                if abs(a_i - G_i) > 0.01:
+                    raise RuntimeError(f"🔴 [{tag}] E3 {blk} fallback 內移宗 {r['暫編地號']} G 全等破：{a_i:.3f}≠{G_i}")
+                cut_i, _ = strip_at(cum, S_i)
+                if cut_i is None or cut_i.is_empty:
+                    raise RuntimeError(f"🔴 [{tag}] E3 {blk} fallback 內移宗 {r['暫編地號']} strip 空——退化")
+                fb_polys[r["暫編地號"]] = cut_i
+                fb_rows.append({"情境": tag, "街廓": blk, "暫編地號": r["暫編地號"], "角色": "內移(fallback)",
+                                "G_E(㎡)": G_i, "新形面積(㎡)": round(float(cut_i.area), 2),
+                                "S_E(m)": S_i_B, "S_new(m)": round(S_i, 2),
+                                "宗地寬度_new(m)": round(S_i * cos_dn, 2),
+                                "Δ面積(㎡)": round(float(cut_i.area) - G_i, 3)})
+                cum += S_i
+            for r in other:
+                fb_polys[r["暫編地號"]] = _poly_of_row(r)
+                fb_rows.append({"情境": tag, "街廓": blk, "暫編地號": r["暫編地號"], "角色": "對側·未動",
+                                "G_E(㎡)": float(r["G(㎡)"]),
+                                "新形面積(㎡)": round(float(_poly_of_row(r).area), 2),
+                                "S_E(m)": float(r["S(m)"]), "S_new(m)": float(r["S(m)"]),
+                                "宗地寬度_new(m)": float(r["宗地寬度(m)"]), "Δ面積(㎡)": ""})
+            for _k, _p in fb_polys.items():                    # 非疊複驗：抵費地末 vs 內移宗（KL/reviewer②）
+                if _k == _abate_key:
+                    continue
+                _ov = float(_rend_poly.intersection(_p).area)
+                if _ov > 0.01:
+                    raise RuntimeError(f"🔴 [{tag}] E3 {blk} fallback 抵費地末與 {_k} 疊 {_ov:.3f}㎡")
+            def _order_fb(polys):                              # 位次序不變（排除抵費地末·新增於末端位）
+                pseudo = [{"暫編地號": k, "polygon_coords": list(v.exterior.coords)}
+                          for k, v in polys.items()]
+                return [t["暫編地號"] for t in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
+            _oE = _order_fb({r["暫編地號"]: _poly_of_row(r) for r in lots})
+            _oN = [k for k in _order_fb(fb_polys) if k != _abate_key]
+            if _oE != _oN:
+                raise RuntimeError(f"🔴 [{tag}] E3 {blk} fallback 位次序變動：{_oE}→{_oN}")
+            return fb_rows, fb_polys, None
         raise RuntimeError(f"🔴 [{tag}] E3 {blk} 往前搜尋窮盡無有效宗（跳過 {skipped}）")
     tgt_poly = _poly_of_row(target_row)
     if wedge.distance(tgt_poly) >= 0.05:
