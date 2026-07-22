@@ -26,9 +26,13 @@ _end_region_R(block_poly, d̂, end_pt, cad_alloc, min_width, frag_poly, _label)
 - `R_end ＝ frag_poly ∪ 末端帶`；`area ＝ R_end.area`。
 - **缺 `cad_alloc` → loud raise**（同 `_corner_buffer_S`·no-silent-fallback）。**端別由 `frag["s"]` 定**（禁純幾何自偵）。
 
-### 1.2 觸發／跳過（補丁十 §一 觸發條件·資料驅動）
-- 於 `_reshape_block`（wf_f4:1096·側別已由 `frag["s"]` 定於 :1116）：該側末端邊 ∥ALLOCLINE（無未臨正街·如 R3）→ **乾淨跳過末端機制·不 raise**（R3 走現街角/§3 路徑·不觸本碼）。判準 ＝ 有 frag（frag 存在＝有未臨正街）。
-- **禁硬編塊名/側別**——一律由 `frag`／`frag["s"]` 驅動。
+### 1.2 觸發／跳過（補丁十 §一 觸發條件·資料驅動·🔴 **reviewer 修正**）
+> **reviewer 駁「有 frag」判準（誤摘 spec）**：R3 有「街角(§3)碎片」frag(78.24) 但**無未臨正街**（末端邊∥ALLOCLINE·s<0=0.0001）。照「有 frag」會把 `_end_region_R` 叫在 R3 退化幾何上·**違 §三 R3-OUT**、有 raise 打紅綠案之虞。改用 spec §一 之**二條件（皆須真才觸發）**：
+
+於 `_reshape_block`（側別已由 `frag["s"]` 定·:1116），**呼叫 `_end_region_R` 之前**先 gate：
+- **條件1（無 SIDELINE 那一側）**：該側 `has_side==False`（`forced_offset['left/right_has_side']`·資料驅動·＝spec §一「無 SIDELINE 那一側」）。**R3 之 frag(628-45(2)) 係街角碎片 → 該側有 SIDELINE → 條件1 假 → 乾淨跳過**（不呼叫 `_end_region_R`·不 raise·R3 走現街角/§3 路徑）。—— 由 KL [0-2]「R3＝街角」直接背書。
+- **條件2（有未臨正街）**：該端 `block∩{s<0 半平面}`（＝補丁七 §一.1 **判別語意**·補丁十「半平面僅判別、不供面積」）面積 `> ε`。R6/R1（無 SIDELINE 側·85.7/5.3 > ε）→真。（末端邊∥ALLOCLINE 之無 SIDELINE 側 → ≈0 → 假·跳過。）
+- **禁硬編塊名/側別**——`has_side`／`frag["s"]`／半平面面積 皆資料驅動。**execution 驗延波末重烤**（harness 現受 xlsx 阻·§四）→ 施工以 baseline/reason 對錨、reviewer-on-diff 獨立複核。
 
 ### 1.3 勝者搜尋（補丁十 §一·§8-2 往後找·**複用現 target 搜尋·勿用 `_projection_order`**）
 現 `_reshape_block` target 搜尋（wf_f4:1155-1161）＝`grp`（該側·累積S 序）首筆合格（S>0.01·寬≥mw·not flagged）。**改**：
@@ -44,6 +48,11 @@ _end_region_R(block_poly, d̂, end_pt, cad_alloc, min_width, frag_poly, _label)
 
 ### 1.5 合成夾具（UC9898 fallback latent·無案例）
 - 建合成 fixture（`verify/` 下·同 #15 latent 分支法）：構造「全合格候選 G<area(R_end)」逼 fallback 分支·驗 抵費地(末)＝area(R_end)＋守恆（[B]）。UC9898 不觸發·此為 fallback 唯一驗路。
+
+### 1.6 施工注意（reviewer 二審·施工／夾具階段驗收·非放行）
+1. **帳對閘隔離抵費地(末)**：無勝者 fallback 之 抵費地(末)=area(R_end) 須記為**池**（**不入 `npolys` 宗和**）·否則 E3 帳對閘（Σlot_new＝Σlot_old·wf_f4:716）誤紅。守恆＝抵費地(末) 由池搬、非新宗。
+2. **合成夾具真構造真跑**：UC9898 winner G≫area(R_end) → fallback **latent 永不觸發**·此為 fallback **唯一**驗路。夾具須真構造「全合格候選 G<area(R_end)」·並實現「末端-跨占建地內移騰讓、抵費地末與內移宗**不疊**」·實跑驗守恆。
+3. **得以分配濾保 `寬≥mw`**：§1.3 得以分配（G≥`mina[blk]`）須與現 `寬≥mw`（wf_f4:1157）**給同一候選集**（spec §一 簡化式 各段深度>畸零最小深 ⟹ W≥畸零寬 ⟺ G≥MinA 背書）·否則候選集變動可能**自破 diff=0**（與門檻無關）。施工保 `寬≥mw` 或先證同集。
 
 ---
 
