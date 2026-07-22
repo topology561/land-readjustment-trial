@@ -71,6 +71,16 @@ except Exception as e:
     print(f"❌ _reshape_block raise：{type(e).__name__}: {e}")
     raise
 
+from shapely.ops import unary_union as _uu
+
+# ── 驗0（**強·獨立幾何**·非經 _reshape_block）：_end_region_R 直測·band/frag/R_end 對獨立手算 ──
+band_poly, _rend_direct, rend_area_direct = ns["_end_region_R"](
+    Polygon(cb_by[BLK]["vertices"]), [0.0, 1.0], [0.0, 0.0], MW, frag, _label="fixture-direct")
+band_expect, frag_expect = MW * H, F * H          # 35.0 / 40.0（獨立手算）
+ok_band = abs(band_poly.area - band_expect) < 1e-6
+ok_fragA = abs(frag.area - frag_expect) < 1e-6
+ok_rend0 = abs(rend_area_direct - area_rend_expect) < 1e-6        # 75.0
+
 # ── 分帳（模擬 E3 caller [B]）──
 E_keys = {r["暫編地號"] for r in rowsE}
 new_abate = {k: p for k, p in npolys.items() if k not in E_keys}   # 抵費地末（new key）
@@ -78,34 +88,41 @@ in_E = {k: p for k, p in npolys.items() if k in E_keys}
 end_abate_area = sum(p.area for p in new_abate.values())
 pool_final = poolE_clean - end_abate_area
 sumG_final = sum(float(r["G(㎡)"]) for r in rowsE)                 # 建地 G 不變
-
-# ── 驗①：抵費地末 = area(R_end)（含 frag·不雙計）──
 abate_key = f"{BLK}-抵費地末"
-ok_abate = (abs(end_abate_area - area_rend_expect) < 1e-6) and (abate_key in new_abate)
-# ── 驗②：完整 4 項恆等式逐位 ──
-identity = sumG_final + pool_final + corner_abate + end_abate_area
-resid = identity - blk_area
-ok_identity = abs(resid) < 1e-9
-# ── 驗③：非疊（抵費地末 vs 內移宗）──
 rend_poly = new_abate.get(abate_key)
+
+# ── 驗①：抵費地末(經 _reshape_block) = area(R_end)·與直測一致·含 frag 不雙計 ──
+ok_abate = (abs(end_abate_area - area_rend_expect) < 1e-6) and (abate_key in new_abate)
+# ── 驗②（**真幾何交叉·可 fail**·取代舊 tautology）：帳池 == 幾何池 ──
+#   幾何池 = block − (R_end∪內移宗)之**實際 union 面積** − 街角。反例力：Σ內移宗 area≠ΣG 或 R_end/內移宗 疊
+#   → union 面積變 → 幾何池 ≠ pool_final → fail。（舊「4 項恆等式」＝end_abate 相消·恒真·零力·reviewer 揭。）
+placed_union = _uu([rend_poly] + list(in_E.values()))
+geom_pool = blk_area - placed_union.area - corner_abate
+ok_geom = abs(geom_pool - pool_final) < 1e-6
+# ── 驗③：非疊（抵費地末 vs 內移宗）──
 max_ov = max((rend_poly.intersection(p).area for k, p in in_E.items()), default=0.0)
 ok_nonoverlap = max_ov < 1e-6
 # ── 驗④：建地 G 守恆（內移後 area≈G）──
 ok_G = all(abs(p.area - float(next(r["G(㎡)"] for r in rowsE if r["暫編地號"] == k))) < 1e-6
            for k, p in in_E.items())
+# 完整 4 項恆等式（**記錄·非鐵證**·reviewer 揭：end_abate 相消 → ≡ blk_area·零驗證力）
+identity = sumG_final + pool_final + corner_abate + end_abate_area
 
-print("="*68)
+print("="*72)
 print(f"街廓面積={blk_area:.6f}  ΣG={sumG_final:.6f}  poolE(clean)={poolE_clean:.6f}")
-print(f"抵費地末(=R_end)={end_abate_area:.6f}  (期 {area_rend_expect:.6f})  抵費地街角={corner_abate:.6f}")
-print(f"pool_final=poolE−R_end={pool_final:.6f}")
-print(f"完整恆等式 ΣG+pool_final+街角+末 = {identity:.9f}  街廓={blk_area:.9f}  殘差={resid:.2e}")
-print(f"非疊 max_overlap={max_ov:.2e}   內移宗數={len(in_E)}  抵費地末 key={abate_key in new_abate}")
-print("-"*68)
-print(f"①抵費地末=area(R_end)含frag不雙計 : {'✅' if ok_abate else '❌'}")
-print(f"②完整4項恆等式逐位(<1e-9)        : {'✅' if ok_identity else '❌'}  殘差={resid:.2e}")
-print(f"③抵費地末與內移宗非疊(<1e-6)      : {'✅' if ok_nonoverlap else '❌'}")
-print(f"④建地 G 守恆(內移後 area≈G)       : {'✅' if ok_G else '❌'}")
-print("="*68)
-_all = ok_abate and ok_identity and ok_nonoverlap and ok_G
+print(f"_end_region_R 直測: frag={frag.area:.6f}(期{frag_expect}) ＋ band={band_poly.area:.6f}(期{band_expect})"
+      f" → R_end={rend_area_direct:.6f}(期{area_rend_expect})")
+print(f"抵費地末(=R_end·經reshape)={end_abate_area:.6f}  抵費地街角={corner_abate:.6f}  pool_final={pool_final:.6f}")
+print(f"幾何池(block−實際union−街角)={geom_pool:.6f}  pool_final={pool_final:.6f}  Δ={geom_pool-pool_final:.2e}")
+print(f"非疊 max_overlap={max_ov:.2e}   內移宗數={len(in_E)}")
+print(f"（記錄·非鐵證）代數4項恆等式={identity:.6f}≡街廓{blk_area:.6f}（end_abate 相消·恒真·零力·reviewer 揭）")
+print("-"*72)
+print(f"0 _end_region_R 直測 band=35∧frag=40∧R_end=75(手算) : {'✅' if (ok_band and ok_fragA and ok_rend0) else '❌'}")
+print(f"① 抵費地末(reshape)=area(R_end)·含 frag 不雙計       : {'✅' if ok_abate else '❌'}")
+print(f"② 帳池==幾何池(真交叉·可 fail)                       : {'✅' if ok_geom else '❌'}  Δ={geom_pool-pool_final:.2e}")
+print(f"③ 抵費地末與內移宗非疊(<1e-6)                         : {'✅' if ok_nonoverlap else '❌'}")
+print(f"④ 建地 G 守恆(內移後 area≈G)                          : {'✅' if ok_G else '❌'}")
+print("="*72)
+_all = ok_band and ok_fragA and ok_rend0 and ok_abate and ok_geom and ok_nonoverlap and ok_G
 print("RESULT:", "ALL GREEN ✅" if _all else "FAIL ❌")
 sys.exit(0 if _all else 1)

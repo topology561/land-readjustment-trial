@@ -1160,6 +1160,10 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
     wedge = frag["poly"]
     # ── 🆕 §4 末端塊 gate（補丁十 §一·**二條件皆真**才觸發末端 winner 門檻/fallback；缺一走現邏輯，如 R3 街角）──
     #   條件1：無 SIDELINE 那側（`has_side==False`·資料驅動）；條件2：block∩{s<0} 半平面 >ε（判別語意·**非**「有 frag」）。
+    #   condition2 ＝ `block∩{s<0}`（rel p1·＝canonical §一 左式·未臨正街存在判別）。**UC9898 觸發者 R1/R6 皆左側**·正確。
+    #   ⚠️ **右側末端塊 spec gap（reviewer WARNING3·交 claude.ai 定右式）**：右未臨正街係 `block∩{s>s(p2)}`
+    #     （≠ s<0·spec §一 為左式）→ 右側 `_unfront_area` 恒 0 → 右末端塊 **latent 停用**（UC9898 無右末端塊案：
+    #     R3 係街角·cond1 短路；R1/R6 左側）。右側若入 S1 範疇、condition2 之右式，待 KL/claude.ai 裁。
     _has_side_key = "left_has_side" if side == "left" else "right_has_side"
     _cond1 = not bool(fo.get(_has_side_key))
     _sdom = ns["_strip_s_range"](block_poly, d_hat, p1, alloc_dir)

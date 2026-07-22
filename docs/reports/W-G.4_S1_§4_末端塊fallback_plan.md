@@ -90,3 +90,9 @@ _end_region_R(block_poly, d̂, end_pt, cad_alloc, min_width, frag_poly, _label)
 2. **fallback 守恆**：抵費地(末)＝area(R_end) 之池重定位·`中央池＝街廓−ΣG−抵費地(第1宗)−抵費地(末)`·E3 帳對閘是否守？合成夾具設計。
 3. **範圍圍欄**：確無觸 R3/街角碼/`_build_corner_range_v2`/F.0 錨/xlsx？`_end_region_R` 未臨正街用 frag（非半平面構造·補丁十乙）？
 4. **[B] WATCH 界**：角落側 app-path（14622）確已接線（非恆餵 0）？本波只接末端側·是否合理分界？
+
+## 7. reviewer 二審（`dc154cd`·已 push）回應
+reviewer 獨立跑夾具＋讀 diff·**無 BLOCKED**（碼於 UC9898 正確守恆·範圍圍欄乾淨·py_compile 過）·3 WARNING：
+- **W1 winner diff=0 執行未證**：F.4 因 **F.0 過期錨級聯被跳過**（reviewer 於 clean committed-xlsx worktree 實測坐實·**非 xlsx**）→ R1/R6 `_end_region_R` 真幾何 no-raise／area 值 無法獨立復現 → **延波末重烤**（錨更新後 F.4 baseline 對拍）。**此波不報 §4 收官**（CLAUDE.md：自評/推理不可替代獨立復現）·deferring 可否待 KL 裁。
+- **W2 夾具 ② 套套邏輯（已修·`dc154cd`→次 commit）**：舊「4 項恆等式逐位殘差0」＝`end_abate` 相消·恒真·零驗證力（我 oversell）。**改**：驗0（`_end_region_R` 直測 band=35∧frag=40∧R_end=75 手算·**可 fail**）＋②（帳池==幾何池·`block−實際union−街角`·**可 fail**）＋③④。強化後 ALL GREEN。
+- **W3 右側 condition2 spec gap（已記·交 claude.ai）**：condition2 `block∩{s<0}`（rel p1）＝canonical §一 **左式**；右未臨正街係 `block∩{s>s(p2)}`（≠ s<0）→ 右側 `_unfront_area` 恒 0·**右末端塊 latent 停用**（UC9898 無右案：R3 街角 cond1 短路·R1/R6 左）。右式＋右側是否 S1 範疇·待 KL/claude.ai 裁。
