@@ -58,3 +58,22 @@
 - **兇＝§3 `5b80f9d`**（bisect＋S0d 隔離定案）。**非** front_p1/range_area/allocation_dir arg 差（5.1 全一致）·**非** S0d（5.2 conserved）。
 - ⇒ **§3 之新 `_corner_buffer_S` buf 值**（幾何 bisect·取代舊 `range÷avg_depth`）令 628-37(1)（R1 左街角 winner）之 **E3-reshape 幾何 與 F.4-run_step_g G 重算 不一致**（7.9）——非兩路 arg 差、係**新 buf 值在 F.4 兩階段（E3 整形 vs run_step_g）之套用不一致**。確切不一致點（哪階段用新 buf、哪階段未跟）→ **claude.ai grep 兩路 F.4 用 buf 處＋CAD 坐實 628-37(1) 幾何**·寫定點修。
 - 未修前：不動引擎·不烤 F.4·不收綠·G006 錨不動。
+
+## 六、run-time 實測（決定性·claude.ai 令·診斷 dump·不入倉·已還原）
+
+> 診斷 dump 兩路 buf ＋ E3-vs-run_step_g（main tree 加 print·跑 WV_BAKE→F.4·讀·`git checkout` 還原）。**§五之「buf 值差」假設 refuted**。
+
+### 6.1 buf ＝ 0（兩路·**非 `_corner_buffer_S`**）
+- wf_f4（幾何）dump：`R1-left range_area(fo.left_corner_min_area)=0.0 buf=0.000000`。
+- stepg（G）dump：**未印**（在 `if _fo_left:` 內·R1 `left_forced_offset=False`）。
+- ⇒ **628-37(1) 係 winner·無 forced 街角帶·兩路 buf=0**。**兇非 `_corner_buffer_S`／range_area**（claude.ai arg-diff 與 §五 buf 假設**皆 refuted**）。
+
+### 6.2 破在 run_step_g 之**幾何面積**（非 E3·非 G·非 buf）
+- **E3 整形 conserved**：`628-37(1) G_B=273.41·tgt_shape.area(E3幾何)=273.4101`（|Δ|=0.0001）→ E3 reshape 幾何無誤。
+- **run_step_g 破**（F.4 某 call）：`628-37(1) G(㎡)=291.93·幾何面積(㎡)=284.03·|Δ|=7.90`（a=457.0·S=8.57·累積S=45.85）；**對照 conserved call `G=291.93·幾何=291.93`**。
+- ⇒ **task 2 答：幾何動了（291.93→284.03·−7.9）·G 沒跟（守 291.93）**。**7.9 落在 run_step_g 對 628-37(1) 之「幾何面積」計算**（該 call 之切幾何比 G 少 7.9），**非 E3 整形（守恆）·非 buf（=0）·非 G 公式**。
+
+### 6.3 待 claude.ai 定點
+- **兇＝令 run_step_g 之 628-37(1)「幾何面積」較 G 少 7.9 之變**（幾何路·非 G 路·非 buf）。§3 `5b80f9d` 於該 call 動了切幾何而 G 未跟？（惟 buf=0·故非 _corner_buffer_S·係 §3 之他改·或該 call 之 s-域/切帶）。**claude.ai grep run_step_g 內「幾何面積」計算處（該宗 累積S=45.85·a=457.0 之切帶）＋§3 對之改＋CAD 坐實 628-37(1) 幾何** → 定確切一步·寫定點修。
+- **⚠️ §五「新 buf 值兩階段不一致」修正為：buf=0·兇在 run_step_g 幾何面積計算（幾何動 G 沒跟）·非 buf。**
+- 未修前：不動引擎·不烤·不收綠·G006 錨不動。
