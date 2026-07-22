@@ -1160,17 +1160,23 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
     wedge = frag["poly"]
     # ── 🆕 §4 末端塊 gate（補丁十 §一·**二條件皆真**才觸發末端 winner 門檻/fallback；缺一走現邏輯，如 R3 街角）──
     #   條件1：無 SIDELINE 那側（`has_side==False`·資料驅動）；條件2：block∩{s<0} 半平面 >ε（判別語意·**非**「有 frag」）。
-    #   condition2 ＝ `block∩{s<0}`（rel p1·＝canonical §一 左式·未臨正街存在判別）。**UC9898 觸發者 R1/R6 皆左側**·正確。
-    #   ⚠️ **右側末端塊 spec gap（reviewer WARNING3·交 claude.ai 定右式）**：右未臨正街係 `block∩{s>s(p2)}`
-    #     （≠ s<0·spec §一 為左式）→ 右側 `_unfront_area` 恒 0 → 右末端塊 **latent 停用**（UC9898 無右末端塊案：
-    #     R3 係街角·cond1 短路；R1/R6 左側）。右側若入 S1 範疇、condition2 之右式，待 KL/claude.ai 裁。
+    #   condition2（該側有未臨正街·補丁十 §一 **side-parametrized**·claude.ai 定稿）＝該側「未臨正街半平面」>ε：
+    #     left ：`block∩{s<0}`（rel p1·s(p1)=0）；right：`block∩{s>s(p2)}`（s(p2)＝p2 於 ALLOC 切線軸 rel p1 之 s）。
+    #     末端邊∥ALLOCLINE ⇒ 該側半平面≈0 ⇒ 無·跳過。右式鏡像左式（`_endpt=p2` 對稱）。
     _has_side_key = "left_has_side" if side == "left" else "right_has_side"
     _cond1 = not bool(fo.get(_has_side_key))
     _sdom = ns["_strip_s_range"](block_poly, d_hat, p1, alloc_dir)
-    _smin0 = float(_sdom[0]) if _sdom else 0.0
-    _unfront_area = (float(_block_strip(block_poly, d_hat, p1 + _smin0 * d_hat, -_smin0,
-                                        allocation_dir=alloc_dir)[1] or 0.0)
-                     if _smin0 < -1e-6 else 0.0)
+    _smin0, _smax0 = (float(_sdom[0]), float(_sdom[1])) if _sdom else (0.0, 0.0)
+    if side == "left":                                       # block∩{s<0}
+        _unfront_area = (float(_block_strip(block_poly, d_hat, p1 + _smin0 * d_hat, -_smin0,
+                                            allocation_dir=alloc_dir)[1] or 0.0)
+                         if _smin0 < -1e-6 else 0.0)
+    else:                                                    # block∩{s>s(p2)}（右鏡像·claude.ai 補式）
+        _mh, _den = ns["_strip_axis"](d_hat, alloc_dir)
+        _s_p2 = float(np.dot(p2 - p1, _mh) / _den)
+        _unfront_area = (float(_block_strip(block_poly, d_hat, p1 + _s_p2 * d_hat, _smax0 - _s_p2,
+                                            allocation_dir=alloc_dir)[1] or 0.0)
+                         if _smax0 > _s_p2 + 1e-6 else 0.0)
     _end_gate = _cond1 and (_unfront_area > 1e-3)                 # ε＝1e-3㎡
     _area_rend = None
     if _end_gate:                                                # 缺 cad_alloc → loud（winner 純加性·不打紅綠案·靶c）
