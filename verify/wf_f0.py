@@ -61,7 +61,11 @@ GSA_EXPECT = {
 # 合併後不達標之標旗轉出（KL (A) 追認）
 ROUTE_OUT = {"G009": "轉F.2(同歸戶R4有達標宗·級1相鄰街廓)",
              "G014": "轉F.4(逃生門·2×G≥MinA_區·7-5≥½增配)"}
-MINA_QU = 114.07
+# MinA_區（重劃區內最小分配面積標準）正典＝`wd4_tier_list._mina_by_block()` 之
+#   `min(mina.values())`（mina[lbl]=round(街廓分配深度×min_width, 2)）。
+#   本檔原有之區標準字面常數為**孤兒**（僅定義、零讀取、全倉無 import）已刪，避免日後被誤引
+#   為權威（失敗考古 #26 型）。本檔一切比較用 `mina[blk]`＝**配地可行性**口徑（:98/:204/:211/:216），
+#   與 ½線補償之 **MinA_區** 口徑係二事、勿混（見 plan v3 §9.2 🔒 二口徑註記）。
 
 
 def _mina_by_block(ns, snap, cb_by):
