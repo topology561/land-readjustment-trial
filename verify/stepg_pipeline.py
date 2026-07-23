@@ -327,6 +327,19 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         blk_meta = block_meta_by_label.get(blk_label, {})
         blk_poly = blk_meta.get('shapely', None)
         blk_area = float(blk_meta.get('area_m2', 0.0) or 0.0)
+
+        # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流 ───────────────────────────────
+        #   階段1宗＝原地主宗（`build_parcels` 原生·**不帶** `配地階段` 鍵）——定案並定出池範圍。
+        #   階段2宗＝wf_f4 池內遞補合成宗（`add_syn` 帶 `配地階段='池內'`·P1 旗標·wf_f4:188）——
+        #     **不進** `ordered_v2`／**不進**位次閘母體，改由 `_place_pool_parcels` 於階段1 定案後
+        #     之**池範圍內**落位。根因：遞補宗混入單一投影序列會插隊擠爆原地主末宗
+        #     （3.5m `628-37(1)`：S_remain 8.57 < 需 8.81 → |G−幾何|=7.90）。
+        #   **資料驅動**（禁 `74·` 名稱前綴／塊名／側別判別·泛用紀律）。
+        #   ⚠️ B-2（reviewer 活抓）：`_proj_rank`（下方 :~410）母體**必須同步過濾**，否則
+        #     `pre_position`(1,2,3,4) 與投影排名(1,2,4,9) 對不上 → 位次閘必 raise。兩處共用本清單。
+        _stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp]
+        _stage2_parcels = [tp for tp in parcels_in_blk if '配地階段' in tp]
+
         sb_row = sb_rows_by_label.get(blk_label, {})
         front_len = float(sb_row.get('正面長度(m)', 0.0) or 0.0)
         l_front = float(sb_row.get('正街尺度', 0.0) or 0.0)
@@ -364,9 +377,17 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         # ordered_v2（app 同構）
         _v2_res = None
         _degenerate_order = (d_hat is None or corner_pt is None)
+        # P2-a：退化序（缺 FRONT_LINE ⇒ 無 d_hat/corner_pt）下**無幾何可定池範圍** ⇒ 階段2 落位
+        #   不可能。此時若仍有階段2宗，靜默丟棄＝a′ 帳漏、靜默沿用舊單序列＝兩階段化被繞過，
+        #   二者皆違 no-silent-fallback → **loud raise**（UC9898 全塊皆有 FRONT_LINE·不觸）。
+        if _degenerate_order and _stage2_parcels:
+            raise RuntimeError(
+                f"🔴 P2-a：街廓 {blk_label} 退化序（缺 d_hat/corner_pt）卻有階段2宗 "
+                f"{[tp.get('暫編地號') for tp in _stage2_parcels]}——池範圍不可定義、"
+                f"池內落位無法執行（禁靜默丟棄／禁退舊單序列），停")
         if _degenerate_order:
             ordered_v2 = []
-            for tp in parcels_in_blk:
+            for tp in _stage1_parcels:
                 _pm = _params_for_g.get(tp['暫編地號'], {})
                 ordered_v2.append({
                     'tp': tp, 'pre_position': 0,
@@ -380,7 +401,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _v2_forced = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}
             _v2_fl_p1 = _cad_fl_blk.get('p1'); _v2_fl_p2 = _cad_fl_blk.get('p2')
             _v2_res = _spatial_order_parcels_v2(
-                parcels_in_block=parcels_in_blk,
+                parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗（遞補宗改走 _place_pool_parcels）
                 d_hat=d_hat,
                 front_line_p1=_v2_fl_p1,
                 front_line_p2=_v2_fl_p2,
@@ -396,8 +417,10 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         #   `_projection_order`（純幾何 representative_point 投影）之排名。此為位次價格無關之
         #   機制保證：任何使位次改吃 G/地價之 refactor 立即被逮。
         if not _degenerate_order:
+            # 🆕 P2-a／B-2：母體**與 `ordered_v2` 同源**（皆 `_stage1_parcels`）。用未過濾之
+            #   `parcels_in_blk` 會使排名把階段2宗一併編號 → 與 `pre_position` 對不上 → 本閘必 raise。
             _proj_rank = {tp['暫編地號']: _i + 1 for _i, tp in enumerate(
-                ns["_projection_order"](parcels_in_blk, _cad_fl_blk.get('p1'),
+                ns["_projection_order"](_stage1_parcels, _cad_fl_blk.get('p1'),
                                         _cad_fl_blk.get('p2')))}
             _pos_bad = [(e['tp']['暫編地號'], e.get('pre_position'),
                          _proj_rank.get(e['tp']['暫編地號']))

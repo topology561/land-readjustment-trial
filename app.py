@@ -15309,6 +15309,16 @@ def main():
                         blk_meta = block_meta_by_label.get(blk_label, {})
                         blk_poly = blk_meta.get('shapely', None)
                         blk_area = float(blk_meta.get('area_m2', 0.0) or 0.0)
+
+                        # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流（stepg:330 家族鏡像·#20 同改）──
+                        #   階段1宗＝原地主宗（原生·不帶 `配地階段`）；階段2宗＝池內遞補合成宗
+                        #   （wf_f4 `add_syn` 帶 `配地階段='池內'`）→ 不進 ordered_v2，改走
+                        #   `_place_pool_parcels` 於池範圍內落位。**資料驅動**（禁名稱前綴判別）。
+                        #   ⚠️ app live 路徑之合成宗僅存在於 wf_f4 引擎路徑 → 此處過濾**實為 no-op**；
+                        #      但**必須**與 stepg 同構——否則 app 走舊單階段、harness 走新兩階段＝無聲分岔。
+                        _stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp]
+                        _stage2_parcels = [tp for tp in parcels_in_blk if '配地階段' in tp]
+
                         sb_row = sb_rows_by_label.get(blk_label, {})
                         front_len = float(sb_row.get('正面長度(m)', 0.0) or 0.0)
                         l_front = float(sb_row.get('正街尺度', 0.0) or 0.0)
@@ -15319,7 +15329,9 @@ def main():
 
                         # 街廓 d_hat / 角點：依首筆街角地的「街角側別」決定
                         first_corner_side = None
-                        for tp in parcels_in_blk:
+                        # P2-a：街廓 d_hat/角點由**階段1宗**定（街角地屬原位次語意）。
+                        #   合成宗不帶 is_corner ⇒ 過濾於本案為 no-op，惟語意上不得由遞補宗定街角側。
+                        for tp in _stage1_parcels:
                             p = _params_for_g.get(tp['暫編地號'], {})
                             if p.get('is_corner') and p.get('side', '無') in ('左側', '右側'):
                                 first_corner_side = p['side']
@@ -15432,10 +15444,17 @@ def main():
                         # ═══════════════════════════════════════════════════════════
                         _v2_res = None
                         _degenerate_order = (d_hat is None or corner_pt is None)
+                        # P2-a（stepg 家族鏡像）：退化序無幾何 ⇒ 池範圍不可定義 ⇒ 階段2 落位不可能。
+                        #   靜默丟棄＝a′ 帳漏、靜默退舊單序列＝繞過兩階段化，皆違 no-silent-fallback。
+                        if _degenerate_order and _stage2_parcels:
+                            raise RuntimeError(
+                                f"🔴 P2-a：街廓 {blk_label} 退化序（缺 d_hat/corner_pt）卻有階段2宗 "
+                                f"{[tp.get('暫編地號') for tp in _stage2_parcels]}——池範圍不可定義、"
+                                f"池內落位無法執行（禁靜默丟棄／禁退舊單序列），停")
                         if _degenerate_order:
                             # 沒有幾何資訊 → 退化為輸入順序、不做雙向夾擠（單趟、全左群）
                             ordered_v2 = []
-                            for tp in parcels_in_blk:
+                            for tp in _stage1_parcels:
                                 _pm = _params_for_g.get(tp['暫編地號'], {})
                                 ordered_v2.append({
                                     'tp': tp,
@@ -15467,7 +15486,7 @@ def main():
 
                             # 呼叫 v2（不再 except fallback；失敗就讓它噴錯）
                             _v2_res = _spatial_order_parcels_v2(
-                                parcels_in_block=parcels_in_blk,
+                                parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗
                                 d_hat=d_hat,
                                 front_line_p1=_v2_fl_p1,
                                 front_line_p2=_v2_fl_p2,
