@@ -767,6 +767,16 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         #       · 只進 allocated_polys ⇒ 停機③ 立紅
         #   ⇒ 池片結算（下方 `_pool_strips_for_block`）**自動**落在階段2 之後：其
         #     `allocated_polys` 由擴充後之 left/right_results 建 ⇒ 池＝階段1殘餘 − 階段2已落位。
+        # 三閘合圍之輸入（claude.ai 裁定 2026-07-24·§五 (a) 修正版）：
+        #   `_Wf_stage1`＝**階段2 落位前**之該側末 W ⇒ 階段2 恆等式閘之左端點。
+        #   `_stage2_ids`＝階段2宗之暫編地號集，**其出處即 `配地階段` 旗標**（資料驅動·
+        #     禁 `74·` 名稱前綴判別）；供「理論=實跑」閘過濾出**階段1子集**。
+        #   ⚠️ 二者**不得**改動 `_rw_real_wd2` 之全域母體——該函式為 telescoping 閘與
+        #     CSV 欄共用，其總量守備涵蓋階段1＋2，縮之即失守。
+        _Wf_stage1 = {'left': float(_adv_final.get('Wf_left', 0.0) or 0.0),
+                      'right': float(_adv_final.get('Wf_right', 0.0) or 0.0)}
+        _stage2_ids = {tp['暫編地號'] for tp in _stage2_parcels}
+
         if _stage2_parcels:
             _smax_blk = None
             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
@@ -915,10 +925,25 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                          if _v2_res else 0.0)
 
         def _rw_real_wd2(_side_tag):
+            # **全域母體（階段1＋2）·勿縮**：telescoping 閘（總量段）與 CSV 欄共用。
             return round(sum(float(r.get('Rw(%)', 0) or 0)
                              for r in _adv_final['rows']
                              if r.get('推進側別') == _side_tag
                              and float(r.get('F(m)', 0) or 0) > 0), 2)
+
+        def _rw_stage1_only(_side_tag):
+            """**僅供「理論＝實跑」閘**：階段1子集之 ΣRw（資料驅動·母體出處＝`配地階段` 旗標）。
+
+            理論側 `_select_pool_slot` 之 `widths` 結構上**只可能**含階段1宗——選槽於階段2
+            存在**之前**執行（裁定B 已鎖時序：k* 先於階段2）。故同類相比之對象即本子集。
+            **不改 `_rw_real_wd2`**：階段2 之 Rw 仍由下方「階段2 恆等式閘」與「telescoping
+            總量閘」兩道看守，守備零縮（三閘合圍）。
+            """
+            return round(sum(float(r.get('Rw(%)', 0) or 0)
+                             for r in _adv_final['rows']
+                             if r.get('推進側別') == _side_tag
+                             and float(r.get('F(m)', 0) or 0) > 0
+                             and r.get('暫編地號') not in _stage2_ids), 2)
         _tbl_wd2 = (_slot_res or {}).get('table') or []
         _row_at = {t['k']: t for t in _tbl_wd2}
         _t_star = _row_at.get(_k_star, {})
@@ -940,6 +965,27 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     f"🔴 結構閘 telescoping 破：街廓 {blk_label} {_sd_tag} 側 "
                     f"ΣRw_實跑={_sum_rw_side:.2f} ≠ R(W_final={_sd_Wf:.2f})−R(W₀={_sd_W0:.2f})"
                     f"={_tele_exp:.2f}（Δ={abs(_sum_rw_side - _tele_exp):.3f} >0.1）")
+
+        # ── 🆕 結構閘 階段2 telescoping（三閘合圍之**中段**·claude.ai 裁定 2026-07-24 §五(a)修正版）──
+        #   `ΣRw_階段2_側 == R(W_final) − R(W_階段1末)`，容差 0.1（同 telescoping 家族）。
+        #   ⚠️ **刻意不採**「ΣRw_階段2 ≤ 100 − 理論@k*」之不等式版——`rw_from_width` 於 W≥18
+        #     飽和 100 使該式幾近**恆真**＝文字閘（看似有守、實則不咬）。恆等式才咬得住。
+        #   三閘合圍：階段1段＝「理論＝實跑」（母體＝階段1子集）／**階段2段＝本閘**／
+        #             總量段＝上方 telescoping（母體＝全域 `_rw_real_wd2`）⇒ 守備零縮。
+        #   無階段2宗時 `_rw_s2` 與 `_exp_s2` 恆為 0（左右端點同值）⇒ 不誤咬既有情境。
+        for _sd_t2, _sd_has_t2, _W1_end_t2, _Wf_t2 in (
+                ('left', _has_left_corner, _Wf_stage1['left'], _adv_final['Wf_left']),
+                ('right', _has_right_corner, _Wf_stage1['right'], _adv_final['Wf_right'])):
+            if not _sd_has_t2:
+                continue
+            _rw_s2 = round(_rw_real_wd2(_sd_t2) - _rw_stage1_only(_sd_t2), 2)
+            _exp_s2 = _rw_from_width(_Wf_t2) - _rw_from_width(_W1_end_t2)
+            if abs(_rw_s2 - _exp_s2) > 0.1:
+                raise RuntimeError(
+                    f"🔴 結構閘 階段2 telescoping 破：街廓 {blk_label} {_sd_t2} 側 "
+                    f"ΣRw_階段2={_rw_s2:.2f} ≠ R(W_final={_Wf_t2:.2f})−"
+                    f"R(W_階段1末={_W1_end_t2:.2f})={_exp_s2:.2f}"
+                    f"（Δ={abs(_rw_s2 - _exp_s2):.3f} >0.1）——池內落位之 Rw 鏈與 W 續推脫鉤")
 
         # ── 首宗下限 loud（補丁六 §二·plan §1）：達資格街角首宗 KL W ≥ 側街退縮 ＋ 最小畸零寬 ──
         #   首宗 W₁ ＝ 首宗角落宗 res['W']（=W_far·打樣「首宗W」；非 W0=W_near）；
@@ -986,11 +1032,15 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         if _slot_res:
             for _th_key, _sd_tag2 in (('ΣRw_L', 'left'), ('ΣRw_R', 'right')):
                 _th = float(_t_star.get(_th_key, 0.0) or 0.0)
-                _re = _rw_real_wd2(_sd_tag2)
+                # 🆕 §4 P2：比對母體限**階段1子集**（`_rw_stage1_only`）。理論側之 widths
+                #   結構上只含階段1宗（k* 先於階段2·裁定B 鎖時序）⇒ 拿全域母體比即非同類相比。
+                #   階段2 之 Rw 改由下方「階段2 恆等式閘」看守（三閘合圍·守備零縮）。
+                _re = _rw_stage1_only(_sd_tag2)
                 if abs(_th - _re) > 0.1:
                     raise RuntimeError(
                         f"🔴 結構閘 理論＝實跑 破：街廓 {blk_label} {_sd_tag2} 側 "
-                        f"理論@k*={_th:.2f} ≠ 實跑={_re:.2f}（Δ={abs(_th - _re):.3f} >0.1）")
+                        f"理論@k*={_th:.2f} ≠ 實跑(階段1)={_re:.2f}"
+                        f"（Δ={abs(_th - _re):.3f} >0.1）")
         if _pool_total_blk is not None:
             # ── §N3-0 守恆-帳幾何級（逐街廓 Σ 閘·KL 2026-07-16 裁·補丁三 §二）──
             #   `|ΣG ＋ 池幾何 − 街廓| ≤ 宗數×(0.005×深度 ＋ tol ＋ 0.005)` ＝逐宗上界之和（三角不等式）。
