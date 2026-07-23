@@ -8593,6 +8593,15 @@ _WF_NS_NAMES = [
     "_strip_s_range", "_corner_buffer_S",
     # §N3-0 帳對幾何閘（兩級化·補丁三 §二）：閘寬單一真相源（stepg／run_verification／wf_f4 共用）
     "_acct_geom_tol_per_lot", "_acct_geom_tol_block",
+    # 🆕 W-8 補漏（reviewer 活抓·**既有缺陷非本波引入**）：引擎實耗但清單漏列者。
+    #   `_strip_axis`／`_end_region_R` 於 wf_f4 `_reshape_block` **無條件**執行（右側碎片路徑），
+    #   app 路徑（「執行七級調配」→ `_build_wf_ctx` → wf_f4.compute）取不到即 **KeyError**。
+    #   舊 :1110 閘只驗 `_WF_NS_NAMES ⊆ ns`（單向）故抓不到「引擎要、清單沒有」——閘已改雙向。
+    "_strip_axis", "_end_region_R",
+    # 🆕 B-5（plan v3 §四·D-3 寬度制）：18m 負擔範圍多邊形**即算即用**之單一真相源。
+    #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
+    #      且 harness（run_verification）從不算 18m，存鍵在 harness 路徑必缺。
+    "_build_corner_range_v2",
 ]
 
 

@@ -1111,6 +1111,25 @@ def main():
         if _ns_missing:
             # 訊息自述缺名·**不寫死名目數**（舊 "ns 16" 於 17 時即過期·N0-17-b 散文/死字串同族）
             _vg1.append(f"ns 真符號不全（缺 {_ns_missing}）")
+        # 🆕 W-8 反向閘（reviewer 活抓）：舊閘只驗「清單 ⊆ ns」＝單向，抓不到
+        #   **「引擎實耗但 `_WF_NS_NAMES` 漏列」**（→ app 路徑 `ns[...]` KeyError·如
+        #   `_strip_axis`／`_end_region_R` 於 wf_f4 右側碎片路徑無條件執行）。
+        #   反向＝掃**實際於 app 路徑執行**之引擎檔（`_build_wf_ctx`→`_wf_ns()`→wf_f4.compute
+        #   →wf_f0~f3＋stepg）之 `ns["X"]` 字面用點，全部須在清單內。
+        #   ⚠️ **不含 `selection_pipeline.py`**——該檔僅走 harness 全 harvest（`app_harvest.harvest()`
+        #      之完整 globals），非 `_wf_ns()` 之 22 鍵路徑；納入會誤報 8 個名而過度約束清單。
+        import re as _re_ns
+        _ns_used = set()
+        for _f_ns in ("wf_f0.py", "wf_f1.py", "wf_f2.py", "wf_f3.py", "wf_f4.py",
+                      "stepg_pipeline.py"):
+            _p_ns = os.path.join(HERE, _f_ns)
+            if not os.path.exists(_p_ns):
+                continue
+            _ns_used |= set(_re_ns.findall(r'ns\[\s*["\']([A-Za-z_][A-Za-z0-9_]*)["\']\s*\]',
+                                           open(_p_ns, encoding="utf-8").read()))
+        _ns_unlisted = sorted(_ns_used - set(ns["_WF_NS_NAMES"]))
+        if _ns_unlisted:
+            _vg1.append(f"引擎消費但 _WF_NS_NAMES 漏列（app 路徑必 KeyError）：{_ns_unlisted}")
         if not isinstance(_bctx["cb_by"], dict) or set(_bctx["cb_by"]) != set(_nat["cb_by"]):
             _vg1.append("cb_by list→dict 不符")
         if _bctx["cad"].get("centerlines") != _cad.get("centerlines"):
