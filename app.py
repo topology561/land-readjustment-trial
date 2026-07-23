@@ -7310,6 +7310,7 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
         return {'rows': _rows, 'left_results': _left_results,
                 'right_results': _right_results,
                 'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
+                'left_cum_S': _cum_left, 'right_cum_S': _cum_right,
                 'placed_area': _placed_area, 'diag': _diag}
 
     # 幾何前提缺 → loud（本函式係守恆核心·禁靜默略過致 a′ 帳漏）
@@ -7458,9 +7459,12 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
         for _d in _diag:
             print(f"　　{_d}")
 
+    # `left_cum_S`／`right_cum_S`＝**含階段2**之該側累積推進（呼叫端之溢位警示
+    #   `left+right > S_block_max+0.5` 須據此，否則階段2 推進量漏計、警示低報）。
     return {'rows': _rows, 'left_results': _left_results,
             'right_results': _right_results,
             'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
+            'left_cum_S': _cum_left, 'right_cum_S': _cum_right,
             'placed_area': _placed_area, 'diag': _diag}
 
 
@@ -16117,6 +16121,54 @@ def main():
                                 )
                             # ③ 正式趟（k*）才落 rows
                             _adv_final = _advance_block_with_split(_k_star, True)
+
+                        # ── 🆕 §4 P2-e 階段2 落位接線（B-1·stepg 家族鏡像·#20 四處同改）──
+                        #   ⚠️ **W-10**：置於 if/else **匯流之後**——`_adv_final` 有**兩個**產生點
+                        #     （:16095 degenerate／N≤1 與 :16119 正常；中間 `_adv_base` 非 final）。
+                        #   ⚠️ **B-1**：必須**就地擴充 `_adv_final`**（rows／left_results／
+                        #     right_results／Wf_*／cum_S），不可只 append 進 `g_rows`——後者僅輸出
+                        #     容器；只進 g_rows ⇒ 池帶仍覆蓋階段2宗、抵費地列重算一次 ⇒
+                        #     **守恆實破而閘全綠**。擴充後池片結算（:16169）自動落在階段2 之後。
+                        #   ⚠️ **本鏡像不可省**：只改 stepg 而 app 不動 ⇒ app 走舊單階段、harness
+                        #     走新兩階段＝兩路徑**無聲分岔**（且 KL 之 UI 錨在 app 側）。
+                        if _stage2_parcels:
+                            _smax_blk = None
+                            if (d_hat is not None and corner_pt is not None
+                                    and blk_meta.get('vertices')):
+                                _smax_blk = _oblique_s_max(
+                                    blk_meta['vertices'], d_hat, corner_pt,
+                                    allocation_dir_block)
+                            _s2 = _place_pool_parcels(
+                                stage2_parcels=_stage2_parcels,
+                                adv_final=_adv_final,
+                                blk_poly=blk_poly, blk_area=blk_area, blk_label=blk_label,
+                                blk_vertices=blk_meta.get('vertices'),
+                                blk_centroid=blk_meta.get('centroid'),
+                                d_hat=d_hat, corner_pt=corner_pt, s_max_blk=_smax_blk,
+                                allocation_dir=allocation_dir_block,
+                                alloc_dir_cad=_alloc_dir_cad,   # CAD 原始 ALLOC 方向·非其 rot90
+                                front_len=front_len, l_front=l_front,
+                                avg_depth=avg_depth_default,
+                                side_mid_left=_side_mid_left, side_mid_right=_side_mid_right,
+                                l_side_left=_lside_left, F_left=_F_left,
+                                l_side_right=_lside_right, F_right=_F_right,
+                                post_price=post_price_by_block.get(blk_label, 0.0),
+                                pre_price_by_zone=pre_price_by_zone,
+                                solve_one=_solve_one, build_g_row=_build_g_row,
+                                mark_zaling=_mark_zaling,
+                            )
+                            _adv_final['rows'] = (list(_adv_final['rows'])
+                                                  + list(_s2['rows']))
+                            _adv_final['left_results'] = (list(_adv_final['left_results'])
+                                                          + list(_s2['left_results']))
+                            _adv_final['right_results'] = (list(_adv_final['right_results'])
+                                                           + list(_s2['right_results']))
+                            _adv_final['Wf_left'] = _s2['Wf_left']       # W-3(b)
+                            _adv_final['Wf_right'] = _s2['Wf_right']
+                            _adv_final['left_cum_S'] = _s2['left_cum_S']
+                            _adv_final['right_cum_S'] = _s2['right_cum_S']
+                            st.session_state.setdefault('f3_stage2_placed', {})[blk_label] = (
+                                _s2['placed_area'])                      # W-4 回饋通道
                         g_rows.extend(_adv_final['rows'])
                         detail_trace.update(_adv_final['trace'])
                         left_cum_S = _adv_final['left_cum_S']

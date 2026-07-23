@@ -247,6 +247,11 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     g_rows = []
     detail_trace = {}
     pool_diag = {}
+    # 🆕 §4 P2-e／W-4 回饋通道：`{街廓: {暫編地號: 實際落位面積}}`。階段2 落位在 stepg（幾何層）、
+    #   `a_rem`/`placed` 帳在 wf_f4（帳層）——「只裝得下一部分」之殘量若無回報通道，
+    #   `placed` 會與實際落位分岔、a′ 帳漏（W-4）。**頂層鍵**（非塞 `pool_diag`，
+    #   後者逐鍵攤成診斷表欄位、加 dict 值會污染 baseline 欄集）。
+    _stage2_placed = {}
 
     # ── _build_g_row / _solve_one（app 內嵌 def 逐行複刻） ──
     def _build_g_row(_k, _tp, _blk_label, _blk_area, _front_len, _avg_depth,
@@ -748,6 +753,57 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 raise RuntimeError(
                     f"停機②（J 下降）街廓 {blk_label}：J(k*)<J(naive)")
             _adv_final = _advance_block_with_split(_k_star, True)
+
+        # ── 🆕 §4 P2-e 階段2 落位接線（B-1·**守恆核心**）────────────────────────────
+        #   ⚠️ **W-10**：本區塊置於 if/else **匯流之後**——`_adv_final` 有**兩個**產生點
+        #     （degenerate／`N≤1` 分支 與 正常分支）；置於 else 內會漏接前者，且兩階段化後
+        #     `N≤1` 機率**上升**（過濾後 R4 僅餘 2 宗）。
+        #   ⚠️ **B-1**：階段2 rows **必須就地擴充 `_adv_final`**、不可只 append 進 `g_rows`——
+        #     `g_rows` 僅輸出容器；守恆帳來源是 `_adv_final['rows']`（§N3-0 逐宗主閘／
+        #     守恆-帳幾何級）與 `allocated_polys`（← left/right_results）。三種錯法：
+        #       · 只進 `g_rows`      ⇒ 池帶仍覆蓋階段2宗、抵費地列**重算一次**
+        #                              ⇒ 守恆**實破** `+ΣG_階段2` 而**閘全綠**（最惡）
+        #       · 只進 `_adv_final`  ⇒ 停機③ 立紅
+        #       · 只進 allocated_polys ⇒ 停機③ 立紅
+        #   ⇒ 池片結算（下方 `_pool_strips_for_block`）**自動**落在階段2 之後：其
+        #     `allocated_polys` 由擴充後之 left/right_results 建 ⇒ 池＝階段1殘餘 − 階段2已落位。
+        if _stage2_parcels:
+            _smax_blk = None
+            if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+                _smax_blk = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt,
+                                           allocation_dir_block)
+            _s2 = ns["_place_pool_parcels"](
+                stage2_parcels=_stage2_parcels,
+                adv_final=_adv_final,
+                blk_poly=blk_poly, blk_area=blk_area, blk_label=blk_label,
+                blk_vertices=blk_meta.get('vertices'),
+                blk_centroid=blk_meta.get('centroid'),
+                d_hat=d_hat, corner_pt=corner_pt, s_max_blk=_smax_blk,
+                allocation_dir=allocation_dir_block,
+                alloc_dir_cad=_alloc_dir_cad,      # ⚠️ CAD 原始 ALLOC 方向（18m 範圍用）·非其 rot90
+                front_len=front_len, l_front=l_front, avg_depth=avg_depth_default,
+                side_mid_left=_side_mid_left, side_mid_right=_side_mid_right,
+                l_side_left=_lside_left, F_left=_F_left,
+                l_side_right=_lside_right, F_right=_F_right,
+                post_price=post_price_by_block.get(blk_label, 0.0),
+                pre_price_by_zone=pre_price_by_zone,
+                solve_one=_solve_one, build_g_row=_build_g_row,
+                mark_zaling=_mark_zaling,
+            )
+            _adv_final['rows'] = list(_adv_final['rows']) + list(_s2['rows'])
+            _adv_final['left_results'] = (list(_adv_final['left_results'])
+                                          + list(_s2['left_results']))
+            _adv_final['right_results'] = (list(_adv_final['right_results'])
+                                           + list(_s2['right_results']))
+            # W-3(b)：telescoping 之 `W_final` 須含階段2 落位宗（`ΣRw_側 == R(W_final) − R(W₀)`）；
+            #   無跨占之階段2宗不推進該側鏈（其側街負擔=0），由 `_place_pool_parcels` 內把關。
+            _adv_final['Wf_left'] = _s2['Wf_left']
+            _adv_final['Wf_right'] = _s2['Wf_right']
+            # 含階段2 之該側累積推進（app 鏡像據此作溢位警示；此處保持同構、勿分岔）
+            _adv_final['left_cum_S'] = _s2['left_cum_S']
+            _adv_final['right_cum_S'] = _s2['right_cum_S']
+            _stage2_placed[blk_label] = _s2['placed_area']
+
         g_rows.extend(_adv_final['rows'])
         detail_trace.update(_adv_final['trace'])
         left_results = _adv_final['left_results']
@@ -981,7 +1037,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 f"> 上界 {_tol_blk:.4f}＝宗數{len(_adv_final['rows'])}×(tol 0.01 ＋ G捨入 0.005)"
                 f"〔S0d 後·S 量化退出計算路徑·舊 0.005×深度 項歸零·補丁四 §二〕")
 
-    return {'g_rows': g_rows, 'pool_diag': pool_diag}
+    # `stage2_placed`＝W-4 回饋通道（P2-e 備·wf_f4 扣 `a_rem` 於 P2-g 接）。
+    #   純加性頂層鍵——`build_step_g_tables` 只讀 `g_rows`/`pool_diag`，三表欄集不受影響。
+    return {'g_rows': g_rows, 'pool_diag': pool_diag, 'stage2_placed': _stage2_placed}
 
 
 def build_step_g_tables(res):
