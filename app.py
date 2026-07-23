@@ -7211,6 +7211,259 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
     return sorted(pieces, key=lambda g: g.area, reverse=True)
 
 
+def _pool_overlap_len_s(pool_geom, burden_geom, d_hat, corner_pt, allocation_dir):
+    """B5 跨占寬度（§四 D-3 **寬度制**·claude.ai 2026-07-23 裁定 (a)）：
+
+        跨占寬度(側) = len_s( 池範圍 ∩ 該側 18m 負擔範圍多邊形 )     # s＝`_strip_axis` 斜切軸
+
+    ⚠️ **NOTE-1（reviewer 活抓）**：`_strip_s_range` 回傳的是**全體頂點 span**、非實占長——
+    餵 MultiPolygon 會把片間空隙一併算進去（**雙片池虛胖**）。故本函式**先拆連通片、
+    逐片取 s-區間長再相加**，禁直接對交集整體呼叫 `_strip_s_range`。
+
+    非面狀交集（Line／Point：僅邊界相切）**不計寬度**——寬度制下相切之跨占寬＝0。
+    任一輸入缺（該側無 SIDE_LINE ⇒ 無 18m 範圍）→ 0.0（B5「兩側皆無跨占→tie-break」涵蓋）。
+    """
+    if pool_geom is None or burden_geom is None:
+        return 0.0
+    if getattr(pool_geom, 'is_empty', True) or getattr(burden_geom, 'is_empty', True):
+        return 0.0
+    try:
+        inter = pool_geom.intersection(burden_geom)
+    except Exception as _e_ov:
+        raise RuntimeError(
+            f"🔴 _pool_overlap_len_s：池∩18m 交集失敗（{_e_ov}）·"
+            f"跨占寬度不可定義（no-silent-fallback），停")
+    if inter is None or inter.is_empty:
+        return 0.0
+    _total = 0.0
+    for _g in (list(inter.geoms) if hasattr(inter, 'geoms') else [inter]):
+        if _g.is_empty or _g.geom_type != 'Polygon':
+            continue                                   # 線/點交集＝相切·寬度 0
+        _r = _strip_s_range(_g, d_hat, corner_pt, allocation_dir)
+        if _r is not None:
+            _total += float(_r[1] - _r[0])
+    return _total
+
+
+def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_label,
+                        blk_vertices, blk_centroid, d_hat, corner_pt, s_max_blk,
+                        allocation_dir, alloc_dir_cad, front_len, l_front, avg_depth,
+                        side_mid_left, side_mid_right,
+                        l_side_left, F_left, l_side_right, F_right,
+                        post_price, pre_price_by_zone,
+                        solve_one, build_g_row, mark_zaling,
+                        burden_shift=18.0, _verbose=True):
+    """§4 階段2（裁定B/B5·**單一真相源**）：於**池範圍內**逐筆落位池內遞補宗。
+
+    ── 為何存在 ────────────────────────────────────────────────────────────────
+    階段1（`_advance_block_with_split`）只排**原地主宗**並定案；其左右末切線即
+    「確定後 ALLOCLINE」，兩者夾出**池範圍**（B4）。本函式在該範圍內落位階段2宗
+    （`配地階段='池內'`），**不與原地主宗共用單一投影序列**——後者即 3.5m `628-37(1)`
+    守恆破之根因（遞補插隊 → S_remain 8.57 < 需 8.81 → |G−幾何|=7.90）。
+
+    ── 池窗（B4 操作化）─────────────────────────────────────────────────────────
+    `[cum_left, s_max_blk − cum_right]`（s＝`_strip_axis` 斜交軸）。階段1 自**兩端連續**
+    推進 ⇒ 該窗 **by construction 為單一連通區間**，故：
+      · **NOTE-3 硬約束自動滿足**——階段2 自該窗端點起切，與該側階段1 鏈**無空隙**
+        （E3 `strip_at` 自角落連續重鋪、只驗 G 不驗位置；留隙會被吃掉並前移）。
+      · **W-3(a) 單調不減自動滿足**——各側自**其自己的**池邊界往街廓內推進，W 不倒退。
+    ⚠️ 與 `_pool_strips_for_block` 之池片**分工不同**：後者係**帳**用（抵費地列·複現宗地
+    2dp 捨入所生之細縫），本窗係**落位**用。二者於階段2 落位後由該函式重算對齊（B-1）。
+
+    ── 跨占與側選（B5）─────────────────────────────────────────────────────────
+    每筆落位**前**重算兩側跨占（`_pool_overlap_len_s`·NOTE-1 分片和）；
+    **跨占大之側先配**；相等或**兩側皆 0** → tie-break：**池 s-區間較長之側；再同→左**
+    （決定性·禁擲硬幣）。池窗單一 ⇒ 兩側可用 s-長恆等 ⇒ 皆 0 時**落左**（本案 governing 者）。
+
+    ── 裁定F 側街負擔（**W-2 契約·單一 `if 跨占>0` 分支**）───────────────────────
+    中央池宗之 W ≫ 18m ⇒ `rw_from_width(W)=100%`；若誤走「先查 W→Rw 再看跨占」，
+    **4/6 塊會被多掛滿額側街負擔、G 暴跌**。故：
+      跨占 > 0 → 掛該側 `l_side`／`F`／`side_mid`（依 G 公式以 Rw 比率計）
+      跨占 = 0 → `l_side_use=F_use=0`、`side_mid=None` ⇒ `'F(m)'=0`
+                 ⇒ 自動被 `_rw_real_wd2` 之 `F>0` 濾掉、telescoping 鏈**不推進**
+    **正街負擔無條件掛**（G 公式既有 S 項）。
+
+    ── 回傳（B-1／W-4 介面）────────────────────────────────────────────────────
+    `rows`／`left_results`／`right_results`／`Wf_left`／`Wf_right` 供呼叫端**就地擴充
+    `_adv_final`**（只進 `g_rows` ⇒ 池帶仍覆蓋階段2宗 ⇒ 抵費地列重算一次 ⇒ **守恆實破
+    而閘全綠**）；`placed_area` 為 **W-4 回饋通道**（wf_f4 據以扣 `a_rem`，
+    否則 `placed` 與實際落位分岔、a′ 帳漏）。
+
+    `solve_one`／`build_g_row`／`mark_zaling` 以 **callback 傳入**——三者於 stepg 與 app
+    各為**閉包**（捕獲 `B_value`／`C_for_calc`／`_cos_dn`／`_mw_blk`），module 級取不到；
+    傳入而非複刻＝**禁 fork**（落位演算法本身仍只此一份）。
+    """
+    import numpy as _np_pp
+
+    _rows = []
+    _left_results = []
+    _right_results = []
+    _placed_area = {}
+    _diag = []
+
+    _cum_left = float(adv_final.get('left_cum_S', 0.0) or 0.0)
+    _cum_right = float(adv_final.get('right_cum_S', 0.0) or 0.0)
+    _W_prev_left = float(adv_final.get('Wf_left', 0.0) or 0.0)
+    _W_prev_right = float(adv_final.get('Wf_right', 0.0) or 0.0)
+
+    if not stage2_parcels:
+        return {'rows': _rows, 'left_results': _left_results,
+                'right_results': _right_results,
+                'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
+                'placed_area': _placed_area, 'diag': _diag}
+
+    # 幾何前提缺 → loud（本函式係守恆核心·禁靜默略過致 a′ 帳漏）
+    if blk_poly is None or d_hat is None or corner_pt is None or s_max_blk is None:
+        raise RuntimeError(
+            f"🔴 _place_pool_parcels[{blk_label}]：缺幾何前提"
+            f"（blk_poly/d_hat/corner_pt/s_max_blk）·池範圍不可定義，停")
+
+    _dh = _np_pp.asarray(d_hat, dtype=float)
+    _cp = _np_pp.asarray(corner_pt, dtype=float)
+    _end_pt = _cp + float(s_max_blk) * _dh
+
+    # ── B-5：18m 負擔範圍多邊形**即算即用**（零 session 新鍵）────────────────────
+    #   ⚠️ 禁存 session：session 資料走 `_WFSessionShim`、與 ns 無關；且 harness
+    #      （run_verification）從不算 18m ⇒ 新 session 鍵在 harness 路徑必缺。
+    #   ⚠️ `alloc_dir` 參數＝**CAD 原始宗地分配線方向**（`f3_cad_alloc_dir`），
+    #      **非** `allocation_dir`（＝`alloc_normal_axis(...)`＝其 rot90）——傳錯則 18m
+    #      範圍轉 90° 落到街廓另一向。兩者於本函式簽章刻意分列，勿混。
+    _burden = {'left': None, 'right': None}
+    if alloc_dir_cad and blk_vertices and len(blk_vertices) >= 3 and blk_centroid:
+        for _sd, _mid in (('left', side_mid_left), ('right', side_mid_right)):
+            if _mid is None:
+                continue                       # 該側無 SIDE_LINE ⇒ 無 18m 範圍 ⇒ 跨占 0
+            _bp = _build_corner_range_v2(_mid, blk_vertices, blk_centroid,
+                                         alloc_dir_cad, float(burden_shift), None)
+            if _bp is None:
+                # `_build_corner_range_v2` 內含 bare except→None；該側有 SIDE_LINE 卻建不出
+                # 範圍＝幾何異常，靜默視為「無跨占」會使裁定F 誤判 → loud（no-silent-fallback）。
+                raise RuntimeError(
+                    f"🔴 _place_pool_parcels[{blk_label}]：{_sd} 側有 SIDE_LINE 中點但 18m "
+                    f"負擔範圍建構失敗（_build_corner_range_v2 回 None）·裁定F 跨占判定不可定義，停")
+            _burden[_sd] = _bp
+
+    _side_cfg = {
+        'left': {'l_side': float(l_side_left), 'F': float(F_left),
+                 'mid': side_mid_left, 'cn': '左側'},
+        'right': {'l_side': float(l_side_right), 'F': float(F_right),
+                  'mid': side_mid_right, 'cn': '右側'},
+    }
+
+    for _tp in stage2_parcels:
+        _k = _tp['暫編地號']
+        _pool_lo = _cum_left
+        _pool_hi = float(s_max_blk) - _cum_right
+        _pool_S = _pool_hi - _pool_lo
+        if _pool_S <= _S_EPS:
+            # 池窗耗盡：本塊已無可落位空間。**非錯誤**——殘量由呼叫端經 `placed_area`
+            # 回報 wf_f4，走既有「溢往下一塊」（`while` 輪＋`border[gid]`＋`a_rem` 遞減）。
+            _diag.append(f"{_k}: 池窗耗盡（s 寬 {_pool_S:.4f} ≤ {_S_EPS}）·未落位")
+            _placed_area[_k] = 0.0
+            continue
+
+        # 現況池帶（與業主宗**同一組切線**·同 `_block_strip` 機制）→ 跨占量測之單一幾何
+        _pool_poly, _ = _block_strip(blk_poly, d_hat, _cp + _pool_lo * _dh, _pool_S,
+                                     allocation_dir=allocation_dir)
+        _ov = {sd: _pool_overlap_len_s(_pool_poly, _burden[sd], d_hat, corner_pt,
+                                       allocation_dir)
+               for sd in ('left', 'right')}
+
+        # ── B5 側選（決定性）：跨占大者先；相等/皆 0 → 池 s-區間較長之側；再同 → 左 ──
+        #   池窗為單一連通區間 ⇒ 兩側可用 s-長恆等（皆 `_pool_S`）⇒ 平手時**落左**。
+        if _ov['left'] > _ov['right'] + 1e-12:
+            _side = 'left'
+        elif _ov['right'] > _ov['left'] + 1e-12:
+            _side = 'right'
+        else:
+            _side = 'left'                     # tie-break：s-長相等（單一池窗）→ 左
+        _cfg = _side_cfg[_side]
+
+        # ── 裁定F（**W-2 契約：單一 `if 跨占>0` 分支**·禁「先查 W→Rw 再看跨占」）──
+        if _ov[_side] > 0.0:
+            _l_side_use = _cfg['l_side']; _F_use = _cfg['F']; _mid_use = _cfg['mid']
+        else:
+            _l_side_use = 0.0; _F_use = 0.0; _mid_use = None
+
+        _zone = _tp.get('重劃前地價區段', '')
+        _pre_p = float(pre_price_by_zone.get(_zone, 0.0) or 0.0)
+        _post_p = float(post_price or 0.0)
+        _A_ratio = (_post_p / _pre_p) if (_pre_p > 0 and _post_p > 0) else 1.0
+
+        if '分攤登記面積_m2' in _tp:
+            _a_m2 = round(float(_tp.get('分攤登記面積_m2', 0) or 0)
+                          + float(_tp.get('面積_m2', 0) or 0), 2)
+        else:
+            _a_m2 = round(float(_tp.get('面積_m2', 0) or 0), 2)
+
+        # ── 落位：自**該側自己的池邊界**往街廓內（W-3(a) 單調不減）──
+        if _side == 'left':
+            _baseline_pt = _cp + _cum_left * _dh
+            _dh_use = _dh
+            _W_prev_use = _W_prev_left
+        else:
+            _baseline_pt = _end_pt + _cum_right * (-_dh)
+            _dh_use = -_dh
+            _W_prev_use = _W_prev_right
+        _S_remain = max(0.1, _pool_S)
+
+        _res, _solver_label = solve_one(
+            _a_m2, _A_ratio, l_front, _l_side_use, _F_use,
+            blk_poly, _dh_use, _baseline_pt, _S_remain,
+            False, _cfg['cn'], avg_depth,
+            _allocation_dir=allocation_dir,
+            _side_mid=_mid_use,
+            _W_prev=_W_prev_use,
+        )
+
+        _S_actual = float(_res.get('S_raw', _res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw
+        _G_target = float(_res.get('G', 0.0))
+        _area_actual = float(_res.get('area_geom', 0.0))
+        if (abs(_S_actual - _S_remain) < 0.05 and _G_target > 0
+                and _area_actual < _G_target * 0.95):
+            _res['是否收斂_override'] = '⚠️ 空間不足(池範圍限制)'
+
+        if _side == 'left':
+            _cum_left += _S_actual
+            _res['_alloc_cum_S'] = _cum_left
+            if _ov[_side] > 0.0:               # W-2：無跨占者不推進該側 telescoping 鏈
+                _W_prev_left = float(_res.get('W_far', _W_prev_left))
+        else:
+            _cum_right += _S_actual
+            _res['_alloc_cum_S'] = _cum_right
+            if _ov[_side] > 0.0:
+                _W_prev_right = float(_res.get('W_far', _W_prev_right))
+
+        mark_zaling(_res)
+        # 階段2宗非街角地（街角 PK 屬重劃前跨占資格·F.0 不回溯）→ is_corner/first_corner 恆 False
+        _rows.append(build_g_row(
+            _k, _tp, blk_label, blk_area, front_len, avg_depth,
+            _zone, _A_ratio, l_front, _l_side_use, _F_use, False,
+            False, '無', _res, _solver_label, _side,
+        ))
+        _entry = {'tp': _tp, '_ov2_idx': None, 'side': '無',
+                  'is_corner_winner': False, 'is_first_corner_marker': False,
+                  '配地階段': '池內'}
+        (_left_results if _side == 'left' else _right_results).append((_entry, _res))
+        _placed_area[_k] = _area_actual
+        _diag.append(
+            f"{_k}: side={_side} 跨占 L{_ov['left']:.3f}/R{_ov['right']:.3f} "
+            f"a={_a_m2:.2f} G={_G_target:.2f} 幾何={_area_actual:.2f} "
+            f"S={_S_actual:.4f} 池窗[{_pool_lo:.3f},{_pool_hi:.3f}] "
+            f"F={_F_use:.2f} W={float(_res.get('W', 0.0)):.2f}")
+
+    if _verbose and _diag:
+        print(f"[P2-STAGE2] 街廓 {blk_label}｜階段2宗 {len(stage2_parcels)} 筆｜"
+              f"落位 {len(_rows)} 筆")
+        for _d in _diag:
+            print(f"　　{_d}")
+
+    return {'rows': _rows, 'left_results': _left_results,
+            'right_results': _right_results,
+            'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
+            'placed_area': _placed_area, 'diag': _diag}
+
+
 def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''):
     """§4 末端塊 R_end 構造（補丁十 §一·canonical）：`R_end = 未臨正街 ∪ 末端帶`。
 
@@ -8602,6 +8855,11 @@ _WF_NS_NAMES = [
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
     #      且 harness（run_verification）從不算 18m，存鍵在 harness 路徑必缺。
     "_build_corner_range_v2",
+    # 🆕 §4 P2-b（裁定B 兩階段落位）：階段2 池內落位之**單一真相源**。
+    #   函式置 app module 級、stepg 經 ns 取用（同 `_oblique_s_max`／`_corner_buffer_S` 先例·**禁 fork**）。
+    #   其 `solve_one`／`build_g_row`／`mark_zaling` 走 **callback**——三者於 stepg 與 app
+    #   各為閉包（捕獲 B_value／C_for_calc／_cos_dn／_mw_blk），module 級取不到。
+    "_place_pool_parcels",
 ]
 
 
