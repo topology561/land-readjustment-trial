@@ -7287,7 +7287,9 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
     `rows`／`left_results`／`right_results`／`Wf_left`／`Wf_right` 供呼叫端**就地擴充
     `_adv_final`**（只進 `g_rows` ⇒ 池帶仍覆蓋階段2宗 ⇒ 抵費地列重算一次 ⇒ **守恆實破
     而閘全綠**）；`placed_area` 為 **W-4 回饋通道**（wf_f4 據以扣 `a_rem`，
-    否則 `placed` 與實際落位分岔、a′ 帳漏）。
+    否則 `placed` 與實際落位分岔、a′ 帳漏）——逐宗
+    `{a_requested, G, area_geom, S_raw, placed, why}`：`a_rem` 係**重劃前 a 單位**而
+    落位量為**重劃後 G/幾何**，單一面積數無從換算，故回具名四量由帳層自行換算扣帳。
 
     `solve_one`／`build_g_row`／`mark_zaling` 以 **callback 傳入**——三者於 stepg 與 app
     各為**閉包**（捕獲 `B_value`／`C_for_calc`／`_cos_dn`／`_mw_blk`），module 級取不到；
@@ -7330,7 +7332,16 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
     #      **非** `allocation_dir`（＝`alloc_normal_axis(...)`＝其 rot90）——傳錯則 18m
     #      範圍轉 90° 落到街廓另一向。兩者於本函式簽章刻意分列，勿混。
     _burden = {'left': None, 'right': None}
-    if alloc_dir_cad and blk_vertices and len(blk_vertices) >= 3 and blk_centroid:
+    _geom_ok = bool(alloc_dir_cad) and bool(blk_centroid) and bool(blk_vertices) \
+        and len(blk_vertices) >= 3
+    if not _geom_ok and (side_mid_left is not None or side_mid_right is not None):
+        # 有 SIDE_LINE（⇒ 該側**應有** 18m 負擔範圍）卻缺建構輸入 → 靜默留 None 會讓裁定F
+        # 誤判為「無跨占」、側街負擔憑空歸零（W-1 已證本案跨占多為 0，錯了看不出來）→ loud。
+        raise RuntimeError(
+            f"🔴 _place_pool_parcels[{blk_label}]：有 SIDE_LINE 中點但缺 18m 負擔範圍建構輸入"
+            f"（alloc_dir_cad={alloc_dir_cad!r} centroid={blk_centroid!r} "
+            f"vertices={len(blk_vertices or [])} 個）·裁定F 跨占判定不可定義，停")
+    if _geom_ok:
         for _sd, _mid in (('left', side_mid_left), ('right', side_mid_right)):
             if _mid is None:
                 continue                       # 該側無 SIDE_LINE ⇒ 無 18m 範圍 ⇒ 跨占 0
@@ -7360,7 +7371,9 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
             # 池窗耗盡：本塊已無可落位空間。**非錯誤**——殘量由呼叫端經 `placed_area`
             # 回報 wf_f4，走既有「溢往下一塊」（`while` 輪＋`border[gid]`＋`a_rem` 遞減）。
             _diag.append(f"{_k}: 池窗耗盡（s 寬 {_pool_S:.4f} ≤ {_S_EPS}）·未落位")
-            _placed_area[_k] = 0.0
+            _placed_area[_k] = {'a_requested': round(float(_tp.get('面積_m2', 0) or 0), 2),
+                                'G': 0.0, 'area_geom': 0.0, 'S_raw': 0.0,
+                                'placed': False, 'why': '池窗耗盡'}
             continue
 
         # 現況池帶（與業主宗**同一組切線**·同 `_block_strip` 機制）→ 跨占量測之單一幾何
@@ -7446,7 +7459,12 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
                   'is_corner_winner': False, 'is_first_corner_marker': False,
                   '配地階段': '池內'}
         (_left_results if _side == 'left' else _right_results).append((_entry, _res))
-        _placed_area[_k] = _area_actual
+        # W-4 介面：`a_rem` 於 wf_f4 為**重劃前 a 單位**、而落位量為**重劃後 G/幾何**——
+        #   單回一個面積數無從換算。故逐宗回傳具名四量＋落位旗標，由帳層（P2-g）自行
+        #   以其 `_conv`／`_ratio` 換算扣帳；**禁**在此代為換算（跨層猜測即分岔之源）。
+        _placed_area[_k] = {'a_requested': _a_m2, 'G': _G_target,
+                            'area_geom': _area_actual, 'S_raw': _S_actual,
+                            'placed': True, 'why': ''}
         _diag.append(
             f"{_k}: side={_side} 跨占 L{_ov['left']:.3f}/R{_ov['right']:.3f} "
             f"a={_a_m2:.2f} G={_G_target:.2f} 幾何={_area_actual:.2f} "
