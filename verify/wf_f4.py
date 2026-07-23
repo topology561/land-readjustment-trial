@@ -183,6 +183,9 @@ class _Eng:
         x, y = anchor_xy
         self.parcels.append({
             "暫編地號": pid, "原地號": f"74·{gid}", "所屬街廓": blk, "街廓分類": "住宅區",
+            # P1 配地階段旗標（**資料驅動**·禁以 `74·` 名稱前綴或塊名/側別判別·泛用紀律）：
+            #   本鍵存在＝**階段2 池內落位宗**；原生 build_parcels 不帶此鍵＝階段1（重劃前土地）。
+            "配地階段": "池內",
             "分攤登記面積_m2": 0.0, "幾何面積_m2": 0.0, "面積_m2": round(float(a2), 2),
             "重劃前地價區段": zone_key,
             "polygon_coords": [(x - 0.25, y - 0.25), (x + 0.25, y - 0.25),
@@ -392,6 +395,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             p = _poly_of_temp(temp, pid)
             pub74[gof(tp["原地號"])].append({
                 "pid": pid, "blk": tp["所屬街廓"], "zone": zof[tp["原地號"]],
+                "類": row.get("類", ""),          # 裁定H/J 原位置價源＋裁定K RD 閘用（資料驅動）
                 "a": float(tp.get("分攤登記面積_m2", 0) or 0),
                 "cen": (p.centroid.x, p.centroid.y)})
         if sum(len(v) for v in pub74.values()) != 24 or len(pub74) != 9:
@@ -402,9 +406,28 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             zz = {x["zone"] for x in lots}
             if len(zz) != 1:
                 raise RuntimeError(f"🔴 [{tag}] {gid} 公設宗跨 zone {zz}（Σ地價需分 zone，未建模）")
+            # 裁定K（W-7 順解·claude.ai 2026-07-23）：佇列恆為單一類別、純距離優先
+            #   ⇒ `value`（Σa×重劃前區段單價）三處消費（原 :518/:543/:555）全數退場、不再計算。
             ginfo[gid] = {"a": sum(x["a"] for x in lots),
-                          "value": sum(x["a"] * pre_price[x["zone"]] for x in lots),
-                          "zone": zz.pop(), "anchor": anchor}
+                          "zone": zz.pop(), "anchor": anchor,
+                          "類集": sorted({x["類"] for x in lots if x["類"]})}
+
+        # ── 裁定K 配套閘（no-silent-fallback·必辦）────────────────────────────
+        #   能進第四順位（7-4）調配佇列之道路用地，依定義已通過「道路中心線兩側皆無同歸戶
+        #   可分配之原位次土地」之篩（五則④＝wf_f3「無同歸戶地→轉 7-4」）。
+        #   若有 RD 筆進入佇列、而其歸戶於可建築街廓仍有可分配之原位次土地 ⇒ **上游五則派工已壞**
+        #   ⇒ loud raise，禁靜默續跑。（判準取「全區有無建地」＝比 KL「兩側有無」更寬之上界：
+        #     全區皆無 ⇒ 兩側必無；故本閘不誤殺，只在派工真壞時咬。）
+        _bld_gids = {gof(p["原地號"]) for p in eng.parcels
+                     if float(p.get("分攤登記面積_m2", 0) or 0) > 0
+                     and p.get("所屬街廓") in mina}
+        _rd_bad = sorted(g for g, gi in ginfo.items()
+                         if "RD" in gi["類集"] and g in _bld_gids)
+        if _rd_bad:
+            raise RuntimeError(
+                f"🔴 [{tag}] 裁定K 閘破：RD 筆入 7-4 佇列，然其歸戶 {_rd_bad} 於可建築街廓"
+                f"仍有可分配之原位次土地 ⇒ 上游手冊道路五則派工已壞（應走①切半／②③集中，"
+                f"非④進池調配）。禁靜默續跑——查 wf_f3 五則派工。")
         # 距離表（E1 開始時一次定錨：各塊最大池片質心）
         pool_cen = {}
         for r in eng.sg()["g_rows"]:
@@ -473,9 +496,31 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             else:
                 raise RuntimeError(f"🔴 [{tag}] ½ 輪0 <½ 群 {sorted(comp_groups)} ≠ 具名錨 "
                                    f"{sorted(COMP_EXPECT)}——停查再定錨")
+        # ── 裁定H／J：<½ 現金補償改**逐筆按原位置評定重劃後地價**計價 ──────────
+        #   補償 ＝ Σᵢ(aᵢ × pᵢ)，pᵢ＝該筆**原位置**之重劃後地價：
+        #     · 原位置為可建築街廓 Rᵢ → 該塊後街廓單價（`後街廓_面積單價`）
+        #     · 原位置為公設用地 RD/PF/G → **公設地後價 `_wavg_post`**（裁定J·第11號公報 P.4·
+        #       KL 裁定 2026-07-11 既有正典）
+        #   廢止舊 `gi["a"] * wavg`（全戶彙總 × 全區統一價）——KL 判為錯誤實作。
+        #   捨入：**末端一次** `_money`（不逐筆捨入，避免累積偏差；與舊單次捨入慣例一致）。
+        #   泛用：原位置跨 R 塊之案即有實差；本案 24 筆全屬公設用地 ⇒ 逐筆價皆＝wavg
+        #        ⇒ Σᵢ(aᵢ×wavg) ≡ (Σaᵢ)×wavg ⇒ **金額零變動**（V11 重構零差靶）。
+        def _post_price_at(lot):
+            """該筆原位置之評定重劃後地價（裁定H/J）。判別**資料驅動**（`類` 欄），禁猜地號。"""
+            _cat = str(lot.get("類", "") or "").strip().upper()
+            if _cat in ("RD", "PF", "G"):          # 公設用地 → 公設地後價（裁定J）
+                return wavg
+            _blk = lot.get("blk")
+            if _blk in post_price:                  # 可建築街廓 → 該塊後街廓單價
+                return post_price[_blk]
+            raise RuntimeError(                      # no-silent-fallback：無從定價即 loud
+                f"🔴 [{tag}] 裁定H/J 價源缺：筆 {lot.get('pid')} 類={_cat!r} 塊={_blk!r}"
+                f"——既非公設用地(RD/PF/G)、其塊亦不在後街廓單價表 {sorted(post_price)}；"
+                f"禁靜默套均價，須補原位置後價資料源。")
+
         for gid in sorted(comp_groups):
             gi = ginfo[gid]
-            comp = _money(gi["a"] * wavg)
+            comp = _money(sum(x["a"] * _post_price_at(x) for x in pub74[gid]))
             exit_rows.append({"情境": tag, "歸戶": gid, "類": "公設軌", "出口": "<½ 現金補償",
                               "G(a′)輪0(㎡)": round(half_r0[gid][0], 2),
                               "2×G vs 114.07": "<", "Σa(㎡)": round(gi["a"], 2),
@@ -485,7 +530,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                               "補償_但書式(元)": "—(不適用·非申請分割)",
                               "目標塊": "—", "資格款": "—(公設軌·無原街廓)",
                               "意思決定": "§53-3 他項權利協調旗(本案空)"})
-            events[gid].append(f"E1 ½測試<½→現金補償 {_money(ginfo[gid]['a'] * wavg)} 元")
+            events[gid].append(f"E1 ½測試<½→現金補償 {comp} 元")   # 同源 exit_rows·裁定H/J 逐筆式
 
         # ── 配地輪（≥½；R4 非常規靶；同級比例分攤；池三則；收斂 0.05） ──
         alloc = {g for g in ginfo if g not in comp_groups}
@@ -525,7 +570,10 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         rounds = 0
         while True:
             spset = {s[0] for s in spill_75}
-            act = [g for g in sorted(alloc - spset, key=lambda g: (-ginfo[g]["value"], g))
+            # 裁定K：佇列**恆為單一類別**（已過「兩側皆無」之篩）⇒ 裁定D「類別優先」永不觸發
+            #   ⇒ **純距離優先**（全域佇列取「至最近可達塊之距」）＋決定性 tiebreak（gid 字典序）。
+            act = [g for g in sorted(alloc - spset,
+                                     key=lambda g: (min(dists[(g, b)] for b in mina), g))
                    if a_rem[g] > TOL]
             if not act:
                 break
@@ -550,7 +598,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             if not requests:
                 break
             for blk in sorted(requests):
-                gs = sorted(requests[blk], key=lambda g: (-ginfo[g]["value"], g))
+                gs = sorted(requests[blk], key=lambda g: (dists[(g, blk)], g))   # 裁定K：距離優先
                 demG = {g: a_rem[g] * _conv(g, blk) * _ratio(g, blk) for g in gs}
                 budget = _budget(blk)            # 可灌量＝可達池 − (MinA+餘裕)；rule3 保有效殘池
                 # 同級比例分攤（分母＝本輪本塊請求集）；share<MinA 者退出本塊（自小值序）
@@ -562,7 +610,9 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                              and shares[g] < demG[g] - 0.01]
                     if not small or len(gs) == 1:
                         break
-                    gs.remove(sorted(small, key=lambda g: (ginfo[g]["value"], g))[0])
+                    # W-7 順解（claude.ai 技術裁）：佇列既為單一類別＋距離序，
+                    #   「同級比例分攤剔除誰」＝**佇列末位（最遠者）**；同距則取序位較後（gid 大）。
+                    gs.remove(max(small, key=lambda g: (dists[(g, blk)], g)))
                 for g in gs:
                     shG = min(shares[g], demG[g])
                     if shG <= TOL:
@@ -834,7 +884,9 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                      for l in sorted(pool_final)]
         anchors = {
             "wavg": wavg, "comp_groups": sorted(comp_groups),
-            "comp_amounts": {g: _money(ginfo[g]["a"] * wavg) for g in sorted(comp_groups)},
+            # 裁定H/J：同源逐筆式（與 exit_rows／events 三處單一真相源·禁各算各的）
+            "comp_amounts": {g: _money(sum(x["a"] * _post_price_at(x) for x in pub74[g]))
+                             for g in sorted(comp_groups)},
             "e0_targets": {k: v[2]["暫編地號"] for k, v in e0_pairs.items()},
             "n_syn": len([p for p in syn_ids.values() if p in E]),
             "rounds": rounds, "spill_75": sorted({s[0] for s in spill_75}),
