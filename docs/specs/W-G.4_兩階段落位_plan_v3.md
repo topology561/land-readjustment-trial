@@ -371,6 +371,64 @@ comp_groups  = {g for g,(_,ok) in half_r0.items() if not ok}                    
 
 ---
 
+## 十一、reviewer 關卡裁決與處置（2026-07-23·施工前·**BLOCKED 5＋WARNING 10**）
+
+> reviewer（redistribution-reviewer·獨立復現·py_compile 綠·plan 引用行號逐條驗過全部正確）
+> 判 **BLOCKED**。分流：**純技術 → 本節逕改 plan（自理）**；**域義 → §十二 上呈**。
+> **未解 B-4 前不得動 P5 佇列碼**；其餘 P1–P4 依本節修正後施工。
+
+### 11.1 技術阻（自理·plan 就地修正）
+
+| # | reviewer 發現 | 處置（**取代原 plan 文字**）|
+|---|---|---|
+| **B-1** | §三 P2「產出 rows **併入 `g_rows`**」**會靜默破守恆且閘抓不到**。`g_rows` 僅輸出容器；守恆帳來源是 `_adv_final['rows']`（:814/:824/:923）與 `allocated_polys`（:740→:767）。只進 g_rows ⇒ 池帶 s-區間仍覆蓋階段2 宗 → 抵費地列把已配地**重算一次** → `ΣG(全部)+池=街廓` 實破 `+ΣG_階段2`，而 §N3-0 與 ②-池不重疊閘（app:7154-7165）皆抓不到 | **改**：`_place_pool_parcels` 必須**就地擴充 `_adv_final`** 之 `rows`／`left_results`／`right_results`／`Wf_left`／`Wf_right`，插入點在 **`stepg:728` `g_rows.extend` 之前**；app 鏡像 `app.py:15834/15883/15946/15978` 同構 |
+| **B-2** | §三 P4「位次閘語意自然收斂」**錯**。`_proj_rank`（stepg:399-401）用**未過濾**之 `parcels_in_blk`；只過濾 ordered_v2 輸入 ⇒ R1@3.5m 實算 `pre_position` 1,2,3,4 vs `_proj_rank` 1,2,4,9 → **:407 必 raise** | **改**：`_proj_rank` 母體**同步過濾為階段1宗**（或直接以 `ordered_v2` 之 tp 清單建 rank）。列為 P4 必辦、非「自然收斂」 |
+| **B-3** | §二.5「末端塊前移至**池片結算前**」**幾何上不可能**。`_end_region_R`（app:7214）第5參數即 `frag_poly`，空即 raise（app:7238）；`frag`／`side` 嚴格下游於 `_pool_strips_for_block`（wf_f1:129-131 只從池片列取碎片）。指定插入點在 `:767` 前，彼時無池片/碎片/side | **改**（採 reviewer 最小修正）：階段1 定案 → **先算一次池片** → 分類碎片 → **末端塊判定/落位** → 階段2 → **重算池片**。兩次 `_pool_strips_for_block` 之守恆帳以「第二次為準、第一次僅供碎片分類」對齊，須於 P2 明寫。（`_end_gate` 之**判定**〔`_cond1`＋`_unfront_area`〕確可前移，winner 門檻與 fallback 落位不可）|
+| **B-5** | §四「多邊形存 session 新鍵＋入 `_WF_NS_NAMES`」**機制錯配**。`_WF_NS_NAMES`（app:8582-8596）是**函式符號清單**非 session 鍵（塞入即 app:8605 raise）；且 harness 從不算 18m（run_verification:106-149 僅 `shift=setback+legal_w`）⇒ 新 session 鍵在 harness 路徑必缺 | **改**（採 reviewer 正解）：把 **`_build_corner_range_v2` 加入 `_WF_NS_NAMES`**，引擎**即算即用**（零 session 新鍵、兩路徑皆通、單一真相源）。reviewer 實證引擎側 5 個輸入齊備（`cb_by[lbl]["vertices"]/["centroid"]`＋`cad["side_lines_by_side"]`＋`cad["alloc_dir_by_block"]`·stepg:347/445-449/886）且 `run_verification:1110` 閘為單向、無 ns 數量斷言 → 加鍵安全 |
+
+### 11.2 WARNING 併入施工契約（自理）
+
+- **W-2（必辦·否則 4/6 塊 G 暴跌）**：裁定F 之 Rw 須為**單一 `if 跨占>0` 分支**。中央池宗 W≫18m ⇒ `rw_from_width=100%`；若誤走「先查 W→Rw 再看跨占」，R2/R3/R5/R6 階段2 宗會被多掛滿額側街負擔。**契約**：無跨占 ⇒ 傳 `l_side_use=0, F_use=0` ⇒ `'F(m)'=0`（stepg:274）⇒ 自動被 `_rw_real_wd2` 之 `F>0` 濾掉（stepg:842）、telescoping 鏈不推進。
+- **W-3**：telescoping 代數成立但依賴 (a) W **單調不減** ⇒ 階段2 必**自該側池邊界往街廓內**推進（B5「往內」須明確為「該側自己的池邊界」）；(b) `Wf_left/right` 須由 `_place_pool_parcels` 續推寫回（同 B-1）。
+- **W-4**：`spill_75` 是**單向出口非回佇列**（:517-518 進了永不回 act）；原 plan §二「餘額回佇列（既有 spill 機制）」**描述錯誤**。真「溢往下一塊」＝ `while` 輪＋`border[gid]` 逐塊試＋`a_rem` 遞減（:526-539）。**且缺介面**：階段2 落位在 stepg（幾何層）、`a_rem/placed` 帳在 wf_f4（帳層），「只裝得下一部分」之殘量**無回報通道** → P2/P5 須新增 `_place_pool_parcels` 回傳「實際落位面積」並由 wf_f4 扣帳。
+- **W-5**：E1 輪有**零進度→撞 `MAX_ROUNDS`(:61/:523) raise** 之既有路徑；D-4 之「任一不過即整筆溢」是新增拒絕路徑且不改 `a_rem` → 放大之。**加守則**：本輪零進度 ⇒ 剩餘 `a_rem` 全數 `spill_75`（非撞上限停機）。
+- **W-6**：`_trial`（:438-442）答不了「裝得下多少」（`a2p` 被 `eatable` 夾、位置錨在**池質心**）。兩階段後真實落位在**池邊界切帶** ⇒ 與 `_canon_G`(:914)／commit(:1050-1052) 錨點不同源，`POS_SLACK_AREA=2.0`(:63) 之位置相依誤差假設須重驗；band-sufficiency 破＝`:656 raise`（run_all 紅），須預期。**且** `d_off`／`pool_cen`／`_cur_pool_anchor` 於兩階段後成殘留舊邏輯 → 依「不留 fallback 舊邏輯」須明列處置。
+- **W-7**：`ginfo["value"]` 僅 3 處消費（:518/:543/:555）可全刪；但 **:555「剔除誰」在新鍵下無自然對應**（最遠？佇列末？）→ 屬意思決定，隨 B-4 一併上呈（§十二）。
+- **W-8（既有缺陷·本波順補）**：`_WF_NS_NAMES` 19 鍵 vs 引擎實耗 29；**`_end_region_R`(wf_f4:1184/1202)、`_strip_axis`(wf_f4:1175) 未列** ⇒ app 路徑七級調配對右側碎片必 `KeyError`。`run_verification:1110` 僅驗單向抓不到。P3 正要動該清單 → **同波補上並把閘改雙向**。
+- **W-10**：插入點應在 **`:728`（if/else 之後）**，非「`:727` 之後」——`:684-686` degenerate/`N≤1` 分支同樣產出 `_adv_final`，且兩階段化後 `N≤1` 機率上升（R4 過濾後僅 2 宗）。
+- **NOTE-1**：`_strip_s_range` 回傳**全體 span** 非實占長（雙片池會虛胖）→ §四 `len_s` 須取**各連通片 s-區間長之和**。
+- **NOTE-3**：E3 `strip_at` 自角落**連續重鋪**，階段2 與階段1 末宗間留空隙會被**吃掉並前移**（:1292-1294 只驗 G 不驗位置）→ P5 須硬約束「階段2 落位與該側階段1 鏈**連續**」。
+
+### 11.3 ⛔ 驗收可行性阻（**先解方能量 V2/V3/V8/V9**）
+
+reviewer 實證：現行 `run_all` 於 `W-F F.0` 即因**六格錨過期**（G007 G(Σa)=359.43 ≠ 錨 362.08·W脫鉤/S0d 後新值）紅，級聯 F.1–F.4 全數「存在性守衛」跳過。
+⇒ plan 同時要求「**施工期勿烤 baseline**」與「**以 baseline zero-diff 驗收**（V2/V3/V8/V9）」——**二者互斥**，在 F.0 重烤前無法區分「兩階段改壞了」與「既有過期錨紅」。
+**本波處置（自理·不改錨值）**：施工期驗收改用 **WV_BAKE 側目錄 + 探針**（`probe_stage_order.py`）作**相對比對**（同一 commit 前後自比），baseline 絕對比對留待**波末重烤**；V2/V3/V8/V9 之「zero diff」語意改為「**對施工前同法產出之側目錄零差**」。此為量測方法變更、**非放寬判準**。
+
+---
+
+## 十二、⛔ 上呈項（域義·CC 不自裁·施工中此二項先擱置）
+
+- **B-4｜RD/PF 混群之佇列類別無定義**：裁定D「RD 先、PF 後」係**筆**級語意，但佇列元素是**群**
+  （`ginfo[gid]` 聚合 Σa·wf_f4:395-397，且 :392-394 對跨 zone 直接 raise）。
+  reviewer 實測 9 群中 **3 群 RD/PF 混**（雙情境同）：`G003`（11筆·Σa=1882.00）、`G012`（2筆·261.00）、
+  `G025`（3筆·1150.78）；純 PF＝G013/G015/G016/G024/G031，純 RD＝G028。
+  **請 KL 裁**：(a) 以群內 Σa 較大之類代表；(b) 以 anchor 筆（:391 `max(lots,key=(a,pid))`）之類；
+  (c) 佇列**真逐筆化**（連動 `ginfo["a"]` 聚合與單一 zone 斷言＝大改）。
+- **W-7 附帶｜同級比例分攤之「剔除誰」**：現行 :555 剔**最低 value** 者；`value` 隨裁定D 廢除後
+  無自然對應（距離最遠？佇列最末？）——併請裁示。
+- **（併陳·非阻塞）W-1 政策含意**：reviewer 實跑 trunk A 3.5m 六塊中央池 ∩ 18m 範圍，
+  **4/6 塊兩側跨占皆 0**，僅 R1 左 0.312m、R4 右 **4.000m**（與 KL 原話「2m 寬／4m 寬」逐位吻合）。
+  ⇒ 裁定F「側街負擔視跨占」在本案幾等於「一律無側街負擔」；B5 主規則實質不觸發、governing 者為
+  tie-break。此係預期結論（中央池本就遠離側街），抑或 18m 範圍建構方式與法規本意不符？**請 KL 併裁**。
+  （碼側已備：V7 fixture **必須構造 synthetic 兩側跨占>0 且不等**之案例，否則餵真資料＝
+  `fixture_end_fallback` 舊 tautology 重演·已入 §七 V7。）
+- **（併陳·既有債非本波引入）W-9｜app/stepg `b` 分岔**：`stepg:712-719` 用補丁八 W 正典 `_mp_base_W0`，
+  `app:15818/15820` 仍用舊式 `_left_buffer_S*cos_dn`（stepg:690 註解自稱「已作廢」）。
+  是補丁八漏同步（bug）抑或 app UI 刻意留舊語意？併請裁。
+
+---
+
 ## 十、波後 backlog（本波不處理·僅登錄）
 
 - **泛用化 watch（claude.ai 必辦④）**：`app.py:17649` 之 §7 引擎 UI 文案自陳
