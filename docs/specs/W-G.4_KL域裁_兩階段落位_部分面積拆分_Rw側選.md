@@ -2,7 +2,10 @@
 
 > **KL 域裁 2026-07-23·canonical 原文入倉**。本檔為 §4 波末 628-37(1) 3.5m 守恆破
 > （`docs/reports/W-G.4_§4_628-37_3.5m情境再定位_§3首破.md`·真超配顯形）之域層處置裁定。
-> 與 v3 衝突時以本裁定為準；實作計畫另檔（`docs/reports/W-G.4_§4_兩階段落位_坐實＋計畫.md`）。
+> 與 v3 衝突時以本裁定為準。實作面另二檔：
+> **坐實**＝`docs/reports/W-G.4_§4_兩階段落位_坐實.md`（R1@3.5m 混排 run-time dump）；
+> **計畫**＝`docs/specs/W-G.4_兩階段落位_plan_v2.md`。
+> 探針（可復現）＝`verify/probes/probe_stage_order.py`。
 
 ## 裁定A：部分面積調配
 
