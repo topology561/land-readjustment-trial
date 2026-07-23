@@ -51,7 +51,10 @@ import wf_f0                                           # noqa: E402
 import wf_f1                                           # noqa: E402
 import wf_f2                                           # noqa: E402
 
-MINA_QU = 114.07
+# MinA_區（½線補償口徑）不再字面硬編：改 compute() 內 `mina_qu = min(mina.values())` 推導
+#   （修正一·claude.ai 2026-07-23）。舊 `MINA_QU` 常數二處引用（½輪0／½終態翻轉閘）退場後成
+#   孤兒故刪，避免日後被誤引為權威。**CSV 欄名字串 "2×G vs 114.07"（:471/:1074）與本檔 docstring
+#   為 baseline 欄位/文件、本波凍結不動**（改欄名＝重烤假紅·污染 V11 零差靶）；欄名參數化列波後 backlog。
 SNAP_WAVG = 72058.60964443642          # 快照 重劃後平均地價（等式閘基準；乘數用現算值）
 COMP_EXPECT = {"G013", "G024", "G028"}  # ½ 輪0 <½ 具名錨（相異＝停查再定錨）
 E0_EXPECT = {"628-49(1)": "628-48(1)", "628-30(2)": "628-45(2)", "628-42(1)": "628-42(2)"}
@@ -297,6 +300,13 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         post_price = {l: float(v["單價_元每m2"]) for l, v in
                       snap["財務接線_v3"]["後街廓_面積單價"].items()}
         mina = wf_f0._mina_by_block(ns, snap, cb_by)
+        # MinA_區（重劃區內最小分配面積標準）＝推導正典，取代舊字面常數（修正一·claude.ai 2026-07-23）。
+        #   ⚠️ 必須用上行之【真 snap】版 mina；禁用下方 :305 deepcopy 之 snapE 重算
+        #      （snapE 注入合成 zone 鍵，會污染 MinA_區）。
+        #   🔒 二口徑分明：mina[blk]＝**配地可行性**（各街廓·E1/E2 落位用·勿混）；
+        #      mina_qu＝**½線補償**口徑（重劃區內標準·手冊「重劃區內最小分配面積標準」·
+        #      run_verification:654 正典閘／:701 reverse-test 隨動）。
+        mina_qu = min(mina.values())
         wavg = _wavg_post(snap)
         # 模式二分母 p_avg：重劃前全集＝原始 build_parcels（PROVENANCE 三變體對照）
         p_avg = wf_f2._block_pre_avg(snap, c["build"], pre_price)
@@ -455,7 +465,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             # probe 夾擠時 G0 為保守下界（大群 2×G0 遠越線，判定不受影響；小群 probe==full）
             if G0 is None:
                 raise RuntimeError(f"🔴 [{tag}] ½ 輪0 {gid}@{near_any[gid]} probe 撞守恆牆（開波池態不應發生）")
-            half_r0[gid] = (G0, 2 * G0 >= MINA_QU)
+            half_r0[gid] = (G0, 2 * G0 >= mina_qu)     # ½線＝MinA_區（區內標準·非 mina[blk]）
         comp_groups = {g for g, (_, ok) in half_r0.items() if not ok}
         if comp_groups != COMP_EXPECT:
             if os.environ.get("WV_BAKE"):
@@ -673,8 +683,8 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         for gid in sorted(alloc):
             GE = sum(float(E[p]["G(㎡)"]) for (g2, b2), p in syn_ids.items()
                      if g2 == gid and p in E)
-            if GE > 0 and 2 * GE < MINA_QU:
-                raise RuntimeError(f"🔴 [{tag}] ½ 判終態翻轉：{gid} 2×{GE:.2f}<114.07")
+            if GE > 0 and 2 * GE < mina_qu:            # ½線＝MinA_區（同 :458）
+                raise RuntimeError(f"🔴 [{tag}] ½ 判終態翻轉：{gid} 2×{GE:.2f}<{mina_qu}")
         for (gid, blk), pid in sorted(syn_ids.items()):
             if pid in E and float(E[pid]["G(㎡)"]) < mina[blk] - TOL:
                 raise RuntimeError(f"🔴 [{tag}] 概念4 破：{pid} G={E[pid]['G(㎡)']}<MinA_{blk}")
