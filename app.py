@@ -7325,7 +7325,8 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
 
     _dh = _np_pp.asarray(d_hat, dtype=float)
     _cp = _np_pp.asarray(corner_pt, dtype=float)
-    _end_pt = _cp + float(s_max_blk) * _dh
+    # （舊 `_end_pt = _cp + s_max_blk·d̂` 已刪：右組起點改讀 clamp 後之 `_pool_hi`
+    #   ⇒ 該變數零讀取成孤兒。正典落點見下方落位段。）
 
     # ── B-5：18m 負擔範圍多邊形**即算即用**（零 session 新鍵）────────────────────
     #   ⚠️ 禁存 session：session 資料走 `_WFSessionShim`、與 ns 無關；且 harness
@@ -7464,13 +7465,17 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
         else:
             _a_m2 = round(float(_tp.get('面積_m2', 0) or 0), 2)
 
-        # ── 落位：自**該側自己的池邊界**往街廓內（W-3(a) 單調不減）──
+        # ── 落位：自**該側自己的池窗邊界**往街廓內（W-3(a) 單調不減）──
+        #   ⚠️ 起點一律取 **clamp 後**之 `_pool_lo`／`_pool_hi`（**非** `_cum_left`／`_cum_right`）——
+        #      P2-f 末端保留只縮 `_pool_*`；若起點仍讀 `_cum_*`，窗縮了而起點沒動 ⇒ 宗地照樣
+        #      壓進末端區、保留形同虛設（合成夾具 `fixture_end_reserve.py` 驗1 活抓）。
+        #   無保留時 `_pool_lo == _cum_left`、`_pool_hi == s_max − _cum_right` ⇒ 與舊式全等。
         if _side == 'left':
-            _baseline_pt = _cp + _cum_left * _dh
+            _baseline_pt = _cp + _pool_lo * _dh
             _dh_use = _dh
             _W_prev_use = _W_prev_left
         else:
-            _baseline_pt = _end_pt + _cum_right * (-_dh)
+            _baseline_pt = _cp + _pool_hi * _dh
             _dh_use = -_dh
             _W_prev_use = _W_prev_right
         _S_remain = max(0.1, _pool_S)
@@ -7515,13 +7520,15 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
                 and _area_actual < _G_target * 0.95):
             _res['是否收斂_override'] = '⚠️ 空間不足(池範圍限制)'
 
+        # 累積推進自**實際起點**續推（同上：起點為 clamp 後之窗邊界·非 `_cum_*`）。
+        #   無保留時 `_pool_lo == _cum_left` ⇒ 等價於舊式 `_cum_left += _S_actual`。
         if _side == 'left':
-            _cum_left += _S_actual
+            _cum_left = _pool_lo + _S_actual
             _res['_alloc_cum_S'] = _cum_left
             if _ov[_side] > 0.0:               # W-2：無跨占者不推進該側 telescoping 鏈
                 _W_prev_left = float(_res.get('W_far', _W_prev_left))
         else:
-            _cum_right += _S_actual
+            _cum_right = float(s_max_blk) - _pool_hi + _S_actual
             _res['_alloc_cum_S'] = _cum_right
             if _ov[_side] > 0.0:
                 _W_prev_right = float(_res.get('W_far', _W_prev_right))
