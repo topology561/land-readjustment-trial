@@ -157,7 +157,13 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
                      alloc_axis=alloc_axis, side_mid=side_mid,
                      _label=f"{blk}{end}·{pid}")
         thr = float(r["門檻(㎡)"]); ge = float(r["G估(㎡)"])
-        old_ok = str(r["達標"]).strip() in ("✅", "是", "Y", "True")
+        # 🔴 欄值以**倉檔實查**為準（首版誤猜 '✅' 致舊達標全 ❌·結論全錯）：
+        #    『達標』∈{'達標','未達標'}；『選中』∈{'✅',''}＝**舊 winner 標記**（不自行推導）。
+        _dz = str(r.get("達標", "")).strip()
+        if _dz not in ("達標", "未達標"):
+            _fail(f"{pid} 『達標』欄非預期值 {_dz!r}（欄語意已變·禁猜）")
+        old_ok = (_dz == "達標")
+        old_sel = str(r.get("選中", "")).strip() == "✅"
         new_ok = Gt >= thr
 
         def _num(v, dflt=None):
@@ -178,6 +184,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
                  f"{'  🚩新達標但無三指數分數·需重算' if need_rescore else ''}")
         by_end.setdefault((blk, end), []).append({
             "pid": pid, "thr": thr, "Gt": Gt, "ge": ge, "old_ok": old_ok,
+            "old_sel": old_sel,
             "new_ok": new_ok, "score": score, "need_rescore": need_rescore,
             "rank": _num(r.get("原位次(投影序)"), 1e9),
             "a": a_m2, "A": A_ratio, "l_front": l_front, "l_side": l_side, "F": F,
@@ -188,16 +195,18 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
     # ── winner／forced 前後對照 ────────────────────────────────────────────────
     L.append("-" * 104)
     L.append("端別 winner／forced 前後對照：")
+    # 舊 winner **直讀診斷之『選中』欄**（倉內既有判定·不自行推導·防誤猜）；
+    #   以指配表 `sel` 之「⚠️強制抵費地」交叉核對，不一致即 loud。
     sel_by = {(r["街廓"], k): str(r.get(f"【{k}】第1宗指配", "")).strip()
               for r in sel for k in ("左", "右")}
     flip, forced_before, forced_after, release = [], [], [], 0.0
     for (blk, end), cands in sorted(by_end.items()):
-        old_w = next((c["pid"] for c in cands if c["old_ok"]
-                      and str(sel_by.get((blk, end), "")).find(c["pid"]) >= 0), None)
-        if old_w is None:
-            _q = [c for c in cands if c["old_ok"] and c["score"] is not None]
-            old_w = (sorted(_q, key=lambda c: (-c["score"], c["rank"]))[0]["pid"]
-                     if _q else None)
+        _sw = [c["pid"] for c in cands if c["old_sel"]]
+        old_w = _sw[0] if _sw else None
+        _assign = sel_by.get((blk, end), "")
+        _is_forced_doc = "強制抵費地" in _assign
+        if (old_w is None) != _is_forced_doc:
+            _fail(f"{blk}{end}：診斷『選中』(={old_w}) 與指配表(={_assign!r}) 不一致")
         _qn = [c for c in cands if c["new_ok"]]
         if any(c["need_rescore"] for c in _qn):
             # 🚩 有「新達標但無三指數分數」者 ⇒ 本端 winner **不可由本探針判定**（禁猜）
