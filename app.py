@@ -7252,6 +7252,8 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
                         l_side_left, F_left, l_side_right, F_right,
                         post_price, pre_price_by_zone,
                         solve_one, build_g_row, mark_zaling,
+                        has_side_left=True, has_side_right=True,
+                        min_width=0.0, s_front_p2=None,
                         burden_shift=18.0, _verbose=True):
     """§4 階段2（裁定B/B5·**單一真相源**）：於**池範圍內**逐筆落位池內遞補宗。
 
@@ -7362,10 +7364,62 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
                   'mid': side_mid_right, 'cn': '右側'},
     }
 
+    # ── 🆕 §4 P2-f 末端保留（裁定C·B-3 修正時序）────────────────────────────────
+    #   **裁定C**：末端塊街角地須與第1宗街角地**同於階段1** 決定——二者共同界定左右端、
+    #   進而界定 B4 池範圍。若階段2 得吃進末端區，池範圍即在階段2 期間仍被改動，與
+    #   「左右兩側**確定後** ALLOCLINE」相悖。
+    #   **可前移者**＝`_end_gate` **判定** ＋ **末端帶保留**（皆不需碎片·見 `_end_band` docstring）；
+    #   winner 門檻（需 `area(R_end)`＝含碎片）與 fallback 落位**仍留 E3**（B-3 之實質·不前移）。
+    #   gate 二條件（補丁十 §一·side-parametrized·與 wf_f4 `_reshape_block` **同式**）：
+    #     條件1：該側**無 SIDELINE**（`has_side_{side}` False·資料驅動）
+    #     條件2：該側「未臨正街半平面」>ε ⇒ left：`block∩{s<0}`；right：`block∩{s>s(p2)}`
+    _reserve = {'lo': None, 'hi': None}
+    _end_diag = []
+    _dom = _strip_s_range(blk_poly, d_hat, corner_pt, allocation_dir)
+    _s_dom_min, _s_dom_max = (float(_dom[0]), float(_dom[1])) if _dom else (0.0, 0.0)
+    _s_p2 = float(s_front_p2) if s_front_p2 is not None else float(s_max_blk)
+    for _sd_e, _has_e in (('left', bool(has_side_left)), ('right', bool(has_side_right))):
+        if _has_e:
+            continue                                     # 條件1 不成立（該側有街角）→ 非末端側
+        if _sd_e == 'left':
+            _unfront = (float(_block_strip(blk_poly, d_hat, _cp + _s_dom_min * _dh,
+                                           -_s_dom_min, allocation_dir=allocation_dir)[1] or 0.0)
+                        if _s_dom_min < -1e-6 else 0.0)
+        else:
+            _unfront = (float(_block_strip(blk_poly, d_hat, _cp + _s_p2 * _dh,
+                                           _s_dom_max - _s_p2, allocation_dir=allocation_dir)[1] or 0.0)
+                        if _s_dom_max > _s_p2 + 1e-6 else 0.0)
+        if _unfront <= 1e-3:                             # 條件2 不成立（末端邊∥ALLOCLINE）→ 無末端區
+            continue
+        if not alloc_dir_cad or float(min_width or 0.0) <= 0:
+            raise RuntimeError(                          # gate 已成立卻缺建構輸入 → 禁靜默不保留
+                f"🔴 _place_pool_parcels[{blk_label}]：{_sd_e} 側末端 gate 成立"
+                f"（無SIDELINE＋未臨正街 {_unfront:.3f}㎡）但缺 cad_alloc/min_width"
+                f"（alloc={alloc_dir_cad!r} mw={min_width!r}）·末端保留不可定義，停")
+        _band = _end_band(blk_poly, alloc_dir_cad,
+                          (_cp if _sd_e == 'left' else _cp + _s_p2 * _dh),
+                          float(min_width), _label=f"{blk_label}·{_sd_e}·P2f")
+        _br = _strip_s_range(_band, d_hat, corner_pt, allocation_dir)
+        if _br is None:
+            raise RuntimeError(
+                f"🔴 _place_pool_parcels[{blk_label}]：{_sd_e} 側末端帶 s-區間不可定義，停")
+        if _sd_e == 'left':
+            _reserve['lo'] = float(_br[1])               # 保留 s ≤ 末端帶上緣
+        else:
+            _reserve['hi'] = float(_br[0])               # 保留 s ≥ 末端帶下緣
+        _end_diag.append(f"{_sd_e}: 未臨正街 {_unfront:.3f}㎡·末端帶 s∈"
+                         f"[{float(_br[0]):.4f},{float(_br[1]):.4f}]")
+
     for _tp in stage2_parcels:
         _k = _tp['暫編地號']
         _pool_lo = _cum_left
         _pool_hi = float(s_max_blk) - _cum_right
+        # P2-f：末端區**排除於階段2 池窗**（裁定C：末端於階段1 定案·階段2 不得吃進）。
+        #   `max`／`min` 使其**只會縮窗、不會擴窗**——無末端 gate 之側 `_reserve` 為 None ⇒ 全等舊式。
+        if _reserve['lo'] is not None:
+            _pool_lo = max(_pool_lo, _reserve['lo'])
+        if _reserve['hi'] is not None:
+            _pool_hi = min(_pool_hi, _reserve['hi'])
         _pool_S = _pool_hi - _pool_lo
         if _pool_S <= _S_EPS:
             # 池窗耗盡：本塊已無可落位空間。**非錯誤**——殘量由呼叫端經 `placed_area`
@@ -7501,7 +7555,8 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
     #      且帳層（wf_f4 P2-g）對 `placed=False` 殘留設**硬閘**；此處僅為人眼診斷。
     if _verbose and _diag and __import__('os').environ.get('WV_STAGE2_DIAG') == '1':
         print(f"[P2-STAGE2] 街廓 {blk_label}｜階段2宗 {len(stage2_parcels)} 筆｜"
-              f"落位 {len(_rows)} 筆")
+              f"落位 {len(_rows)} 筆"
+              + (f"｜末端保留 {'；'.join(_end_diag)}" if _end_diag else ""))
         for _d in _diag:
             print(f"　　{_d}")
 
@@ -7512,6 +7567,50 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
             'Wf_left': _W_prev_left, 'Wf_right': _W_prev_right,
             'left_cum_S': _cum_left, 'right_cum_S': _cum_right,
             'placed_area': _placed_area, 'diag': _diag}
+
+
+def _end_band(block_poly, cad_alloc, end_pt, min_width, _label=''):
+    """§4 **末端帶**（`_end_region_R` 之「末端帶」構件·單一真相源）。
+
+    ＝過 `end_pt`（未臨正街端之 FRONT 端點·落末端 ALLOCLINE 上）·∥`cad_alloc` 之末端
+    ALLOCLINE·向街廓內 **⊥垂距** `min_width` 之平行帶 ∩ block
+    （⊥垂距·**非** s-strip——斜交下 s-strip 差 1/cos·補丁七 §二.2）。
+
+    ── 為何抽出（P2-f／B-3 解結）────────────────────────────────────────────────
+    reviewer B-3 判「末端塊判定不可能前移至階段1」，理由為 `_end_region_R` 需 `frag_poly`
+    而碎片嚴格下游於池片。**但該理由只涵蓋 `R_end` 之「未臨正街」構件**——
+    **末端帶本身只吃 `block_poly`／`cad_alloc`／`end_pt`／`min_width`，與碎片無關**，
+    故**可**於階段1 尾算出，供階段2 落位**保留末端**（裁定C：末端塊與第1宗街角地同於
+    階段1 界定左右端 → 界定 B4 池範圍）。
+    winner 門檻（需 `area(R_end)`＝含碎片）與 fallback 落位仍留 E3，**不前移**（B-3 之實質）。
+
+    缺 `cad_alloc`／零向量／`min_width`≤0／帶∩block 空 → **loud raise**（no-silent-fallback）。
+    `B`（帶沿 ALLOC 之半長）由 block bounds 導·**禁硬編 500**。
+    """
+    import numpy as np
+    from shapely.geometry import Polygon
+    if cad_alloc is None:
+        raise RuntimeError(f"🔴 _end_band[{_label}]：缺 cad_alloc（宗地分配線方向）——no-silent-fallback")
+    _ca = np.asarray(cad_alloc, dtype=float)[:2]
+    _n = float(np.linalg.norm(_ca))
+    if _n < 1e-9:
+        raise RuntimeError(f"🔴 _end_band[{_label}]：cad_alloc 為零向量")
+    ca = _ca / _n
+    if min_width is None or float(min_width) <= 0:
+        raise RuntimeError(f"🔴 _end_band[{_label}]：min_width={min_width}（畸零寬須>0·禁預設）")
+    e = np.asarray(end_pt, dtype=float)[:2]
+    nrm = np.array([-ca[1], ca[0]])                       # rot90(cad_alloc)：⊥ALLOC
+    cen = np.asarray(block_poly.centroid.coords[0], dtype=float)
+    if float(np.dot(cen - e, nrm)) < 0:                   # 定號：法向指街廓形心（向內）
+        nrm = -nrm
+    minx, miny, maxx, maxy = block_poly.bounds            # B ＝ 街廓對角線（禁硬編 500）
+    B = float(np.hypot(maxx - minx, maxy - miny)) + 1.0
+    band = Polygon([e - B * ca, e + B * ca,
+                    e + B * ca + float(min_width) * nrm,
+                    e - B * ca + float(min_width) * nrm]).intersection(block_poly)
+    if band.is_empty:
+        raise RuntimeError(f"🔴 _end_band[{_label}]：末端帶 ∩ block 空——退化幾何/end_pt 出界")
+    return band
 
 
 def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''):
@@ -7528,32 +7627,12 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
     末端帶∩block 空 → **loud raise**（no-silent-fallback）。`B`（帶沿 ALLOC 之半長）由 block
     bounds 導·**禁硬編 500**。
     """
-    import numpy as np
-    from shapely.geometry import Polygon
     from shapely.ops import unary_union
-    if cad_alloc is None:
-        raise RuntimeError(f"🔴 _end_region_R[{_label}]：缺 cad_alloc（宗地分配線方向）——no-silent-fallback")
-    _ca = np.asarray(cad_alloc, dtype=float)[:2]
-    _n = float(np.linalg.norm(_ca))
-    if _n < 1e-9:
-        raise RuntimeError(f"🔴 _end_region_R[{_label}]：cad_alloc 為零向量")
-    ca = _ca / _n
     if frag_poly is None or getattr(frag_poly, 'is_empty', True):
         raise RuntimeError(f"🔴 _end_region_R[{_label}]：frag_poly 空——未臨正街面積實體缺（gate 應已確認存在）")
-    if min_width is None or float(min_width) <= 0:
-        raise RuntimeError(f"🔴 _end_region_R[{_label}]：min_width={min_width}（畸零寬須>0·禁預設）")
-    e = np.asarray(end_pt, dtype=float)[:2]
-    nrm = np.array([-ca[1], ca[0]])                       # rot90(cad_alloc)：⊥ALLOC
-    cen = np.asarray(block_poly.centroid.coords[0], dtype=float)
-    if float(np.dot(cen - e, nrm)) < 0:                   # 定號：法向指街廓形心（向內）
-        nrm = -nrm
-    minx, miny, maxx, maxy = block_poly.bounds            # B ＝ 街廓對角線（禁硬編 500）
-    B = float(np.hypot(maxx - minx, maxy - miny)) + 1.0
-    band = Polygon([e - B * ca, e + B * ca,
-                    e + B * ca + float(min_width) * nrm,
-                    e - B * ca + float(min_width) * nrm]).intersection(block_poly)
-    if band.is_empty:
-        raise RuntimeError(f"🔴 _end_region_R[{_label}]：末端帶 ∩ block 空——退化幾何/end_pt 出界")
+    # 末端帶＝`_end_band`（P2-f 抽出·**單一真相源**；本函式僅加「未臨正街」構件之聯集）。
+    #   其 cad_alloc／min_width 之 loud 守衛一併內含（訊息前綴改 `_end_band`·語意等價）。
+    band = _end_band(block_poly, cad_alloc, end_pt, min_width, _label=_label)
     r_end = unary_union([g for g in (frag_poly, band) if not g.is_empty])
     if r_end.is_empty:
         raise RuntimeError(f"🔴 _end_region_R[{_label}]：R_end 空")
@@ -16202,6 +16281,10 @@ def main():
                                 pre_price_by_zone=pre_price_by_zone,
                                 solve_one=_solve_one, build_g_row=_build_g_row,
                                 mark_zaling=_mark_zaling,
+                                # 🆕 P2-f 末端保留（裁定C·stepg 家族鏡像·#20 同改）
+                                has_side_left=bool(_fo_block.get('left_has_side', True)),
+                                has_side_right=bool(_fo_block.get('right_has_side', True)),
+                                min_width=_mw_blk, s_front_p2=S_block_max,
                             )
                             _adv_final['rows'] = (list(_adv_final['rows'])
                                                   + list(_s2['rows']))

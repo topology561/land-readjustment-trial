@@ -799,6 +799,12 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 pre_price_by_zone=pre_price_by_zone,
                 solve_one=_solve_one, build_g_row=_build_g_row,
                 mark_zaling=_mark_zaling,
+                # 🆕 P2-f 末端保留（裁定C）：gate 條件1 之資料驅動來源＝`forced[blk]["{side}_has_side"]`
+                #   （同 wf_f4 `_reshape_block` :1311·**禁寫死**）；`s_front_p2`＝FRONT p2 之 s 座標，
+                #   由恆等式 `s(p1 + L·d̂) ≡ L` 得 ＝ FRONT_LINE 長 `S_block_max`。
+                has_side_left=bool(_fo_block.get('left_has_side', True)),
+                has_side_right=bool(_fo_block.get('right_has_side', True)),
+                min_width=_mw_blk, s_front_p2=S_block_max,
             )
             _adv_final['rows'] = list(_adv_final['rows']) + list(_s2['rows'])
             _adv_final['left_results'] = (list(_adv_final['left_results'])

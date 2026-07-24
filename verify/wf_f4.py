@@ -620,6 +620,9 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                 a_rem[_g2] = min(a_rem[_g2] + _back, ginfo[_g2]["a"])
                 ratio_est.pop(_key2, None)
                 events[_g2].append(f"E1 池窗回饋@{blk}：{_why}·退還 a={_back:.2f}")
+                # loud（**無閘門**）：本事件每情境至多數次、非探針級 ⇒ 不致洗版，且係
+                #   「引擎拒絕 → 帳層扣帳」之唯一人眼可見證據（分類 既有/新引入 所需）。
+                print(f"[P2-g·W-4] {tag} {blk} {_pid2}：{_why}·退還 a={_back:.2f}")
                 _touched = True
             return _touched
 
@@ -724,10 +727,14 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             #   剩餘 `a_rem` 全數 `spill_75`**（走既有 E2 第2梯類佇列），**非**撞上限停機。
             #   判準＝本輪所有 act 群之 `a_rem` 皆未淨減（容差 TOL·退還使其可能反增）。
             if all(a_rem[g] >= _a_rem_at_round[g] - TOL for g in act):
+                _w5 = []
                 for g in act:
                     if a_rem[g] > TOL and g not in {s[0] for s in spill_75}:
                         spill_75.append((g, "E1本輪零進度(池窗回饋後無可規配)"))
                         events[g].append("E1 本輪零進度 → E2 第2梯類增配佇列")
+                        _w5.append(f"{g}(a_rem={a_rem[g]:.2f})")
+                if _w5:                                   # loud（無閘門·每情境至多一次）
+                    print(f"[P2-g·W-5] {tag} 第 {rounds} 輪零進度 → 溢入 E2：{_w5}")
 
         # ── 🆕 P2-g 硬閘：E1 收斂後不得殘留「未落位」之階段2 合成宗（no-silent-fallback）──
         #   引擎之「池窗不足→不落位」係**把 raise 換成可回饋之狀態**、非放寬 fail-loud；
@@ -791,6 +798,12 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                          "anchor_cen": ginfo[gid]["anchor"]["cen"]})
         eng.remove(rm2)
         eng.invalidate()
+        # loud（無閘門·每情境一次）：E2 佇列**組成來源**——建地軌（W-D.4 第2梯類·與 E1 無關）
+        #   vs 公設軌（E1 `spill_75` 溢入·含 P2-g W-5 所增）。分類「E2 不可行係既有 or 新引入」
+        #   之判準即此比例：若公設軌為 0，則佇列全屬既有機制、與本波 P2-g 無涉。
+        print(f"[P2-g·E2佇列] {tag} 共 {len(hh75)} 群｜建地軌(第2梯類·既有) "
+              f"{[h['gid'] for h in hh75 if h['kind'].startswith('建地軌')]}｜"
+              f"公設軌(E1溢入) {[h['gid'] for h in hh75 if h['kind'].startswith('公設軌')]}")
         depth_by = {b: float(snap["blocks"][b]["街廓分配深度_m"]) for b in mina}
         e2_opt = _e2_optimal(tag, ns, eng, hh75, mina, depth_by, p_avg, pre_price, post_price,
                              snapE, cb_by, cad, c["forced"], pool_cen, d_off,
