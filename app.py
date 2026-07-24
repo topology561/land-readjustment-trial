@@ -7433,6 +7433,30 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
         _S_actual = float(_res.get('S_raw', _res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw
         _G_target = float(_res.get('G', 0.0))
         _area_actual = float(_res.get('area_geom', 0.0))
+
+        # ── 🆕 P2-g：池窗容量不足 ⇒ **整筆不落位**（禁靜默截切）──────────────────────
+        #   窗剩餘 s-寬 < 該宗所需 ⇒ `solve_G_binary` 被 `S_max_limit` 夾住 → 幾何 < G。
+        #   **照舊落位之後果**：該列 `|G−幾何| ≫ 閘寬` → §N3-0 逐宗主閘 raise，而該 raise
+        #   **不含「守恆破」字樣** ⇒ `_Eng.try_rows` 不吞、直穿 ⇒ 帳層連 `eng.pool()` 都讀不到，
+        #   **結構上無從自我修正**（實測：R1 `74·K·G014` 需 S=3.8712 僅餘 3.611 → Δ=8.64）。
+        #   故改：**不 append row／不推進 cum**（池窗原樣留給後續宗）＋回報幾何事實供帳層扣帳。
+        #   · 判準用 §N3-0 **同一閘寬** `_acct_geom_tol_per_lot`（單一真相源·**非新常數**）。
+        #   · 探針路徑**自動生效**：無列 ⇒ `eng.try_G` 回 None ⇒ `_trial` 判「該塊此刻容不下」。
+        #   · 對映**裁定 D-4**：任一不過 → 該筆不拆、整筆溢往下一塊（禁半合法段·禁靜默 clamp）。
+        #   · **非放寬 fail-loud**：帳層 P2-g 消費後另有硬閘（wf_f4 E1 收斂後 placed=False 殘留即 raise）。
+        _tol_lot = _acct_geom_tol_per_lot(avg_depth)
+        if _G_target > 0 and (_G_target - _area_actual) > _tol_lot:
+            _placed_area[_k] = {
+                'a_requested': _a_m2, 'G': _G_target,
+                'area_geom': _area_actual,     # ＝本位置**實可容**之幾何面積（帳層據以縮灌）
+                'S_raw': _S_actual, 'S_avail': _pool_S,
+                'placed': False, 'why': '池窗不足'}
+            _diag.append(
+                f"{_k}: ⚠️ 池窗不足·**不落位** side={_side} 需 G={_G_target:.2f} "
+                f"實可容={_area_actual:.2f}（缺 {_G_target - _area_actual:.2f} > 閘寬 {_tol_lot:.4f}）"
+                f"·窗剩 s={_pool_S:.4f}（帳層 W-4 回饋扣帳）")
+            continue
+
         if (abs(_S_actual - _S_remain) < 0.05 and _G_target > 0
                 and _area_actual < _G_target * 0.95):
             _res['是否收斂_override'] = '⚠️ 空間不足(池範圍限制)'
@@ -7471,7 +7495,11 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
             f"S={_S_actual:.4f} 池窗[{_pool_lo:.3f},{_pool_hi:.3f}] "
             f"F={_F_use:.2f} W={float(_res.get('W', 0.0)):.2f}")
 
-    if _verbose and _diag:
+    # 診斷輸出**預設關閉**（比照 `WV_PROBE`／`WV_BAKE`）：wf_f4 之 E1/E2 每次試評皆呼叫本函式
+    #   （`_trial` 逐 gid×blk 探針）⇒ 無閘門時單次 run_verification 之 log 暴脹至數 MB。
+    #   ⚠️ **非放寬 no-silent-fallback**：落位實況一律由回傳之 `placed_area` 結構化承載，
+    #      且帳層（wf_f4 P2-g）對 `placed=False` 殘留設**硬閘**；此處僅為人眼診斷。
+    if _verbose and _diag and __import__('os').environ.get('WV_STAGE2_DIAG') == '1':
         print(f"[P2-STAGE2] 街廓 {blk_label}｜階段2宗 {len(stage2_parcels)} 筆｜"
               f"落位 {len(_rows)} 筆")
         for _d in _diag:

@@ -567,6 +567,62 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                     return False, demG
             return True, demG
 
+        def _s2_unplaced(blk):
+            """🆕 W-4 回饋通道（P2-g）：本塊**未落位**之階段2 合成宗 `{pid: 具名四量}`。
+
+            引擎（`_place_pool_parcels`）於「池窗容不下該宗」時**整筆不落位**並回報幾何事實
+            （`area_geom`＝該位置實可容之面積）；**換算留在本層**（`_conv`／比例）——
+            引擎層代算即跨層猜測、分岔之源（W-4 契約）。
+            """
+            return {k: v for k, v in
+                    ((eng.sg().get("stage2_placed") or {}).get(blk) or {}).items()
+                    if not v.get("placed", True)}
+
+        def _absorb_s2_feedback(blk, gs_round):
+            """消費本塊回饋：縮灌至**實可容**（保 MinA+餘裕殘池）或整筆撤出；差額退還 `a_rem`。
+
+            回傳 True＝有任何調整（本輪該塊帳已變）。裁定 D-4：縮不到合法下限即**不拆**、
+            整筆撤出本塊改溢往下一塊（禁半合法段／禁靜默 clamp）。
+            """
+            _fb_all = _s2_unplaced(blk)
+            if not _fb_all:
+                return False
+            _touched = False
+            for _g2 in list(gs_round):
+                _key2 = (_g2, blk)
+                _pid2 = syn_ids.get(_key2)
+                _fb = _fb_all.get(_pid2) if _pid2 else None
+                if not _fb:
+                    continue
+                _a2_old = float(placed.get(_key2, 0.0) or 0.0)
+                _G_req = float(_fb.get("G", 0.0) or 0.0)
+                _fit = float(_fb.get("area_geom", 0.0) or 0.0)
+                _tgtG = _fit - E1_MARGIN                       # 保有效殘池（同 rule3 口徑）
+                # 比例縮灌：G≈r·a″（r 於帶內近線性）⇒ a″_new = a″_old × G_目標/G_請求。
+                #   **換算在帳層**（引擎只給幾何事實）。
+                _a2_new = (_a2_old * _tgtG / _G_req) if _G_req > 0.01 else 0.0
+                if _tgtG < mina[blk] - 0.01 or _a2_new <= TOL:
+                    eng.remove([_pid2])                        # D-4：不拆 → 整筆撤出本塊
+                    syn_ids.pop(_key2, None)
+                    _why = f"縮至實可容 {_fit:.2f} 仍 <MinA {mina[blk]:.2f}"
+                    _a2_new = 0.0
+                else:
+                    eng.set_area(_pid2, _a2_new)
+                    if _pid2 in _s2_unplaced(blk):             # 縮後仍落不下 → 撤出（禁反覆試探）
+                        eng.remove([_pid2])
+                        syn_ids.pop(_key2, None)
+                        _why = "縮灌後仍落不下"
+                        _a2_new = 0.0
+                    else:
+                        _why = f"縮灌 {_a2_old:.2f}→{_a2_new:.2f}（實可容 {_fit:.2f}）"
+                placed[_key2] = _a2_new
+                _back = (_a2_old - _a2_new) / _conv(_g2, blk)  # a″ → 源面積（帳層換算）
+                a_rem[_g2] = min(a_rem[_g2] + _back, ginfo[_g2]["a"])
+                ratio_est.pop(_key2, None)
+                events[_g2].append(f"E1 池窗回饋@{blk}：{_why}·退還 a={_back:.2f}")
+                _touched = True
+            return _touched
+
         rounds = 0
         while True:
             spset = {s[0] for s in spill_75}
@@ -580,6 +636,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             rounds += 1
             if rounds > MAX_ROUNDS:
                 raise RuntimeError(f"🔴 [{tag}] E1 配地輪 >{MAX_ROUNDS} 不收斂（Δ>0.05）")
+            _a_rem_at_round = {g: a_rem[g] for g in act}      # 🆕 W-5 零進度守則之基準
             requests = collections.defaultdict(list)
             for gid in act:
                 pick = None
@@ -643,6 +700,9 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                     placed[key] += a_used * _conv(g, blk)
                     eng.set_area(syn_ids[key], placed[key])
                     a_rem[g] -= a_used
+                # 🆕 W-4 回饋（P2-g）：**先**消費「池窗容不下」之未落位宗，再作 rule3 校正——
+                #   未落位宗不占池 ⇒ `_reach(blk)` 會**偏大**、rule3 判不出該縮，故序不可倒。
+                _absorb_s2_feedback(blk, gs)
                 # 池 floor 校正（rule3）：實跑後可達殘池若落 < MinA+餘裕 → 縮末灌宗回補、差額退還
                 reach = _reach(blk)
                 filled = [g for g in gs if placed.get((g, blk), 0) > 0]
@@ -657,6 +717,29 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                     d_a = (a2_old - a2fix) / _conv(last_g, blk)
                     a_rem[last_g] = max(a_rem[last_g] + d_a, 0.0)
                     ratio_est.pop((last_g, blk), None)
+
+            # ── 🆕 W-5 零進度守則（P2-g·交接文 §P2-g）────────────────────────────────
+            #   D-4「任一不過即整筆溢」＋池窗回饋退還 皆為**新增拒絕路徑且不減 `a_rem`**，
+            #   會放大既有「零進度 → 撞 `MAX_ROUNDS` raise」路徑。契約：**本輪零進度 ⇒
+            #   剩餘 `a_rem` 全數 `spill_75`**（走既有 E2 第2梯類佇列），**非**撞上限停機。
+            #   判準＝本輪所有 act 群之 `a_rem` 皆未淨減（容差 TOL·退還使其可能反增）。
+            if all(a_rem[g] >= _a_rem_at_round[g] - TOL for g in act):
+                for g in act:
+                    if a_rem[g] > TOL and g not in {s[0] for s in spill_75}:
+                        spill_75.append((g, "E1本輪零進度(池窗回饋後無可規配)"))
+                        events[g].append("E1 本輪零進度 → E2 第2梯類增配佇列")
+
+        # ── 🆕 P2-g 硬閘：E1 收斂後不得殘留「未落位」之階段2 合成宗（no-silent-fallback）──
+        #   引擎之「池窗不足→不落位」係**把 raise 換成可回饋之狀態**、非放寬 fail-loud；
+        #   帳層若未把它消化乾淨（縮灌或撤出），該宗 a″ 即成孤兒（`placed` 與實際落位分岔·W-4）。
+        #   ⇒ 此處立紅，確保該轉換不淪為靜默吞沒。
+        _s2_left = {b: _s2_unplaced(b) for b in mina}
+        _s2_left = {b: v for b, v in _s2_left.items() if v}
+        if _s2_left:
+            raise RuntimeError(
+                f"🔴 [{tag}] E1 收斂後仍有未落位之階段2 合成宗（W-4 回饋未消化乾淨）："
+                f"{ {b: sorted(v) for b, v in _s2_left.items()} }——"
+                f"其 a″ 已成孤兒（placed 與實際落位分岔），禁靜默續跑")
 
         # E1 valid-width pass（裁示1(a)）：7-4 落位宗須達合法基地（寬≥min_width）。深度>名目致
         #   area 達標但寬<min_width 之邊界宗（如 74·G012@R2）微增至合法基地（§8 型幾何、非政策增配）。
