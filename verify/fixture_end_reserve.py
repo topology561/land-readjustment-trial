@@ -97,7 +97,8 @@ def _stub_solver(rec):
 
 
 def _run(side, has_side):
-    """回傳 (窗起點 s, 末端帶 s 區間 or None)。`has_side` 即 gate 條件1 之反。"""
+    """回傳 **(窗起點 s, 窗寬 S_max)** ——皆自 stub solver 實收之 `baseline_pt`／`S_max` 導出。
+    `has_side` 即 gate 條件1 之反（False ⇒ 該側無 SIDELINE ⇒ 末端 gate 可成立）。"""
     block, corner_pt = _case(side)
     rec = []
     tp = {"暫編地號": "SYN-1", "配地階段": "池內", "面積_m2": 20.0,
