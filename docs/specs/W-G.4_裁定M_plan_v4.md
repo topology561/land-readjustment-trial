@@ -194,6 +194,28 @@ F.0 級0 對「含①類宗之同歸戶」係**未帶優先序之中間態**；M
 app 端經 §7 引擎 ctx 回灌 `_m_rescue_plan`（不在 app 重寫決策·CLAUDE.md §7）。
 **成本（W-9 已測）**：+14 次 `run_step_g` ≈ +3.0s（<2%）·S-8 不觸發。
 
+### D-1.1 🔴 編排插入點（reviewer WARNING-1·**P-D 前必釘·否則 P-H 空烤趟0 baseline**）
+
+**架構實查**：F.0~F.4 baseline 之**唯一 baker ＝ `run_verification.py`**（`WV_BAKE`→`_bake_csv`·:273-277）；
+`wf_f0.py` **無獨立 baker**（:195 之 `WV_BAKE` 僅六格錨 warning 降級·非烤）。
+`forced_map`／trunk A₀／winners **已流入** `wf_f0` 之 ctx——經 `stepg_ctx`
+（:346-485 之 `run_corner_pk`:423＋`run_step_g`:478）→ `_ctx[tag]` 之 `forced`/`winners`/`gA`（:743-750）。
+
+⇒ **M-5 之插入點＝pipeline 頂（trunk-A 建構層）·非 `wf_f0` 內**。三處編排（單一 `m_rescue` 封裝）：
+
+| # | 落點 | 編排 |
+|---|---|---|
+| **(i)** | `run_verification.py` `stepg_ctx` 建構（:346-485） | 趟0 建 `stepg_ctx`（現行·rescue=None）→ `rescue_ctx = m_rescue.build_plan(stepg_ctx, snapshot, ...)` → **若 plan 非空**：以 `rescue_ctx` **重建** `stepg_ctx`（趟1·`run_corner_pk(rescue_ctx=)` 得 winners₁/forced₁＋物化 parcels₁→`run_step_g`→A₁）。下游（v3 閘／wf_f0~f4）**吃 A₁·零改** |
+| **(ii)** | `wf_f0.compute` 之 `_ctx`（:739-750） | `_ctx[tag]` 增 `"rescue": rescue_ctx[tag]`；`_decide`/`_transform` 依之重排 級0（源宗改配街角）。**無 rescue ⇒ 現行不變** |
+| **(iii)** | app §7 引擎 ctx（`app.py` `_build_wf_ctx`） | 同 (i) 之兩趟·經 ctx 回灌 `_m_rescue_plan`（app 不重寫決策·CLAUDE.md §7） |
+
+**`m_rescue.build_plan(stepg_ctx, snapshot, ...)`** 消費**既有** 趟0 `stepg_ctx`（`forced`/`gA`/`params`·無須另跑拋棄輪）
+→ 回 `{tag: {corner_winners, merge_plan(①②③), registry}}`。plan 空（如 0m·無 forced）⇒ 趟1 跳過·**gate a 全零動**。
+
+⚠️ **v3 trunk-A baseline 連動（P-H 補·非新 BLOCKED）**：趟1 使 3.5m trunk A 於 **R3** 變（R3右 corner winner
+由抵費地→地主宗）⇒ `v3·G值3.5m`／`滑池槽`／`J表` 之 R3 列**必動** ⇒ **P-H 重烤清單已含 v3 三表**（§八.2）·
+歸因＝**M-5 重排序**（與 P-0c 之 W脫鉤+S0d 分列·§七.4）。**0m 無 forced ⇒ v3 baseline 零動**（gate a）。
+
 ### D-2 單一合併規劃（M-5(2) ①②③·per-candidate·假設帳面）
 
 對每 gid（其宗跨 ≥1 塊·**M-2「其他可建築街廓」來源要件不變**）：
@@ -289,6 +311,13 @@ F2_set = {gid : F.0「去向」以「轉F.2」開頭} ∪ {gid : F.0 未觸及 �
 |---|---|---|---|
 | **a** | 0m | F.0 決策表／六格錨／winner／forced **全零動**（0m R3右候選 628-45(2) 達標·倉內 baseline G=**195.25** ≥ 街角規定面積 **152.82**·優先序不觸發） | 0m 全 baseline byte 零 diff |
 | **b** | 3.5m GSA | **僅 G007 一格連動**（`628-20(2)` 回單獨 **514.70**·引擎現算）；`G006/G009/G010/G014/G017` 零動；`G010` 級0（`628-43(1)→628-40(1)`）維持 | GSA 逐格 diff·僅 G007 |
+
+> **NOTE-3（reviewer·gate b 讀法·防 S-6 誤判）**：「僅 G007 一格連動」**專指 GSA_EXPECT 六錨**；
+> **完整 F.0 baseline** 之 `池差`／`旗標消長` 於 **R2/R5**（源宗移出之塊）**會有額外 diff**——
+> 屬 **M-5 可歸因·預期**（源宗改配·非違規·S-6 不觸發）。gate b 之驗法限定「GSA 逐格 diff」故無誤。
+> **628-20(2) 回單獨 514.70 之支撐（reviewer WARNING-2·S-9 守）**：G007 之未達成員**恰為**三救援源、
+> 無「其他未達 gid 宗」可作 ② 標的（628-20(2) 移除被併後 solo G=300.16 ≥ MinA[R5]=157.64 達標）⇒
+> ③「街角＝最後歸宿」把餘額全歸 R3右 → 兩 R5 源全耗 → 628-20(2) 回 514.70。**繫於引擎忠實實作 ③**·落地首驗此格。
 | **c** | 3.5m forced | `R2左`/`R5左` 維持（池∅）；`R3右` 解鎖·面積入中央池·街角補足**恰=308.93＋餘額**（餘額實測） | 指配表 R3右 轉地主宗·capdecomp forced鎖 |
 
 **gid 映射與池∅ 之 CC 親驗**（自 `build_ownership` 實取·非原地號前綴臆測·強化 gate c）：
