@@ -34,6 +34,10 @@ def scan(log_path):
 
 
 def main():
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")   # NOTE-1：cp950 崩（本專案反覆踩之雷）
+    except Exception:
+        pass
     if len(sys.argv) < 2:
         print(__doc__)
         return 2

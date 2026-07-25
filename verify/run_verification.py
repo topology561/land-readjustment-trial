@@ -675,17 +675,34 @@ def main():
             # 🟡 WARNING-1（reviewer probe5 實證：非 award gid 偷加 +50㎡ 全 harness 零咬）：
             #   覆蓋**擴及全 gid**——award gid 用量化容差；**非 award gid 應精確相等**
             #   （未被 M-5 觸碰 ⇒ 任何位移即異常）。成本近零、嚴格更強。
-            _pmax = max(list(_pre_price_m5.values()) + [0.0])
-            _n_by_gid = {}
+            # 🟡 WARNING-A（reviewer 實證）：`_pmax` 原取**全區** max(p_pre) ⇒ 加一個無宗使用之貴 zone
+            #   即把 tol 由 878 膨脹到 200,000、對同 gid 之非 winner 非源宗 +3㎡ 竟假綠。
+            #   ⇒ 改取**該 gid 實際涉及 zone**（∪ 目標 zone）之 max。
+            # 🟡 WARNING-B（reviewer 實證）：原 tol 只算 `_a_of` 每宗一次捨入（n×0.005×p），
+            #   **未涵蓋** `m_rescue` 每筆 alloc 之 `round(a′,2)` 與 `apply_plan` 總和捨入
+            #   ⇒ 本案真上界 (4+1)×0.005×37322.85＝**933.07 > 舊 tol 878.18**（上界不足·
+            #   只因實際捨入遠低於最壞值才沒紅）。⇒ 改 `(存活宗數 + alloc 筆數 + 1) × 0.005 × p_max(gid)`。
+            _zones_by_gid, _n_by_gid = {}, {}
             for _tp1 in _bp_by_tag[tag]:
                 _g = _gid_of.get(_tp1.get("暫編地號"), "")
                 _n_by_gid[_g] = _n_by_gid.get(_g, 0) + 1
+                _zones_by_gid.setdefault(_g, set()).add(_zone_of.get(_tp1.get("暫編地號"), ""))
+            for _p0 in _A0:
+                _g = _gid_of.get(_p0, "")
+                _zones_by_gid.setdefault(_g, set()).add(_zone_of.get(_p0, ""))
+            _nalloc_by_gid = {}
+            for _aw in _m5_plan["awards"]:
+                _zones_by_gid.setdefault(_aw["gid"], set()).add(_aw["z_tgt"])
+                _nalloc_by_gid[_aw["gid"]] = _nalloc_by_gid.get(_aw["gid"], 0) + len(_aw["allocs"])
             _aw_gids = {a["gid"] for a in _m5_plan["awards"]}
             _val_viol, _val_rows = [], []
             for _g in sorted(set(_val0) | set(_val1)):
                 _v0, _v1 = _val0.get(_g, 0.0), _val1.get(_g, 0.0)
                 _d = abs(_v1 - _v0)
-                _tol = (_n_by_gid.get(_g, 0) * 0.005 * _pmax) if _g in _aw_gids else 0.0
+                _pg = max([float(_pre_price_m5.get(z, 0.0) or 0.0)
+                           for z in _zones_by_gid.get(_g, set())] + [0.0])
+                _tol = (((_n_by_gid.get(_g, 0) + _nalloc_by_gid.get(_g, 0) + 1) * 0.005 * _pg)
+                        if _g in _aw_gids else 0.0)
                 if _g in _aw_gids:
                     _val_rows.append(f"{_g}: {_v0:,.2f} → {_v1:,.2f} 元（Δ={_d:,.2f}≤tol {_tol:,.2f}）")
                 if _d > _tol + 1e-6:
