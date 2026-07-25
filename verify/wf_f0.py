@@ -188,7 +188,14 @@ def compute(ctx_by_tag):
         g_tab, diag_tab, slot_tab = build_step_g_tables(sgB)
 
         # 六格 G(Σa) 自檢（±0.01；避 #14 刀口）
+        # 🆕 F-7-3（claude.ai 2026-07-25）：**收集全部不符後一次 raise**。
+        #   舊碼於**首個**值不符即 raise ⇒ 覆蓋率閘（下方）在**非 BAKE 永不執行**
+        #   （實證：非 BAKE log grep「GSA 覆蓋率」零命中·只有 BAKE 有；而 §11.3 明定 BAKE
+        #   **僅側錄、不可認證** ⇒ 我原稱「F-1 fired on the real case」須限定為 BAKE 側錄）。
+        #   更實際之害：P-H 會被迫**打地鼠**（改 G014→才看見 G007→再改→才看見下一個）。
+        #   ⇒ 值不符與覆蓋率不符**各自收集**，迴圈後**合併單一 raise**，帶出完整重錨清單。
         gsa = {}
+        _val_bad = []
         for d in decisions:
             if not d["target"]:
                 continue
@@ -196,11 +203,7 @@ def compute(ctx_by_tag):
             gsa[d["gid"]] = G
             exp = GSA_EXPECT[tag].get(d["gid"])
             if exp is not None and abs(G - exp) > 0.01:
-                if os.environ.get("WV_BAKE"):
-                    print(f"⚠️ [WV_BAKE] 六格錨異：{d['gid']} G(Σa)={G:.2f} ≠ 錨 {exp}（{tag}）")
-                else:
-                    raise RuntimeError(
-                        f"🔴 六格錨破：{d['gid']} G(Σa)={G:.2f} ≠ 錨 {exp}（{tag}）")
+                _val_bad.append(f"{d['gid']} G(Σa)={G:.2f} ≠ 錨 {exp}")
         # 🆕 F-1（claude.ai 2026-07-25）：**GSA 覆蓋率硬閘**——修「錨消失即靜默放行」。
         #   舊碼 `if not d["target"]: continue` ＋「僅走 decisions」⇒ 某 gid 若**無合併決策**
         #   （如 M-5 後 G007@3.5m：被併宗全額消費移出 ⇒ 該塊僅餘標的宗 ⇒ `len(lots)<2` 無決策），
@@ -218,11 +221,21 @@ def compute(ctx_by_tag):
                        f"{'(target=' + str(d['target']) + ')' if d.get('target') else '(無target)'}"
                        for d in decisions if d["gid"] == _g]
                 _detail.append(f"{_g}→[{'；'.join(_ds) if _ds else '該情境無任何決策列'}]")
-            _msg = (f"🔴 GSA 覆蓋率破（{tag}）：錨鍵 {_uncov} **未被任何一次比對評估**"
+            _cov_msg = (f"錨鍵 {_uncov} **未被任何一次比對評估**"
                     f"（其決策現況：{'｜'.join(_detail)}）⇒ **沒人檢查≠相符**。"
                     f"成因請依上列決策自行研判（如：被併宗遭上游消費移出→標的宗回復單獨→"
                     f"改判『全達標·無須併』或該塊宗數<2）；確認係合法連動（如 M-5 提前合併）"
                     f"則於 P-H 重錨（刪鍵或改值），否則係上游漏配之 bug。已評估鍵＝{sorted(gsa)}")
+        else:
+            _cov_msg = ""
+        # ── 合併單一 raise（值不符 ＋ 覆蓋率不符·一次帶出 P-H 完整重錨清單） ──
+        if _val_bad or _cov_msg:
+            _parts = [f"🔴 GSA 錨檢破（{tag}）——**一次列出全部**（F-7-3：禁首個即 raise 致打地鼠）："]
+            if _val_bad:
+                _parts.append(f"【值不符 {len(_val_bad)} 項】" + "；".join(_val_bad))
+            if _cov_msg:
+                _parts.append(f"【未被評估】{_cov_msg}")
+            _msg = "\n  ".join(_parts)
             if os.environ.get("WV_BAKE"):
                 print(f"⚠️ [WV_BAKE] {_msg}")
             else:

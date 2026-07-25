@@ -561,7 +561,17 @@ def main():
                                f"{_tb_m5.format_exc()[-600:]}")
         _m5_by_tag[tag] = _m5_plan
         # ── 🆕 F-2（claude.ai 2026-07-25）：M-5 三閘＋一帳（`_m5_by_tag` 原寫入後零讀取） ──
-        if _m5_plan is not None and _m5_plan.get("awards"):
+        # 🆕 F-7-5（claude.ai）：**無論有無 award 都出三列**——舊條件使 0m 三列名目整個消失，
+        #   「無 award」與「機制沒跑」在名目層不可區分（＝F-1 要擋的同型·換到 F-2 自己身上）。
+        _m5_aw = (_m5_plan or {}).get("awards") or []
+        if not _m5_aw:
+            _n_fo0 = len(_fo_ends) if "_fo_ends" in dir() else 0
+            _note0 = (f"本情境 forced 端 {_n_fo0} 個／award 0"
+                      + ("（無 forced 端 ⇒ M-5 不觸發）" if _n_fo0 == 0 else
+                         "（有 forced 端但無候選可經①補足 ⇒ 維持強制抵費地·canonical 最後手段）"))
+            for _nm5 in ("定點閘", "無新生閘", "結算閘"):
+                results.append((f"M-5 {_nm5}{tag}（{_note0}）", True, []))
+        if _m5_aw:
             _fo1 = {(b, s) for b, fo in (forced_map or {}).items()
                     for s in ("left", "right") if fo.get(f"{s}_forced_offset")}
             _fo0 = set(_fo_ends)
@@ -592,7 +602,10 @@ def main():
                             [] if not _new_fo else
                             [f"🔴 趟1 新生 forced 端 {_new_fo} ⊄ 趟0 {sorted(_fo0)}"
                              "——現行僅一輪救援·新生端不會被救，須查因（勿靜默放行）"]))
-            # (c) 結算閘：Σ源出資(經 a′ 換算) == Σ注入 target 之 a′（1e-6）＋歸戶 a 總量守恆
+            # (c) 結算閘：物化對帳（i)(ii)(iii) ＋ **歸戶重劃前地價守恆**（F-7-2）
+            #   ⚠️ F-7-1：舊註解曾寫「＋歸戶 a 總量守恆」而**碼中零實作**（我 B-2 改寫時刪了實作、
+            #      留下註解）＝prose gate（N0-17-b）；且我曾據此對外宣稱「今日全綠」——**它根本沒跑**。
+            #      同 B-1 之根因（宣稱未觀測之結果）。現已補實作、判準亦依 claude.ai 更正（見下）。
             # 🆕 B-2（reviewer 2026-07-25）：**跨「規劃↔物化」邊界**之真檢。
             #   舊版兩邊跑同一 list、加同一 `a_prime` 欄 ⇒ **純套套邏輯**（diff 恆 0·與 `a_src` 無關·
             #   apply_plan 換 no-op 亦照 PASS）。改為以 **parcels₁ 實態**對帳：
@@ -637,10 +650,34 @@ def main():
                     _sum_conv += _m5._a_prime(float(_al["a_src"]), _zs, _aw["z_tgt"], _pre_price_m5)
             if abs(_sum_conv - _sum_inj) > 0.02:
                 _bal_viol.append(f"a′ 換算不自洽：Σ換算 {_sum_conv:.4f} ≠ Σa′ {_sum_inj:.4f}")
+            # 🆕 F-7-2（claude.ai 更正規格 2026-07-25）：**歸戶「重劃前地價」守恆**（非面積守恆）。
+            #   a′ 模式一守的是**地價**（`a′ = a × p源/p目標`）⇒ 跨區段時該 gid 之 **Σa 本應變動**；
+            #   以 Σa 立閘會在他案**假紅**（本案 Σa 恰亦守恆＝四宗同在 b 區段之**巧合**·不可據以立閘）。
+            #   不變量：Σ_宗(a_趟0 × p_pre(該宗 zone)) == Σ_宗(a_趟1 × p_pre(該宗 zone))
+            #   （趟1 母體＝parcels₁·已移除之源宗以 a=0 計）。容差用**相對值**（禁面積絕對容差）。
+            _val0, _val1 = {}, {}
+            for _p0, _r0 in _A0.items():
+                _g = _gid_of.get(_p0, "")
+                _pz = float(_pre_price_m5.get(_zone_of.get(_p0, ""), 0.0) or 0.0)
+                _val0[_g] = _val0.get(_g, 0.0) + float(_r0.get("a 面積(㎡)", 0) or 0) * _pz
+            for _tp1 in _bp_by_tag[tag]:
+                _pid1 = _tp1.get("暫編地號")
+                _g = _gid_of.get(_pid1, "")
+                _pz = float(_pre_price_m5.get(_zone_of.get(_pid1, ""), 0.0) or 0.0)
+                _val1[_g] = _val1.get(_g, 0.0) + _a_of(_tp1) * _pz
+            _val_viol, _val_rows = [], []
+            for _g in sorted({a["gid"] for a in _m5_plan["awards"]}):
+                _v0, _v1 = _val0.get(_g, 0.0), _val1.get(_g, 0.0)
+                _rel = abs(_v1 - _v0) / max(abs(_v0), 1e-9)
+                _val_rows.append(f"{_g}: {_v0:,.2f} → {_v1:,.2f} 元（相對差 {_rel:.3e}）")
+                if _rel > 1e-9:
+                    _val_viol.append(f"🔴 {_g} 重劃前地價不守恆：{_v0:,.2f} → {_v1:,.2f} 元"
+                                     f"（相對差 {_rel:.3e} > 1e-9）")
+            _bal_viol += _val_viol
             _ok_bal = not _bal_viol
             results.append(
-                (f"M-5 結算閘{tag}（物化對帳：target 增量／源殘量／a′ 換算·Σa′={_sum_inj:.2f}）",
-                 _ok_bal, _bal_viol))
+                (f"M-5 結算閘{tag}（物化對帳 target增量/源殘量/a′換算·Σa′={_sum_inj:.2f}；"
+                 f"歸戶重劃前地價守恆 {'｜'.join(_val_rows)}）", _ok_bal, _bal_viol))
             # (d) 稽核帳（公務員稽核／P-H 歸因表引用）
             _led = []
             for _aw in _m5_plan["awards"]:
@@ -686,7 +723,7 @@ def main():
             1 for r in diag
             if _norm(_b1_by[(r["街廓"], r["端"], r["候選地號"])]["G估(㎡)"]) != _norm(r["G估(㎡)"]))
         _exp_gd = 0  # KL Y 波：baseline 隨新財務同步烤，G估欄變動歸零（重烤即證同源）
-        results.append((f"率接線 G估 欄變動 {_gest_diff} 格（期 {_exp_gd}·Y 波後 baseline 同源）", _gest_diff == _exp_gd,
+        results.append((f"率接線 G估 欄變動{tag} {_gest_diff} 格（期 {_exp_gd}·Y 波後 baseline 同源）", _gest_diff == _exp_gd,
                         [] if _gest_diff == _exp_gd else [f"實得 {_gest_diff} 格"]))
 
         ok_s, v_s = diff_rows(sel, os.path.join(BASELINES, f"第 1 宗街角地指配結果_退縮{tag}.csv"),
@@ -1288,11 +1325,14 @@ def main():
                    and abs(_a0["wavg"] - wf_f4.SNAP_WAVG) < 1e-6)
         results.append((f"F.4 ½<½錨={_a0['comp_groups']}·公設後價等式 {_a0['wavg']:.5f}==快照", _okcomp,
                         [] if _okcomp else [str({k: _a0[k] for k in ('comp_groups', 'wavg')})]))
-        # E0 級1殘餘三對（同區段 a′≡a 前例；具名錨）
-        _oke0 = (_a0["e0_targets"] == {"628-49(1)": "628-48(1)", "628-30(2)": "628-45(2)",
-                                       "628-42(1)": "628-42(2)"})
-        results.append(("F.4 E0 級1殘餘三對錨（628-49(1)→628-48(1) 等）", _oke0,
-                        [] if _oke0 else [str(_a0["e0_targets"])]))
+        # E0 級1殘餘（同區段 a′≡a 前例；具名錨）
+        # 🆕 F-7-6(b)：標題**隨 tag 現算對數**——舊寫死「三對」，而 3.5m 經 M-5 提前合併後為**兩對**
+        #   （`wf_f4.E0_EXPECT` 已於 F-3 per-tag）⇒ 標題寫死即名目與實態脫節。
+        #   期望值改**引 `wf_f4.E0_EXPECT[tag]`**（單一真相源·避第二份抄寫#20；舊為就地重打之字面）。
+        _e0_exp = wf_f4.E0_EXPECT["0m"]
+        _oke0 = (_a0["e0_targets"] == _e0_exp)
+        results.append((f"F.4 E0 級1殘餘{len(_e0_exp)}對錨0m（628-49(1)→628-48(1) 等）", _oke0,
+                        [] if _oke0 else [f"實得 {_a0['e0_targets']}／期 {_e0_exp}"]))
         # Q3＋裁示1(a)：配地戶配額＝合法最小建築基地（寬≥min_width 且 G≥MinA）之最小 G。
         #   逐列斷言：①配額G≥MinA（達標/概念4）；②增配面積＝配額G−G(a′)（帳表一致，非負）；
         #   ③增配=0⟺G(a′)已達合法基地。最小性（禁超額）由引擎 _bisect_valid 保證＋終態旗標=0 佐證。
