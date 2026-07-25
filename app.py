@@ -15092,7 +15092,6 @@ def main():
                                 #   run_corner_pk 同一 `_corner_block_true_G`→`_corner_first_lot_G`（Q-M4）。
                                 #   ⚠️ app 路徑 run_all 未覆·**KL UI 實跑驗**；組裝失敗 ⇒ loud st.warning ＋
                                 #   退 estG（Q1 中性·零翻盤 ⇒ winner 不變·僅 caliber·誠實圍欄）。
-                                _require_true_G = False
                                 try:
                                     from shapely.geometry import Polygon as _SP_pc
                                     _sbr_ap = sb_rows_by_label.get(_lbl, {})
@@ -15148,11 +15147,21 @@ def main():
                                         _gp_ap = _true_map_ap.get(_c_ap['暫編地號'], {})
                                         _c_ap['_G_true_p1'] = _gp_ap.get('p1')
                                         _c_ap['_G_true_p2'] = _gp_ap.get('p2')
-                                    _require_true_G = True
                                 except Exception as _e_true_g:
-                                    st.warning(
-                                        f"⚠️ P-C 真 G（{_lbl}）組裝失敗 → 退 estG caliber"
-                                        f"（Q1 中性·winner 不變）：{_e_true_g}")
+                                    # 🔴 D-1（claude.ai 2026-07-25）：**硬停·禁退 estG**。
+                                    #   Q1 鐵律「取不到真 G ＝ loud·禁 fallback」；前版 st.warning→退 estG
+                                    #   係**同一條靜默退路於 app 層復活**（harness 側已 loud raise）。
+                                    #   「Q1 中性⇒winner 不變」係 UC9898 個案實測、**非結構性質**
+                                    #   （他案 G真−G估 可翻 winner），違泛用四約束；且 warning 為 transient、
+                                    #   真G 欄空白、導出檔無痕 ⇒ 降級態不可追。**禁繼續算。**
+                                    import traceback as _tb_pc
+                                    st.error(
+                                        f"🔴 P-C 真 G（街廓 {_lbl}）組裝失敗——**停機**（Q1：取不到真 G "
+                                        f"＝loud·禁靜默退 estG）。錯誤：{_e_true_g}\n\n"
+                                        f"```\n{_tb_pc.format_exc()[-800:]}\n```\n"
+                                        "請修復輸入（SIDE_LINE 中點／ALLOC／街廓分配深度／財務底料）後重跑；"
+                                        "**本次 PK 未產出結果、勿據以續算或匯出**。")
+                                    st.stop()
                                 _v13 = select_corner_lots_both_sides_v12(
                                     candidates=_candidates,
                                     front_line_p1=_fl_p1_lstep,
@@ -15165,7 +15174,9 @@ def main():
                                     min_corner_area_p1=_min_p1,
                                     min_corner_area_p2=_min_p2,
                                     g_values_map=_g_map,
-                                    require_g_map=_require_true_G,   # 🆕 P-C：真 G 驅動（失敗退 estG）
+                                    # 🆕 P-C：真 G 驅動資格閘。**恆 True**——組裝失敗已於上方 st.stop()
+                                    #   硬停（D-1·禁退 estG）⇒ 執行至此必有真 G·無降級路徑。
+                                    require_g_map=True,
                                 )
                                 _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
                                 # 🆕 W-D.1.2 診斷：逐候選三分項攤現況（揭露 §1 指數退化，供 KL 核 D-3）
