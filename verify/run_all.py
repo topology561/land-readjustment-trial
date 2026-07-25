@@ -65,6 +65,36 @@ def main():
         print(f"  🔴 滑池槽 golden FAIL: {e}\n")
         rc = 1
 
+    # ── 🆕 甲-1(c)（KL 裁 2026-07-25）：**禁寫死本機絕對路徑**之全倉機檢 ──────────────────
+    #   案由：`verify/fixture_end_fallback.py` 曾寫死 `REPO = r"<本機絕對路徑>"`
+    #   ⇒ 自 `e45bbb2` 起 `run_all` 在**任何非本機機器**上必 FAIL（claude.ai 他機實跑 rc=1·
+    #   FileNotFoundError；另二夾具 rc=0）。此為泛用化直接違例，故立永久機檢。
+    #   ⚠️ 樣式以**片段串接**構成——否則本閘會咬到自己（自我匹配·假紅）。
+    _ok_abs, _abs_hits = True, []
+    _ABS_PAT = ["C:" + "/", "C:" + "\\", "/" + "Users" + "/",
+                "Desktop" + "/land", "Desktop" + "\\land"]
+    for _root, _dirs, _files in os.walk(REPO):
+        _dirs[:] = [d for d in _dirs if not d.startswith(".")
+                    and d not in ("__pycache__", "node_modules")]
+        for _fn in _files:
+            if not _fn.endswith(".py"):
+                continue
+            _fp = os.path.join(_root, _fn)
+            try:
+                _txt = open(_fp, encoding="utf-8").read().splitlines()
+            except Exception:
+                continue
+            for _i, _ln in enumerate(_txt, 1):
+                if any(_pt in _ln for _pt in _ABS_PAT):
+                    _abs_hits.append(f"{os.path.relpath(_fp, REPO)}:{_i}: {_ln.strip()[:90]}")
+    if _abs_hits:
+        _ok_abs = False
+        rc = 1
+    print(f"  {'✅' if _ok_abs else '🔴'} 禁寫死絕對路徑閘（全倉 *.py）："
+          + ("0 命中" if _ok_abs else f"{len(_abs_hits)} 命中"))
+    for _h in _abs_hits[:12]:
+        print("     " + _h)
+
     # ── 🆕 F-2（KL 裁 2026-07-25）：**末端機制三夾具納入 run_all** ──────────────────────
     #   覆蓋率洞：三檔存在於 `verify/` 卻**不在任何自動流程內**——「沒人檢查 ≠ 相符」
     #   （交接文 §5.2）。以 **subprocess** 起（`fixture_end_fallback` 於 import 期即

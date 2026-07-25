@@ -321,7 +321,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         #      （snapE 注入合成 zone 鍵，會污染 MinA_區）。
         #   🔒 二口徑分明：mina[blk]＝**配地可行性**（各街廓·E1/E2 落位用·勿混）；
         #      mina_qu＝**½線補償**口徑（重劃區內標準·手冊「重劃區內最小分配面積標準」·
-        #      run_verification:654 正典閘／:701 reverse-test 隨動）。
+        #      `run_verification` 之 v3 財務接線閘／reverse-test 隨動·`grep -n "reverse-test" verify/run_verification.py`）。
         mina_qu = min(mina.values())
         wavg = _wavg_post(snap)
         # 模式二分母 p_avg：重劃前全集＝原始 build_parcels（PROVENANCE 三變體對照）

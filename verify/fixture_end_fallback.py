@@ -10,7 +10,10 @@ harvest() 只 exec app.py 之 def（AST 過濾·無 read_excel）→ ns 純函�
 """
 import os, sys, json
 sys.stdout.reconfigure(encoding="utf-8")
-REPO = r"C:/Users/admin/Desktop/land-readjustment-trial"
+# 🔴 甲-1（KL 2026-07-25）：原 `REPO` 寫死本機絕對路徑 ⇒ 他機 `run_all` 必 FileNotFoundError。
+#   改與 `fixture_end_reserve`／`fixture_end_winner` **同一之相對解析**（自 __file__ 上溯），
+#   與 cwd 無關（自 repo 根或自 verify/ 起跑皆可）。
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "verify")); os.chdir(os.path.join(REPO, "verify"))
 import numpy as np
 from shapely.geometry import Polygon

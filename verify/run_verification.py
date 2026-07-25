@@ -666,16 +666,35 @@ def main():
                                  & set(_pre_price_m5))
                 if _bite_z:
                     _pre_price_m5.pop(_bite_z[0], None)
-                print(f"   ⚠️ [WV_BITE·{tag}] 已注入：(B) {_bite_pid[:1]}／(D) 摘除區段 {_bite_z[:1]}")
+                # 甲-3 注入：造一宗「在 `_A0`、不在 parcels₁、**原 a==0 故 remaining 亦 0**、
+                #   從未被消費」者 ⇒ 舊 (A) 條件放行、新 (A′) 須紅。
+                _A0["_BITE_A0ONLY_"] = {"暫編地號": "_BITE_A0ONLY_", "a 面積(㎡)": 0.0,
+                                        "推進側別": "left", "所屬街廓": ""}
+                print(f"   ⚠️ [WV_BITE·{tag}] 已注入：(B) {_bite_pid[:1]}／(D) 摘除區段 {_bite_z[:1]}"
+                      f"／(A′) _BITE_A0ONLY_")
             _only_a0 = sorted(set(_A0) - _P1)
             _only_p1 = sorted(_P1 - set(_A0))
             _pop_viol = []
+            # 🆕 甲-3（KL 2026-07-25）：(A) 之**窄殘孔**——`remaining` 係 `orig_a − consumed`
+            #   （`grep -n "def remaining" verify/m_rescue.py`），故 **原 a==0** 之宗若自 parcels₁
+            #   消失，`remaining` 亦為 0 ⇒ 舊條件放行，然該宗**從未被消費**。
+            #   ⇒ 追加「須有實際消費」：`consumed>1e-6` **或** 該 pid 出現於某 award 之 `srcs`。
+            #   （registry 以 `A`（＝`_A0` 同集）播種〔`grep -n "reg.set_orig" verify/m_rescue.py`〕，
+            #     故「未註冊即靜默綠」**不成立**；本條只補 a==0 這一個孔。）
+            _aw_src_pids = {_s.get("pid") for _aw in _m5_plan["awards"]
+                            for _s in (_aw.get("srcs") or [])}
             for _pp in _only_a0:
                 _rem = _reg.remaining(_pp)
+                _con = _reg.consumed(_pp)
                 if _rem > 1e-6:
                     _pop_viol.append(
                         f"🔴 (A) {_pp}：在趟0 `_A0` 卻不在 parcels₁，且 registry 殘量 {_rem:.4f}>0"
                         f"（非全額消費）⇒ 其 a×p 於趟1 憑空消失")
+                elif _con <= 1e-6 and _pp not in _aw_src_pids:
+                    _pop_viol.append(
+                        f"🔴 (A′) {_pp}：自 parcels₁ 消失、殘量 0，**但從未被消費**"
+                        f"（consumed={_con:.4f}·亦不在任何 award 之 srcs）"
+                        f"⇒ 「原 a==0」窄殘孔：殘量 0 ≠ 全額消費")
             for _pp in _only_p1:
                 if _pp in _A0_all:
                     _pop_viol.append(
@@ -1654,6 +1673,11 @@ def main():
         allok = allok and ok
         for x in viol[:12]:
             print("       ", x)
+        # 🆕 甲（KL 2026-07-25 批·CC 實測發現）：**禁靜默截斷**。原僅 `viol[:12]` 而不告知丟棄數，
+        #   致兩趟 WV_BITE 皆「恰好」顯示 12 列、被誤讀為總數（報告曾據以寫「(D)×11」）。
+        #   「沒印出來」與「不存在」在輸出層不可區分＝同 N0-17-b 之顯示層變體。
+        if len(viol) > 12:
+            print(f"        …（**另 {len(viol) - 12} 列未顯示**·本閘違規總計 {len(viol)} 列）")
     print("=" * 60)
     if gxxx_warnings:
         print("⚠️ Gxxx 警告級 diverge（不得正規化吃掉；迭代序訊號 → 交 B6 仲裁）")

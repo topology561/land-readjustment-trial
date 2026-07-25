@@ -168,7 +168,7 @@ award==0  ⟺  ( forced 端數==0  ∨  每一 forced 端皆有明列之不可�
 🔴 (B) _GHOST_(R1)：同時在 parcels₁ 與趟0 g_rows，卻因 推進側別∉{left,right}（實為 '池內'）
        被濾出 `_A0` ⇒ 趟0 未計、趟1 計入·兩側口徑不一                                   ×1
 🔴 (D) 628-36(1)（gid=G029）之重劃前地價區段 'a' 查無單價或 ≤0（得 0.0）——守恆式禁以
-       0 元靜默帶過；可用區段＝['b']                                                     ×11
+       0 元靜默帶過；可用區段＝['b']
 🔴 forced 端 _BITE_left 於 M-5 log 查無「維持強制抵費地」之明列理由——「救不動」與「漏跑」
    不可區分，禁靜默綠                                                                     ×3
 
@@ -177,6 +177,26 @@ award==0  ⟺  ( forced 端數==0  ∨  每一 forced 端皆有明列之不可�
 ```
 
 讀數 **52 PASS／18 FAIL**（乾淨為 56／14）＝恰 **+4 紅**，與注入點一一對應。
+
+> 🔴 **更正（本節原載之「(B)×1／(D)×11」係誤讀·CC 於甲批自查發現）**：
+> `run_verification` 之違規列印原為 `viol[:12]` 且**不告知丟棄數**（silent cap）。
+> 兩趟 `WV_BITE` 皆「恰好」顯示 12 列——那是**被截斷後之顯示數、非總數**。
+> ⇒ 已修：超過 12 列時印「**另 N 列未顯示**·本閘違規總計 M 列」
+> （`grep -n "列未顯示" verify/run_verification.py`）。
+> **教訓**：「沒印出來」與「不存在」在輸出層不可區分——＝ N0-17-b（prose gate）之**顯示層變體**。
+>
+> **修後實測**（`M_0725_甲_bite2.log`·同一組注入）：
+>
+> ```
+> M-5 結算閘3.5m   → …（另   8 列未顯示·本閘違規總計  20 列）   ← 注入之 (A′)1＋(B)1＋(D)18
+> v3·G值3.5m       → …（另 112 列未顯示·本閘違規總計 124 列）
+> v3·滑池槽3.5m     → …（另  19 列未顯示·本閘違規總計  31 列）
+> v3·J表3.5m        → …（另  59 列未顯示·本閘違規總計  71 列）
+> ```
+>
+> 🔴 **附帶發現（非注入所致）**：後三列係**既有** 3.5m baseline 紅（R-7）。
+> 其真實量體 **124／31／71** 從未被任何 log 印出過——歷來所見皆為被截斷之 12。
+> ⇒ **R-7 之規模應以此為準**；P-H 重烤時之逐格歸因量遠大於過往印象。
 
 ---
 
@@ -187,12 +207,29 @@ award==0  ⟺  ( forced 端數==0  ∨  每一 forced 端皆有明列之不可�
 三條：① 引**符號名 ＋ 可自癒 grep**；② 非用行號不可者**同列記下其成立之 commit**；
 ③ **禁「某檔無某行」之否定性存在主張**（N0-17-c 變體）。
 
-### 5.2 活碼掃除（**22 處·全部改為符號名＋grep**）
+### 5.2 活碼掃除（**有界陳述·附掃描指令與當次計數**）
 
-`app.py`(6)／`verify/stepg_pipeline.py`(3)／`verify/wf_f4.py`(3)／`verify/wf_f0.py`(3)／
-`verify/probes/probe_stage_order.py`(3)／`probe_capacity_decomp.py`／`probe_capacity_decomp_solve.py`／
-`probe_jkstar_legitimacy.py`／`selection_pipeline.py`／`fixture_end_reserve.py`。
-**逐筆斷言「舊字串在該檔恰出現 n 次」，不符即停**（禁盲改）；diff 為 **24 insert／23 delete·全屬註解/docstring**。
+> 🔴 **本節原寫「22 處·全部改為」——該措辭係否定性存在主張**（＝「已無殘餘」），
+> 依 `CLAUDE.md` 行號衛生第 3 條須綁 commit 或改為**可重跑之計數**。現改後者。
+> 事實佐證：claude.ai 於 `e45bbb2` 實 grep **仍查出 5 處**（`stepg_pipeline` ×2／
+> `probe_stage_order` ×1／`app.py` ×2）——「全部」當時就是錯的。
+
+**掃描指令（可重跑·此即計數之定義）**：
+
+```bash
+rg -n --glob '*.py' '(\.py|stepg|app|sel|wf_f[0-9]|run_all|run_verification|m_rescue):[0-9]+|`:[0-9]+`|:[0-9]+-[0-9]+' .
+```
+
+| commit | 該指令之命中數 |
+|---|---|
+| `ebe24fe`（甲前） | 22（第一批）＋5（claude.ai 查出之殘餘）＋2（收尾查出） |
+| **本 commit** | **0** |
+
+⚠️ 「0」僅代表**該指令、該時點**之計數；換指令或改檔即可能非 0。**請重跑，勿引用本數字。**
+
+已改檔：`app.py`／`verify/{stepg_pipeline,wf_f4,wf_f0,selection_pipeline,wd4_tier_list,fixture_end_reserve}.py`／
+`verify/probes/{probe_stage_order,probe_capacity_decomp,probe_capacity_decomp_solve,probe_jkstar_legitimacy}.py`。
+**逐筆斷言「舊字串在該檔恰出現 n 次」，不符即停**（禁盲改）；異動全屬註解/docstring。
 
 **實查之腐爛例**（不只那三處）：
 
@@ -227,6 +264,51 @@ award==0  ⟺  ( forced 端數==0  ∨  每一 forced 端皆有明列之不可�
 已入 `docs/reports/W-G.4_裁定M_重錨登記.md` **§五**（三路證據＋六條前置鐵則），
 R-9／BK-4 兩列由「待裁／🚩上呈」改為「已裁·P-H 依此歸因」。**F-1 已列入 P-H 必驗項**
 （P-H 後須以**非 BAKE** 重現 `85.706㎡`／`s∈[-0.0000,3.5114]`／R6 唯一觸發 21/21）。
+
+---
+
+## 七之二、甲批修補（KL 交辦 2026-07-25·claude.ai 異機復現後）
+
+### 甲-1 🔴 寫死絕對路徑 ⇒ `run_all` 綁死單一機器（**已修·已立永久機檢**）
+
+claude.ai 於他機實跑：`fixture_end_fallback` **rc=1（FileNotFoundError）**、另二夾具 rc=0
+⇒ **自 `e45bbb2` 起 `run_all` 在任何非本機機器上必 FAIL**。此為泛用化直接違例（我上一批引入）。
+
+| 項 | 處置 |
+|---|---|
+| (a) `verify/fixture_end_fallback.py` | `REPO` 改自 `__file__` 上溯（同另二夾具）；**實跑證**：cwd=repo 根 **rc=0**、cwd=`verify/` **rc=0** |
+| (b) 同型掃除 | `docs/reports/probes/probe_§4_s0_pin.py`／`probe_§4_R_end.py` 同改（三層上溯） |
+| (c) 永久機檢 | `run_all` `[1/3]` 新增「禁寫死絕對路徑閘」（全倉 `*.py`·樣式以片段串接構成以免自我匹配） |
+
+**咬合反例（實際紅字·`M_0725_甲_bite.log`）**：暫置一含硬編路徑之檔 ⇒
+
+```
+🔴 禁寫死絕對路徑閘（全倉 *.py）：1 命中
+   verify\_tmp_bite_abspath.py:2: REPO = r"C:/Users/somebody/Desktop/land-readjustment-trial"
+```
+
+同趟證**已修之三檔不再命中**（其餘 0）。反例檔跑完即刪。
+
+### 甲-2 行號衛生掃到 0（見 §5.2 之有界陳述）
+
+claude.ai 查出殘餘 5 處（`stepg_pipeline`×2／`probe_stage_order`×1／`app.py`×2），
+我收尾又查到 2 處（`wd4_tier_list`／`wf_f4`），共 **7 處**補改。掃描指令與當次計數見 §5.2。
+
+### 甲-3 F-10-1 (A) 窄殘孔（**已補·已證會紅**）
+
+`remaining = orig_a − consumed`（`grep -n "def remaining" verify/m_rescue.py`）⇒ **原 a==0** 之宗
+若自 `parcels₁` 消失，`remaining` 亦為 0 而放行，然該宗**從未被消費**。
+⇒ 追加 (A′)：`consumed>1e-6` **或** pid ∈ 某 award 之 `srcs`，否則紅。
+
+> claude.ai 已查證 registry 以 `A`（＝`_A0` 同集）播種
+> （`grep -n "reg.set_orig" verify/m_rescue.py`）⇒「未註冊即靜默綠」**不成立**；本條只補 a==0 這一孔。
+
+咬合（`WV_BITE` 增注入點·`M_0725_甲_bite2.log`）：
+
+```
+🔴 (A′) _BITE_A0ONLY_：自 parcels₁ 消失、殘量 0，**但從未被消費**
+        （consumed=0.0000·亦不在任何 award 之 srcs）⇒ 「原 a==0」窄殘孔：殘量 0 ≠ 全額消費
+```
 
 ---
 

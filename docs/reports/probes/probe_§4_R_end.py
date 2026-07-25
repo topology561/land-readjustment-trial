@@ -2,7 +2,7 @@
 """§4 R_end 定案構造驗（未臨正街 s<0 ∪ ⊥ALLOCLINE 平移帶 W=畸零寬）·三塊·union 非疊加。"""
 import os, sys, json
 sys.stdout.reconfigure(encoding="utf-8")
-REPO = r"C:/Users/admin/Desktop/land-readjustment-trial"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # 甲-1：禁寫死本機絕對路徑
 sys.path.insert(0, os.path.join(REPO, "verify")); os.chdir(os.path.join(REPO, "verify"))
 import numpy as np
 from shapely.geometry import Polygon

@@ -348,7 +348,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
         # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流 ───────────────────────────────
         #   階段1宗＝原地主宗（`build_parcels` 原生·**不帶** `配地階段` 鍵）——定案並定出池範圍。
-        #   階段2宗＝wf_f4 池內遞補合成宗（`add_syn` 帶 `配地階段='池內'`·P1 旗標·wf_f4:188）——
+        #   階段2宗＝wf_f4 池內遞補合成宗（`add_syn` 帶 `配地階段='池內'`·P1 旗標·`grep -n "def add_syn" verify/wf_f4.py`）——
         #     **不進** `ordered_v2`／**不進**位次閘母體，改由 `_place_pool_parcels` 於階段1 定案後
         #     之**池範圍內**落位。根因：遞補宗混入單一投影序列會插隊擠爆原地主末宗
         #     （3.5m `628-37(1)`：S_remain 8.57 < 需 8.81 → |G−幾何|=7.90）。
@@ -743,7 +743,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
                 return float(_np_d.dot(_bp0 - _np_d.asarray(_mp, dtype=float), _ao))
             # 右組群起點 end_pt 於外層重算（_advance_block_with_split 內 end_pt 為其局部·此處不可見）。
-            #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：與 stepg:577／app／wf_f4 **四處同源** `_oblique_s_max`（#20）。
+            #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：與 app／wf_f4 **四處同源** `_oblique_s_max`（#20·`grep -n "_oblique_s_max" verify/stepg_pipeline.py`）。
             _end_pt_o = None; _dhr_o = None
             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
                 _smax_o = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block)
@@ -1025,7 +1025,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                           f"={_first_floor:.2f}——loud 記錄·禁靜默/禁 clamp（重烤後應 ≥ 下限）")
 
         # ── 結構閘 â 定向雙判準（補丁八 §三·主判準推進方向＋交叉核形心·不一致 escalate 禁靜默）──
-        #   主判準：â 沿推進向定號（右組 −d_hat／左組 +d_hat·stepg:577）；交叉核：(街廓形心−mp)·â>0。
+        #   主判準：â 沿推進向定號（右組 −d_hat／左組 +d_hat·`grep -n "d_hat_rev" verify/stepg_pipeline.py`）；交叉核：(街廓形心−mp)·â>0。
         #   δ 正負係 alloc_normal_axis 符號約定之產物·非幾何（#26②）；此閘證兩判準同源、方向不擲硬幣。
         if allocation_dir_block is not None and d_hat is not None and blk_meta.get('centroid'):
             _cen_a = _np_d.asarray(blk_meta['centroid'], dtype=float)

@@ -33,7 +33,7 @@
 - `pos`＝`_spatial_order_parcels_v2` 之 `pre_position`（投影位次）；`idx`＝`_ov2_idx`。
 - `reg`＝`分攤登記面積_m2`。**原地主宗 reg>0；`wf_f4.add_syn` 生成之池內遞補合成宗 reg==0**
   （`wf_f4.add_syn` 之 `a2=0.0` 預設·`grep -n "def add_syn" verify/wf_f4.py`）——分類**資料驅動**，不以 `74·` 名稱前綴判別（泛用紀律）。
-- `Srem`＝`S_remain`＝`actual_max_proj − left_cum_S − right_cum_S`（stepg:618 右／:547 左）。
+- `Srem`＝`S_remain`＝`actual_max_proj − left_cum_S − right_cum_S`（`grep -n "S_remain = max" verify/stepg_pipeline.py`·右組於 `actual_max_proj` 段、左組於 `S_block_max` 段）。
 - `smax`＝右組 `actual_max_proj`（`_oblique_s_max`）／左組 `S_block_max`。
 """
 import argparse

@@ -9322,7 +9322,7 @@ _WG_GID_PALETTE = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD',
 
 def _wg_is_ghost(r):
     """G.2 補①：ghost sliver 濾除（純呈現、只讀列值非重算）。ghost＝零面積虛編
-    （app Step G 不排 ghost、真面積已落池；引擎 harness 於 stepg:230 排除）→ GIS 不畫。
+    （app Step G 不排 ghost、真面積已落池；引擎 harness 排除（`grep -n "_is_ghost_sliver" verify/stepg_pipeline.py`））→ GIS 不畫。
     判準＝列旗標 `_is_ghost_sliver` 或 幾何面積(㎡)≤0（皆列既有值）。"""
     if r.get("_is_ghost_sliver"):
         return True
@@ -15926,7 +15926,7 @@ def main():
                         blk_poly = blk_meta.get('shapely', None)
                         blk_area = float(blk_meta.get('area_m2', 0.0) or 0.0)
 
-                        # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流（stepg:330 家族鏡像·#20 同改）──
+                        # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流（`stepg_pipeline` §4 P2-a 階段分流家族鏡像·#20 同改·`grep -n "P2-a 兩階段落位" verify/stepg_pipeline.py`）──
                         #   階段1宗＝原地主宗（原生·不帶 `配地階段`）；階段2宗＝池內遞補合成宗
                         #   （wf_f4 `add_syn` 帶 `配地階段='池內'`）→ 不進 ordered_v2，改走
                         #   `_place_pool_parcels` 於池範圍內落位。**資料驅動**（禁名稱前綴判別）。
