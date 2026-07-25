@@ -216,8 +216,15 @@ GSA/k* 須重烤後才能定值 ⇒ 留紅待 P-H。**F-1 罵的是「沒有比�
 ### 兩份 run_all 摘要（F-7 後·claude.ai 異機對拍用）
 | 模式 | 讀數 | log |
 |---|---|---|
-| **非 BAKE** | **56 PASS ／ 14 FAIL** | `verify/out/M_F7_nobake.log` |
-| **WV_BAKE** | **160 PASS ／ 1 FAIL**（僅 `k* 六塊經驗錨3.5m`·R-4/R-5·待 P-H） | `verify/out/M_F7_bake.log` |
+| **非 BAKE** | **56 PASS ／ 14 FAIL** | `verify/out/M_F9_nobake.log`（F-9 終版） |
+| **WV_BAKE** | **160 PASS ／ 1 FAIL**（僅 `k* 六塊經驗錨3.5m`·R-4/R-5·待 P-H） | `verify/out/M_F9_bake.log`（F-9 終版） |
+
+> ⚠️ **二讀數之效力上限（reviewer NOTE-3/NOTE-4·措辭更正）**：
+> ① **WV_BAKE 不可當品質證據**——`run_verification.py:280-284` 於 `WV_BAKE` 下
+> `_bake_csv(...); return True, []`（**不比對即回綠**·本次烤 69 檔 ⇒ 至少 69 列係結構性綠），
+> 且 `wf_f0.py` 之 GSA 硬閘降為 `print`。「160/1」僅非-diff 閘那部分帶訊息。
+> ② **「0m 零紅」係偏樂觀**——正確表述：**0m tag 之閘零紅，但 F.4 之 0m 六閘
+> （`F.4·G值0m` 等）因上游 `F.0` raise **未被執行**（非「通過」）。見登記表 R-9。
 
 ### 新增硬規（已納入本報告寫作）
 > 凡宣稱「已修／已驗／已咬合」者，**必須附實際輸出行（log 檔名 或 原文貼出）**；
