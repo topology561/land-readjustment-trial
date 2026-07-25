@@ -665,14 +665,33 @@ def main():
                 _g = _gid_of.get(_pid1, "")
                 _pz = float(_pre_price_m5.get(_zone_of.get(_pid1, ""), 0.0) or 0.0)
                 _val1[_g] = _val1.get(_g, 0.0) + _a_of(_tp1) * _pz
+            # 🔴 BLOCKED-2（reviewer 2026-07-25·實測反證）：**容差不可用 1e-9 相對值**。
+            #   `m_rescue._a_prime` **不捨入**，但 `apply_plan` 之 target/源 `round(…,2)` ⇒
+            #   **跨區段必生 0.005㎡ 級量化**；×p_pre(≈3.7e4) ≈186 元、÷gid 總值(9.3e7)
+            #   ⇒ 相對差 1e-6~1e-8 **恆 > 1e-9** ⇒ **跨區段假紅**（reviewer probe4 三組實證）。
+            #   本案綠**只因四宗同區段且 a′ 恰為 2dp**（＝我原註自承之「巧合」）。
+            #   ⇒ 改**量化式絕對容差**：每個受影響宗至多 1 次 2dp 捨入（±0.005㎡），
+            #     tol_元 = (該 gid 宗數) × 0.005 × max(p_pre)。此為**捨入之數學上界**、非調鬆。
+            # 🟡 WARNING-1（reviewer probe5 實證：非 award gid 偷加 +50㎡ 全 harness 零咬）：
+            #   覆蓋**擴及全 gid**——award gid 用量化容差；**非 award gid 應精確相等**
+            #   （未被 M-5 觸碰 ⇒ 任何位移即異常）。成本近零、嚴格更強。
+            _pmax = max(list(_pre_price_m5.values()) + [0.0])
+            _n_by_gid = {}
+            for _tp1 in _bp_by_tag[tag]:
+                _g = _gid_of.get(_tp1.get("暫編地號"), "")
+                _n_by_gid[_g] = _n_by_gid.get(_g, 0) + 1
+            _aw_gids = {a["gid"] for a in _m5_plan["awards"]}
             _val_viol, _val_rows = [], []
-            for _g in sorted({a["gid"] for a in _m5_plan["awards"]}):
+            for _g in sorted(set(_val0) | set(_val1)):
                 _v0, _v1 = _val0.get(_g, 0.0), _val1.get(_g, 0.0)
-                _rel = abs(_v1 - _v0) / max(abs(_v0), 1e-9)
-                _val_rows.append(f"{_g}: {_v0:,.2f} → {_v1:,.2f} 元（相對差 {_rel:.3e}）")
-                if _rel > 1e-9:
-                    _val_viol.append(f"🔴 {_g} 重劃前地價不守恆：{_v0:,.2f} → {_v1:,.2f} 元"
-                                     f"（相對差 {_rel:.3e} > 1e-9）")
+                _d = abs(_v1 - _v0)
+                _tol = (_n_by_gid.get(_g, 0) * 0.005 * _pmax) if _g in _aw_gids else 0.0
+                if _g in _aw_gids:
+                    _val_rows.append(f"{_g}: {_v0:,.2f} → {_v1:,.2f} 元（Δ={_d:,.2f}≤tol {_tol:,.2f}）")
+                if _d > _tol + 1e-6:
+                    _val_viol.append(
+                        f"🔴 {_g} 重劃前地價不守恆：{_v0:,.2f} → {_v1:,.2f} 元（Δ={_d:,.2f} > "
+                        f"tol {_tol:,.2f}{'·量化上界' if _g in _aw_gids else '·非 award gid 應精確相等'}）")
             _bal_viol += _val_viol
             _ok_bal = not _bal_viol
             results.append(

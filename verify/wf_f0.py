@@ -205,10 +205,11 @@ def compute(ctx_by_tag):
             if exp is not None and abs(G - exp) > 0.01:
                 _val_bad.append(f"{d['gid']} G(Σa)={G:.2f} ≠ 錨 {exp}")
         # 🆕 F-1（claude.ai 2026-07-25）：**GSA 覆蓋率硬閘**——修「錨消失即靜默放行」。
-        #   舊碼 `if not d["target"]: continue` ＋「僅走 decisions」⇒ 某 gid 若**無合併決策**
-        #   （如 M-5 後 G007@3.5m：被併宗全額消費移出 ⇒ 該塊僅餘標的宗 ⇒ `len(lots)<2` 無決策），
-        #   其 `GSA_EXPECT` 鍵**永不被評估** ⇒ **沒人檢查 ≠ 相符**（實測：BAKE 只印 G014 一則⚠️、
-        #   G007 一則都沒有）。**禁以「本案不會發生」略過**（泛用四約束）。
+        #   舊碼 `if not d["target"]: continue` ＋「僅走 decisions」⇒ 某 gid 若**無合併決策**，
+        #   其 `GSA_EXPECT` 鍵**永不被評估** ⇒ **沒人檢查 ≠ 相符**。
+        #   ⚠️ NOTE-2（reviewer）：**不得在此斷言單一成因**——`_decide` 有**兩條**路徑使 gid 不進
+        #   `gsa`（`:99 len(lots)<2` ／ `:108 全達標·無須併`→target=None），實例 G007@3.5m
+        #   **兩條都涉及**（R5 因源宗移出剩 1 宗走前者·R3 走後者被報）⇒ 訊息一律**印實際決策**（見下）。
         _uncov = sorted(set(GSA_EXPECT[tag]) - set(gsa))
         if _uncov:
             # W-3（reviewer）：**禁斷言未查證之成因**。舊訊息寫死「該歸戶宗數<2」，但 gid 不進 `gsa`
