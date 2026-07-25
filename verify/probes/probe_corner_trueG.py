@@ -64,23 +64,18 @@ def _fail(msg):
 
 
 def _true_G(ns, *, a_m2, A_ratio, B, C, l_front, l_side, F, blk_poly, d_hat,
-            corner_pt, s_max_L, s_max_R, side, alloc_axis, side_mid, _label):
-    """假設第 1 宗之真 G（樂觀口徑）。走 `solve_G_binary`＝與實配同一 solver。"""
-    dh = np.asarray(d_hat, dtype=float)
-    cp = np.asarray(corner_pt, dtype=float)
-    if side == "左":
-        bp, dh_use, s_max = cp, dh, s_max_L            # 左端 S_block_max（非 oblique）
-    else:
-        bp, dh_use, s_max = cp + s_max_R * dh, -dh, s_max_R
-    r = ns["solve_G_binary"](
-        a=a_m2, A=A_ratio, B=B, C=C,
-        l_front=l_front, l_side=l_side, F=F,
-        block_poly=blk_poly, d_hat=dh_use, baseline_pt=bp,
-        S_max_limit=max(0.1, float(s_max)),
-        is_corner=True, side_label=SIDE_CN[side],
-        tol=0.01, max_iter=80,
-        allocation_dir=alloc_axis, side_mid=side_mid, W_prev=0.0)
-    return float(r.get("G", 0.0) or 0.0)
+            corner_pt, s_max_L, s_max_R, side, alloc_axis, side_mid, avg_depth,
+            tab6_burden, _label):
+    """假設第 1 宗之真 G（樂觀口徑）。**P-A 起改呼生產函式 `_corner_first_lot_G`**
+    （內呼 `_solve_G_one`＝與實配同一 solve 路徑·左右 S_max 不同源之映射內建）——
+    此即 A-1（同一路徑）＋A-2（左右 S_max 不同源）之**真幾何**驗證：本探針輸出與 T1
+    committed log 對拍不變 ＝ `_corner_first_lot_G` 與舊 inline solve_G_binary 逐位同值。"""
+    return ns["_corner_first_lot_G"](
+        a_m2=a_m2, A_ratio=A_ratio, B=B, C=C, l_front=l_front, l_side=l_side, F=F,
+        block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt,
+        s_max_left=s_max_L, s_max_right=s_max_R, side=side,
+        allocation_dir=alloc_axis, side_mid=side_mid, avg_depth=avg_depth,
+        tab6_burden=tab6_burden, _label=_label)
 
 
 def _run_tag(ns, fake_st, snapshot, setback, tag, L):
@@ -97,6 +92,9 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
                params, build, winners, forced, setback)
     fin3 = getattr(stepg_pipeline, "_V3_FINANCE", None) or _fail("_V3_FINANCE 未外拋")
     B, C = float(fin3["B"]), float(fin3["C"])
+    # P-A：`_corner_first_lot_G` 之 fallback（iterate_G_S）需 tab6_burden；run_step_g 後 session 已鋪底。
+    _tab6 = float(fake_st.session_state.get("f3_total_burden_rate_from_finance") or 0) \
+        or _fail("f3_total_burden_rate_from_finance 未鋪底（run_step_g 應已設）")
     post_p, pre_p = fin3["post_price_by_block"], fin3["pre_price_by_zone"]
     sb_rows = {r["街廓"]: r for r in _reconstruct_sb_rows(ns, cad, snapshot)}
     SB = snapshot["blocks"]
@@ -116,10 +114,13 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
         pid = r["候選地號"]
         tp = tp_by.get(pid) or _fail(f"{pid} 不在 temp_parcels")
         bpr = bp_by.get(pid) or _fail(f"{pid} 不在 build_parcels")
-        # R3：a 口徑＝實配（分攤登記＋面積_m2）·防 KeyError 慣例
-        a_m2 = round(float(tp.get("分攤登記面積_m2",
-                                  tp.get("面積_m2", 0)) or 0)
-                     + float(tp.get("面積_m2", 0) or 0), 2)
+        # R3：a 口徑＝實配（分攤登記＋面積_m2）·**if-in 形**（reviewer B-4：
+        #   `.get(A, .get(B,0))+B` 於鍵缺席時重複計面積_m2；實配 7 處皆 if-in·此處同構）。
+        if "分攤登記面積_m2" in tp:
+            a_m2 = round(float(tp.get("分攤登記面積_m2", 0) or 0)
+                         + float(tp.get("面積_m2", 0) or 0), 2)
+        else:
+            a_m2 = round(float(tp.get("面積_m2", 0) or 0), 2)
         # W-5：深度/最小寬顯式自 snapshot·缺值 loud
         if blk not in SB:
             _fail(f"{blk} 不在 snapshot.blocks")
@@ -154,8 +155,8 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
         Gt = _true_G(ns, a_m2=a_m2, A_ratio=A_ratio, B=B, C=C, l_front=l_front,
                      l_side=l_side, F=F, blk_poly=blk_poly, d_hat=d_hat,
                      corner_pt=p1, s_max_L=s_max_L, s_max_R=s_max_R, side=end,
-                     alloc_axis=alloc_axis, side_mid=side_mid,
-                     _label=f"{blk}{end}·{pid}")
+                     alloc_axis=alloc_axis, side_mid=side_mid, avg_depth=depth,
+                     tab6_burden=_tab6, _label=f"{blk}{end}·{pid}")
         thr = float(r["門檻(㎡)"]); ge = float(r["G估(㎡)"])
         # 🔴 欄值以**倉檔實查**為準（首版誤猜 '✅' 致舊達標全 ❌·結論全錯）：
         #    『達標』∈{'達標','未達標'}；『選中』∈{'✅',''}＝**舊 winner 標記**（不自行推導）。
@@ -188,7 +189,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
             "new_ok": new_ok, "score": score, "need_rescore": need_rescore,
             "rank": _num(r.get("原位次(投影序)"), 1e9),
             "a": a_m2, "A": A_ratio, "l_front": l_front, "l_side": l_side, "F": F,
-            "geom": (blk_poly, d_hat, p1, s_max_L, s_max_R, alloc_axis, side_mid),
+            "geom": (blk_poly, d_hat, p1, s_max_L, s_max_R, alloc_axis, side_mid, depth),
             "BC": (B, C),
         })
 
@@ -244,7 +245,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
     if not thin:
         L.append("  （無餘裕 <20㎡ 之新達標候選）")
     for c in thin:
-        bp_, dh_, p1_, sL_, sR_, ax_, sm_ = c["geom"]
+        bp_, dh_, p1_, sL_, sR_, ax_, sm_, dep_ = c["geom"]
         B_, C_ = c["BC"]
         row = []
         for da in DA_PERTURB:
@@ -253,7 +254,8 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
                         blk_poly=bp_, d_hat=dh_, corner_pt=p1_, s_max_L=sL_,
                         s_max_R=sR_, side=[e for (b, e), cs in by_end.items()
                                            if c in cs][0],
-                        alloc_axis=ax_, side_mid=sm_, _label=c["pid"])
+                        alloc_axis=ax_, side_mid=sm_, avg_depth=dep_,
+                        tab6_burden=_tab6, _label=c["pid"])
             row.append(f"Δa{da:+.2f}→G {g:.2f}（餘裕{g - c['thr']:+.2f}）"
                        f"{'❌翻' if g < c['thr'] else ''}")
         L.append(f"  {c['pid']:14} 門檻={c['thr']:.2f}｜" + "｜".join(row))

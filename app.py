@@ -8727,6 +8727,50 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
     return _r, '代數迭代(fallback)'
 
 
+def _corner_first_lot_G(*, a_m2, A_ratio, B, C, l_front, l_side, F,
+                        block_poly, d_hat, corner_pt, s_max_left, s_max_right,
+                        side, allocation_dir, side_mid, avg_depth, tab6_burden,
+                        _label=''):
+    """🆕 P-A（裁定M·M-2/Q1）：**假設第 1 宗**之真 G（樂觀口徑）。
+
+    **與實配第 1 宗共用同一 solve 路徑**（內呼 `_solve_G_one`·Q-M4「禁另寫平行式」#20）。
+    樂觀口徑（Q-M2·兩端皆不預設 forced·buf=0）：
+      - baseline_pt：左＝corner_pt；右＝corner_pt + s_max_right·d̂
+      - S_max：左＝s_max_left（S_block_max）；右＝s_max_right（_oblique_s_max）〔reviewer B-6 左右不同源〕
+      - is_corner=True、W_prev=0.0（第 1 宗）
+    **loud raise 限輸入缺值**（Q-M4·3.2·no-silent-fallback）；solver 失敗走 `_solve_G_one` fallback（不 raise）。
+    回 G（float·㎡）。
+    """
+    for _n, _v in (('a_m2', a_m2), ('A_ratio', A_ratio), ('B', B), ('C', C),
+                   ('block_poly', block_poly), ('d_hat', d_hat),
+                   ('corner_pt', corner_pt), ('avg_depth', avg_depth),
+                   ('tab6_burden', tab6_burden)):
+        if _v is None:
+            raise RuntimeError(
+                f"🔴 _corner_first_lot_G[{_label}]：輸入缺值 {_n}（Q-M4·no-silent-fallback）")
+    if float(a_m2) <= 0 or float(avg_depth) <= 0:
+        raise RuntimeError(
+            f"🔴 _corner_first_lot_G[{_label}]：a_m2={a_m2}／avg_depth={avg_depth} 須 >0")
+    if side_mid is None:
+        raise RuntimeError(
+            f"🔴 _corner_first_lot_G[{_label}]：side_mid 缺（{side} 側無 SIDE_LINE·"
+            "上游不應對非街角端問假設第 1 宗真 G）")
+    _side_cn = {'左': '左側', '右': '右側'}.get(side, side)
+    _dh = np.asarray(d_hat, dtype=float)
+    _cp = np.asarray(corner_pt, dtype=float)
+    if _side_cn == '左側':
+        _bp, _dh_use, _s_max = _cp, _dh, float(s_max_left)
+    else:
+        _bp, _dh_use, _s_max = _cp + float(s_max_right) * _dh, -_dh, float(s_max_right)
+    _res, _ = _solve_G_one(
+        a_m2=a_m2, A=A_ratio, l_front=l_front, l_side=l_side, F=F,
+        blk_poly=block_poly, d_hat=_dh_use, baseline_pt=_bp,
+        S_max=max(0.1, _s_max), is_corner=True, side=_side_cn, avg_depth=avg_depth,
+        B=B, C=C, tab6_burden=tab6_burden,
+        allocation_dir=allocation_dir, side_mid=side_mid, W_prev=0.0)
+    return float(_res.get('G', 0.0) or 0.0)
+
+
 def _estimate_G_for_qualification(a_m2: float,
                                     tolerance_m2: float = 0.5) -> float:
     """
@@ -9042,6 +9086,8 @@ _WF_NS_NAMES = [
     # 🆕 P-0b（裁定M·Q-M4）：G 解算單一真相源（app/stepg `_solve_one` 皆薄殼委派·
     #   M-2 假設第 1 宗真 G 與實配共用同一 solve 路徑·禁另寫平行式#20）。
     "_solve_G_one",
+    # 🆕 P-A（裁定M·M-2/Q1）：假設第 1 宗真 G（樂觀口徑·內呼 _solve_G_one）。
+    "_corner_first_lot_G",
 ]
 
 
