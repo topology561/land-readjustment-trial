@@ -8143,6 +8143,7 @@ def select_corner_lots_both_sides_v12(
     min_corner_area_p1: float,
     min_corner_area_p2: float,
     g_values_map: dict = None,
+    require_g_map: bool = False,
 ) -> dict:
     """
     🆕 V12 模組 3 + 🚨 補強 C：街角地空間距離綁定 PK
@@ -8450,18 +8451,25 @@ def select_corner_lots_both_sides_v12(
     # 🆕 W-D.1.3-b：刪 15m 框（_compute_corner_overlap_area）。項三改「真交集 / range 面積」（見 _pk_one_side_v12）；
     #   physical_overlap_area 不再被覆寫、不再作評分來源；候選 _corner_intersection_area / _corner_range_area 為項三真量。
 
-    # Step 2：每組獨立 PK
+    # Step 2：每組獨立 PK（P-B：require_g_map 穿下·M-2/Q1 真 G 單一來源）
     return {
-        'p1_end': _pk_one_side_v12(p1_group, g_values_map, base_front_len_m),
-        'p2_end': _pk_one_side_v12(p2_group, g_values_map, base_front_len_m),
+        'p1_end': _pk_one_side_v12(p1_group, g_values_map, base_front_len_m,
+                                   require_g_map=require_g_map),
+        'p2_end': _pk_one_side_v12(p2_group, g_values_map, base_front_len_m,
+                                   require_g_map=require_g_map),
     }
 
 
 def _pk_one_side_v12(group: list, g_values_map: dict,
-                      base_front_len_m: float) -> dict:
+                      base_front_len_m: float, require_g_map: bool = False) -> dict:
     """
     🆕 V12 單側 PK：第一關 G 值門檻 → 第二關優先權指數
     🚨 強化點 2：第一關用 G 值（非物理跨占面積）
+
+    🆕 P-B（裁定M·Q1）：`require_g_map=True` ⇒ G 只由 `g_values_map` 供（＝假設第 1 宗真 G·
+      單一來源）·缺即 loud（禁 fallback·no-silent-fallback）。預設 `False` 維持既有 in-鏈
+      （g_values_map → G_value → G_estimated），惟以 `in` 取代舊 `or`-鏈（消滅 `G=0.0` 被 falsy
+      跳過之陷阱·生產 g_values_map 恆 ≥0.5 故零行為·golden g_values_map={} 走 G_value=1e9 亦同）。
     """
     if not group:
         return {'winner': None, 'qualified': [], 'eliminated': [],
@@ -8471,14 +8479,21 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
     eliminated = []
     # 第一關：G 值門檻
     for cand in group:
-        # 優先讀 g_values_map；fallback 至 cand 內 G_value 或 G_estimated
-        cand_G = (g_values_map.get(cand.get('暫編地號', ''))
-                   or cand.get('G_value')
-                   or cand.get('G_estimated', 0))
-        try:
-            cand_G = float(cand_G or 0)
-        except Exception:
-            cand_G = 0.0
+        _pid = cand.get('暫編地號', '')
+        if require_g_map:
+            if _pid not in g_values_map:
+                raise RuntimeError(
+                    f"🔴 M-2/Q1：{_pid} 取不到真 G（require_g_map·禁 fallback·no-silent-fallback）")
+            cand_G = float(g_values_map[_pid] or 0)
+        elif _pid in g_values_map:
+            cand_G = float(g_values_map[_pid] or 0)
+        elif 'G_value' in cand:
+            cand_G = float(cand.get('G_value') or 0)
+        elif 'G_estimated' in cand:
+            cand_G = float(cand.get('G_estimated') or 0)
+        else:
+            raise RuntimeError(
+                f"🔴 {_pid} 無任何 G 來源（g_values_map／G_value／G_estimated 皆缺·禁靜默視為 0）")
         cand['G_for_threshold'] = round(cand_G, 2)
         if cand_G < cand.get('min_area_to_apply', 0):
             cand['eliminated_reason'] = (
