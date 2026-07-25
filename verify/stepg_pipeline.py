@@ -81,7 +81,7 @@ def compute_total_burden_rate(ns, cb, snapshot):
 def _compute_v3_finance(ns, snapshot, cb, cad):
     """🆕 P-0a（裁定M·reviewer R1）：v3 全區財務單一真相源——B／C／特別負擔尺度／地價。
 
-    **純位移自 `run_step_g` 之 :90-192**（算式、求值順序、兩處斷言〔條件① 尺度、C 兩形等價 1e-8〕
+    **純位移自 `run_step_g` 之財務前段**（現址 `grep -n "def _compute_v3_finance" verify/stepg_pipeline.py`）（算式、求值順序、兩處斷言〔條件① 尺度、C 兩形等價 1e-8〕
     逐字不動）。M-2/Q1 之「假設第 1 宗真 G」與實配共用本函式（避第三份抄寫·失敗考古 #20）。
 
     **不寫 globals**：`_V3_FINANCE` payload 以 dict 回傳、由呼叫端（`run_step_g`）於 `_tab6_burden`
@@ -178,7 +178,7 @@ def _compute_v3_finance(ns, snapshot, cb, cad):
         "sb": sb, "sb_rows_by_label": sb_rows_by_label,
         "post_price_by_block": post_price_by_block,
         "pre_price_by_zone": pre_price_by_zone,
-        # 財務中繼態（run_verification 財務閘消費；非計算鏈）·payload 逐鍵同原 :184-192
+        # 財務中繼態（run_verification 財務閘消費；非計算鏈）·payload 逐鍵同本函式下方之 return dict
         "_V3_FINANCE": {
             "B": B_value, "C": C_for_calc, "C_avg_form": _C_avg_form,
             "eng": _eng_cost, "redev": _redev_cost, "loan": _loan_interest,
@@ -813,7 +813,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 solve_one=_solve_one, build_g_row=_build_g_row,
                 mark_zaling=_mark_zaling,
                 # 🆕 P2-f 末端保留（裁定C）：gate 條件1 之資料驅動來源＝`forced[blk]["{side}_has_side"]`
-                #   （同 wf_f4 `_reshape_block` :1311·**禁寫死**）；`s_front_p2`＝FRONT p2 之 s 座標，
+                #   （同 `wf_f4._reshape_block` 之 `_cond1`·`grep -n "_cond1 = not bool" verify/wf_f4.py`·**禁寫死**）；`s_front_p2`＝FRONT p2 之 s 座標，
                 #   由恆等式 `s(p1 + L·d̂) ≡ L` 得 ＝ FRONT_LINE 長 `S_block_max`。
                 has_side_left=bool(_fo_block.get('left_has_side', True)),
                 has_side_right=bool(_fo_block.get('right_has_side', True)),

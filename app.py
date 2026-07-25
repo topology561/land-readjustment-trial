@@ -1664,12 +1664,12 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
          **(i) N0-16 溶解其前提**：本匯出屬 **④ 接線對拍**層，**本就不負 0.01 級閘之舉證**
          （幾何正確性由 ②不變量閘＋③預測差量閘證）→「2 位吃掉閘」之憂**不成立**。
          **(ii) N0-18：法定成果面積本即 2dp** → **法定報表輸出 4dp 反與 N0-18 相衝**。
-         （併記：原實作 `round(x,4)` 亦為 **no-op**——源 `g_rows` 本即 2dp〔`stepg:276/277`〕；
+         （併記：原實作 `round(x,4)` 亦為 **no-op**——源 `g_rows` 於 `stepg_pipeline` 建列時本即 2dp；
           「授權 g_rows 增未捨入欄＝引擎 schema 改」之選項已**駁回**。）
       3. `scenario_tag`（0m／3.5m）——兩情境匯出撞名、無法辨識。
       4. `stage_tag` ＋ **`G_原值(㎡)` 欄**——缺標記之直接代價：claude.ai 曾差點誤判 F.0 檔為終態。
          **⚠️ 本階段之真名＝`trunk A′`（Step G ＋ 步驟 J 就地改寫後）**：Phase 7 匯出時
-         `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·`app.py:16717-16732`）就地壓 G**
+         `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·`grep -n "Patch B-2" app.py`）就地壓 G**
          （寬<法定最小者 `G(㎡)=round(min(orig_G, min_area−0.01),2)`·真值存 `_G_before_width_violation`）。
          **標錯比不標更糟：不標時人會去查，標錯時人會信。**（丙第 2 步 KL 實跑照出·報告 §8.3-1）
          → 併增 **`G_原值(㎡)`**（被壓者取 `_G_before_width_violation`）＋**`增減(㎡)` 改以原值計**。
@@ -1699,7 +1699,7 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     _setup_xlsx_header(ws1, headers1, row=3)
 
     def _g_orig(_r):
-        """乙-4（KL 2026-07-17）：**G 之原值**——步驟 J（Patch B-2 寬度驗證·`app.py:16717-16732`）
+        """乙-4（KL 2026-07-17）：**G 之原值**——步驟 J（Patch B-2 寬度驗證·`grep -n "Patch B-2" app.py`）
         對「寬 < 法定最小」者**就地壓 G**（`round(min(orig_G, min_area−0.01), 2)`）以觸發合併，
         並將真值存於 `_G_before_width_violation`。本欄取其真值；未被壓者即 `G(㎡)` 自身。
         **`增減(㎡)` 一律以本欄計**——以被壓 G 計必失真（實測 628-34(3)：−103.35 vs 真值 −65.76）。"""
@@ -6800,7 +6800,7 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
 #   根絕「同一式抄多處各自漂移」（失敗考古 #20）。
 # ═══════════════════════════════════════════════════════════════════════
 
-_G_ROUND_HALF = 0.005      # G 之**面積**捨入半量子（`round(G_conv, 2)`·app.py:6836）
+_G_ROUND_HALF = 0.005      # G 之**面積**捨入半量子（`round(G_conv, 2)`·`grep -n "G_conv" app.py`）
 _S_ROUND_HALF = 0.005      # S 長度捨入半量子·**S0d 後不再入帳幾何閘**（S 量化退出計算路徑·#24）；保留為概念記錄·供下方 docstring 論述引用
 _BISECT_TOL = 0.01         # `solve_G_binary` 之收斂容差（tol 預設）
 
@@ -9241,7 +9241,8 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
     _ns = _wf_ns()
     _fake_st = _WFSessionShim(ss)
     # G.1 補丁（合約缺口修）：主動鋪底 `f3_total_burden_rate_from_finance`——本 shim 種子之引擎路徑消費者＝
-    # run_step_g loud 前置閘（stepg:171 缺即 raise）＋ iterate_G_S 迭代初值（stepg:307-314）。
+    # run_step_g loud 前置閘（`stepg_pipeline` 缺即 raise）＋ `iterate_G_S` 迭代初值
+    #   （`grep -n "iterate_G_S" verify/stepg_pipeline.py`）。
     # **禁**要求使用者先點財務分析 Tab（#11 脆弱路徑）、**禁**靜默 0.40 舊 fallback。
     # 作法＝呼叫 harness 同一 `compute_total_burden_rate`（app 真符號 _ns、β 快照 財務接線_v3 輸入），
     # 現算後寫入 shim——與 harness build_pipeline 同源同式、決定性（UC9898 錨 0.40712387）。
@@ -9269,7 +9270,7 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
         "winners": _need("f3_corner_winners"),
         "forced": _need("f3L_forced_offset"),
         "setback": float(_need("f3L_setback_default")),
-        # 🚨 KL 2026-07-13 修：還原 raw G（app Patch B-2 寬度驗證於 16177-16185 把寬<min_width 宗之
+        # 🚨 KL 2026-07-13 修：還原 raw G（app Patch B-2 寬度驗證（`grep -n "Patch B-2" app.py`）把寬<min_width 宗之
         #   G(㎡) 壓成 min_area-0.01 觸發舊合併，原 G 存 _G_before_width_violation）。引擎 trunk A 要 raw G
         #   ——harness run_step_g 無此壓縮，故 live gA 須還原否則 GSA 錨破（G014 131.79 vs 133.22）；
         #   寬度違規由引擎 f4 裁示1(a)/Q3 增配處理、非 trunk A。拷貝列、不改 session_state。

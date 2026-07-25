@@ -411,7 +411,7 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
             _bp_pc = _bp_by_pid_pc.get(_pid_pc)
             # 🔴 W-4（reviewer·P-D 修正）：`a` 之來源＝**即將餵給 run_step_g 的那份 parcels**
             #   （＝`build_parcels`），**非** `temp_parcels`。二者於未改動時**係同一批 dict 物件**
-            #   （`sel:256-258` 無 copy）⇒ 趟0 逐位同（P-C 130/2 不變）；但 M-5 物化係對
+            #   （`build_parcels` 過濾式無 copy·`grep -n "build_parcels = .tp for tp" verify/selection_pipeline.py`）⇒ 趟0 逐位同（P-C 130/2 不變）；但 M-5 物化係對
             #   **deepcopy 之 parcels₁** 注入 a′ ⇒ 讀 temp_parcels 會**看不到 a′**、
             #   使 winner 於趟1 仍以舊 a 評閘（實測：628-45(2) a 632.38 卻用 362.38 → 仍 forced）。
             _src_pc = _bp_pc if _bp_pc is not None else _tp_by_pid_pc.get(_pid_pc)

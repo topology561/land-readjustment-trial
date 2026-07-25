@@ -10,7 +10,7 @@ W-F F.4 — 無同歸戶 3 級調配（7-4）＋7-5 雙出口＋終態遞補整�
   **deepcopy 快照加合成 zone 鍵** `74avg·{blk}`（單價=p_avg）→ run_step_g 原生 A=post/p_avg，
   **stepg 推進機零修改**。B-1 窮舉閘：每筆合成宗 A 地價比==round(post/p_avg,4)（缺鍵之
   靜默 fallback A=1.0 必被咬出）。
-- **a′ 雙模式**（§7-4:418-420）：E0 模式一（有同歸戶目標地）；E1/E2 模式二
+- **a′ 雙模式**（§7-4·`grep -n "模式一a′" verify/wf_f4.py`）：E0 模式一（有同歸戶目標地）；E1/E2 模式二
   p_avg 母體＝**原始 build_parcels**（重劃前全集；trunk 現態會退化，PROVENANCE 三變體對照）。
 - **距離＝KL 質心起迄法**：起點＝群公設宗分攤登記面積最大宗質心；迄點＝E1 開始時各塊最大池片
   質心（一次定錨）。級別：相鄰＝錨所在公設塊共邊 R 塊（RD）或 G1 隔 RD 相望（F.3 裁定③）；
@@ -53,7 +53,7 @@ import wf_f2                                           # noqa: E402
 
 # MinA_區（½線補償口徑）不再字面硬編：改 compute() 內 `mina_qu = min(mina.values())` 推導
 #   （修正一·claude.ai 2026-07-23）。舊 `MINA_QU` 常數二處引用（½輪0／½終態翻轉閘）退場後成
-#   孤兒故刪，避免日後被誤引為權威。**CSV 欄名字串 "2×G vs 114.07"（:471/:1074）與本檔 docstring
+#   孤兒故刪，避免日後被誤引為權威。**CSV 欄名字串 "2×G vs 114.07"（`grep -n "2×G vs 114.07" verify/wf_f4.py`）與本檔 docstring
 #   為 baseline 欄位/文件、本波凍結不動**（改欄名＝重烤假紅·污染 V11 零差靶）；欄名參數化列波後 backlog。
 SNAP_WAVG = 72058.60964443642          # 快照 重劃後平均地價（等式閘基準；乘數用現算值）
 COMP_EXPECT = {"G013", "G024", "G028"}  # ½ 輪0 <½ 具名錨（相異＝停查再定錨）
@@ -420,7 +420,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             if len(zz) != 1:
                 raise RuntimeError(f"🔴 [{tag}] {gid} 公設宗跨 zone {zz}（Σ地價需分 zone，未建模）")
             # 裁定K（W-7 順解·claude.ai 2026-07-23）：佇列恆為單一類別、純距離優先
-            #   ⇒ `value`（Σa×重劃前區段單價）三處消費（原 :518/:543/:555）全數退場、不再計算。
+            #   ⇒ `value`（Σa×重劃前區段單價）三處消費**全數退場**、不再計算（原行號已朽·勿引）。
             ginfo[gid] = {"a": sum(x["a"] for x in lots),
                           "zone": zz.pop(), "anchor": anchor,
                           "類集": sorted({x["類"] for x in lots if x["類"]})}

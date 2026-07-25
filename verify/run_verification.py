@@ -565,12 +565,35 @@ def main():
         #   「無 award」與「機制沒跑」在名目層不可區分（＝F-1 要擋的同型·換到 F-2 自己身上）。
         _m5_aw = (_m5_plan or {}).get("awards") or []
         if not _m5_aw:
-            _n_fo0 = len(_fo_ends) if "_fo_ends" in dir() else 0
-            _note0 = (f"本情境 forced 端 {_n_fo0} 個／award 0"
-                      + ("（無 forced 端 ⇒ M-5 不觸發）" if _n_fo0 == 0 else
-                         "（有 forced 端但無候選可經①補足 ⇒ 維持強制抵費地·canonical 最後手段）"))
+            # ── 🆕 F-10-3（KL 裁 2026-07-25）：**三列改為可證偽** ────────────────────────
+            #   舊版於無 award 時無條件 `results.append((…, True, []))` ＝ prose gate（N0-17-b）：
+            #   「救不動」與「**漏跑／未被評估**」在名目層不可區分——正是 F-1 要擋的同型。
+            #   判準（**0m／3.5m 同一套**·side/tag-agnostic·禁塊名常數）：
+            #       award==0  ⟺  ( forced 端數==0  ∨  **每一** forced 端皆有明列之不可救理由 )
+            #   「明列之不可救理由」＝ `m_rescue.build_plan` 之 log 對該端輸出「維持強制抵費地」
+            #   （見 `m_rescue` 之「無候選可經①補足」分支·`grep -n "維持強制抵費地" verify/m_rescue.py`）。
+            #   ⇒ forced 端非空而 log 查無其理由（含 `_ctx_m5` 為空致 `build_plan` 根本沒跑之情形）
+            #     ⇒ **紅**。舊版於該情形照樣三列全綠。
+            _fo_all = sorted(_fo_ends) if "_fo_ends" in dir() else []
+            if os.environ.get("WV_BITE") == "1":      # 咬合注入：偽造一個「log 無其理由」之 forced 端
+                _fo_all = _fo_all + [("_BITE_", "left")]
+                print(f"   ⚠️ [WV_BITE·{tag}] 已注入：F-10-3 偽 forced 端 _BITE_left")
+            _log_m5 = list((_m5_plan or {}).get("log") or [])
+            _unex0 = [f"{_b}{_s}" for _b, _s in _fo_all
+                      if not any((f"{_b}{_s}" in _ln) and ("維持強制抵費地" in _ln)
+                                 for _ln in _log_m5)]
+            _ok_m50 = not _unex0
+            _viol_m50 = ([] if _ok_m50 else
+                         [f"🔴 forced 端 {_x} 於 M-5 log 查無「維持強制抵費地」之明列理由"
+                          f"——「救不動」與「漏跑」不可區分，禁靜默綠" for _x in _unex0]
+                         + [f"（M-5 log {len(_log_m5)} 列；forced 端＝"
+                            f"{[f'{_b}{_s}' for _b, _s in _fo_all]}）"])
+            _note0 = (f"本情境 forced 端 {len(_fo_all)} 個／award 0"
+                      + ("（無 forced 端 ⇒ M-5 不觸發）" if not _fo_all else
+                         (f"（{len(_fo_all)} 端**皆**有明列不可救理由 ⇒ 維持強制抵費地·canonical 最後手段）"
+                          if _ok_m50 else f"（{len(_unex0)} 端理由缺漏）")))
             for _nm5 in ("定點閘", "無新生閘", "結算閘"):
-                results.append((f"M-5 {_nm5}{tag}（{_note0}）", True, []))
+                results.append((f"M-5 {_nm5}{tag}（{_note0}）", _ok_m50, _viol_m50))
         if _m5_aw:
             _fo1 = {(b, s) for b, fo in (forced_map or {}).items()
                     for s in ("left", "right") if fo.get(f"{s}_forced_offset")}
@@ -615,6 +638,80 @@ def main():
             _reg = _m5_plan["registry"]
             _p1_by = {tp.get("暫編地號"): tp for tp in _bp_by_tag[tag]}
             _A0 = {r["暫編地號"]: r for r in _sg_a0["g_rows"] if r.get("推進側別") in ("left", "right")}
+            # ── 🆕 F-10-1（KL 裁 2026-07-25）：**兩側母體同集之機檢** ──────────────────────
+            #   下方守恆式 `_val0` 母體＝`_A0`（`g_rows` 濾 `推進側別∈{left,right}`）、
+            #   `_val1` 母體＝`_bp_by_tag[tag]`（**未濾**）。二者非同集時守恆式即兩側各算各的，
+            #   **現況綠 ≠ 同集**：差集可能全落在 `price==0` 之 `gid==""` 桶而互相抵銷
+            #   （＝WARNING-1「非 award gid 偷加 +50㎡ 全 harness 零咬」同型）。
+            #   ⇒ 列出兩側 pid 之**對稱差**，凡不屬下列**已舉證**合法類即紅（禁「應該沒有」）：
+            #     (A) `_A0 ∖ parcels₁`：M-5 **全額消費**之源宗（`m_rescue.apply_plan` 移除）。
+            #         舉證條件＝`reg.remaining(pid) <= 1e-6`。守恆式對此類正確：其 a×p 趟0 計入、
+            #         趟1 以 0 計，差額已注入 target（(i)/(ii) 已另檢）。殘量>0 卻消失者＝真異常。
+            #     (B) `parcels₁ ∖ _A0`：趟0 `g_rows` 中**完全不存在**該 pid（未落位／未產生 G 列）。
+            #         舉證條件＝`pid ∉ _A0_all`（未濾之全 g_rows 鍵集）。
+            #         **反面**：pid 在 `_A0_all` 卻被側別濾掉 ⇒ 趟0 未計、趟1 計入 ⇒ **口徑不一·紅**。
+            _A0_all = {r.get("暫編地號") for r in _sg_a0["g_rows"]}
+            _P1 = set(_p1_by)
+            # ── 🆕 F-10 咬合注入（`WV_BITE=1`·**未設＝inert·零行為變更**·同 `WV_BAKE` 契約）──
+            #   交接文 §5.2：「凡新立閘，必造反例證其會紅」。一次性手動改碼跑完即刪之證據
+            #   **無法複驗**（日後改碎閘無人知）⇒ 改為可重跑之故障注入。注入兩型真缺陷：
+            #     (B) 造一宗「在趟0 g_rows 且在 parcels₁，卻因側別被濾出 `_A0`」⇒ 兩側口徑不一
+            #     (D) 自 `_pre_price_m5` 摘掉一個真被使用之區段 ⇒ 該區段之宗單價落 0（靜默歸零）
+            if os.environ.get("WV_BITE") == "1":
+                _bite_pid = sorted(_P1 - set(_A0))
+                if _bite_pid:
+                    _sg_a0["g_rows"].append({"暫編地號": _bite_pid[0], "推進側別": "池內"})
+                    _A0_all = {r.get("暫編地號") for r in _sg_a0["g_rows"]}
+                _bite_z = sorted({_zone_of.get(p, "") for p in _P1 if _gid_of.get(p, "")}
+                                 & set(_pre_price_m5))
+                if _bite_z:
+                    _pre_price_m5.pop(_bite_z[0], None)
+                print(f"   ⚠️ [WV_BITE·{tag}] 已注入：(B) {_bite_pid[:1]}／(D) 摘除區段 {_bite_z[:1]}")
+            _only_a0 = sorted(set(_A0) - _P1)
+            _only_p1 = sorted(_P1 - set(_A0))
+            _pop_viol = []
+            for _pp in _only_a0:
+                _rem = _reg.remaining(_pp)
+                if _rem > 1e-6:
+                    _pop_viol.append(
+                        f"🔴 (A) {_pp}：在趟0 `_A0` 卻不在 parcels₁，且 registry 殘量 {_rem:.4f}>0"
+                        f"（非全額消費）⇒ 其 a×p 於趟1 憑空消失")
+            for _pp in _only_p1:
+                if _pp in _A0_all:
+                    _pop_viol.append(
+                        f"🔴 (B) {_pp}：同時在 parcels₁ 與趟0 g_rows，卻因 推進側別∉{{left,right}}"
+                        f"（實為 {next((r.get('推進側別') for r in _sg_a0['g_rows'] if r.get('暫編地號') == _pp), None)!r}）"
+                        f"被濾出 `_A0` ⇒ 趟0 未計、趟1 計入·兩側口徑不一")
+            # ── 🆕 F-10-2（KL 裁 2026-07-25）：**除守恆閘內之靜默歸零**（BK-1 提前結案）──────
+            #   舊式 `_pre_price_m5.get(zone, 0.0) or 0.0`：查無 zone／單價 ≤0 皆靜默作 0 元，
+            #   使該宗於守恆式兩側同時消失——**在專抓靜默問題的閘裡留靜默路徑**，不可延。
+            #   判準：`gid` 非空之宗，其 zone 單價**必須查得且 >0**，否則紅（訊息含 pid/gid/zone）。
+            #   **合法零價白名單（明列條件·非「應該沒有」）**：僅 `gid == ""` 者豁免。
+            #     本案落此桶者為 ghost 宗（`_GHOST_(R1)`／`_GHOST_(R4)`）：其 `原地號` 不在
+            #     `t8_ownership_map` 與 `財務接線_v3.原地號_區段` 兩表 ⇒ **gid 與 zone 雙落空**，
+            #     守恆式兩側同落 `gid=""` 桶且單價 0 ⇒ 該桶**恆等 0**、不影響任何真 gid 之判決。
+            #   ⚠️ 該豁免之前提（「落 `gid==""` 桶者必為雙落空之 ghost」）**不假設**，由下列硬檢守：
+            #     gid 空卻**有** zone ⇒ 係真宗掉了 gid（非 ghost）⇒ 紅。
+            _gid_empty = sorted(_pp for _pp in (set(_A0) | _P1) if not _gid_of.get(_pp, ""))
+            for _pp in _gid_empty:
+                if _zone_of.get(_pp, ""):
+                    _pop_viol.append(
+                        f"🔴 (C) {_pp}：gid 為空卻有區段 {_zone_of.get(_pp)!r} ⇒ 非雙落空 ghost、"
+                        f"係真宗掉了歸戶鍵 ⇒ `gid==\"\"` 桶之零價豁免前提不成立")
+
+            def _pz_of(_pp):
+                """重劃前地價單價（元/㎡）。gid 非空而查無單價／≤0 ⇒ 記紅（F-10-2·no-silent-fallback）。
+                ⚠️ 用 `_pop_viol` 記紅而非 `raise`：`main()` 頂層迴圈無 enclosing try（W-2 已裁），
+                   裸 raise 會使整個 harness 當場死、其餘閘一列不報，且 stderr 未 reconfigure（cp950）
+                   致訊息亂碼。紅列同樣不可靜默通過（本閘 `_ok_bal` 吃 `_pop_viol`）。"""
+                _z = _zone_of.get(_pp, "")
+                _v = float(_pre_price_m5.get(_z, 0.0) or 0.0)
+                if _v <= 0 and _gid_of.get(_pp, ""):
+                    _pop_viol.append(
+                        f"🔴 (D) {_pp}（gid={_gid_of.get(_pp, '')}）之重劃前地價區段 {_z!r} "
+                        f"查無單價或 ≤0（得 {_v}）——守恆式禁以 0 元靜默帶過；"
+                        f"可用區段＝{sorted(_pre_price_m5)}")
+                return _v
 
             def _a_of(tp):
                 return round(float(tp.get("分攤登記面積_m2", 0) or 0)
@@ -658,12 +755,12 @@ def main():
             _val0, _val1 = {}, {}
             for _p0, _r0 in _A0.items():
                 _g = _gid_of.get(_p0, "")
-                _pz = float(_pre_price_m5.get(_zone_of.get(_p0, ""), 0.0) or 0.0)
+                _pz = _pz_of(_p0)                       # F-10-2：靜默歸零已除
                 _val0[_g] = _val0.get(_g, 0.0) + float(_r0.get("a 面積(㎡)", 0) or 0) * _pz
             for _tp1 in _bp_by_tag[tag]:
                 _pid1 = _tp1.get("暫編地號")
                 _g = _gid_of.get(_pid1, "")
-                _pz = float(_pre_price_m5.get(_zone_of.get(_pid1, ""), 0.0) or 0.0)
+                _pz = _pz_of(_pid1)                     # F-10-2：靜默歸零已除
                 _val1[_g] = _val1.get(_g, 0.0) + _a_of(_tp1) * _pz
             # 🔴 BLOCKED-2（reviewer 2026-07-25·實測反證）：**容差不可用 1e-9 相對值**。
             #   `m_rescue._a_prime` **不捨入**，但 `apply_plan` 之 target/源 `round(…,2)` ⇒
@@ -709,11 +806,15 @@ def main():
                     _val_viol.append(
                         f"🔴 {_g} 重劃前地價不守恆：{_v0:,.2f} → {_v1:,.2f} 元（Δ={_d:,.2f} > "
                         f"tol {_tol:,.2f}{'·量化上界' if _g in _aw_gids else '·非 award gid 應精確相等'}）")
-            _bal_viol += _val_viol
+            _bal_viol += _val_viol + _pop_viol         # F-10-1/2：母體同集＋零價靜默
             _ok_bal = not _bal_viol
+            # 名目載**實際**對稱差內容（非「已檢查」四字）：日後母體變動於名目層即可見。
+            _pop_note = (f"母體對稱差 A0∖P1={_only_a0 or '∅'}（全額消費源）"
+                         f"／P1∖A0={len(_only_p1)} 宗（未產 G 列）"
+                         f"·gid空桶={_gid_empty or '∅'}")
             results.append(
                 (f"M-5 結算閘{tag}（物化對帳 target增量/源殘量/a′換算·Σa′={_sum_inj:.2f}；"
-                 f"歸戶重劃前地價守恆 {'｜'.join(_val_rows)}）", _ok_bal, _bal_viol))
+                 f"歸戶重劃前地價守恆 {'｜'.join(_val_rows)}；{_pop_note}）", _ok_bal, _bal_viol))
             # (d) 稽核帳（公務員稽核／P-H 歸因表引用）
             _led = []
             for _aw in _m5_plan["awards"]:

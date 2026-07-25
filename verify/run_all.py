@@ -65,6 +65,32 @@ def main():
         print(f"  🔴 滑池槽 golden FAIL: {e}\n")
         rc = 1
 
+    # ── 🆕 F-2（KL 裁 2026-07-25）：**末端機制三夾具納入 run_all** ──────────────────────
+    #   覆蓋率洞：三檔存在於 `verify/` 卻**不在任何自動流程內**——「沒人檢查 ≠ 相符」
+    #   （交接文 §5.2）。以 **subprocess** 起（`fixture_end_fallback` 於 import 期即
+    #   `sys.exit()`，直接 import 會把 harness 一併帶走）。
+    #   ⚠️ 本段屬 run_all `[1/3]` golden 段、**不進** `run_verification.results`
+    #      ⇒ 不動 PASS/FAIL 計數，亦不動 P-H 之「161 名目」母體。
+    import subprocess
+    for _fx, _what in (("fixture_end_reserve.py", "P2-f 末端保留·窗位移(左右)"),
+                       ("fixture_end_fallback.py", "§4 無勝者 fallback·守恆真檢(左右)"),
+                       ("fixture_end_winner.py", "末端 gate 判別力·_unfront_area＋咬合反例")):
+        try:
+            _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
+                                capture_output=True, text=True, encoding="utf-8", timeout=600)
+            _ok_fx = (_r.returncode == 0)
+        except Exception as _e_fx:
+            _r, _ok_fx = None, False
+            print(f"  🔴 末端夾具 {_fx} 執行失敗：{_e_fx}")
+        if _r is not None:
+            print(f"  {'✅' if _ok_fx else '🔴'} 末端夾具 {_fx}（{_what}）rc={_r.returncode}")
+            if not _ok_fx:
+                for _ln in ((_r.stdout or "") + (_r.stderr or "")).strip().splitlines()[-10:]:
+                    print("     " + _ln)
+        if not _ok_fx:
+            rc = 1
+    print()
+
     print("### [2/3] diff 引擎自檢（竄改必咬＋Gxxx 分流；證綠非虛）")
     import run_verification as v
     if not v.self_check_diff_engine():

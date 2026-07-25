@@ -6,7 +6,7 @@ r"""P-0c 證據③（裁定M·Q-S2①/Q-S3）：**k* 漂移之合法性**——`
 S1（W脫鉤 07-19＋S0d 07-20）改 S → 最優切點 k* 移；**跨情境 k* 不變**係 **S0d 前之經驗巧合、
 非設計不變量**。實測：`R1 0m k*=2` 但 `R1 3.5m k*=1`。`K_STAR_EXPECT` 由單一 dict 改 **per-tag**。
 
-**合法性證明（本探針）**：引擎內建停機②（`stepg_pipeline.py:767`：`J(k*)<J(naive)` → raise）。
+**合法性證明（本探針）**：引擎內建停機②（`stepg_pipeline` 之停機②：`J(k*)<J(naive)` → raise·`grep -n "停機②（J 下降）" verify/stepg_pipeline.py`）。
 ⇒ `run_step_g` 若**完成不 raise**，則 `J(k*)≥J(naive)` **by construction 成立** ⇒ 引擎所選 k*（含 R1
 3.5m=1）**確為最優**、非 bug。本探針逐塊逐情境印 `k*／J(naive)／J(k*)`、斷言 `J(k*)≥J(naive)`，
 並顯示 R1 之 k* 隨情境變（0m=2／3.5m=1）＝per-tag 之依據。

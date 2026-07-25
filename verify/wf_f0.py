@@ -68,7 +68,7 @@ ROUTE_OUT = {"G009": "轉F.2(同歸戶R4有達標宗·級1相鄰街廓)",
 # MinA_區（重劃區內最小分配面積標準）正典＝`wd4_tier_list._mina_by_block()` 之
 #   `min(mina.values())`（mina[lbl]=round(街廓分配深度×min_width, 2)）。
 #   本檔原有之區標準字面常數為**孤兒**（僅定義、零讀取、全倉無 import）已刪，避免日後被誤引
-#   為權威（失敗考古 #26 型）。本檔一切比較用 `mina[blk]`＝**配地可行性**口徑（:98/:204/:211/:216），
+#   為權威（失敗考古 #26 型）。本檔一切比較用 `mina[blk]`＝**配地可行性**口徑（`grep -n "mina\[" verify/wf_f0.py`），
 #   與 ½線補償之 **MinA_區** 口徑係二事、勿混（見 plan v3 §9.2 🔒 二口徑註記）。
 
 
@@ -208,12 +208,12 @@ def compute(ctx_by_tag):
         #   舊碼 `if not d["target"]: continue` ＋「僅走 decisions」⇒ 某 gid 若**無合併決策**，
         #   其 `GSA_EXPECT` 鍵**永不被評估** ⇒ **沒人檢查 ≠ 相符**。
         #   ⚠️ NOTE-2（reviewer）：**不得在此斷言單一成因**——`_decide` 有**兩條**路徑使 gid 不進
-        #   `gsa`（`:99 len(lots)<2` ／ `:108 全達標·無須併`→target=None），實例 G007@3.5m
+        #   `gsa`（`_decide` 之 `len(lots)<2` ／ `全達標·無須併`→target=None·`grep -n "len(lots) < 2" verify/wf_f0.py`），實例 G007@3.5m
         #   **兩條都涉及**（R5 因源宗移出剩 1 宗走前者·R3 走後者被報）⇒ 訊息一律**印實際決策**（見下）。
         _uncov = sorted(set(GSA_EXPECT[tag]) - set(gsa))
         if _uncov:
             # W-3（reviewer）：**禁斷言未查證之成因**。舊訊息寫死「該歸戶宗數<2」，但 gid 不進 `gsa`
-            #   有**兩條**路徑：`_decide:99` `len(lots)<2 → continue`／`:108` `全達標·無須併`（target=None
+            #   有**兩條**路徑：`_decide` 之 `len(lots)<2 → continue`／`全達標·無須併`（target=None
             #   → 本迴圈 `if not d["target"]: continue`）。實例 G007@3.5m 走的是**後者**（R3 有 2 宗、
             #   級別＝全達標·無須併），舊訊息對之為**錯**。改為**印實際逐塊決策**、不猜原因。
             _detail = []

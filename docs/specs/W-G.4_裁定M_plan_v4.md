@@ -337,9 +337,12 @@ F2_set = {gid : F.0「去向」以「轉F.2」開頭} ∪ {gid : F.0 未觸及 �
 ## 八、P-F／P-G／P-H
 
 ### P-F M-4（實測·左右雙側·`#25`）
-F-1 3.5m 末端保留唯 R6 左·85.706㎡·`s∈[-0.0000,3.5114]`（`W-G.4_§4_P2_兩階段落位_f到g.md:102`）；
-F-2 `_cond1`＝`wf_f4:1325`／`_end_gate`＝`:1338`（**二審 grep 定讞·`1467/1480` 不存在**），
-惟 `_cond1` by-construction 近恆真 ⇒ **改對 `_end_gate` 之 `_unfront_area` ＋ `:1350` 末端 winner 前後集合斷言**
+F-1 3.5m 末端保留唯 R6 左·85.706㎡·`s∈[-0.0000,3.5114]`（`W-G.4_§4_P2_兩階段落位_f到g.md` §3.3）；
+F-2 🔴 **本行原載之行號錨全部作廢**（`_cond1`＝`wf_f4:1325`／`_end_gate`＝`:1338`／winner`:1350`／
+「`1467/1480` 不存在」）——`ebe24fe` 實 grep 覆核：真值為 `_cond1`**1338**／`_end_gate`**1351**／winner**1363**，
+且 `1467/1480` **皆存在**（該檔 1588 行）。位移 +13，成因＝`556bf8e` 於該區塊上方增行。
+**改以符號名引用**：`grep -n "_cond1 = not bool" verify/wf_f4.py`／`grep -n "_end_gate = _cond1" verify/wf_f4.py`。
+惟 `_cond1` by-construction 近恆真 ⇒ **改對 `_end_gate` 之 `_unfront_area` ＋ 末端 winner 前後集合斷言**
 （WARNING-b·真正會被 M-1/M-2 打到者是 `G(㎡)`/`宗地寬度`/`flagged`）；
 F-3 `fixture_end_reserve` 12 項續綠；F-4 `fixture_end_fallback` 左右各 5 項續綠；F-5 E3 latent；
 F-6 被消費源宗若為末宗 → 重列 `_end_band` 窗·左右各驗·具體化（WARNING-c：P-D 後 diag 可能「缺列」非欄值差）。

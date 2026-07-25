@@ -20,7 +20,7 @@ KL 診斷：達½之 9 戶有 2 戶落不下（3.5m E2 容量不可行），是�
 ## 三分類出處（**禁自行分類**）
 
 拆項一律走 `wf_f1._classify_fragments` 之「碎片」／「forced角落鎖定」／「池主體」三分類
-（KL 明令）。`unreach[b] = 碎片Σ + forced角落鎖定Σ`（`wf_f4._s0_unreachable`·:284-286）。
+（KL 明令）。`unreach[b] = 碎片Σ + forced角落鎖定Σ`（`wf_f4._s0_unreachable`·`grep -n "def _s0_unreachable" verify/wf_f4.py`）。
 
 ## 反事實（純試算·不改治理碼·不改裁定）
 

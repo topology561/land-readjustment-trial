@@ -19,7 +19,7 @@
     乙釋forced = pool − 碎片
     丙釋碎片 = pool − forced鎖定
 
-容量 `cap(b) = reachable(b) − MinA(b) + 0.5`（治理碼 `wf_f4._e2_optimal` :1102/:1126 同式）。
+容量 `cap(b) = reachable(b) − MinA(b) + 0.5`（治理碼 `wf_f4._e2_optimal` 同式·`grep -n "def _e2_optimal" verify/wf_f4.py`）。
 consume 沿用探針之現況 canonical G（**一階近似**：反事實僅放大容量、不重算幾何）。
 
 ## 重跑

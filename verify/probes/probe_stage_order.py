@@ -18,7 +18,7 @@
 1. 對 `verify/stepg_pipeline.py` 之 `run_step_g` 左/右推進迴圈**暫時**注入純 print 探針
    （三個 anchor·idempotent·標記 `# WV_PROBE`）；原檔 bytes 先備份。
 2. 以 `WV_BAKE=<tmp>` 跑 `verify/run_verification.py`——`diff_rows` 於 WV_BAKE 時寫 got 並
-   return 綠（run_verification.py:274-278）→ F.0–F.3 存在性守衛過 → **F.4 trunk-E 實跑**
+   return 綠（`run_verification.diff_rows` 之 `WV_BAKE` 短路·`grep -n "_bake_dir = os.environ" verify/run_verification.py`）→ F.0–F.3 存在性守衛過 → **F.4 trunk-E 實跑**
    （否則 F.0 六格錨紅級聯、F.4 skip、探針量不到池內遞補宗）。
 3. `--break-tol`（預設 1.0）：目標宗於目標 setback 首次 |G−幾何|>tol → 記錄 BREAK 並
    `os._exit(66)` 早停（界 runtime；完整輪約 30+ 分鐘）。
@@ -32,7 +32,7 @@
 ## 欄位語意
 - `pos`＝`_spatial_order_parcels_v2` 之 `pre_position`（投影位次）；`idx`＝`_ov2_idx`。
 - `reg`＝`分攤登記面積_m2`。**原地主宗 reg>0；`wf_f4.add_syn` 生成之池內遞補合成宗 reg==0**
-  （wf_f4.py:183 硬寫 0.0）——分類**資料驅動**，不以 `74·` 名稱前綴判別（泛用紀律）。
+  （`wf_f4.add_syn` 之 `a2=0.0` 預設·`grep -n "def add_syn" verify/wf_f4.py`）——分類**資料驅動**，不以 `74·` 名稱前綴判別（泛用紀律）。
 - `Srem`＝`S_remain`＝`actual_max_proj − left_cum_S − right_cum_S`（stepg:618 右／:547 左）。
 - `smax`＝右組 `actual_max_proj`（`_oblique_s_max`）／左組 `S_block_max`。
 """
@@ -185,7 +185,7 @@ def main():
     ap.add_argument("--no-break", action="store_true", help="不早停，跑完整輪（慢，30+ 分鐘）")
     args = ap.parse_args()
 
-    # Windows 主控台預設 cp950 → emoji/中文 UnicodeEncodeError（同 run_all.py:14 之對策）
+    # Windows 主控台預設 cp950 → emoji/中文 UnicodeEncodeError（同 `run_all.py` 之 `sys.stdout.reconfigure` 對策）
     for _st in (sys.stdout, sys.stderr):
         try:
             _st.reconfigure(encoding="utf-8")
