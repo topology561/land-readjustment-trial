@@ -1,6 +1,6 @@
 # F-7-6(c) 內嵌數值之名目清單（判準見 scan_embedded_numeric_names.py docstring）
 
-來源 log：`verify/out/M_F8_bake.log`｜名目 161 行／161 唯一｜**命中 25 列**
+來源 log：`verify/out/M_F9_bake.log`｜名目 161 行／161 唯一｜**命中 25 列**
 
 | # | 名目 | 命中判準 |
 |---|---|---|

@@ -14,7 +14,8 @@
 | **非 BAKE** | **53 PASS ／ 14 FAIL** | `verify/out/M_PF_runall_nobake.log` |
 | **WV_BAKE** | **157 PASS ／ 1 FAIL**（僅 `k* 六塊經驗錨3.5m`·准入 P-H） | `verify/out/M_PF_runall_bake.log` |
 
-非 BAKE 之 14 FAIL ＝ 3.5m baseline 全紅（**M-5 連動·待 P-H 重烤**）＋ F.0 raise 級聯；**0m 全綠**。
+非 BAKE 之 14 FAIL ＝ 3.5m baseline 全紅（**M-5 連動·待 P-H 重烤**）＋ F.0 raise 級聯；
+**0m tag 之閘零紅**（限定見 §十二「二讀數之效力上限」——F.4 之 0m 六閘**未被執行**、非通過）。
 
 ---
 
@@ -229,3 +230,40 @@ GSA/k* 須重烤後才能定值 ⇒ 留紅待 P-H。**F-1 罵的是「沒有比�
 ### 新增硬規（已納入本報告寫作）
 > 凡宣稱「已修／已驗／已咬合」者，**必須附實際輸出行（log 檔名 或 原文貼出）**；
 > **無輸出即視為未驗、不得標綠**。B-1 與 F-7-1 同根因，此為直接對策。
+
+
+---
+
+## 十二、F-8／F-9 批次（reviewer 三輪復審之修正·**每項附實測輸出**）
+
+> 硬規：宣稱「已修／已驗」**必附實際輸出行**；無輸出即視為未驗。
+
+| 批 | 項 | 處置 | **實測輸出** |
+|---|---|---|---|
+| **F-8** | **BLOCKED-1**（清單無實體/無判準） | 新增 `verify/tools/scan_embedded_numeric_names.py`（判準列於 docstring）＋產出清單檔 | `寫入 docs/reports/W-G.4_裁定M_內嵌數值名目清單.md（命中 25 列）`·reviewer 重跑**逐行相同** |
+| **F-8** | **BLOCKED-2**（1e-9 相對容差跨區段假紅） | 容差改**量化式絕對上界** | reviewer 41 點掃描 **0 FAIL**（限定：`f∈[0.5,1.475]`·上半 14 點 NO-AWARD 未涵蓋）；三真異常仍紅 |
+| **F-8** | **WARNING-1**（只審 award gid） | 覆蓋擴**全 gid**（非 award 須精確相等） | `🔴 G019 …Δ=2,195,461.54 > tol 0.00·非 award gid 應精確相等` |
+| **F-9** | **BLOCKED-A**（報告載偽位址） | 改指正位址＋標註前版為偽 | reviewer：`grep M_F7_bake docs/` **僅 1 命中＝自我更正** |
+| **F-9** | **BLOCKED-B**（R-7 刪錯 `wf/f0~f3`） | R-7 縮回 7 名目·**新增 R-8（11 閘）／R-9（`wf/f4` 12 檔）** | reviewer 以 harness 自身 `diff_rows` 包裹 **69 次呼叫**：**30 RED／39 GREEN**；R-7(7)+R-8(11)+R-9(12)=**30**·**窮盡且不重疊** |
+| **F-9** | **WARNING-A**（`_pmax` 全區 max） | 改 per-gid（涉及 zone ∪ z_tgt） | 貴-zone 反例：tol **不膨脹**（1,679.53·舊式會是 200,000）；+3㎡ **仍被咬**（Δ=111,968.54） |
+| **F-9** | **WARNING-B**（tol 非真上界） | `(存活宗數+alloc 筆數+1)×0.005×p_max(gid)` | tol **1,679.53 > 結構最壞 933.07**（reviewer 逐項枚舉：n_alloc 4＋n_partial 0＋target 1＝5 quanta） |
+| **F-9b** | NOTE-3/NOTE-4 措辭 | 二讀數效力上限＋「0m 零紅」限定 | 見 §〇 與下方 |
+| **F-9c** | **BLOCKED-C**（tag-strip 宣稱已改·**實際未落地**） | 落 lookaround `(?<![0-9.])(?:0m\|3\.5m)(?![0-9.])` | 改後 `:32` 實見 lookaround；命中仍 **25 列**、清單逐行不變 |
+| **F-9c** | WARNING-2/3（R-8 閘數 10→**11**／R-9 公設調配0m 3→**34**） | 登記表更正 | reviewer 實測 f0 為 **6** 個紅閘；`公設調配0m` 違規 **34**（非 3·我原數字無倉檔依據） |
+
+### 🔴 F-9c 之根因（**同型第三次**）
+`BLOCKED-C` 與 `B-1`（F-5 未生效）、`F-7-1`（歸戶守恆空頭註解）**同型**：
+**宣稱已改／已驗，而未實際觀測輸出**。本次為 `sed` 未套用（字串未命中）卻照樣寫進 commit message。
+⇒ **本報告所有「已修」欄位皆已補實測輸出行**；日後**先 grep/跑、後宣稱**。
+
+### 二讀數之效力上限（reviewer NOTE-3 強化）
+- **WV_BAKE 160/1 不可當品質證據**：`run_verification.py:279-284` 於 BAKE 下 `_bake_csv(...); return True, []`
+  ＝**不比對即回綠**（本次烤 **69 檔**），且 `wf_f0` GSA 硬閘降為 `print`。
+  **reviewer 實測：該 69 列結構性綠中，有 30 列若真比對會紅。**
+- **非 BAKE 之「未執行」規模**：BAKE 有而非 BAKE 無者共 **97 列**（塌縮為 `W-F F.0~F.4`＋`G.2` 六列 FAIL），
+  其中 **40 列帶 0m tag**；而「未執行**且**會紅」者**僅 F.4 之 0m 六閘**（f0/f1/f2/f3 之 0m 實測全綠）。
+
+### backlog 增補
+- **BK-5**：tol 上界依賴「`分攤登記面積_m2` ≤2dp」；他案若帶滿精度，`_a_of` 對**每存活宗**再加一量子
+  ⇒ 需 `2·n_survive + n_alloc + 1`。現行餘裕恰 4 quanta＝n_survive 係**巧合等號**、非設計（reviewer WARNING-4）。
+- **BK-6**：`verify/baselines/V6dxf_各街廓鄰街地負擔.csv` 係**孤兒 baseline**（69 次 diff 未涵蓋·全倉零引用）。

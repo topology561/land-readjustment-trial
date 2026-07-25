@@ -26,7 +26,10 @@ def scan(log_path):
             names.append(m.group(2).strip())
     hits = []
     for n in sorted(set(names)):
-        core = re.sub(r'\b(?:0m|3\.5m)\b', '', n)     # tag 不計
+        # tag 不計。⚠️ 舊式 `\b(?:0m|3\.5m)\b` 於 CJK **為死碼**——CJK 在 Python `re` 屬 `\w`，
+        #   `F.0·G值3.5m` 前後皆 CJK ⇒ 無 word boundary ⇒ 114 個含 tag 名目中 **113 個沒被剝掉**
+        #   （reviewer BLOCKED-C 實證；我前版宣稱已改 lookaround **實際未落地**）。改 lookaround：
+        core = re.sub(r'(?<![0-9.])(?:0m|3\.5m)(?![0-9.])', '', n)
         kinds = [k for p, k in PATS if re.search(p, core)]
         if kinds:
             hits.append((n, '／'.join(kinds)))
