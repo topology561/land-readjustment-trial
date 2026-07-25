@@ -407,13 +407,19 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         _smR_pc = (_slb_pc.get("right") or {}).get("mid")
         _a_by_pc = {}; _zone_by_pc = {}
         for _c_pc in _candidates:
-            _pid_pc = _c_pc['暫編地號']; _tp_pc = _tp_by_pid_pc.get(_pid_pc)
+            _pid_pc = _c_pc['暫編地號']
             _bp_pc = _bp_by_pid_pc.get(_pid_pc)
-            if _tp_pc is not None:
-                _a_by_pc[_pid_pc] = (round(float(_tp_pc.get('分攤登記面積_m2', 0) or 0)
-                                           + float(_tp_pc.get('面積_m2', 0) or 0), 2)
-                                     if '分攤登記面積_m2' in _tp_pc
-                                     else round(float(_tp_pc.get('面積_m2', 0) or 0), 2))
+            # 🔴 W-4（reviewer·P-D 修正）：`a` 之來源＝**即將餵給 run_step_g 的那份 parcels**
+            #   （＝`build_parcels`），**非** `temp_parcels`。二者於未改動時**係同一批 dict 物件**
+            #   （`sel:256-258` 無 copy）⇒ 趟0 逐位同（P-C 130/2 不變）；但 M-5 物化係對
+            #   **deepcopy 之 parcels₁** 注入 a′ ⇒ 讀 temp_parcels 會**看不到 a′**、
+            #   使 winner 於趟1 仍以舊 a 評閘（實測：628-45(2) a 632.38 卻用 362.38 → 仍 forced）。
+            _src_pc = _bp_pc if _bp_pc is not None else _tp_by_pid_pc.get(_pid_pc)
+            if _src_pc is not None:
+                _a_by_pc[_pid_pc] = (round(float(_src_pc.get('分攤登記面積_m2', 0) or 0)
+                                           + float(_src_pc.get('面積_m2', 0) or 0), 2)
+                                     if '分攤登記面積_m2' in _src_pc
+                                     else round(float(_src_pc.get('面積_m2', 0) or 0), 2))
             _zone_by_pc[_pid_pc] = _zof_pc.get((_bp_pc or {}).get('原地號', ''), '')
         _true_map_pc = ns["_corner_block_true_G"](
             candidates=_candidates, a_by_pid=_a_by_pc, zone_by_pid=_zone_by_pc,

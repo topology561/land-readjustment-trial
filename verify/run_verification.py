@@ -341,6 +341,87 @@ def self_check_diff_engine():
     return ok
 
 
+def wf_f0_mina(ns, snapshot, cb_by):
+    """MinA per-block（單一真相源＝`wf_f0._mina_by_block`·避第三份抄寫#20）。"""
+    import wf_f0
+    return wf_f0._mina_by_block(ns, snapshot, cb_by)
+
+
+def _m5_corner_ctx(diag, sel, forced_ends):
+    """🆕 M-5：自 PK 診斷組 `corner_ctx`（僅 **forced 端**·E-1.7 已由 v12 分流濾過）。
+
+    `診斷` 已含 街廓/端/候選地號/真G(㎡)/門檻(㎡)/總分/原位次(投影序) ⇒ 全 data-driven、
+    無塊名/常數。回 `{(blk, side_en): {...}}`（side_en＝'left'/'right'·對映診斷之 '左'/'右'）。"""
+    _S = {"left": "左", "right": "右"}
+
+    def _num(v, d=None):
+        try:
+            return float(str(v).strip())
+        except (TypeError, ValueError):
+            return d
+    out = {}
+    for blk, side_en in forced_ends:
+        _cn = _S[side_en]
+        _rows = [r for r in diag if r.get("街廓") == blk and r.get("端") == _cn]
+        if not _rows:
+            continue
+        out[(blk, side_en)] = {
+            "threshold": max(float(r.get("門檻(㎡)", 0) or 0) for r in _rows),
+            "cands": [r["候選地號"] for r in _rows],
+            "true_g": {r["候選地號"]: _num(r.get("真G(㎡)")) for r in _rows},
+            "score": {r["候選地號"]: (_num(r.get("總分"), 0.0) or 0.0) for r in _rows},
+            "rank": {r["候選地號"]: (_num(r.get("原位次(投影序)"), 1e9) or 1e9) for r in _rows},
+        }
+    return out
+
+
+def _m5_true_g_fn(ns, fake_st, cb_by, cad, snapshot, params, build_parcels, setback):
+    """回 `(blk, side, pid) → callable(a)→G`：假設第 1 宗真 G 之**重跑迭代**評估器
+    （W-2 禁比率折算）。內呼 `_corner_first_lot_G`（Q-M4 同 solve 路徑·#20）。"""
+    import numpy as _np_m5
+    from shapely.geometry import Polygon as _P_m5
+    from stepg_pipeline import _compute_v3_finance
+    _fin = _compute_v3_finance(ns, snapshot, list(cb_by.values()), cad)
+    _SB = snapshot["blocks"]
+    _sl = cad.get("side_lines_by_side", {}) or {}
+    _ad = cad.get("alloc_dir_by_block", {}) or {}
+    _fl = cad.get("front_lines", {}) or {}
+    _bp = {b.get("暫編地號"): b for b in build_parcels}
+    _zof = snapshot["財務接線_v3"]["原地號_區段"]
+    _tab6 = float(fake_st.session_state.get("f3_total_burden_rate_from_finance") or 0.0)
+
+    def _mk(blk, side, pid):
+        _f = _fl.get(blk) or {}
+        _p1 = _np_m5.array(_f["p1"], float); _p2 = _np_m5.array(_f["p2"], float)
+        _sL = float(_np_m5.linalg.norm(_p2 - _p1)); _dh = (_p2 - _p1) / (_sL or 1.0)
+        _v = cb_by[blk]["vertices"]
+        _poly = _P_m5(_v)
+        if not _poly.is_valid:
+            _poly = _poly.buffer(0)
+        _ax = ns["alloc_normal_axis"](_ad.get(blk)) if _ad.get(blk) else None
+        _sR = (ns["_oblique_s_max"](_v, _dh, _p1, _ax) or _sL) if _ax is not None else _sL
+        _cn = "左" if side == "left" else "右"
+        _mid = ((_sl.get(blk) or {}).get(side) or {}).get("mid")
+        _sbr = _fin["sb_rows_by_label"].get(blk, {})
+        _zone = _zof.get((_bp.get(pid) or {}).get("原地號", ""), "")
+        _pre = float(_fin["pre_price_by_zone"].get(_zone, 0.0) or 0.0)
+        _post = float(_fin["post_price_by_block"].get(blk, 0.0) or 0.0)
+        _A = (_post / _pre) if (_pre > 0 and _post > 0) else 1.0
+
+        def _g_of_a(a):
+            return ns["_corner_first_lot_G"](
+                a_m2=float(a), A_ratio=_A, B=_fin["B"], C=_fin["C"],
+                l_front=float(_sbr.get("正街尺度", 0) or 0),
+                l_side=float(_sbr.get("左側尺度" if side == "left" else "右側尺度", 0) or 0),
+                F=float(_SB[blk]["左側" if side == "left" else "右側"]["路寬_m"] or 0),
+                block_poly=_poly, d_hat=_dh, corner_pt=_p1, s_max_left=_sL, s_max_right=_sR,
+                side=_cn, allocation_dir=_ax, side_mid=_mid,
+                avg_depth=float(_SB[blk]["街廓分配深度_m"]), tab6_burden=_tab6,
+                _label=f"M5·{blk}{_cn}·{pid}")
+        return _g_of_a
+    return _mk
+
+
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
     snapshot = json.load(open(SNAPSHOT, encoding="utf-8"))
@@ -425,10 +506,60 @@ def main():
                     f"= {_d_pub + _d_bld:.2f} ＝ ghost 真面積 {_ghost_true:.2f}）", _ok_1573,
                     [] if _ok_1573 else [f"公設Δ={_d_pub:.4f} 可建築Δ={_d_bld:.4f} ghost={_ghost_true:.4f}"]))
 
+    _m5_by_tag = {}          # 🆕 P-D/E：M-5 規劃（報告/閘消費）
+    _bp_by_tag = {}          # 🆕 P-D/E：**per-tag** parcels（M-5 物化後；禁共用 build_parcels 跨情境污染）
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         diag, sel, off, winners_state, forced_map = run_corner_pk(
             ns, fake_st, list(cb_by.values()), cad,
             param_by_tag[tag], temp_parcels, build_parcels, setback, snapshot=snapshot)
+        # ── 🆕 P-D/P-E（裁定M·M-5）：同歸戶合併規劃（帶優先序）·兩趟定點 ──────────────
+        #   趟0（上）→ trunk A₀ → build_plan(①②③) → 物化 parcels₁ → 趟1（PK 重跑）。
+        #   **T-2**：物化後真 G 自然過閘、F.0 級0 自然重排（源宗已移出/扣減）——
+        #   非「自 F.0 拿回」，而是**整體規劃帶優先序重跑**。
+        _m5_plan = None
+        try:
+            import m_rescue as _m5
+            _fo_ends = [(b, s) for b, fo in (forced_map or {}).items()
+                        for s in ("left", "right") if fo.get(f"{s}_forced_offset")]
+            if _fo_ends:
+                _sg_a0 = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
+                                    param_by_tag[tag], build_parcels,
+                                    winners_state, forced_map, setback)
+                _mina_m5 = wf_f0_mina(ns, snapshot, cb_by)
+                _omap_m5 = fake_st.session_state.get("t8_ownership_map", {}) or {}
+                _bp_by_m5 = {b0.get("暫編地號"): b0 for b0 in build_parcels}
+                _gid_of = {p: _omap_m5.get((_bp_by_m5.get(p) or {}).get("原地號", ""), "")
+                           for p in _bp_by_m5}
+                _zof_m5 = snapshot["財務接線_v3"]["原地號_區段"]
+                _zone_of = {p: _zof_m5.get((_bp_by_m5.get(p) or {}).get("原地號", ""), "")
+                            for p in _bp_by_m5}
+                _pre_price_m5 = {z: float(v["單價_元每m2"]) for z, v in
+                                 snapshot["財務接線_v3"]["重劃前區段_面積單價"].items()}
+                _ctx_m5 = _m5_corner_ctx(diag, sel, _fo_ends)
+                if _ctx_m5:
+                    _m5_plan = _m5.build_plan(
+                        tag=tag, gA_rows=_sg_a0["g_rows"], mina_by_blk=_mina_m5,
+                        gid_of=_gid_of, corner_ctx=_ctx_m5, zone_of=_zone_of,
+                        pre_price=_pre_price_m5,
+                        true_g_fn=_m5_true_g_fn(ns, fake_st, cb_by, cad, snapshot,
+                                                param_by_tag[tag], build_parcels, setback),
+                        diag_rows=diag)
+                    for _ln in _m5_plan["log"]:
+                        print("   " + _ln)
+                    if _m5_plan["awards"]:
+                        _bp_tag, _m5_removed = _m5.apply_plan(build_parcels, _m5_plan)
+                        _bp_by_tag[tag] = _bp_tag
+                        print(f"   [M-5·{tag}] 物化：{len(_m5_plan['awards'])} 端街角補足·"
+                              f"源宗移除 {len(_m5_removed)}｜趟1 PK 重跑")
+                        diag, sel, off, winners_state, forced_map = run_corner_pk(
+                            ns, fake_st, list(cb_by.values()), cad,
+                            param_by_tag[tag], temp_parcels, _bp_by_tag[tag], setback,
+                            snapshot=snapshot)
+        except Exception as _e_m5:
+            import traceback as _tb_m5
+            raise RuntimeError(f"🔴 M-5（{tag}）規劃/物化失敗（禁靜默略過）：{_e_m5}\n"
+                               f"{_tb_m5.format_exc()[-600:]}")
+        _m5_by_tag[tag] = _m5_plan
         _dump_csv(diag, os.path.join(OUTDIR, f"got_診斷_退縮{tag}.csv"))
         _dump_csv(sel, os.path.join(OUTDIR, f"got_指配_退縮{tag}.csv"))
         _dump_csv(off, os.path.join(OUTDIR, f"got_抵費地_退縮{tag}.csv"))
@@ -482,7 +613,7 @@ def main():
         print(f"… Step G headless（{tag}；v3 真值財務＋結構不變量永久閘）")
         try:
             _sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
-                             param_by_tag[tag], build_parcels,
+                             param_by_tag[tag], _bp_by_tag.get(tag, build_parcels),
                              winners_state, forced_map, setback)
             g_tab, diag_tab, slot_tab = build_step_g_tables(_sg)
             _dump_csv(g_tab, os.path.join(OUTDIR, f"got_G值_退縮{tag}.csv"))
@@ -748,7 +879,7 @@ def main():
                 raise RuntimeError(f"stepg_ctx[{tag}] 缺（trunk A 未成功？）")
             _ctx[tag] = {
                 "ns": ns, "fake_st": fake_st, "cb_by": cb_by, "cad": cad,
-                "snap": snapshot, "omap": _omap, "build": build_parcels,
+                "snap": snapshot, "omap": _omap, "build": _bp_by_tag.get(tag, build_parcels),
                 "params": _c["params"], "winners": _c["win"], "forced": _c["forced"],
                 "setback": _c["sb"], "gA": _c["sg"]["g_rows"], "poolA": _c["poolA"],
                 "temp": temp_parcels,   # F.3 消費（全 temp_parcels，含公設，供 poly/分攤登記）
