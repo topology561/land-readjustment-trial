@@ -5,7 +5,7 @@
 
 Q1 裁「改真 G」，惟 reviewer 實測 13 候選 `G真 − G估` **全負** ⇒ 閘一律變嚴，
 而現行 winner 餘裕最薄者僅 **+0.84㎡**（R1右 628(5)）⇒ **Q1 可能反而新增 forced 端**，
-與本波「釋回 918.50㎡」之目的相反。故裁 **(b) 先量後裁**：本探針先量，再定 plan v2 骨架。
+與本波「forced 街角解鎖 → 面積回歸中央調配池 918.50㎡」之目的相反。故裁 **(b) 先量後裁**：本探針先量，再定 plan v2 骨架。
 
 ## 口徑（**Q-M2 裁樂觀假設第 1 宗**·技術補注·KL 可否決）
 
@@ -25,7 +25,7 @@ Q1 裁「改真 G」，惟 reviewer 實測 13 候選 `G真 − G估` **全負** 
 （tie → `原位次(投影序)` 小者·同 skill 正典）。
 
 ## 輸出（KL 指定四項）
-1. 各端 winner 前後對照　2. forced 端前後對照　3. **918.50㎡ 釋回量預估**
+1. 各端 winner 前後對照　2. forced 端前後對照　3. **918.50㎡ 回歸中央調配池之量預估**
 4. **R1右刀口敏感度**（含 `Δa ∈ [−2.53, +0.72]` 擾動）　＋ 0m 同跑對照
 
 ## 重跑
@@ -233,7 +233,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
              f"後 {[(b, e) for b, e, _ in forced_after]}")
     L.append(f"  forced 面積：前 Σ={sum(t for _, _, t in forced_before):.2f}㎡ → "
              f"後 Σ={sum(t for _, _, t in forced_after):.2f}㎡"
-             f"｜**釋回={release:.2f}㎡**"
+             f"｜**回歸中央調配池={release:.2f}㎡**"
              f"｜新增={sum(t for b, e, t in forced_after if (b, e) not in [(x, y) for x, y, _ in forced_before]):.2f}㎡")
 
     # ── 刀口敏感度（Δa 擾動·對所有「新達標且餘裕最薄」者）──────────────────────
@@ -285,7 +285,7 @@ def main():
     L.append("【T1 結論】")
     for tag, (flip, fb, fa, rel) in summary.items():
         L.append(f"  {tag}：winner 翻盤 {len(flip)} 端"
-                 f"｜forced 前 {len(fb)} 端 → 後 {len(fa)} 端｜釋回 {rel:.2f}㎡")
+                 f"｜forced 前 {len(fb)} 端 → 後 {len(fa)} 端｜回歸中央調配池 {rel:.2f}㎡")
         for blk, end, ow, nw, thr, _ in flip:
             L.append(f"      🚩 {blk}{end}：{ow or '強制抵費地'} → "
                      f"{nw or '強制抵費地'}（門檻 {thr:.2f}）")

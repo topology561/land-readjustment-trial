@@ -249,16 +249,32 @@ def main():
         if os.path.exists(p):
             os.remove(p)
 
+    # 🔴 CC 實測（2026-07-25·P-G 首跑）：還原曾拋 `[Errno 22] Invalid argument` 而**仍 exit 0**
+    #   ⇒ 引擎檔留在被注入狀態、退出碼卻報成功＝**最危險之組合**（下一次跑會吃到變異引擎）。
+    #   修：①重試 ②寫後**逐 byte 複驗** ③失敗即設旗、`main()` 回非 0。
+    _rs = {"ok": True}
+
     def _restore():
-        try:
-            with open(TARGET, "rb") as fh:
-                if fh.read() == original:
-                    return
-            with open(TARGET, "wb") as fh:
-                fh.write(original)
-            print("↩️  已還原 verify/wf_f4.py（探針零殘留）")
-        except Exception as e:                                  # pragma: no cover
-            print(f"🔴 還原失敗：{e} → 請立即 `git checkout -- verify/wf_f4.py`")
+        import time as _t
+        for _try in range(3):
+            try:
+                with open(TARGET, "rb") as fh:
+                    if fh.read() == original:
+                        _rs["ok"] = True
+                        return
+                with open(TARGET, "wb") as fh:
+                    fh.write(original)
+                with open(TARGET, "rb") as fh:                  # 寫後複驗（禁「寫了就算」）
+                    if fh.read() != original:
+                        raise RuntimeError("寫回後 bytes 不等於 original")
+                print("↩️  已還原 verify/wf_f4.py（探針零殘留·已逐 byte 複驗）")
+                _rs["ok"] = True
+                return
+            except Exception as e:                              # pragma: no cover
+                print(f"⚠️ 還原第 {_try + 1}/3 次失敗：{e}")
+                _t.sleep(0.5)
+        _rs["ok"] = False
+        print("🔴 還原失敗（3 次）→ 請立即 `git checkout -- verify/wf_f4.py`；本探針將以非 0 退出")
     atexit.register(_restore)
 
     rc = 1
@@ -293,6 +309,8 @@ def main():
     else:
         print("🔴 無 dump 輸出——注入未觸發或 _e2_optimal 未被呼叫（0m/3.5m 皆提前 return？）")
         return 1
+    if not _rs["ok"]:                    # 還原失敗 ⇒ **禁 exit 0**（見 `_restore` 上方案由）
+        return 3
     return rc
 
 
