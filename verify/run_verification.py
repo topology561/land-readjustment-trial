@@ -579,47 +579,68 @@ def main():
                     _viol_fx.append(
                         f"{_aw['blk']}{_aw['side']}·winner={_aw['winner']}·門檻={_aw['threshold']:.2f}"
                         f"·趟0假設真G(補足後)={_aw['g_at']:.2f}·趟1真G={_g1}")
-            if _viol_fx:
-                raise RuntimeError(
-                    "🔴 M-5 定點閘破：award 端於趟1 仍 forced（補足未生效／a 未被趟1 讀到）："
-                    + "；".join(_viol_fx))
+            # W-2（reviewer）：**禁裸 raise**——`main()` 頂層迴圈無 enclosing try、`run_all` 亦未接
+            #   ⇒ 整個 harness 當場死、其餘 157 閘一列不報；且 stderr 未 reconfigure（cp950）⇒ 訊息亂碼。
+            #   改 `results.append` 與同段 (c) 一致：紅但可讀、其餘閘照跑。
             results.append((f"M-5 定點閘{tag}（{len(_m5_plan['awards'])} award 端趟1 皆解除 forced）",
-                            True, []))
+                            not _viol_fx,
+                            ["🔴 award 端於趟1 仍 forced（補足未生效／a 未被趟1 讀到）：" + x
+                             for x in _viol_fx]))
             # (b) 無新生閘：趟1 forced 端 ⊆ 趟0（現行僅一輪救援·新生端不會被救）
             _new_fo = sorted(_fo1 - _fo0)
-            if _new_fo:
-                raise RuntimeError(
-                    f"🔴 M-5 無新生閘破（{tag}）：趟1 新生 forced 端 {_new_fo} ⊄ 趟0 {sorted(_fo0)}"
-                    "——現行僅一輪救援·新生端不會被救，須查因（勿靜默放行）")
-            results.append((f"M-5 無新生閘{tag}（趟1 forced ⊆ 趟0）", True, []))
+            results.append((f"M-5 無新生閘{tag}（趟1 forced ⊆ 趟0）", not _new_fo,
+                            [] if not _new_fo else
+                            [f"🔴 趟1 新生 forced 端 {_new_fo} ⊄ 趟0 {sorted(_fo0)}"
+                             "——現行僅一輪救援·新生端不會被救，須查因（勿靜默放行）"]))
             # (c) 結算閘：Σ源出資(經 a′ 換算) == Σ注入 target 之 a′（1e-6）＋歸戶 a 總量守恆
+            # 🆕 B-2（reviewer 2026-07-25）：**跨「規劃↔物化」邊界**之真檢。
+            #   舊版兩邊跑同一 list、加同一 `a_prime` 欄 ⇒ **純套套邏輯**（diff 恆 0·與 `a_src` 無關·
+            #   apply_plan 換 no-op 亦照 PASS）。改為以 **parcels₁ 實態**對帳：
+            #     (i) target 之 `面積_m2` 增量 == Σa′（規劃量真的注入了）
+            #     (ii) 源宗殘量 == 原 a − registry.consumed（源口徑·全額者須自 parcels₁ 消失）
+            #     (iii) a′ 換算自洽：Σ_a_prime(a_src, z_src→z_tgt) == Σa′（獨立讀 `a_src`）
             _reg = _m5_plan["registry"]
-            _sum_src_p = 0.0
+            _p1_by = {tp.get("暫編地號"): tp for tp in _bp_by_tag[tag]}
+            _A0 = {r["暫編地號"]: r for r in _sg_a0["g_rows"] if r.get("推進側別") in ("left", "right")}
+
+            def _a_of(tp):
+                return round(float(tp.get("分攤登記面積_m2", 0) or 0)
+                             + float(tp.get("面積_m2", 0) or 0), 2)
+            _bal_viol = []
             _sum_inj = 0.0
             for _aw in _m5_plan["awards"]:
+                _exp_add = round(sum(float(a["a_prime"]) for a in _aw["allocs"]), 2)
+                _sum_inj += _exp_add
+                _t1 = _p1_by.get(_aw["winner"])
+                if _t1 is None:
+                    _bal_viol.append(f"target {_aw['winner']} 不在 parcels₁")
+                    continue
+                _got_add = round(_a_of(_t1) - float(_aw["a_base"]), 2)
+                if abs(_got_add - _exp_add) > 0.02:      # (i) 規劃 → 物化
+                    _bal_viol.append(
+                        f"target {_aw['winner']} 實增 {_got_add:.2f} ≠ 規劃 Σa′ {_exp_add:.2f}")
+            for _spid in _reg.summary()["consumed"]:      # (ii) 源宗殘量對帳
+                _exp_rem = round(float(_A0.get(_spid, {}).get("a 面積(㎡)", 0) or 0)
+                                 - _reg.consumed(_spid), 2)
+                _tp1 = _p1_by.get(_spid)
+                if _exp_rem <= 1e-6:
+                    if _tp1 is not None:
+                        _bal_viol.append(f"源 {_spid} 全額消費卻仍在 parcels₁")
+                elif _tp1 is None:
+                    _bal_viol.append(f"源 {_spid} 部分消費（餘 {_exp_rem:.2f}）卻自 parcels₁ 消失")
+                elif abs(_a_of(_tp1) - _exp_rem) > 0.02:
+                    _bal_viol.append(f"源 {_spid} 殘量 {_a_of(_tp1):.2f} ≠ 原a−已耗 {_exp_rem:.2f}")
+            _sum_conv = 0.0                               # (iii) a′ 換算自洽（獨立讀 a_src）
+            for _aw in _m5_plan["awards"]:
                 for _al in _aw["allocs"]:
-                    _sum_src_p += float(_al["a_prime"])
-                _sum_inj += sum(float(_al["a_prime"]) for _al in _aw["allocs"])
-            _bal_ok = abs(_sum_src_p - _sum_inj) <= 1e-6
-            # 歸戶 a 總量守恆：Σa(趟0 該 gid) == Σa(趟1 該 gid)（源出資→target 吸收·量不增減）
-            _gid_a0, _gid_a1 = {}, {}
-            _A0 = {r["暫編地號"]: r for r in _sg_a0["g_rows"] if r.get("推進側別") in ("left", "right")}
-            for _p0, _r0 in _A0.items():
-                _g = _gid_of.get(_p0, "")
-                _gid_a0[_g] = round(_gid_a0.get(_g, 0.0) + float(_r0.get("a 面積(㎡)", 0) or 0), 2)
-            for _tp1 in _bp_by_tag[tag]:
-                _g = _gid_of.get(_tp1.get("暫編地號"), "")
-                _a1 = round(float(_tp1.get("分攤登記面積_m2", 0) or 0)
-                            + float(_tp1.get("面積_m2", 0) or 0), 2)
-                _gid_a1[_g] = round(_gid_a1.get(_g, 0.0) + _a1, 2)
-            _gid_viol = [f"{g}: {_gid_a0[g]:.2f}→{_gid_a1.get(g, 0.0):.2f}"
-                         for g in {a["gid"] for a in _m5_plan["awards"]}
-                         if abs(_gid_a0.get(g, 0.0) - _gid_a1.get(g, 0.0)) > 0.02]
-            _ok_bal = _bal_ok and not _gid_viol
+                    _zs = _zone_of.get(_al["src"], "")
+                    _sum_conv += _m5._a_prime(float(_al["a_src"]), _zs, _aw["z_tgt"], _pre_price_m5)
+            if abs(_sum_conv - _sum_inj) > 0.02:
+                _bal_viol.append(f"a′ 換算不自洽：Σ換算 {_sum_conv:.4f} ≠ Σa′ {_sum_inj:.4f}")
+            _ok_bal = not _bal_viol
             results.append(
-                (f"M-5 結算閘{tag}（Σ出資a′==Σ注入 {_sum_src_p:.2f}；歸戶 a 總量守恆）", _ok_bal,
-                 [] if _ok_bal else ([f"Σ出資 {_sum_src_p:.6f} ≠ Σ注入 {_sum_inj:.6f}"]
-                                     if not _bal_ok else []) + _gid_viol))
+                (f"M-5 結算閘{tag}（物化對帳：target 增量／源殘量／a′ 換算·Σa′={_sum_inj:.2f}）",
+                 _ok_bal, _bal_viol))
             # (d) 稽核帳（公務員稽核／P-H 歸因表引用）
             _led = []
             for _aw in _m5_plan["awards"]:
@@ -944,7 +965,10 @@ def main():
     #   ＝gate#2「基礎引擎零漂移」之機器證明。此處跑 trunk B（F.0 終態 parcels）。
     print("… W-F F.0（級0/0' 合併＋梯3 釋池；trunk B 終態）")
     _f0_ok = False          # W5：F.1 之存在性守衛（F.0 失敗 → F.1 跳過記 FAIL，不連坐 NameError）
-    _f0 = _ctx = None
+    # 🆕 B-1（reviewer 2026-07-25）：**全部**世代變數預初始化——舊只初始 `_f0/_ctx`，
+    #   `_f1~_f4` 僅於各自 try 內賦值 ⇒ 上游 raise 時 F-5 之守衛**自己先 UnboundLocalError**
+    #   （＝把舊 TypeError 換成新 UnboundLocalError·可讀性零改善·我原報告誤稱已修）。
+    _f0 = _f1 = _f2 = _f3 = _f4 = _ctx = None
     try:
         import wf_f0
         _omap = fake_st.session_state["t8_ownership_map"]
@@ -1401,7 +1425,8 @@ def main():
     try:
         # 🆕 F-5（claude.ai 2026-07-25）：上游世代缺件 ⇒ **有意義紅字**（舊為 `_f0["0m"]` 之
         #   裸 TypeError「'NoneType' object is not subscriptable」·讀者無從得知是哪一級聯掐掉）。
-        _up_missing = [_n for _n, _o in (("F.0", _f0), ("F.2", _f2), ("F.3", _f3), ("F.4", _f4))
+        _up_missing = [_n for _n, _o in (("trunkA(_ctx)", _ctx), ("F.0", _f0), ("F.1", _f1),
+                                         ("F.2", _f2), ("F.3", _f3), ("F.4", _f4))
                        if _o is None or "0m" not in (_o or {})]
         if _up_missing:
             raise RuntimeError(

@@ -208,11 +208,21 @@ def compute(ctx_by_tag):
         #   G007 一則都沒有）。**禁以「本案不會發生」略過**（泛用四約束）。
         _uncov = sorted(set(GSA_EXPECT[tag]) - set(gsa))
         if _uncov:
-            _msg = (f"🔴 GSA 覆蓋率破（{tag}）：錨鍵 {_uncov} **本情境已無合併決策**"
-                    f"（該歸戶於各街廓之宗數 <2——回復單獨？被併宗遭上游消費移出？）"
-                    f"⇒ 其錨值未被任何一次比對評估。**沒人檢查≠相符**：請確認係"
-                    f"合法連動（如 M-5 提前合併）並於 P-H 重錨（刪鍵或改值），"
-                    f"或係上游漏配之 bug。已評估鍵＝{sorted(gsa)}")
+            # W-3（reviewer）：**禁斷言未查證之成因**。舊訊息寫死「該歸戶宗數<2」，但 gid 不進 `gsa`
+            #   有**兩條**路徑：`_decide:99` `len(lots)<2 → continue`／`:108` `全達標·無須併`（target=None
+            #   → 本迴圈 `if not d["target"]: continue`）。實例 G007@3.5m 走的是**後者**（R3 有 2 宗、
+            #   級別＝全達標·無須併），舊訊息對之為**錯**。改為**印實際逐塊決策**、不猜原因。
+            _detail = []
+            for _g in _uncov:
+                _ds = [f"{d['blk']}:{d['kind']}"
+                       f"{'(target=' + str(d['target']) + ')' if d.get('target') else '(無target)'}"
+                       for d in decisions if d["gid"] == _g]
+                _detail.append(f"{_g}→[{'；'.join(_ds) if _ds else '該情境無任何決策列'}]")
+            _msg = (f"🔴 GSA 覆蓋率破（{tag}）：錨鍵 {_uncov} **未被任何一次比對評估**"
+                    f"（其決策現況：{'｜'.join(_detail)}）⇒ **沒人檢查≠相符**。"
+                    f"成因請依上列決策自行研判（如：被併宗遭上游消費移出→標的宗回復單獨→"
+                    f"改判『全達標·無須併』或該塊宗數<2）；確認係合法連動（如 M-5 提前合併）"
+                    f"則於 P-H 重錨（刪鍵或改值），否則係上游漏配之 bug。已評估鍵＝{sorted(gsa)}")
             if os.environ.get("WV_BAKE"):
                 print(f"⚠️ [WV_BAKE] {_msg}")
             else:
