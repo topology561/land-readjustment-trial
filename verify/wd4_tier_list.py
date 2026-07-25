@@ -185,7 +185,7 @@ def compute(fixture=False):
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
         _pk = run_corner_pk(ns, fake_st, list(cb_by.values()), cad,
-                            params, temp, build, setback)
+                            params, temp, build, setback, snapshot=snapshot)
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                         params, build, _pk[3], _pk[4], setback)
         g_rows = [r for r in sg["g_rows"] if r.get("推進側別") != "抵費地"]

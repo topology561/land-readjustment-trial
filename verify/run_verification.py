@@ -428,7 +428,7 @@ def main():
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         diag, sel, off, winners_state, forced_map = run_corner_pk(
             ns, fake_st, list(cb_by.values()), cad,
-            param_by_tag[tag], temp_parcels, build_parcels, setback)
+            param_by_tag[tag], temp_parcels, build_parcels, setback, snapshot=snapshot)
         _dump_csv(diag, os.path.join(OUTDIR, f"got_診斷_退縮{tag}.csv"))
         _dump_csv(sel, os.path.join(OUTDIR, f"got_指配_退縮{tag}.csv"))
         _dump_csv(off, os.path.join(OUTDIR, f"got_抵費地_退縮{tag}.csv"))

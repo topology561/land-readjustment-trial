@@ -79,7 +79,7 @@ def _seed_ctx(ns, fake_st, cb_by, cad, snapshot, temp, build, tag, setback):
     """組真 app session_state → harvested `_build_wf_ctx`（複現 live 缺率鍵→證主動鋪底）。"""
     params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
     _d, _s, _o, winners, forced = run_corner_pk(
-        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback)
+        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                     params, build, winners, forced, setback)
     seed = dict(fake_st.session_state)

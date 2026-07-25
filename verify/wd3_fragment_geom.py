@@ -91,7 +91,7 @@ def compute():
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
         param_by_lbl = {r["街廓"]: r for r in params}
         _pk = run_corner_pk(ns, fake_st, list(cb_by.values()), cad,
-                            params, temp, build, setback)
+                            params, temp, build, setback, snapshot=snapshot)
         winners, forced = _pk[3], _pk[4]
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                         params, build, winners, forced, setback)

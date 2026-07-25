@@ -86,7 +86,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
     temp, build, _sw = build_build_parcels(
         ns, fake_st, v6, list(cb_by.values()), snapshot)
     diag, sel, off, winners, forced = run_corner_pk(
-        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback)
+        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
     # run_step_g 以取 _V3_FINANCE（B/C/price·單一真相源）＋ sb 尺度
     run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                params, build, winners, forced, setback)

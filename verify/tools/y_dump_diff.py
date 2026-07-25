@@ -57,7 +57,7 @@ def _run_harness(tag, setback, snap, ns, fake_st, cb_by, cad, temp, build):
     """跑 harness native step G · 產 g_rows（依 run_verification 之流程）。"""
     params = rv.build_param_table(ns, fake_st, cb_by, cad, snap, setback)
     _dv, _sv, _od, winners, forced = run_corner_pk(
-        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback)
+        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snap)
     # 補鋪 f3_total_burden_rate_from_finance（stepg L169-176 loud gate）
     _rate, _ = compute_total_burden_rate(ns, list(cb_by.values()), snap)
     fake_st.session_state["f3_total_burden_rate_from_finance"] = float(_rate)

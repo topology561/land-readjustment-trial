@@ -58,7 +58,7 @@ def main():
             v6 = f.read()
         temp, build, _ = build_build_parcels(ns, fake_st, v6, list(cb_by.values()), snapshot)
         diag, sel, off, winners, forced = run_corner_pk(
-            ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback)
+            ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
         # run_step_g 完成不 raise ⇒ J(k*)≥J(naive) 已 by construction（停機②）
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                         params, build, winners, forced, setback)

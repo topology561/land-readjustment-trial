@@ -261,10 +261,31 @@ def build_build_parcels(ns, fake_st, v6_bytes, cb, snapshot):
 
 # ═══════════════ 3. PK orchestration（app 13799-14060 + 14107-14119 複刻） ═══════════════
 
-def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback):
+def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                  *, snapshot):
     """一情境：對每可建築街廓跑 select_corner_lots_both_sides_v12，
-    回傳 (診斷rows, 指配rows, 抵費地rows)。欄名/取值/四捨五入逐行同 app。"""
+    回傳 (診斷rows, 指配rows, 抵費地rows)。欄名/取值/四捨五入逐行同 app。
+
+    🆕 P-C（裁定M·Q1）：`snapshot`（keyword-only·無預設⇒漏傳即 TypeError·非靜默）——供
+    「假設第 1 宗真 G」驅動資格閘（`require_g_map=True`）。真 G 走 `_corner_block_true_G`→
+    `_corner_first_lot_G`→`_solve_G_one`（Q-M4 同 solve 路徑）。"""
     ss = fake_st.session_state
+    # 🆕 P-C：財務單一真相源（B/C/尺度/地價）＋幾何底料·供逐候選逐側真 G。
+    from stepg_pipeline import _compute_v3_finance
+    import numpy as _np_pc
+    from shapely.geometry import Polygon as _Poly_pc
+    _fin3 = _compute_v3_finance(ns, snapshot, cb, cad)
+    _B_pc, _C_pc = _fin3["B"], _fin3["C"]
+    _sb_rows_pc = _fin3["sb_rows_by_label"]
+    _post_price_pc = _fin3["post_price_by_block"]
+    _pre_price_pc = _fin3["pre_price_by_zone"]
+    _SB_pc = snapshot["blocks"]
+    _zof_pc = snapshot["財務接線_v3"]["原地號_區段"]
+    _tab6_pc = float(fake_st.session_state.get("f3_total_burden_rate_from_finance") or 0.0)
+    _side_lines_pc = cad.get("side_lines_by_side", {}) or {}
+    _alloc_by_blk_pc = cad.get("alloc_dir_by_block", {}) or {}
+    _tp_by_pid_pc = {t.get('暫編地號'): t for t in (temp_parcels or [])}
+    _bp_by_pid_pc = {b.get('暫編地號'): b for b in (build_parcels or [])}
     ss["f3L_setback_default"] = setback              # v12 內部讀（W-B 0 陷阱已修，0.0 不被竄改）
     ss["f3_cad_front_lengths"] = cad.get("front_lengths", {}) or {}
     ss["f3_cad_side_lengths"] = cad.get("side_lengths", {}) or {}
@@ -368,7 +389,51 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                 return 0.0
         _cutoff_p1_for_pk = _safe_cutoff(_row.get('【左】截角(㎡)'))
         _cutoff_p2_for_pk = _safe_cutoff(_row.get('【右】截角(㎡)'))
-        _g_map = {c['暫編地號']: c['G_estimated'] for c in _candidates}
+        # 🆕 P-C（裁定M·Q1）：逐候選逐側「假設第 1 宗真 G」→ 存 cand._G_true_p1/p2（供 v12 側特定資格閘）
+        _p1_pc = _np_pc.array(_fl_p1_lstep, float); _p2_pc = _np_pc.array(_fl_p2_lstep, float)
+        _sblkL_pc = float(_np_pc.linalg.norm(_p2_pc - _p1_pc))
+        _dh_pc = (_p2_pc - _p1_pc) / (_sblkL_pc or 1.0)
+        _verts_pc = b['vertices']
+        _bpoly_pc = _Poly_pc(_verts_pc)
+        if not _bpoly_pc.is_valid:
+            _bpoly_pc = _bpoly_pc.buffer(0)
+        _alloc_cad_pc = _alloc_by_blk_pc.get(_lbl)
+        _alloc_axis_pc = ns["alloc_normal_axis"](_alloc_cad_pc) if _alloc_cad_pc else None
+        _sblkR_pc = (ns["_oblique_s_max"](_verts_pc, _dh_pc, _p1_pc, _alloc_axis_pc) or _sblkL_pc) \
+            if _alloc_axis_pc is not None else _sblkL_pc
+        _sbr_pc = _sb_rows_pc.get(_lbl, {})
+        _slb_pc = _side_lines_pc.get(_lbl, {}) or {}
+        _smL_pc = (_slb_pc.get("left") or {}).get("mid")
+        _smR_pc = (_slb_pc.get("right") or {}).get("mid")
+        _a_by_pc = {}; _zone_by_pc = {}
+        for _c_pc in _candidates:
+            _pid_pc = _c_pc['暫編地號']; _tp_pc = _tp_by_pid_pc.get(_pid_pc)
+            _bp_pc = _bp_by_pid_pc.get(_pid_pc)
+            if _tp_pc is not None:
+                _a_by_pc[_pid_pc] = (round(float(_tp_pc.get('分攤登記面積_m2', 0) or 0)
+                                           + float(_tp_pc.get('面積_m2', 0) or 0), 2)
+                                     if '分攤登記面積_m2' in _tp_pc
+                                     else round(float(_tp_pc.get('面積_m2', 0) or 0), 2))
+            _zone_by_pc[_pid_pc] = _zof_pc.get((_bp_pc or {}).get('原地號', ''), '')
+        _true_map_pc = ns["_corner_block_true_G"](
+            candidates=_candidates, a_by_pid=_a_by_pc, zone_by_pid=_zone_by_pc,
+            blk_poly=_bpoly_pc, corner_pt=_p1_pc, d_hat=_dh_pc,
+            s_max_left=_sblkL_pc, s_max_right=_sblkR_pc, alloc_dir=_alloc_axis_pc,
+            side_mid_left=_smL_pc, side_mid_right=_smR_pc,
+            l_front=float(_sbr_pc.get("正街尺度", 0) or 0),
+            l_side_left=float(_sbr_pc.get("左側尺度", 0) or 0),
+            l_side_right=float(_sbr_pc.get("右側尺度", 0) or 0),
+            F_left=float(_SB_pc[_lbl]["左側"]["路寬_m"] or 0),
+            F_right=float(_SB_pc[_lbl]["右側"]["路寬_m"] or 0),
+            B=_B_pc, C=_C_pc, post_price_blk=float(_post_price_pc.get(_lbl, 0.0) or 0.0),
+            pre_price_by_zone=_pre_price_pc, avg_depth=float(_SB_pc[_lbl]["街廓分配深度_m"]),
+            tab6_burden=_tab6_pc, has_left=(_smL_pc is not None),
+            has_right=(_smR_pc is not None), _blk=_lbl)
+        for _c_pc in _candidates:
+            _gp_pc = _true_map_pc.get(_c_pc['暫編地號'], {})
+            _c_pc['_G_true_p1'] = _gp_pc.get('p1')
+            _c_pc['_G_true_p2'] = _gp_pc.get('p2')
+        _g_map = {c['暫編地號']: c['G_estimated'] for c in _candidates}   # estG（診斷 G估欄·非達標）
         _v13 = v12(
             candidates=_candidates,
             front_line_p1=_fl_p1_lstep,
@@ -381,6 +446,7 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
             min_corner_area_p1=_min_p1,
             min_corner_area_p2=_min_p2,
             g_values_map=_g_map,
+            require_g_map=True,   # 🆕 P-C：真 G 驅動資格閘（側特定·來自 _G_true_p1/p2）
         )
         _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
         # ── W-D.1.2 診斷 rows（app 13904-13949 原樣） ──
@@ -399,6 +465,9 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                                                           _dc.get('physical_overlap_area', 0)) or 0), 2),
                         '範圍面積(㎡)': round(float(_dc.get('_corner_range_area', 0) or 0), 2),
                         'G估(㎡)': round(float(_dc.get('G_for_threshold', 0) or 0), 2),
+                        # 🆕 P-C（裁定M·Q1）：達標決策所用之側特定真 G（G估欄保 estG·此為真 G）
+                        '真G(㎡)': (round(float(_dc.get('_G_true', 0) or 0), 2)
+                                    if _dc.get('_G_true') is not None else ''),
                         '門檻(㎡)': round(float(_dc.get('min_area_to_apply', 0) or 0), 2),
                         '範圍=門檻?': ('✅' if abs(float(_dc.get('_corner_range_area', 0) or 0)
                                                   - float(_dc.get('min_area_to_apply', 0) or 0)) < 0.5

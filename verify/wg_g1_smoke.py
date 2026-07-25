@@ -54,7 +54,7 @@ def main():
         v6 = f.read()
     temp, build, _sw = build_build_parcels(ns, fake_st, v6, list(cb_by.values()), snapshot)
     _diag, _sel, _off, winners_state, forced_map = run_corner_pk(
-        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback)
+        ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                     params, build, winners_state, forced_map, setback)
 
