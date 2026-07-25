@@ -1,0 +1,20 @@
+=== P-0c 證據② provenance：committed xlsx == modified xlsx（F.0 六格逐格）===
+烤源＝committed xlsx（blob 80f75ee·worktree HEAD 7857059）
+
+--- committed xlsx（worktree WV_BAKE·lr_rebake_bake.log）---
+⚠️ [WV_BAKE] 六格錨異：G007 G(Σa)=359.43 ≠ 錨 362.08（0m）
+⚠️ [WV_BAKE] 六格錨異：G010 G(Σa)=293.72 ≠ 錨 294.81（0m）
+⚠️ [WV_BAKE] 六格錨異：G014 G(Σa)=127.05 ≠ 錨 127.06（0m）
+⚠️ [WV_BAKE] 六格錨異：G007 G(Σa)=369.41 ≠ 錨 369.05（3.5m）
+⚠️ [WV_BAKE] 六格錨異：G010 G(Σa)=298.61 ≠ 錨 298.63（3.5m）
+⚠️ [WV_BAKE] 六格錨異：G014 G(Σa)=129.20 ≠ 錨 129.21（3.5m）
+
+--- modified xlsx（主樹 BEFORE·M_before_runall.log 之 F.0 raise）---
+        [F.0] 🔴 六格錨破：G007 G(Σa)=359.43 ≠ 錨 362.08（0m）
+  （0m G007 二源皆 359.43 ⇒ committed==modified·xlsx 不影響 F.0）
+
+--- 逐格對照（committed / 新錨）---
+  0m : G007 359.43 / G010 293.72 / G014 127.05（G006 365.84 G009 153.19 G017 433.68 不動）
+  3.5m: G007 369.41 / G010 298.61 / G014 129.20（同上三格不動）
+
+⇒ KL 2026-07-21「working xlsx 汙染係誤判」再坐實；六格漂移純由碼（W脫鉤+S0d）。

@@ -40,8 +40,14 @@ F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形
 F2DIR = os.path.join(HERE, "baselines", "wf", "f2")  # 🆕 W-F F.2 跨街廓調配 baseline（trunk C）
 F3DIR = os.path.join(HERE, "baselines", "wf", "f3")  # 🆕 W-F F.3 公設地調配 baseline（trunk D）
 F4DIR = os.path.join(HERE, "baselines", "wf", "f4")  # 🆕 W-F F.4 收斂波 baseline（trunk E；7-4/7-5/整形/總決算）
-# k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價；本案恰不變，硬斷言看守）
-K_STAR_EXPECT = {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6}
+# k* 六塊經驗錨（**非機制不變量**：k* 經 widths→S→A/B/C 機制上會吃價）。
+#   🆕 P-0c（裁定M·Q-S3·claude.ai 2026-07-25）：改 **per-tag**——「跨情境 k* 不變」係 **S0d 前之
+#   經驗巧合、非設計不變量**（舊註「本案恰不變」已更正）。S0d(07-20)改 S → R1 3.5m 最優切點 2→1；
+#   重驗基礎＝`J(k*)≥J(naive)` 永久閘雙情境 PASS（probe_jkstar_legitimacy.py·M_P0c_jkstar.log）。
+K_STAR_EXPECT = {
+    "0m":   {"R1": 2, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6},
+    "3.5m": {"R1": 1, "R2": 8, "R3": 7, "R4": 1, "R5": 7, "R6": 6},  # R1 2→1：S0d 改 S→最優切點移
+}
 OUTDIR = os.path.join(HERE, "out")
 CORNER_BLOCKS = ["R1", "R2", "R3", "R4", "R5", "R6"]
 
@@ -501,8 +507,8 @@ def main():
             results.append((f"v3·J表{tag}", ok_j, v_j))
             # k* 六塊經驗錨（非機制不變量；破＝widths 變動使切點翻，須重驗非直接放行）
             _ks = {lbl: int(d["k*"]) for lbl, d in _sg["pool_diag"].items()}
-            results.append((f"k* 六塊經驗錨{tag} {K_STAR_EXPECT}", _ks == K_STAR_EXPECT,
-                            [] if _ks == K_STAR_EXPECT else [f"實得 {_ks}"]))
+            results.append((f"k* 六塊經驗錨{tag} {K_STAR_EXPECT[tag]}", _ks == K_STAR_EXPECT[tag],
+                            [] if _ks == K_STAR_EXPECT[tag] else [f"實得 {_ks}"]))
         except RuntimeError as _e_sg:
             results.append((f"v3·StepG{tag}（結構閘/看守觸發）", False,
                             [f"[StepG{tag}] {_e_sg}"]))
@@ -688,7 +694,8 @@ def main():
         # W-G Y 波比率更新（2026-07-14）：ΣG 隨新單價再微降 57.19→56.97（同群 G025/G030·膜不變）。
         #   舊錨（PRE-比率更新）：[("G025", 1.83), ("G030", 55.36)] Σ57.19。
         #   更早（PRE-勘誤）：[("G025", 1.84), ("G030", 55.64)] Σ57.48。
-        _ok_t3 = (_t3 == [("G025", 1.79), ("G030", 55.18)])
+        # 🆕 P-0c（裁定M·S1 波末重烤）：G030 55.18→55.09——W脫鉤+S0d 改 trunk A → 梯3 釋池 ΣG 微降。
+        _ok_t3 = (_t3 == [("G025", 1.79), ("G030", 55.09)])
         results.append((f"F.0 釋池對象＝梯3 二群 {_t3}（Σ={sum(v for _, v in _t3):.2f}㎡）", _ok_t3,
                         [] if _ok_t3 else [f"實得 {_t3}"]))
         # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
@@ -842,7 +849,12 @@ def main():
                             [] if _ok_a else [str(_a)]))
             # 標記閘：R3/R6 楔形標記待 F.4（0m 二片、3.5m 一片＝R6）
             _marks = [r for r in d1["frag_rows"] if "標記" in r["處置"]]
-            _exp_m = 2 if tag == "0m" else 1
+            # 🆕 P-0c（裁定M·S1 波末重烤）：0m 期 2→1。成因＝S1（W脫鉤+S0d）改 trunk A 幾何——
+            #   R3 0m：BEFORE＝池主體 1713.77 ＋ 碎片 78.24（寬 3.44<3.5·標記待 F.4）；
+            #   S1 後＝單一池主體 1795.17（寬 40.36·畸零旗標全空）·碎片 78.24 併入·不再標記。
+            #   舊錨 0m=2（含 R3 78.24 碎片）係 S0d 前過期。餘 R6 碎片 1 片（85.71㎡）。
+            #   ⚠️ R3 0m「單一池主體」之域正確性＝S1 引擎輸出（07-19/20 定·早於 P-0c）·上呈 KL（見歸因表 §五旗標）。
+            _exp_m = 1
             results.append((f"F.1 標記制{tag}（{len(_marks)} 片待 F.4 終態遞補整形，期 {_exp_m}）",
                             len(_marks) == _exp_m, [str(m) for m in _marks]))
         _f1_ok = True
