@@ -57,7 +57,14 @@ import wf_f2                                           # noqa: E402
 #   為 baseline 欄位/文件、本波凍結不動**（改欄名＝重烤假紅·污染 V11 零差靶）；欄名參數化列波後 backlog。
 SNAP_WAVG = 72058.60964443642          # 快照 重劃後平均地價（等式閘基準；乘數用現算值）
 COMP_EXPECT = {"G013", "G024", "G028"}  # ½ 輪0 <½ 具名錨（相異＝停查再定錨）
-E0_EXPECT = {"628-49(1)": "628-48(1)", "628-30(2)": "628-45(2)", "628-42(1)": "628-42(2)"}
+# 🆕 F-3（裁定M·claude.ai 2026-07-25）：**per-tag**——3.5m 少 `628-30(2)→628-45(2)` 一對，
+#   係 **M-5 已於 PK 階段提前完成同一對合併**（628-30(2) 為 M-5 ①之出資源、628-45(2) 為街角
+#   winner／受贈 target——原就是 E0 之既有配對）⇒ **階段位移**（E0→PK）、**非行為改變**：
+#   同一對地仍合併、僅發生時點提前，故 3.5m 之 E0 階段不再重複配對。0m 無 M-5 award ⇒ 三對不變。
+E0_EXPECT = {
+    "0m":   {"628-49(1)": "628-48(1)", "628-30(2)": "628-45(2)", "628-42(1)": "628-42(2)"},
+    "3.5m": {"628-49(1)": "628-48(1)", "628-42(1)": "628-42(2)"},
+}
 F1_REVERIFY = {"0m": "628-37(1)", "3.5m": "628-36(1)"}   # E3 R1 楔形標的複驗（F.1 錨）
 E2_NAMED = {"G004": "628-52(1)", "G018": "628-51(1)", "G020": "628-50(1)",
             "G014": "628-29(1)", "G033": "628-46(1)"}    # 第2梯類 5 源宗（由旗標規則導出後對拍）
@@ -352,11 +359,11 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                 e0_pairs[r["暫編地號"]] = (gid, r, tr)
             else:
                 e2_class.append((gid, r))
-        if {k: v[2]["暫編地號"] for k, v in e0_pairs.items()} != E0_EXPECT:
+        if {k: v[2]["暫編地號"] for k, v in e0_pairs.items()} != E0_EXPECT[tag]:
             if os.environ.get("WV_BAKE"):
-                print(f"⚠️ [WV_BAKE·{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT}）")
+                print(f"⚠️ [WV_BAKE·{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT[tag]}）")
             else:
-                raise RuntimeError(f"🔴 [{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT}）")
+                raise RuntimeError(f"🔴 [{tag}] E0 規則導出 ≠ 具名錨：{ {k: v[2]['暫編地號'] for k, v in e0_pairs.items()} }（期 {E0_EXPECT[tag]}）")
         if sorted(x[1]["暫編地號"] for x in e2_class) != sorted(E2_NAMED.values()):
             if os.environ.get("WV_BAKE"):
                 print(f"⚠️ [WV_BAKE·{tag}] 第2梯類源宗 ≠ 具名錨：{sorted(x[1]['暫編地號'] for x in e2_class)}")

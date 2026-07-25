@@ -201,6 +201,22 @@ def compute(ctx_by_tag):
                 else:
                     raise RuntimeError(
                         f"🔴 六格錨破：{d['gid']} G(Σa)={G:.2f} ≠ 錨 {exp}（{tag}）")
+        # 🆕 F-1（claude.ai 2026-07-25）：**GSA 覆蓋率硬閘**——修「錨消失即靜默放行」。
+        #   舊碼 `if not d["target"]: continue` ＋「僅走 decisions」⇒ 某 gid 若**無合併決策**
+        #   （如 M-5 後 G007@3.5m：被併宗全額消費移出 ⇒ 該塊僅餘標的宗 ⇒ `len(lots)<2` 無決策），
+        #   其 `GSA_EXPECT` 鍵**永不被評估** ⇒ **沒人檢查 ≠ 相符**（實測：BAKE 只印 G014 一則⚠️、
+        #   G007 一則都沒有）。**禁以「本案不會發生」略過**（泛用四約束）。
+        _uncov = sorted(set(GSA_EXPECT[tag]) - set(gsa))
+        if _uncov:
+            _msg = (f"🔴 GSA 覆蓋率破（{tag}）：錨鍵 {_uncov} **本情境已無合併決策**"
+                    f"（該歸戶於各街廓之宗數 <2——回復單獨？被併宗遭上游消費移出？）"
+                    f"⇒ 其錨值未被任何一次比對評估。**沒人檢查≠相符**：請確認係"
+                    f"合法連動（如 M-5 提前合併）並於 P-H 重錨（刪鍵或改值），"
+                    f"或係上游漏配之 bug。已評估鍵＝{sorted(gsa)}")
+            if os.environ.get("WV_BAKE"):
+                print(f"⚠️ [WV_BAKE] {_msg}")
+            else:
+                raise RuntimeError(_msg)
 
         # 合併決策表（含 verdict/去向；診斷 Δ 非閘）
         A = {r["暫編地號"]: r for r in c["gA"] if r.get("推進側別") in ("left", "right")}

@@ -560,6 +560,82 @@ def main():
             raise RuntimeError(f"🔴 M-5（{tag}）規劃/物化失敗（禁靜默略過）：{_e_m5}\n"
                                f"{_tb_m5.format_exc()[-600:]}")
         _m5_by_tag[tag] = _m5_plan
+        # ── 🆕 F-2（claude.ai 2026-07-25）：M-5 三閘＋一帳（`_m5_by_tag` 原寫入後零讀取） ──
+        if _m5_plan is not None and _m5_plan.get("awards"):
+            _fo1 = {(b, s) for b, fo in (forced_map or {}).items()
+                    for s in ("left", "right") if fo.get(f"{s}_forced_offset")}
+            _fo0 = set(_fo_ends)
+            # (a) 定點閘：每個 award 端於趟1 **確實不再 forced**（W-4 型 bug 之直靶——
+            #     該 bug 當時係靠 G014 錨**偶然**撞出；同型 bug 換案會全綠出貨）
+            _viol_fx = []
+            for _aw in _m5_plan["awards"]:
+                if (_aw["blk"], _aw["side"]) in _fo1:
+                    _g1 = None
+                    for _r1 in diag:
+                        if (_r1.get("街廓") == _aw["blk"]
+                                and _r1.get("端") == ("左" if _aw["side"] == "left" else "右")
+                                and _r1.get("候選地號") == _aw["winner"]):
+                            _g1 = _r1.get("真G(㎡)")
+                    _viol_fx.append(
+                        f"{_aw['blk']}{_aw['side']}·winner={_aw['winner']}·門檻={_aw['threshold']:.2f}"
+                        f"·趟0假設真G(補足後)={_aw['g_at']:.2f}·趟1真G={_g1}")
+            if _viol_fx:
+                raise RuntimeError(
+                    "🔴 M-5 定點閘破：award 端於趟1 仍 forced（補足未生效／a 未被趟1 讀到）："
+                    + "；".join(_viol_fx))
+            results.append((f"M-5 定點閘{tag}（{len(_m5_plan['awards'])} award 端趟1 皆解除 forced）",
+                            True, []))
+            # (b) 無新生閘：趟1 forced 端 ⊆ 趟0（現行僅一輪救援·新生端不會被救）
+            _new_fo = sorted(_fo1 - _fo0)
+            if _new_fo:
+                raise RuntimeError(
+                    f"🔴 M-5 無新生閘破（{tag}）：趟1 新生 forced 端 {_new_fo} ⊄ 趟0 {sorted(_fo0)}"
+                    "——現行僅一輪救援·新生端不會被救，須查因（勿靜默放行）")
+            results.append((f"M-5 無新生閘{tag}（趟1 forced ⊆ 趟0）", True, []))
+            # (c) 結算閘：Σ源出資(經 a′ 換算) == Σ注入 target 之 a′（1e-6）＋歸戶 a 總量守恆
+            _reg = _m5_plan["registry"]
+            _sum_src_p = 0.0
+            _sum_inj = 0.0
+            for _aw in _m5_plan["awards"]:
+                for _al in _aw["allocs"]:
+                    _sum_src_p += float(_al["a_prime"])
+                _sum_inj += sum(float(_al["a_prime"]) for _al in _aw["allocs"])
+            _bal_ok = abs(_sum_src_p - _sum_inj) <= 1e-6
+            # 歸戶 a 總量守恆：Σa(趟0 該 gid) == Σa(趟1 該 gid)（源出資→target 吸收·量不增減）
+            _gid_a0, _gid_a1 = {}, {}
+            _A0 = {r["暫編地號"]: r for r in _sg_a0["g_rows"] if r.get("推進側別") in ("left", "right")}
+            for _p0, _r0 in _A0.items():
+                _g = _gid_of.get(_p0, "")
+                _gid_a0[_g] = round(_gid_a0.get(_g, 0.0) + float(_r0.get("a 面積(㎡)", 0) or 0), 2)
+            for _tp1 in _bp_by_tag[tag]:
+                _g = _gid_of.get(_tp1.get("暫編地號"), "")
+                _a1 = round(float(_tp1.get("分攤登記面積_m2", 0) or 0)
+                            + float(_tp1.get("面積_m2", 0) or 0), 2)
+                _gid_a1[_g] = round(_gid_a1.get(_g, 0.0) + _a1, 2)
+            _gid_viol = [f"{g}: {_gid_a0[g]:.2f}→{_gid_a1.get(g, 0.0):.2f}"
+                         for g in {a["gid"] for a in _m5_plan["awards"]}
+                         if abs(_gid_a0.get(g, 0.0) - _gid_a1.get(g, 0.0)) > 0.02]
+            _ok_bal = _bal_ok and not _gid_viol
+            results.append(
+                (f"M-5 結算閘{tag}（Σ出資a′==Σ注入 {_sum_src_p:.2f}；歸戶 a 總量守恆）", _ok_bal,
+                 [] if _ok_bal else ([f"Σ出資 {_sum_src_p:.6f} ≠ Σ注入 {_sum_inj:.6f}"]
+                                     if not _bal_ok else []) + _gid_viol))
+            # (d) 稽核帳（公務員稽核／P-H 歸因表引用）
+            _led = []
+            for _aw in _m5_plan["awards"]:
+                _t1 = sum(float(a["a_prime"]) for a in _aw["allocs"] if a["stage"].startswith("①"))
+                _t3 = sum(float(a["a_prime"]) for a in _aw["allocs"] if a["stage"].startswith("③"))
+                for _al in _aw["allocs"]:
+                    _led.append({
+                        "情境": tag, "街廓": _aw["blk"], "端": _aw["side"],
+                        "街角winner": _aw["winner"], "門檻(㎡)": round(_aw["threshold"], 2),
+                        "①補足a′(㎡)": round(_t1, 2), "③餘額a′(㎡)": round(_t3, 2),
+                        "源宗": _al["src"], "出資a(源口徑㎡)": _al["a_src"],
+                        "a′(目標口徑㎡)": _al["a_prime"], "階段": _al["stage"],
+                        "合格候選數": _aw.get("n_qualified", 1),
+                        "丟棄之非winner規劃數": max(0, _aw.get("n_qualified", 1) - 1),
+                    })
+            _dump_csv(_led, os.path.join(OUTDIR, f"got_M5合併帳_退縮{tag}.csv"))
         _dump_csv(diag, os.path.join(OUTDIR, f"got_診斷_退縮{tag}.csv"))
         _dump_csv(sel, os.path.join(OUTDIR, f"got_指配_退縮{tag}.csv"))
         _dump_csv(off, os.path.join(OUTDIR, f"got_抵費地_退縮{tag}.csv"))
@@ -919,9 +995,15 @@ def main():
                             [str(x) for x in d["adj_viol"][:3]]))
         # 六格 G(Σa) 錨（雙情境）
         _g0 = _f0["0m"]["gsa"]
-        _ok_gsa = all(abs(_g0[k] - v) <= 0.01 for k, v in wf_f0.GSA_EXPECT["0m"].items())
+        # 🆕 F-1：缺鍵 ⇒ **loud**（舊 `_g0[k]` 裸 KeyError·訊息不可讀）。覆蓋率本身另由
+        #   `wf_f0` 內硬閘把關（該處 raise 更早）；此處為第二道、且產可讀 FAIL 列。
+        _miss_gsa = sorted(set(wf_f0.GSA_EXPECT["0m"]) - set(_g0))
+        _ok_gsa = (not _miss_gsa) and all(abs(_g0[k] - v) <= 0.01
+                                          for k, v in wf_f0.GSA_EXPECT["0m"].items())
         results.append((f"F.0 六格 G(Σa) 錨 0m {wf_f0.GSA_EXPECT['0m']}", _ok_gsa,
-                        [] if _ok_gsa else [f"實得 {{{', '.join(f'{k}:{_g0[k]:.2f}' for k in _g0)}}}"]))
+                        [] if _ok_gsa else
+                        ([f"🔴 錨鍵未被評估（本情境無合併決策）：{_miss_gsa}"] if _miss_gsa else [])
+                        + [f"實得 {{{', '.join(f'{k}:{_g0[k]:.2f}' for k in _g0)}}}"]))
         # 旗標終態錨 31→17（移除13＋脫旗1＋新生0）
         _fr = _f0["0m"]["flag_rows"]
         _n_new = sum(1 for r in _fr if r["歸因"] == "新生")
@@ -1317,6 +1399,15 @@ def main():
     #       他引擎檔零越界＝「引擎只寫、UI 只讀」機檢化。
     print("… W-G G.2 世代幾何曝出契約＋只寫不讀（0m）")
     try:
+        # 🆕 F-5（claude.ai 2026-07-25）：上游世代缺件 ⇒ **有意義紅字**（舊為 `_f0["0m"]` 之
+        #   裸 TypeError「'NoneType' object is not subscriptable」·讀者無從得知是哪一級聯掐掉）。
+        _up_missing = [_n for _n, _o in (("F.0", _f0), ("F.2", _f2), ("F.3", _f3), ("F.4", _f4))
+                       if _o is None or "0m" not in (_o or {})]
+        if _up_missing:
+            raise RuntimeError(
+                f"上游世代未產出：{_up_missing}（0m）——G.2 係**純呈現層契約檢**，"
+                f"其資料前提為 v3/f0/f2/f3/E 各代皆已成功；上列世代失敗（見其自身 FAIL 列）"
+                f"⇒ G.2 **無從檢查**、非 G.2 自身破。修上游後本列自動恢復。")
         _vg2 = []
         for _nm2, _rows2 in (("v3.gA", _ctx["0m"]["gA"]),
                              ("f0.sgB_rows", _f0["0m"]["sgB_rows"]),

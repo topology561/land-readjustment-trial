@@ -225,7 +225,9 @@ def build_plan(*, tag, gA_rows, mina_by_blk, gid_of, corner_ctx, zone_of, pre_pr
         awards.append({"blk": blk, "side": side, "winner": win["pid"], "gid": win["gid"],
                        "threshold": thr, "need_p": win["need_p"], "g_at": win["g_at"],
                        "z_tgt": win["z_tgt"], "a_base": win["a_base"],
-                       "srcs": win["srcs"], "allocs": [], "stage3": 0.0})
+                       "srcs": win["srcs"], "allocs": [], "stage3": 0.0,
+                       # F-2(d) 稽核：合格候選數／丟棄之非 winner 規劃數（Q-M6 per-candidate）
+                       "n_qualified": len(qualified)})
         reg.freeze_target(win["pid"], stage=f"①{blk}{side}")
         # 依 Q3 序逐源扣至補足量（只取所需）
         _need_left = win["need_p"]

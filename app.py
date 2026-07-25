@@ -15090,8 +15090,8 @@ def main():
                                 # 🆕 P-C（裁定M·Q1）：app 真 G 鏡射（app-live 財務·§7 β混源）——逐候選逐側算
                                 #   真 G → _G_true_p1/p2，require_g_map=True 驅動資格閘。與 harness
                                 #   run_corner_pk 同一 `_corner_block_true_G`→`_corner_first_lot_G`（Q-M4）。
-                                #   ⚠️ app 路徑 run_all 未覆·**KL UI 實跑驗**；組裝失敗 ⇒ loud st.warning ＋
-                                #   退 estG（Q1 中性·零翻盤 ⇒ winner 不變·僅 caliber·誠實圍欄）。
+                                #   ⚠️ app 路徑 run_all 未覆·**KL UI 實跑驗**；組裝失敗 ⇒ **st.error＋st.stop() 硬停**
+                                #   （D-1·claude.ai 2026-07-25）——**無 estG 降級路徑**（Q1：取不到真 G ＝loud·禁 fallback）。
                                 try:
                                     from shapely.geometry import Polygon as _SP_pc
                                     _sbr_ap = sb_rows_by_label.get(_lbl, {})
