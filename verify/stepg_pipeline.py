@@ -331,34 +331,14 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                    _allocation_dir=None, _side_mid=None, _W_prev=0.0):
-        if _blk_poly is not None and _d_hat is not None and _baseline_pt is not None:
-            try:
-                _r = solve_G_binary(
-                    a=_a_m2, A=_A, B=B_value, C=C_for_calc,
-                    l_front=_l_front, l_side=_l_side, F=_F,
-                    block_poly=_blk_poly, d_hat=_d_hat,
-                    baseline_pt=_baseline_pt,
-                    S_max_limit=_S_max,
-                    is_corner=_is_corner,
-                    side_label=_side if _side in ('左側', '右側') else '左側',
-                    tol=0.01, max_iter=80,
-                    allocation_dir=_allocation_dir,
-                    side_mid=_side_mid, W_prev=_W_prev,
-                )
-                return _r, '幾何二分法'
-            except Exception:
-                pass
-        _r = iterate_G_S(
-            a=_a_m2, A=_A, B=B_value, C=C_for_calc,
-            l_front=_l_front, l_side=_l_side, F=_F, W=0.0,
-            avg_depth=_avg_depth,
-            is_corner=_is_corner,
-            tab6_total_burden=_tab6_burden,
-            W_prev=_W_prev,
-        )
-        _r['area_geom'] = round(_r.get('S', 0) * _avg_depth, 2)
-        _r['cut_coords'] = []
-        return _r, '代數迭代(fallback)'
+        # 🆕 P-0b（裁定M·Q-M4）：薄殼委派 app module 級 `_solve_G_one`（單一真相源·經 ns）。
+        #   B_value/C_for_calc（_compute_v3_finance 拆出）＋ _tab6_burden（本函式上方檢查）為閉包捕獲。
+        return ns["_solve_G_one"](
+            a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F,
+            blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt,
+            S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
+            B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
+            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev)
 
     # ── 逐街廓（app Step G 迴圈逐行複刻；st.* 於 headless 為 fake no-op 故略） ──
     for blk_label, parcels_in_blk in parcels_by_block.items():

@@ -8684,6 +8684,49 @@ def _extract_corner_cut_line(block_poly,
     }
 
 
+def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
+                 S_max, is_corner, side, avg_depth, B, C, tab6_burden,
+                 allocation_dir=None, side_mid=None, W_prev=0.0):
+    """🆕 P-0b（裁定M·Q-M4）：G 解算**單一真相源**——幾何二分法優先，失敗 fallback 至代數迭代。
+
+    app 內嵌 `_solve_one`（`main()` 內）與 `verify/stepg_pipeline.py` 之 `_solve_one` 皆改**薄殼**
+    委派本函式（純位移·可執行語句逐字同構·reviewer 二審逐行對拍證）。M-2/Q1 之「假設第 1 宗真 G」
+    （`_corner_first_lot_G`）與**實配第 1 宗共用本函式**（Q-M4「同一 solve 路徑·禁另寫平行式」）。
+
+    **loud raise 限輸入缺值**（Q-M4）：solver（solve_G_binary）失敗**不 raise**、照走 `iterate_G_S`
+    fallback（與實配同側·口徑一致）。回 `(res, solver_label)`。
+    """
+    if blk_poly is not None and d_hat is not None and baseline_pt is not None:
+        try:
+            _r = solve_G_binary(
+                a=a_m2, A=A, B=B, C=C,
+                l_front=l_front, l_side=l_side, F=F,
+                block_poly=blk_poly, d_hat=d_hat,
+                baseline_pt=baseline_pt,
+                S_max_limit=S_max,
+                is_corner=is_corner,
+                side_label=side if side in ('左側', '右側') else '左側',
+                tol=0.01, max_iter=80,
+                allocation_dir=allocation_dir,
+                side_mid=side_mid, W_prev=W_prev,
+            )
+            return _r, '幾何二分法'
+        except Exception:
+            pass
+    # fallback：代數迭代（同樣攜帶 W_prev 累積差額，§4）
+    _r = iterate_G_S(
+        a=a_m2, A=A, B=B, C=C,
+        l_front=l_front, l_side=l_side, F=F, W=0.0,
+        avg_depth=avg_depth,
+        is_corner=is_corner,
+        tab6_total_burden=tab6_burden,
+        W_prev=W_prev,
+    )
+    _r['area_geom'] = round(_r.get('S', 0) * avg_depth, 2)
+    _r['cut_coords'] = []
+    return _r, '代數迭代(fallback)'
+
+
 def _estimate_G_for_qualification(a_m2: float,
                                     tolerance_m2: float = 0.5) -> float:
     """
@@ -8996,6 +9039,9 @@ _WF_NS_NAMES = [
     #   其 `solve_one`／`build_g_row`／`mark_zaling` 走 **callback**——三者於 stepg 與 app
     #   各為閉包（捕獲 B_value／C_for_calc／_cos_dn／_mw_blk），module 級取不到。
     "_place_pool_parcels",
+    # 🆕 P-0b（裁定M·Q-M4）：G 解算單一真相源（app/stepg `_solve_one` 皆薄殼委派·
+    #   M-2 假設第 1 宗真 G 與實配共用同一 solve 路徑·禁另寫平行式#20）。
+    "_solve_G_one",
 ]
 
 
@@ -15662,41 +15708,18 @@ def main():
                     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                                    _allocation_dir=None, _side_mid=None, _W_prev=0.0):
-                        """求解單筆宗地 — 幾何二分法優先，失敗 fallback 至代數迭代
+                        """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
 
                         🆕 W-C §0.5-B/§4：_allocation_dir = rot90(f3_cad_alloc_dir)（臨街向）；
                         _side_mid = SIDE_LINE 中點；_W_prev = 前一筆累積 W。三者驅動
                         solve_G_binary 內 W（沿 ALLOC 法向累積）與 Rw 差額（§3）。
                         """
-                        if _blk_poly is not None and _d_hat is not None and _baseline_pt is not None:
-                            try:
-                                _r = solve_G_binary(
-                                    a=_a_m2, A=_A, B=B_value, C=C_for_calc,
-                                    l_front=_l_front, l_side=_l_side, F=_F,
-                                    block_poly=_blk_poly, d_hat=_d_hat,
-                                    baseline_pt=_baseline_pt,
-                                    S_max_limit=_S_max,
-                                    is_corner=_is_corner,
-                                    side_label=_side if _side in ('左側', '右側') else '左側',
-                                    tol=0.01, max_iter=80,
-                                    allocation_dir=_allocation_dir,
-                                    side_mid=_side_mid, W_prev=_W_prev,
-                                )
-                                return _r, '幾何二分法'
-                            except Exception:
-                                pass
-                        # fallback：代數迭代（同樣攜帶 W_prev 累積差額，§4）
-                        _r = iterate_G_S(
-                            a=_a_m2, A=_A, B=B_value, C=C_for_calc,
-                            l_front=_l_front, l_side=_l_side, F=_F, W=0.0,
-                            avg_depth=_avg_depth,
-                            is_corner=_is_corner,
-                            tab6_total_burden=_tab6_burden,
-                            W_prev=_W_prev,
-                        )
-                        _r['area_geom'] = round(_r.get('S', 0) * _avg_depth, 2)
-                        _r['cut_coords'] = []
-                        return _r, '代數迭代(fallback)'
+                        return _solve_G_one(
+                            a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F,
+                            blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt,
+                            S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
+                            B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
+                            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev)
 
                     st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
                     for blk_label, parcels_in_blk in parcels_by_block.items():
