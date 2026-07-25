@@ -78,15 +78,16 @@ def compute_total_burden_rate(ns, cb, snapshot):
                   "總面積精確": total, "抵充地": offset}
 
 
-def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
-               winners_state, forced_map, setback):
-    """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。"""
-    import numpy as _np_d
-    from shapely.geometry import Polygon as _SP_d
-    # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
-    #   `_uunion_d(allocated_polys).buffer(0.001)`（病灶·已廢）；留之即 dead import。
+def _compute_v3_finance(ns, snapshot, cb, cad):
+    """🆕 P-0a（裁定M·reviewer R1）：v3 全區財務單一真相源——B／C／特別負擔尺度／地價。
 
-    ss = fake_st.session_state
+    **純位移自 `run_step_g` 之 :90-192**（算式、求值順序、兩處斷言〔條件① 尺度、C 兩形等價 1e-8〕
+    逐字不動）。M-2/Q1 之「假設第 1 宗真 G」與實配共用本函式（避第三份抄寫·失敗考古 #20）。
+
+    **不寫 globals**：`_V3_FINANCE` payload 以 dict 回傳、由呼叫端（`run_step_g`）於 `_tab6_burden`
+    檢查後之原位寫入 globals（保序·true zero-behavior·錯誤路徑亦不變）。
+    `_tab6_burden` 之取值與 raise **不在本函式**（PK 階段該 session 鍵未鋪底·reviewer W-1）。
+    """
     fcb = ns["F3_CATEGORY_BURDEN"]
     SB = snapshot["blocks"]
     fin = snapshot["財務接線_v3"]      # 缺節＝loud KeyError，禁隱形預設
@@ -167,29 +168,61 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         raise RuntimeError(
             f"🔴 C 兩形分岔：加總形={C_for_calc:.12f} vs 均價形(calc_C_value)={_C_avg_form:.12f}"
             f"，Δ={abs(C_for_calc - _C_avg_form):.3e} > 1e-8（快照 後街廓面積 與 DXF 公設面積不再互補？）")
+
+    # ── 地價（v3：後街廓單價／重劃前區段單價；A 逐宗＝post/pre） ──
+    post_price_by_block = {lbl: float(v["單價_元每m2"]) for lbl, v in _post_bp.items()}
+    pre_price_by_zone = {z: float(v["單價_元每m2"])
+                         for z, v in fin["重劃前區段_面積單價"].items()}
+    return {
+        "B": B_value, "C": C_for_calc, "_build_blocks": _build_blocks,
+        "sb": sb, "sb_rows_by_label": sb_rows_by_label,
+        "post_price_by_block": post_price_by_block,
+        "pre_price_by_zone": pre_price_by_zone,
+        # 財務中繼態（run_verification 財務閘消費；非計算鏈）·payload 逐鍵同原 :184-192
+        "_V3_FINANCE": {
+            "B": B_value, "C": C_for_calc, "C_avg_form": _C_avg_form,
+            "eng": _eng_cost, "redev": _redev_cost, "loan": _loan_interest,
+            "cost_sum": _cost_sum, "C_denom": _C_denom_sum,
+            "general_burden": general_burden, "public_common": public_common_total,
+            "special_total": sb["special_total"],
+            "post_price_by_block": dict(post_price_by_block),
+            "pre_price_by_zone": dict(pre_price_by_zone),
+        },
+    }
+
+
+def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+               winners_state, forced_map, setback):
+    """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。"""
+    import numpy as _np_d
+    from shapely.geometry import Polygon as _SP_d
+    # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
+    #   `_uunion_d(allocated_polys).buffer(0.001)`（病灶·已廢）；留之即 dead import。
+
+    ss = fake_st.session_state
+    SB = snapshot["blocks"]
+    # 🆕 P-0a（裁定M）：v3 財務（B/C/尺度/地價）純位移為 module 級 `_compute_v3_finance`
+    #   （單一真相源·PK 階段真 G 共用·避第三份抄寫#20）。**true zero-behavior**：helper 不寫
+    #   globals；`_V3_FINANCE` 由本函式於 `_tab6_burden` 檢查**後**之原位寫入（保序·錯誤路徑亦不變）。
+    _fin3 = _compute_v3_finance(ns, snapshot, cb, cad)
+    B_value = _fin3["B"]
+    C_for_calc = _fin3["C"]
+    _build_blocks = _fin3["_build_blocks"]
+    sb_rows_by_label = _fin3["sb_rows_by_label"]
+    post_price_by_block = _fin3["post_price_by_block"]
+    pre_price_by_zone = _fin3["pre_price_by_zone"]
     # 重劃總負擔率＝`compute_total_burden_rate` 現算（build_pipeline 鋪底）。
     # 舊 `or 0.40` fallback 已廢（快照 global.重劃總負擔率 鍵一併刪）→ 缺值即 loud。
+    #   ⚠️ 不移入 helper：PK 階段（selection_pipeline.run_corner_pk）此 session 鍵尚未鋪底，
+    #      移入會使假設第 1 宗真 G 誤 raise（reviewer W-1）。
     _tab6_burden = ss.get("f3_total_burden_rate_from_finance")
     if _tab6_burden is None:
         raise RuntimeError(
             "🔴 f3_total_burden_rate_from_finance 未鋪底：須先 compute_total_burden_rate()"
             "（禁靜默退回 0.40 舊 fallback）")
     _tab6_burden = float(_tab6_burden)
-
-    # ── 地價（v3：後街廓單價／重劃前區段單價；A 逐宗＝post/pre） ──
-    post_price_by_block = {lbl: float(v["單價_元每m2"]) for lbl, v in _post_bp.items()}
-    pre_price_by_zone = {z: float(v["單價_元每m2"])
-                         for z, v in fin["重劃前區段_面積單價"].items()}
-    # 財務中繼態外拋（run_verification 之財務閘消費；非計算鏈）
-    globals()["_V3_FINANCE"] = {
-        "B": B_value, "C": C_for_calc, "C_avg_form": _C_avg_form,
-        "eng": _eng_cost, "redev": _redev_cost, "loan": _loan_interest,
-        "cost_sum": _cost_sum, "C_denom": _C_denom_sum,
-        "general_burden": general_burden, "public_common": public_common_total,
-        "special_total": sb["special_total"],
-        "post_price_by_block": dict(post_price_by_block),
-        "pre_price_by_zone": dict(pre_price_by_zone),
-    }
+    # 財務中繼態外拋（run_verification 之財務閘消費；非計算鏈）·保原位（於 _tab6_burden 檢查後）
+    globals()["_V3_FINANCE"] = _fin3["_V3_FINANCE"]
 
     # ── session 鋪底（Step L/PK 產物＝快照/選位半 driver 餵入） ──
     ss["f3L_setback_default"] = setback
