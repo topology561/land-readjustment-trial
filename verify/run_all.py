@@ -102,7 +102,8 @@ def main():
     #   ⚠️ 本段屬 run_all `[1/3]` golden 段、**不進** `run_verification.results`
     #      ⇒ 不動 PASS/FAIL 計數，亦不動 P-H 之「161 名目」母體。
     import subprocess
-    for _fx, _what in (("fixture_end_reserve.py", "P2-f 末端保留·窗位移(左右)"),
+    for _fx, _what in (("fixture_cad_binding_order.py", "🆕 C-6 CAD 線層綁定·順序不變性(3 置換)"),
+                       ("fixture_end_reserve.py", "P2-f 末端保留·窗位移(左右)"),
                        ("fixture_end_fallback.py", "§4 無勝者 fallback·守恆真檢(左右)"),
                        ("fixture_end_winner.py", "末端 gate 判別力·_unfront_area＋咬合反例")):
         try:

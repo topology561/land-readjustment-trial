@@ -1285,6 +1285,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         if F3_CATEGORY_BURDEN.get(b.get('category', ''), '') == '可建築土地'
     }
     _baseline_raw = []      # 🆕 C-1/C-2：BASELINE 暫存（配對移至第二階段·見迴圈後）
+    _front_raw = []         # 🆕 C-6：FRONT_LINE 暫存（同上·共線＋投影重疊最長）
 
     for entity in entities:
         try:
@@ -1294,6 +1295,10 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         if layer not in _layer_map:
             continue
         _layers_found.add(layer)
+        try:
+            _ent_handle = str(entity.dxf.handle)     # 🆕 C-11：歧義回報用（供 UI 指認實體）
+        except Exception:
+            _ent_handle = ''
 
         # 取得線段 polyline 點序列
         try:
@@ -1356,37 +1361,15 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                 result['centerlines_matched_count'] += 1
 
         elif layer == 'FRONT_LINE':
-            # 中點所屬街廓 + 線段長度（取最大者，避免被短線覆寫）
-            # 🆕 Phase 11 v2：同步保存 FRONT_LINE 端點 + 角度（d_hat 來源）
-            length = float(ls.length)
-            _matched_fl = False
-            for blk_lbl, (blk, blk_poly, cen, fd) in blk_polys.items():
-                try:
-                    mid_p = _SP(mid_pt.x, mid_pt.y)
-                    # FRONT_LINE 容差放寬 5m（CAD 繪製可能略偏外側）
-                    if blk_poly.contains(mid_p) or blk_poly.distance(mid_p) < 5.0:
-                        _prev = result['front_lengths'].get(blk_lbl, 0.0)
-                        if length > _prev:
-                            result['front_lengths'][blk_lbl] = length
-                            # 同步更新 front_lines（取最長者為主代表）
-                            try:
-                                _dx_fl = pts[1][0] - pts[0][0]
-                                _dy_fl = pts[1][1] - pts[0][1]
-                                _ang_fl = _m.degrees(_m.atan2(_dy_fl, _dx_fl))
-                            except Exception:
-                                _ang_fl = 0.0
-                            result['front_lines'][blk_lbl] = {
-                                'p1': (float(pts[0][0]), float(pts[0][1])),
-                                'p2': (float(pts[-1][0]), float(pts[-1][1])),
-                                'angle_deg': float(_ang_fl),
-                                'length': length,
-                            }
-                        _matched_fl = True
-                        break
-                except Exception:
-                    continue
-            if _matched_fl:
-                result['front_lines_matched_count'] += 1
+            # 🆕 W-G.5 C-6（KL 裁 2026-07-26）：**綁定移至第二階段**（見迴圈後）。
+            #   ⛔ 舊法（中點距 <5m ＋ **first-hit break** ＋ 候選池含道路）已廢：
+            #     實測 6 條 FRONT 中 **4 條有 3 個候選**（該街廓＋兩條道路）
+            #     ⇒ 勝負由 `blk_polys` 之 **dict 順序**決定＝不可復現。
+            _front_raw.append({
+                'pts': [(float(p[0]), float(p[1])) for p in pts],
+                'length': float(ls.length),
+                'handle': _ent_handle,
+            })
 
         elif layer == 'SIDE_LINE':
             # 🆕 Phase 11 Hotfix：先 buffer，後批次處理（greedy 1:1）
@@ -1394,6 +1377,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
             _side_line_buffer.append({
                 'pts': pts, 'length': length,
                 'mid_x': float(mid_pt.x), 'mid_y': float(mid_pt.y),
+                'handle': _ent_handle,      # 🆕 C-11：歧義回報用
             })
 
         elif layer == 'ALLOC_LINE':
@@ -1420,9 +1404,66 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                         float(_dx_al / _L_al), float(_dy_al / _L_al)
                     )
 
-    # 🚨 W-B §1-1：SIDE_LINE 配對 — 以 FRONT_LINE 端點容差法定左右側
-    # p1=左端、p2=右端（FRONT_LINE 方向約定）；廢除舊 4 階段 cross-product + swap 校正
-    _TOL_SL = 0.5   # 端點重合容差（m）
+    # ── 🆕 W-G.5 C-6：FRONT_LINE **共線＋投影重疊最長**綁定（KL 裁 2026-07-26）────────
+    #
+    # 【域裁·canonical】`FRONTLINE`／`SIDELINE` 之**對側必為道路(RD)**；一條 FRONT/SIDE 線
+    #   **只屬於一個可建築街廓**、**不存在 R-R 共用**（`BASELINE` 相反·共用合法）。
+    #   ⇒ **候選池只含可建築街廓**（排除 RD／公設）。
+    # 【判準】共用原語 `_line_block_overlap`（＝`_anchor_chamfers_topology` 同判準·
+    #   **禁自創第三種**）；**廢 first-hit break、全掃取重疊最大**。
+    # 【歧義】最大與次大之勝差 ≤ `_BIND_MARGIN_M` ⇒ 收集為 `CadBindingAmbiguity`（C-11）
+    #   → UI「圖資配對確認」頁承接。**禁靜默選**。
+    _BIND_MARGIN_M = 1.0        # 勝差門檻（實測最小勝差：FRONT 80.26m／SIDE 29.56m ⇒ 極寬鬆）
+    _ambig = []
+
+    def _best_block(_pts_l, _layer_nm, _handle):
+        """回 (winner_lbl, overlap, ranked)。無任何重疊 → winner=None。"""
+        _rk = []
+        for _bl, (_b0, _bp0, _c0, _f0) in _buildable_blocks.items():
+            _ovl = _line_block_overlap(_pts_l, _bp0)
+            if _ovl > 0:
+                _rk.append({'block': _bl, 'overlap_m': round(float(_ovl), 4)})
+        _rk.sort(key=lambda x: (-x['overlap_m'], x['block']))   # 決定性：同分按塊名
+        if not _rk:
+            return None, 0.0, _rk
+        if len(_rk) > 1 and (_rk[0]['overlap_m'] - _rk[1]['overlap_m']) <= _BIND_MARGIN_M:
+            _ambig.append({'layer': _layer_nm, 'handle': _handle,
+                           'candidates': _rk[:4], 'chosen': None})
+        return _rk[0]['block'], _rk[0]['overlap_m'], _rk
+
+    for _fr in _front_raw:
+        _w, _ov, _rk = _best_block(_fr['pts'], 'FRONT_LINE', _fr['handle'])
+        if _w is None:
+            result['diagnostics']['unbound'].append(('FRONT_LINE', _fr['pts'][0]))
+            continue
+        # 同一街廓多條 FRONT_LINE ⇒ 取**重疊最大**者（舊法取最長·對未截角尖角失真）
+        if _ov <= result.get('_front_ovl', {}).get(_w, 0.0):
+            continue
+        result.setdefault('_front_ovl', {})[_w] = _ov
+        try:
+            _ang_fl = _m.degrees(_m.atan2(_fr['pts'][-1][1] - _fr['pts'][0][1],
+                                          _fr['pts'][-1][0] - _fr['pts'][0][0]))
+        except Exception:
+            _ang_fl = 0.0
+        result['front_lengths'][_w] = _fr['length']
+        result['front_lines'][_w] = {
+            'p1': (_fr['pts'][0][0], _fr['pts'][0][1]),
+            'p2': (_fr['pts'][-1][0], _fr['pts'][-1][1]),
+            'angle_deg': float(_ang_fl),
+            'length': _fr['length'],
+        }
+    result.pop('_front_ovl', None)
+    result['front_lines_matched_count'] = len(result['front_lines'])
+
+    # ── 🆕 W-G.5 C-6：SIDE_LINE 同判準綁定（街廓由重疊定·**側別仍由 FRONT p1→p2 導出**）──
+    #
+    # ⛔ 舊法（端點與 FRONTLINE 端點重合 ≤0.5m ＋ first-hit break）已廢：
+    #   實測 8 條 SIDE 中 **4 條端點同時吻合兩塊之 FRONTLINE 端點**（街角處端點聚集）
+    #   ⇒ 由 `result['front_lines']` 之 dict 順序決勝＝有歸錯塊之實風險。
+    #   且 `_anchor_chamfers_topology` docstring 早已載明「端點重合法一端合一端差、六塊全滅」。
+    # 🔒 **側別禁寫入圖層名**（KL）：同一條側街線對相鄰兩塊為**不同側別**，命名結構上不可行；
+    #   且會產生**第二真值來源**。側別**唯一來源＝該街廓 FRONTLINE 之 p1（左）／p2（右）**。
+    _TOL_SL = 0.5   # 端點重合容差（m）——**僅用於側別判定**（左/右），**不再用於街廓歸屬**
     import math as _math_sl
 
     def _sl_dist2(a, b):
@@ -1435,19 +1476,28 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         _s_ends = [(float(_spts[0][0]), float(_spts[0][1])),
                    (float(_spts[-1][0]), float(_spts[-1][1]))]
         _mid_sl = (sl['mid_x'], sl['mid_y'])
-        _hit_blk = None; _hit_side = None; _dmin_all = float('inf')
-        for blk_lbl, _fl in result['front_lines'].items():
-            _p1 = _fl['p1']; _p2 = _fl['p2']
-            for _se in _s_ends:
-                _dmin_all = min(_dmin_all,
-                                _sl_dist2(_se, _p1), _sl_dist2(_se, _p2))
-            for _se in _s_ends:
-                if _sl_dist2(_se, _p1) < _TOL_SL:
-                    _hit_blk = blk_lbl; _hit_side = 'left'; break
-                if _sl_dist2(_se, _p2) < _TOL_SL:
-                    _hit_blk = blk_lbl; _hit_side = 'right'; break
-            if _hit_blk:
-                break
+        _dmin_all = float('inf')
+        # ① 街廓＝共線重疊最大者
+        _hit_blk, _ov_sl, _rk_sl = _best_block(
+            [(float(p[0]), float(p[1])) for p in _spts], 'SIDE_LINE', sl.get('handle', ''))
+        _hit_side = None
+        if _hit_blk:
+            # ② 側別＝該街廓 FRONTLINE 之哪一端（p1 左／p2 右）與本側街線端點最近
+            _fl_h = result['front_lines'].get(_hit_blk)
+            if _fl_h:
+                _p1 = _fl_h['p1']; _p2 = _fl_h['p2']
+                _d1 = min(_sl_dist2(_se, _p1) for _se in _s_ends)
+                _d2 = min(_sl_dist2(_se, _p2) for _se in _s_ends)
+                _dmin_all = min(_d1, _d2)
+                _hit_side = 'left' if _d1 <= _d2 else 'right'
+                if _dmin_all > _TOL_SL:
+                    # 端點皆不吻合 ⇒ 側別不可靠 ⇒ 列歧義（禁猜）
+                    _ambig.append({'layer': 'SIDE_LINE·側別', 'handle': sl.get('handle', ''),
+                                   'candidates': [{'block': _hit_blk, 'side': 'left',
+                                                   'endpoint_dist_m': round(_d1, 4)},
+                                                  {'block': _hit_blk, 'side': 'right',
+                                                   'endpoint_dist_m': round(_d2, 4)}],
+                                   'chosen': None})
         if _hit_blk and _hit_side:
             _by_side_wb = result['side_lines_by_side'].setdefault(_hit_blk, {})
             _by_side_wb[_hit_side] = {
@@ -1571,6 +1621,15 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         _bv.pop('_length', None)
 
     result['diagnostics']['layers_found'] = sorted(_layers_found)
+    # 🆕 W-G.5 C-11：綁定歧義 ⇒ **結構化例外**（引擎層 no-silent-fallback·禁靜默選）。
+    #   UI 層以 `render_cad_binding_confirm` 攔截並渲染「圖資配對確認」頁；
+    #   headless（run_all／harness）無 UI ⇒ 例外即停機＝正確之 loud 行為。
+    #   ⚠️ UC9898 實測**零歧義**（C-7：FRONT 最小勝差 80.26m／SIDE 29.56m·次者皆 0）⇒ 不觸發。
+    result['diagnostics']['binding_ambiguity'] = list(_ambig)
+    if _ambig:
+        _exc = CadBindingAmbiguity(_ambig)
+        _exc.partial = result      # C-11：已解出之部分交給 UI 預填（非歧義列免重問）
+        raise _exc
     return result
 
 
@@ -4905,6 +4964,186 @@ def restore_block_geometry(polygon, cutoff_min_m: float = 2.0,
         'side_corrected_by_mbr': side_corrected_by_mbr,
         'notes': notes,
     }
+
+
+def _line_block_overlap(line_pts, block_poly, ang_tol_deg=2.0, perp_tol_m=1.0):
+    """🆕 W-G.5 C-6（KL 裁 2026-07-26）：線層↔街廓之**共線＋投影重疊長**（公尺）。
+
+    ── 為何是這個判準（**倉內既有經證實者·禁自創第三種**）────────────────────────
+    與 `_anchor_chamfers_topology` **同一判準**（其 docstring 之 §4.1 實座標證）：
+    CAD 之 FRONT/SIDE 線畫到**未截角尖角**、比 BLOCK 邊長約一截角腿
+    ⇒ **端點重合法一端合一端差、六塊全滅**。故改：方位角 mod180 差 < `ang_tol_deg`、
+    BLOCK 邊兩端到線垂距 < `perp_tol_m`、投影落線 span 內。
+    本函式為該判準之**街廓級聚合**（回**真實 1-D 重疊長**·非邊長），供 FRONT/SIDE 綁定共用。
+
+    ── 與 `_anchor_chamfers_topology` 之分工 ────────────────────────────────────
+    後者回「**哪一條 BLOCK 邊**」（截角拓樸用）；本函式回「**重疊多長**」（歸屬決勝用）。
+    二者判準同源、用途不同——**不得互相取代**。
+
+    `line_pts`：`[(x,y), ...]`（≥2 點·聚合線逐段套用·**勿寫死單段**）。
+    同一直邊可能由多段 BLOCK 邊組成 ⇒ **逐邊加總**。
+    """
+    import math as _m_lo
+    if not line_pts or len(line_pts) < 2 or block_poly is None:
+        return 0.0
+    try:
+        _co = list(block_poly.exterior.coords)
+    except Exception:
+        return 0.0
+
+    def _az2(a, b):
+        return _m_lo.degrees(_m_lo.atan2(float(b[1]) - float(a[1]),
+                                         float(b[0]) - float(a[0]))) % 180.0
+
+    def _perp2(pt, a, b):
+        dx = float(b[0]) - float(a[0]); dy = float(b[1]) - float(a[1])
+        _L = _m_lo.hypot(dx, dy)
+        if _L < 1e-9:
+            return _m_lo.hypot(float(pt[0]) - float(a[0]), float(pt[1]) - float(a[1]))
+        return abs(dx * (float(pt[1]) - float(a[1]))
+                   - dy * (float(pt[0]) - float(a[0]))) / _L
+
+    def _t2(pt, a, b):
+        dx = float(b[0]) - float(a[0]); dy = float(b[1]) - float(a[1])
+        _L = _m_lo.hypot(dx, dy)
+        if _L < 1e-9:
+            return 0.0
+        return ((float(pt[0]) - float(a[0])) * dx
+                + (float(pt[1]) - float(a[1])) * dy) / _L
+
+    _total = 0.0
+    for _i in range(len(line_pts) - 1):
+        _a = line_pts[_i]; _b = line_pts[_i + 1]
+        _Lseg = _m_lo.hypot(float(_b[0]) - float(_a[0]), float(_b[1]) - float(_a[1]))
+        if _Lseg < 1e-9:
+            continue
+        _saz = _az2(_a, _b)
+        for _j in range(len(_co) - 1):
+            _e1 = _co[_j][:2]; _e2 = _co[_j + 1][:2]
+            _d = abs(_az2(_e1, _e2) - _saz); _d = min(_d, 180.0 - _d)
+            if _d > ang_tol_deg:
+                continue
+            if _perp2(_e1, _a, _b) > perp_tol_m or _perp2(_e2, _a, _b) > perp_tol_m:
+                continue
+            _t1 = _t2(_e1, _a, _b); _tb = _t2(_e2, _a, _b)
+            _lo, _hi = (_t1, _tb) if _t1 <= _tb else (_tb, _t1)
+            _total += max(0.0, min(_hi, _Lseg) - max(_lo, 0.0))
+    return _total
+
+
+class CadBindingAmbiguity(RuntimeError):
+    """🆕 W-G.5 C-11（KL 裁 2026-07-26）：圖層↔街廓綁定**歧義**之結構化例外。
+
+    ── 為何結構化（KL 案由）────────────────────────────────────────────────────
+    泛用化目標＝供**不同案件之公務員／廠商跨案使用**。以裸 `RuntimeError` 或
+    「請改圖層名」要求使用者自救**不是產品**。故：
+      · **引擎層**：偵測歧義 → raise 本例外（**帶各候選之量值**）·維持 no-silent-fallback、禁靜默選。
+      · **UI 層**：攔截本例外 → 渲染「圖資配對確認」頁（見 `render_cad_binding_confirm`）。
+    ⇒ **圖層命名制度全案取消**（含 `BASELINE-R1` 型逃生門）——**UI 即逃生門**，
+      使用者不需學任何命名規則、既有 DXF 不需修改。
+
+    `items`：`[{'layer','handle','candidates':[{'block','overlap_m','angle_diff_deg',
+              'perp_m'}...],'chosen'|None}]`
+    """
+
+    def __init__(self, items, msg=''):
+        self.items = list(items or [])
+        self.partial = {}          # 已解出之 cad_layers（供 UI 預填非歧義列·C-11）
+        _n = len(self.items)
+        super().__init__(
+            msg or (f"🔴 圖資配對歧義：{_n} 條線層無法唯一判定所屬街廓"
+                    f"（no-silent-fallback·禁靜默選）。請於「圖資配對確認」頁指定。"))
+
+
+def build_cad_binding_table(cad_layers, classified_blocks, ambiguity_items=None):
+    """🆕 W-G.5 C-11（KL 裁 2026-07-26）：「圖資配對確認」頁之**資料層**（純函式·可單測）。
+
+    逐街廓列出 正面路街線／左側街線／右側街線／屁股線 及其幾何量值；
+    有歧義者標記 `ambiguous=True` 並附各候選之量值。
+    **UI 層只負責渲染**（`render_cad_binding_confirm`）——分層使本表可 headless 測試。
+
+    回 `[{'block','front','side_left','side_right','baseline','ambiguous','candidates'}]`。
+    """
+    _amb_by_blk = {}
+    for _it in (ambiguity_items or []):
+        for _c in (_it.get('candidates') or []):
+            _amb_by_blk.setdefault(_c.get('block'), []).append(_it)
+    _fl = (cad_layers or {}).get('front_lines') or {}
+    _sl = (cad_layers or {}).get('side_lines_by_side') or {}
+    _bl = (cad_layers or {}).get('baselines') or {}
+    _rows = []
+    for _b in (classified_blocks or []):
+        _lbl = _b.get('label')
+        if F3_CATEGORY_BURDEN.get(_b.get('category', ''), '') != '可建築土地':
+            continue
+        _f = _fl.get(_lbl) or {}
+        _s = _sl.get(_lbl) or {}
+        _bv = _bl.get(_lbl) or {}
+        _rows.append({
+            'block': _lbl,
+            'front': (f"長 {_f.get('length', 0):.2f}m｜方位 {_f.get('angle_deg', 0):.3f}°"
+                      if _f else '—（缺）'),
+            'side_left': (f"長 {(_s.get('left') or {}).get('length', 0):.2f}m"
+                          if _s.get('left') else '—'),
+            'side_right': (f"長 {(_s.get('right') or {}).get('length', 0):.2f}m"
+                           if _s.get('right') else '—'),
+            'baseline': ((f"方位 {_bv.get('angle_deg', 0):.3f}°｜垂距 "
+                          f"{(_bv.get('_match') or {}).get('perp_mid_m', float('nan'))}m")
+                         if _bv else '—（缺）'),
+            'ambiguous': bool(_amb_by_blk.get(_lbl)),
+            'candidates': _amb_by_blk.get(_lbl, []),
+        })
+    _rows.sort(key=lambda r: str(r['block']))
+    return _rows
+
+
+def render_cad_binding_confirm(cad_layers, classified_blocks, ambiguity_items=None,
+                               state_key='f3_cad_binding_confirmed'):
+    """🆕 W-G.5 C-11：「圖資配對確認」**UI 層**（Streamlit）。
+
+    ── 設計（KL 裁·四件套之 ②③④）────────────────────────────────────────────────
+    · **無歧義** → 預填、使用者按「確認」即過（**常態·零學習成本**）。
+    · **有歧義** → 該列標紅 ＋ 下拉選單指定 ＋ **並列各候選量值**供判斷。
+    · 確認結果**持久化**至 `st.session_state[state_key]`（同案再開不重複詢問）。
+    ⇒ **圖層命名制度全案取消**——**UI 即逃生門**，使用者不需學任何命名規則、
+      既有 DXF 不需修改。
+
+    回 True＝已確認（可繼續）／False＝尚待使用者確認。
+    """
+    _rows = build_cad_binding_table(cad_layers, classified_blocks, ambiguity_items)
+    _amb = [r for r in _rows if r['ambiguous']]
+    st.markdown("### 🗺️ 圖資配對確認")
+    st.caption("系統已自動判定各街廓之線層歸屬。請確認；如有標紅列，請於下拉選單指定。")
+    import pandas as _pd_cb
+    st.dataframe(_pd_cb.DataFrame([
+        {'街廓': r['block'], '正面路街線': r['front'], '左側街線': r['side_left'],
+         '右側街線': r['side_right'], '屁股線': r['baseline'],
+         '狀態': '🔴 需指定' if r['ambiguous'] else '✅'} for r in _rows
+    ]), use_container_width=True, hide_index=True)
+
+    _choice = dict(st.session_state.get(state_key + '_choice', {}))
+    if _amb:
+        st.error(f"🔴 有 {len(_amb)} 個街廓之線層歸屬無法唯一判定，請逐項指定：")
+        for r in _amb:
+            for _it in r['candidates']:
+                _key = f"{_it.get('layer')}·{_it.get('handle')}"
+                _opts = [c.get('block') for c in (_it.get('candidates') or [])]
+                _lbls = [f"{c.get('block')}（重疊 {c.get('overlap_m', '—')}m）"
+                         for c in (_it.get('candidates') or [])]
+                if not _opts:
+                    continue
+                _sel = st.selectbox(
+                    f"{_it.get('layer')}（DXF handle {_it.get('handle')}）應歸屬於：",
+                    options=list(range(len(_opts))),
+                    format_func=lambda i, _l=_lbls: _l[i],
+                    key=f"cadbind_{_key}")
+                _choice[_key] = _opts[_sel]
+    if st.button("✅ 確認圖資配對", key='cadbind_confirm'):
+        st.session_state[state_key] = True
+        st.session_state[state_key + '_choice'] = _choice
+        st.success("已確認並保存；同案再開不再詢問。")
+        return True
+    return bool(st.session_state.get(state_key, False))
 
 
 def _anchor_chamfers_topology(edges, front_line, side_lines,
@@ -13197,7 +13436,15 @@ def main():
                 try:
                     if hasattr(up_cad, 'getvalue'):
                         _doc_cad_p7 = _read_dxf_any_encoding(up_cad.getvalue())
-                        _cad_layers = parse_cad_precision_layers(_doc_cad_p7, classified_blocks)
+                        # 🆕 W-G.5 C-11：引擎層歧義 → 結構化例外 → **UI 承接**（禁以例外面對使用者）
+                        try:
+                            _cad_layers = parse_cad_precision_layers(
+                                _doc_cad_p7, classified_blocks)
+                        except CadBindingAmbiguity as _e_amb:
+                            render_cad_binding_confirm(
+                                getattr(_e_amb, 'partial', {}) or {},
+                                classified_blocks, _e_amb.items)
+                            st.stop()
                         _exist_mbl = dict(st.session_state.get('f3_manual_baseline', {}))
                         for _lbl, _bv in _cad_layers['baselines'].items():
                             _exist_mbl[_lbl] = _bv
