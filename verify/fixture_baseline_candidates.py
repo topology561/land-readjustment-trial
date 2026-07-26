@@ -157,6 +157,24 @@ def main():
         out.append(f"  分支③ 勝差 8.0m > 容差：垂距={_m3.get('perp_mid_m')}(期 {D:.1f})"
                    f"　equivalent_n={_m3.get('equivalent_n')}(期 1)　{'✅' if _hit3 else '🔴'}")
 
+    # ── 🆕 C-5 收尾（KL 令）：兩線**近平行但互垂距 0.5m**（非共線）⇒ 須**轉② raise**，
+    #    **不得被①吸收**。手算：B1 在 y=D、B2 在 y=D+0.5 ⇒ 垂距 40.0 vs 40.5、
+    #    max−min = 0.5m。舊碼以 `perp_tol_m=1.0` 判「同一條線」⇒ 0.5 ≤ 1.0 ⇒ **被①吸收**
+    #    ⇒ 靜默取最小 handle ⇒ 深度平移 0.5m 而無訊號（KL 指認之洞·對照最淺街廓
+    #    R4 vs R1 僅差 0.0415m ⇒ 該洞為決勝差距之 12 倍）。
+    #    新閘 `_BL_EQUIV_EPS_M=1e-4` ⇒ 0.5 ≫ 1e-4 ⇒ 落 ②。
+    r5, e5 = _run(ns, blk, [FRONT,
+                            ("BASELINE", (0.0, D), (W, D), "B1"),
+                            ("BASELINE", (0.0, D + 0.5), (W, D + 0.5), "B2")])
+    _hit5 = (e5 is not None and any(it.get("layer") == "BASELINE" for it in e5.items))
+    ok &= _hit5
+    out.append(f"  🆕 近平行·互垂距 0.5m（非共線）：期 **轉② raise**、不得被①吸收 ⇒ "
+               f"{'✅ 已 raise' if _hit5 else '🔴 被①吸收（靜默選了·深度會平移 0.5m 而無訊號）'}")
+    if _hit5:
+        _it5 = [i for i in e5.items if i.get("layer") == "BASELINE"][0]
+        out.append(f"      候選：{[(c.get('baseline_handle'), c.get('perp_m')) for c in _it5['candidates']]}"
+                   f"（手算 B1=40.0／B2=40.5·max−min=0.5）")
+
     # ── 反例自證：把分支②之 B2 改成與 B1 共線 ⇒ 應由 ② 轉 ①（不再 raise）──────────
     r4, e4 = _run(ns, blk, [FRONT,
                             ("BASELINE", (0.0, D), (25.0, D), "B1"),
@@ -171,10 +189,21 @@ def main():
         cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
         _mR1 = ((cad.get("baselines") or {}).get("R1") or {}).get("_match") or {}
         _gn = _mR1.get("equivalent_n")
-        _hitg = (_gn == 2)      # golden：R1 恰有 2 條共線候選（BL#1／BL#3）
+        _sp = float(_mR1.get("perp_spread_m") or 0.0)
+        _hitg = (_gn == 2 and _sp <= 1e-4)   # golden：R1 恰 2 條等價候選·離散遠低於門檻
         ok &= _hitg
-        out.append(f"  golden UC9898·R1：equivalent_n={_gn}(期 2·BL#1/BL#3 共線)"
-                   f"　垂距={_mR1.get('perp_mid_m')}　{'✅' if _hitg else '🔴'}")
+        out.append(f"  golden UC9898·R1：equivalent_n={_gn}(期 2)　"
+                   f"perp_spread={_sp:.3e}(期 ≤1e-4)　垂距={_mR1.get('perp_mid_m')}"
+                   f"　{'✅' if _hitg else '🔴'}")
+        # 🔴 R4 之離散 **5.795e-06 > 1e-6**（較 R1 之 5.169e-07 大 11 倍）
+        #    ⇒ 若門檻照「1e-6」字面取值，R4 會落出①、誤觸 ② raise。本格釘住該事實。
+        _mR4 = ((cad.get("baselines") or {}).get("R4") or {}).get("_match") or {}
+        _sp4 = float(_mR4.get("perp_spread_m") or 0.0)
+        _hit4 = (_mR4.get("equivalent_n") == 2 and 1e-6 < _sp4 <= 1e-4)
+        ok &= _hit4
+        out.append(f"  golden UC9898·R4：equivalent_n={_mR4.get('equivalent_n')}(期 2)　"
+                   f"perp_spread={_sp4:.3e}(期 1e-6 < x ≤ 1e-4·**證門檻不得取 1e-6**)"
+                   f"　{'✅' if _hit4 else '🔴'}")
         _n6 = len(cad.get("baselines") or {})
         ok &= (_n6 == 6)
         out.append(f"  golden UC9898：配到 BASELINE 之街廓數={_n6}(期 6)　{'✅' if _n6 == 6 else '🔴'}")

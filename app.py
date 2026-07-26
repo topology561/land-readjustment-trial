@@ -1557,11 +1557,35 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
     #   ⇒ 以之為門檻＝「分辨不出即不得靜默選」。取 `_anchor_chamfers_topology` 之
     #   `perp_tol_m=1.0`（本倉既有之「點在線上」容差·同一族判準）。
     _BL_PERP_TOL_M = 1.0
+    # 🆕 C-5 收尾（KL 裁 2026-07-26）：**分支①之等價判準改「量測值相同」**，
+    #   **禁用 `perp_tol_m`／任何繪圖容差**（N0-17(a) 跨來源借用）。
+    #   ── 身分辨析（本項之全部要點）──────────────────────────────────────────
+    #   `perp_tol_m` 之身分＝「CAD 線配街廓邊」之**繪圖誤差容差**（公尺級·容忍畫歪）；
+    #   分支①需要的是「**兩個算出的量測值是否相同**」之**數值等價容差**（微米級）。
+    #   二者量綱同為公尺、意義完全不同——借用即是把「容忍畫歪」誤當「數值相等」。
+    #   ── 後果（若不改·KL 指認）────────────────────────────────────────────
+    #   屁股線畫成兩段而有 **0.5m 錯位**（真實圖常見）時會被①判為「同一條線」
+    #   → 靜默取最小 handle → 深度平移 0.5m → **最淺街廓翻盤且無任何訊號**
+    #   （對照：最淺 R4 33.1046 vs R1 33.1461 僅差 **0.0415m**，MinA／½ 線掛其上）。
+    #   且**①先於②判定** ⇒ ② 之 raise 永遠不會觸發。
+    #   ── 取值依據（**非以觀測殘差反推閘寬**·N0-17）──────────────────────────
+    #   本閘之量＝「同一條無限直線之兩段，其垂距之數值差」。該差之來源是
+    #   **DXF 座標精度**（非繪圖意圖）：實測 UC9898 同線兩段之差
+    #   **R1 5.169e-07m／R4 5.795e-06m**（皆微米級·遠低於任何可辨繪圖意圖）。
+    #   取 **1e-4 m（0.1mm）**：
+    #     · 下限——須涵蓋座標精度（較實測最大 5.795e-6 留 ~17 倍餘裕）；
+    #       ⚠️ 若照「1e-6」字面取值，**R4 會落出①**（5.795e-6 > 1e-6）⇒ 誤觸 ② raise。
+    #     · 上限——KL 令不得超過 0.005m（法定 2dp 末位之半）；本值低其 50 倍。
+    #     · 對照——較舊用之 1.0m 繪圖容差**嚴 1 萬倍**；KL 所慮之 0.5m 錯位
+    #       高於本門檻 5000 倍 ⇒ **必然落 ②（raise → UI）**，不再被①吸收。
+    _BL_EQUIV_EPS_M = 1e-4
 
     def _bl_same_line(_a, _b):
-        """兩條 BASELINE 是否為**同一條無限直線**（方位 mod180 差 ≤ ang_tol ∧ 互垂距 ≤ perp_tol）。
-        UC9898 之 R1／R4 屁股線即此情形（方位差 0.0005°、互垂距 0.0000）——
-        畫成兩段共線線段 ⇒ **配到哪一段幾何等價**、量測值不變。"""
+        """**診斷標籤**（記入 `_match.same_line_geom`）：兩條 BASELINE 之幾何是否近同一直線。
+
+        🔴 **不得作為靜默選取之閘**（C-5 收尾·KL 令）——閘一律用
+        `_BL_EQUIV_EPS_M` 對**量測值**（垂距）判等。本函式僅供人看／診斷輸出。
+        """
         _d = abs((_a['angle_deg'] - _b['angle_deg'] + 90.0) % 180.0 - 90.0)
         if _d > _BL_PARALLEL_TOL_DEG:
             return False
@@ -1622,7 +1646,11 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         _best = ((_cands[0]['perp_m'], _cands[0]['br'], _cands[0]['angle_diff_deg'])
                  if _cands else None)
         _equiv_n = 1
+        _spread_out = 0.0
+        _same_geom_out = True
         if len(_cands) >= 2:
+            _spread_out = _cands[-1]['perp_m'] - _cands[0]['perp_m']
+            _same_geom_out = all(_bl_same_line(_cands[0]['br'], c['br']) for c in _cands)
             # ── 三分支（C-5·KL 裁 2026-07-26）─────────────────────────────────────
             #   ① 全部**彼此共線** ⇒ **幾何等價**（同一條無限直線之多段）⇒ 取確定性規則
             #      （最小 DXF handle）、記 `_match.equivalent_n`、**不進 `_ambig`**。
@@ -1630,8 +1658,10 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
             #   ② 不共線且**勝差 ≤ `_BL_PERP_TOL_M`** ⇒ **進 `_ambig`** → `CadBindingAmbiguity`
             #      → UI 確認頁（與 FRONT/SIDE 同一條路徑）。**禁靜默選**。
             #   ③ 不共線且勝差 > 門檻 ⇒ 採垂距最小者（真正的屁股線）。
-            _co = [c for c in _cands if _bl_same_line(_cands[0]['br'], c['br'])]
-            if len(_co) == len(_cands):                      # 分支①
+            # ① 判準＝**量測值相同**：`max(perp) − min(perp) ≤ _BL_EQUIV_EPS_M`。
+            #    以 **max−min**（非逐一對 `_cands[0]` 比）⇒ 「近似同線」之**非遞移性**自然消失。
+            _spread = _cands[-1]['perp_m'] - _cands[0]['perp_m']   # 已按 perp 昇冪排序
+            if _spread <= _BL_EQUIV_EPS_M:                   # 分支①
                 _equiv_n = len(_cands)
                 _pick = min(_cands, key=lambda c: str(c['br'].get('handle', '')))
                 _best = (_pick['perp_m'], _pick['br'], _pick['angle_diff_deg'])
@@ -1662,7 +1692,9 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
             'source': 'cad',
             '_match': {'perp_mid_m': round(float(_t_best), 4),
                        'angle_diff_deg': round(float(_ang_best), 4),
-                       'equivalent_n': int(_equiv_n),      # 🆕 C-5：共線等價候選數（1＝唯一）
+                       'equivalent_n': int(_equiv_n),      # 🆕 C-5：量測等價候選數（1＝唯一）
+                       'perp_spread_m': round(float(_spread_out), 9),   # ①之判定量（max−min）
+                       'same_line_geom': bool(_same_geom_out),          # 診斷標籤·**非閘**
                        'handle': _br_best.get('handle', '')},
         }
     # C-4：`baselines_matched_count` 語意改為「**配到 BASELINE 之街廓數**」
