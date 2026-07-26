@@ -1339,6 +1339,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                 'angle_deg': float(angle),
                 'ls': ls,
                 'length': float(ls.length),
+                'handle': _ent_handle,      # 🆕 C-5：共線等價分支之確定性決勝鍵＋UI 指認
             })
 
         elif layer == 'CENTERLINE':
@@ -1413,7 +1414,11 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
     #   **禁自創第三種**）；**廢 first-hit break、全掃取重疊最大**。
     # 【歧義】最大與次大之勝差 ≤ `_BIND_MARGIN_M` ⇒ 收集為 `CadBindingAmbiguity`（C-11）
     #   → UI「圖資配對確認」頁承接。**禁靜默選**。
-    _BIND_MARGIN_M = 1.0        # 勝差門檻（實測最小勝差：FRONT 80.26m／SIDE 29.56m ⇒ 極寬鬆）
+    # 勝差門檻＝**本量測原語之容差**（`_line_block_overlap` 之 `perp_tol_m`），**非另訂裸數字**。
+    #   原則性連結（KL 令·N0-17 禁以觀測殘差反推閘寬）：**勝差低於共線容差者，
+    #   該原語本就分辨不出二者**⇒「分辨不出即不得靜默選」。
+    #   （UC9898 實測勝差 FRONT 80.26m／SIDE 29.56m 遠高於此——**係事後對照、非門檻之依據**。）
+    _BIND_MARGIN_M = 1.0
     _ambig = []
 
     def _best_block(_pts_l, _layer_nm, _handle):
@@ -1546,6 +1551,25 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
     #   多條同時滿足 ⇒ 取**垂距最小**者（＝真正的屁股線；更遠者為他街廓之線穿越本塊法向）。
     _BL_PARALLEL_TOL_DEG = 10.0   # 對照既有「結構閘 ⊥ ALLOC/FRONT」之 0.15（≈8.6°）
     _BL_DEPTH_MIN_M = 1.0         # 垂距下限：排除退化（0）·非本案常數（任何街廓深度皆 ≫1m）
+    # 🆕 C-5 勝差門檻＝**本量測原語（垂距）之容差**，非另訂裸數字。
+    #   原則性連結（KL 令·取代舊「實測極寬鬆」之寫法·N0-17 禁以觀測殘差反推閘寬）：
+    #   **勝差低於「共線容差」者，該量測原語本就分辨不出二者是不是同一條線**
+    #   ⇒ 以之為門檻＝「分辨不出即不得靜默選」。取 `_anchor_chamfers_topology` 之
+    #   `perp_tol_m=1.0`（本倉既有之「點在線上」容差·同一族判準）。
+    _BL_PERP_TOL_M = 1.0
+
+    def _bl_same_line(_a, _b):
+        """兩條 BASELINE 是否為**同一條無限直線**（方位 mod180 差 ≤ ang_tol ∧ 互垂距 ≤ perp_tol）。
+        UC9898 之 R1／R4 屁股線即此情形（方位差 0.0005°、互垂距 0.0000）——
+        畫成兩段共線線段 ⇒ **配到哪一段幾何等價**、量測值不變。"""
+        _d = abs((_a['angle_deg'] - _b['angle_deg'] + 90.0) % 180.0 - 90.0)
+        if _d > _BL_PARALLEL_TOL_DEG:
+            return False
+        _ua = (_m.cos(_m.radians(_a['angle_deg'])), _m.sin(_m.radians(_a['angle_deg'])))
+        _na = (-_ua[1], _ua[0])
+        _off = abs((_b['point'][0] - _a['point'][0]) * _na[0]
+                   + (_b['point'][1] - _a['point'][1]) * _na[1])
+        return _off <= _BL_PERP_TOL_M
 
     def _bl_perp_depth(_p, _n, _bl_pt, _bl_u):
         """自 `_p` 沿 `_n` 至 BASELINE **無限直線**之有號垂距（N-12′ 之量測原語）。"""
@@ -1579,7 +1603,8 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
             _diag = ((_b0[2] - _b0[0]) ** 2 + (_b0[3] - _b0[1]) ** 2) ** 0.5
         except Exception:
             _diag = 1e9
-        _best = None
+        # 🆕 C-5：收集**全部**通過 (a)(b)(c) 之候選（不再邊掃邊靜默取最小）
+        _cands = []
         for _br in _baseline_raw:
             _ang_d = abs((_fa - _br['angle_deg'] + 90.0) % 180.0 - 90.0)
             if _ang_d > _BL_PARALLEL_TOL_DEG:               # (a)
@@ -1591,8 +1616,36 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                 continue
             if not (_BL_DEPTH_MIN_M <= _t_mid <= _diag):    # (c)
                 continue
-            if _best is None or _t_mid < _best[0]:
-                _best = (_t_mid, _br, _ang_d)
+            _cands.append({'perp_m': float(_t_mid), 'angle_diff_deg': float(_ang_d), 'br': _br})
+        # 決定性排序：垂距 → handle（同分不得由 list 順序決勝）
+        _cands.sort(key=lambda c: (c['perp_m'], str(c['br'].get('handle', ''))))
+        _best = ((_cands[0]['perp_m'], _cands[0]['br'], _cands[0]['angle_diff_deg'])
+                 if _cands else None)
+        _equiv_n = 1
+        if len(_cands) >= 2:
+            # ── 三分支（C-5·KL 裁 2026-07-26）─────────────────────────────────────
+            #   ① 全部**彼此共線** ⇒ **幾何等價**（同一條無限直線之多段）⇒ 取確定性規則
+            #      （最小 DXF handle）、記 `_match.equivalent_n`、**不進 `_ambig`**。
+            #      UC9898 golden：R1 之 BL#1／BL#3 即此（方位差 0.0005°、互垂距 0.0000）。
+            #   ② 不共線且**勝差 ≤ `_BL_PERP_TOL_M`** ⇒ **進 `_ambig`** → `CadBindingAmbiguity`
+            #      → UI 確認頁（與 FRONT/SIDE 同一條路徑）。**禁靜默選**。
+            #   ③ 不共線且勝差 > 門檻 ⇒ 採垂距最小者（真正的屁股線）。
+            _co = [c for c in _cands if _bl_same_line(_cands[0]['br'], c['br'])]
+            if len(_co) == len(_cands):                      # 分支①
+                _equiv_n = len(_cands)
+                _pick = min(_cands, key=lambda c: str(c['br'].get('handle', '')))
+                _best = (_pick['perp_m'], _pick['br'], _pick['angle_diff_deg'])
+            elif (_cands[1]['perp_m'] - _cands[0]['perp_m']) <= _BL_PERP_TOL_M:   # 分支②
+                _ambig.append({
+                    'layer': 'BASELINE', 'handle': _cands[0]['br'].get('handle', ''),
+                    'block': _lbl,
+                    'candidates': [{'block': _lbl,
+                                    'baseline_handle': c['br'].get('handle', ''),
+                                    'perp_m': round(c['perp_m'], 4),
+                                    'angle_diff_deg': round(c['angle_diff_deg'], 4)}
+                                   for c in _cands[:4]],
+                    'chosen': None})
+            # 分支③：`_best` 已為垂距最小者·無需另處理
         if _best is None:
             raise RuntimeError(
                 f"🔴 BASELINE 配對失敗[{_lbl}]：無任一 BASELINE 同時滿足"
@@ -1608,7 +1661,9 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
             'enabled': True,
             'source': 'cad',
             '_match': {'perp_mid_m': round(float(_t_best), 4),
-                       'angle_diff_deg': round(float(_ang_best), 4)},
+                       'angle_diff_deg': round(float(_ang_best), 4),
+                       'equivalent_n': int(_equiv_n),      # 🆕 C-5：共線等價候選數（1＝唯一）
+                       'handle': _br_best.get('handle', '')},
         }
     # C-4：`baselines_matched_count` 語意改為「**配到 BASELINE 之街廓數**」
     #   （舊語意＝「有候選之 BASELINE 條數」·已證不足以佐證正確性）。
