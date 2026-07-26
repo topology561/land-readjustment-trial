@@ -1170,7 +1170,7 @@ def _parse_block_attribute_text(text: str):
     return t, ''
 
 
-def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
+def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> dict:
     """
     🆕 Phase 7 Module 1：CAD 精準圖層直讀
     🐛 Phase 11 Hotfix：
@@ -1557,28 +1557,41 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
     #   ⇒ 以之為門檻＝「分辨不出即不得靜默選」。取 `_anchor_chamfers_topology` 之
     #   `perp_tol_m=1.0`（本倉既有之「點在線上」容差·同一族判準）。
     _BL_PERP_TOL_M = 1.0
-    # 🆕 C-5 收尾（KL 裁 2026-07-26）：**分支①之等價判準改「量測值相同」**，
+    # 🆕 C-5（KL 裁 2026-07-26／結案 2026-07-27）：**分支①之等價判準＝「量測值相同」**，
     #   **禁用 `perp_tol_m`／任何繪圖容差**（N0-17(a) 跨來源借用）。
-    #   ── 身分辨析（本項之全部要點）──────────────────────────────────────────
+    #   ── 身分辨析 ──────────────────────────────────────────────────────────
     #   `perp_tol_m` 之身分＝「CAD 線配街廓邊」之**繪圖誤差容差**（公尺級·容忍畫歪）；
-    #   分支①需要的是「**兩個算出的量測值是否相同**」之**數值等價容差**（微米級）。
+    #   分支①需要的是「**兩個算出的量測值是否相同**」之**數值等價容差**。
     #   二者量綱同為公尺、意義完全不同——借用即是把「容忍畫歪」誤當「數值相等」。
-    #   ── 後果（若不改·KL 指認）────────────────────────────────────────────
-    #   屁股線畫成兩段而有 **0.5m 錯位**（真實圖常見）時會被①判為「同一條線」
-    #   → 靜默取最小 handle → 深度平移 0.5m → **最淺街廓翻盤且無任何訊號**
-    #   （對照：最淺 R4 33.1046 vs R1 33.1461 僅差 **0.0415m**，MinA／½ 線掛其上）。
-    #   且**①先於②判定** ⇒ ② 之 raise 永遠不會觸發。
-    #   ── 取值依據（**非以觀測殘差反推閘寬**·N0-17）──────────────────────────
-    #   本閘之量＝「同一條無限直線之兩段，其垂距之數值差」。該差之來源是
-    #   **DXF 座標精度**（非繪圖意圖）：實測 UC9898 同線兩段之差
-    #   **R1 5.169e-07m／R4 5.795e-06m**（皆微米級·遠低於任何可辨繪圖意圖）。
-    #   取 **1e-4 m（0.1mm）**：
-    #     · 下限——須涵蓋座標精度（較實測最大 5.795e-6 留 ~17 倍餘裕）；
-    #       ⚠️ 若照「1e-6」字面取值，**R4 會落出①**（5.795e-6 > 1e-6）⇒ 誤觸 ② raise。
-    #     · 上限——KL 令不得超過 0.005m（法定 2dp 末位之半）；本值低其 50 倍。
-    #     · 對照——較舊用之 1.0m 繪圖容差**嚴 1 萬倍**；KL 所慮之 0.5m 錯位
-    #       高於本門檻 5000 倍 ⇒ **必然落 ②（raise → UI）**，不再被①吸收。
-    _BL_EQUIV_EPS_M = 1e-4
+    #
+    #   ── 🔒 門檻之選定準則（KL 令·**取代舊「避免落入②」之寫法**）──────────────
+    #   **以「何種差值在法規與下游決策上不具意義」為準，**
+    #   **不得以「避免落入②」為準。**
+    #   ∵ C-11 之後，**②＝跳出「圖資配對確認頁」請使用者點選＝設計好的安全閥、非故障**；
+    #     其成本為**一次點選**。以「迴避②」定門檻會使閘持續放寬（本案曾因此上推 17 倍）。
+    #
+    #   ── 公式（**三常數皆有法源／物理來源·禁以「實測留 N 倍餘裕」為依據**）─────────
+    #     eps = max( _EPS_LEGAL , min( k · q · (L/ℓ) , _EPS_LEGAL_CEIL ) )
+    #   · `_EPS_LEGAL = 1e-4 m`＝**法定粒度之 1/100**。法源：市地重劃實施辦法 §3
+    #     「長度記至二位小數（第三位四捨五入）」⇒ 法定可辨粒度 0.01m。
+    #     低於本值者**不可能改變任何法定記載長度** ⇒ 無條件判等價。
+    #     **此為下限·與案件無關。**
+    #   · `q`＝**自 DXF 實測**之坐標量化步長（`_detect_dxf_quantum`·**禁硬編**）。
+    #     偵測失敗（二進位 DXF 等）⇒ 只用下限。
+    #   · `L/ℓ` **逐塊逐候選實算**：`ℓ`＝該 BASELINE 線段長、`L`＝FRONTLINE 中點至該線段之距離。
+    #     物理來源：端點捨入 ±q 經槓桿 `L/ℓ` 放大為垂距差。
+    #   · `k = 4`：兩線段**各兩端點**各自捨入（±q）⇒ 角度不確定度 ~2q/ℓ；再加**量測點**捨入
+    #     ⇒ 保守取 4 倍。**非經驗係數**。
+    #   · `_EPS_LEGAL_CEIL = 0.005 m`＝法定 2dp 末位之半（KL 令）·**硬上限·任何情況不得逾越**。
+    #
+    #   ── 事後佐證（**對照·非取值依據**）────────────────────────────────────
+    #   UC9898 實測同線兩段之垂距差 R1 **5.169e-07**／R4 **5.795e-06**，
+    #   皆低於下限 `_EPS_LEGAL` ⇒ 走**無條件等價**路徑（不倚賴 q 項）。
+    #   併記：BASELINE 端點 8/8 與 BLOCK 頂點距離 0.000e+00 ⇒ 鎖點精確、該差**非繪圖誤差**。
+    _EPS_LEGAL = 1e-4          # 法定粒度 0.01m（辦法 §3 長度 2dp）之 1/100
+    _EPS_LEGAL_CEIL = 0.005    # 法定 2dp 末位之半·硬上限
+    _EPS_K = 4.0               # 兩線段各兩端點捨入 ＋ 量測點捨入
+    _q_detected = _detect_dxf_quantum(dxf_bytes)
 
     def _bl_same_line(_a, _b):
         """**診斷標籤**（記入 `_match.same_line_geom`）：兩條 BASELINE 之幾何是否近同一直線。
@@ -1648,6 +1661,8 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         _equiv_n = 1
         _spread_out = 0.0
         _same_geom_out = True
+        _eps_out = _EPS_LEGAL
+        _lor_out = 0.0
         if len(_cands) >= 2:
             _spread_out = _cands[-1]['perp_m'] - _cands[0]['perp_m']
             _same_geom_out = all(_bl_same_line(_cands[0]['br'], c['br']) for c in _cands)
@@ -1658,10 +1673,29 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
             #   ② 不共線且**勝差 ≤ `_BL_PERP_TOL_M`** ⇒ **進 `_ambig`** → `CadBindingAmbiguity`
             #      → UI 確認頁（與 FRONT/SIDE 同一條路徑）。**禁靜默選**。
             #   ③ 不共線且勝差 > 門檻 ⇒ 採垂距最小者（真正的屁股線）。
-            # ① 判準＝**量測值相同**：`max(perp) − min(perp) ≤ _BL_EQUIV_EPS_M`。
+            # ① 判準＝**量測值相同**：`max(perp) − min(perp) ≤ eps`。
             #    以 **max−min**（非逐一對 `_cands[0]` 比）⇒ 「近似同線」之**非遞移性**自然消失。
             _spread = _cands[-1]['perp_m'] - _cands[0]['perp_m']   # 已按 perp 昇冪排序
-            if _spread <= _BL_EQUIV_EPS_M:                   # 分支①
+            # eps 逐塊逐候選現算（取各候選之**最大** L/ℓ＝最保守）
+            _lo_r = 0.0
+            for _c in _cands:
+                _bs = _c['br'].get('ls')
+                _len_seg = float(_c['br'].get('length', 0.0) or 0.0)
+                if _len_seg <= 1e-9:
+                    continue
+                try:
+                    _Ldist = float(_bs.distance(_SP((_q1[0] + _q2[0]) / 2.0,
+                                                    (_q1[1] + _q2[1]) / 2.0)))
+                except Exception:
+                    continue
+                _lo_r = max(_lo_r, _Ldist / _len_seg)
+            _eps_used = _EPS_LEGAL
+            if _q_detected and _lo_r > 0:
+                _eps_used = max(_EPS_LEGAL,
+                                min(_EPS_K * _q_detected * _lo_r, _EPS_LEGAL_CEIL))
+            _eps_out = _eps_used
+            _lor_out = _lo_r
+            if _spread <= _eps_used:                         # 分支①
                 _equiv_n = len(_cands)
                 _pick = min(_cands, key=lambda c: str(c['br'].get('handle', '')))
                 _best = (_pick['perp_m'], _pick['br'], _pick['angle_diff_deg'])
@@ -1694,6 +1728,9 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                        'angle_diff_deg': round(float(_ang_best), 4),
                        'equivalent_n': int(_equiv_n),      # 🆕 C-5：量測等價候選數（1＝唯一）
                        'perp_spread_m': round(float(_spread_out), 9),   # ①之判定量（max−min）
+                       'eps_used': float(_eps_out),                     # ①之門檻（現算）
+                       'q_detected': (float(_q_detected) if _q_detected else None),
+                       'L_over_l': round(float(_lor_out), 6),
                        'same_line_geom': bool(_same_geom_out),          # 診斷標籤·**非閘**
                        'handle': _br_best.get('handle', '')},
         }
@@ -5051,6 +5088,62 @@ def restore_block_geometry(polygon, cutoff_min_m: float = 2.0,
         'side_corrected_by_mbr': side_corrected_by_mbr,
         'notes': notes,
     }
+
+
+def _detect_dxf_quantum(dxf_bytes):
+    """🆕 W-G.5 C-5 結案（KL 裁 2026-07-27）：自 DXF **實測坐標量化步長 `q`**（公尺）。
+
+    ── 為何需要（**禁硬編**）─────────────────────────────────────────────────────
+    「同一條直線畫成多段」時，各段端點各自被**檔案寫入位數**捨入 ⇒ 由不同段算出之
+    垂距會有差異，其量級 ≈ `q × (L/ℓ)`（`ℓ`＝線段長、`L`＝量測點至線段之距離）。
+    該差異**全部來自檔案寫入位數、與繪圖品質無關**（UC9898 實證：BASELINE 端點
+    **8/8 與 BLOCK 頂點逐位元組相同、距離 0.000e+00** ⇒ 鎖點精確、繪圖無誤差）。
+    ⇒ `q` 是**檔案屬性**，逐案不同（本檔 5dp；CAD 常見之 3dp 匯出即 `q=1e-3`），
+      **硬編任一值皆違泛用化**。
+
+    ── 作法 ────────────────────────────────────────────────────────────────────
+    ASCII DXF 為「群碼 / 值」逐行成對。掃**坐標群碼**（10–18／20–28／30–38）之值，
+    取其小數位數之**最大值** `d` ⇒ `q = 10**(-d)`。
+    **非 ASCII DXF（二進位）／偵測失敗 → 回 None**（呼叫端只用法定下限·no-silent-fallback）。
+    """
+    if not dxf_bytes:
+        return None
+    try:
+        _txt = dxf_bytes.decode('ascii', errors='ignore') \
+            if isinstance(dxf_bytes, (bytes, bytearray)) else str(dxf_bytes)
+    except Exception:
+        return None
+    _lines = _txt.splitlines()
+    if len(_lines) < 4:
+        return None
+    _dmax = 0
+    _seen = 0
+    for _i in range(len(_lines) - 1):
+        _c = _lines[_i].strip()
+        if not _c or not (_c.isdigit() or (_c[0] == '-' and _c[1:].isdigit())):
+            continue
+        try:
+            _ci = int(_c)
+        except Exception:
+            continue
+        if not (10 <= _ci <= 18 or 20 <= _ci <= 28 or 30 <= _ci <= 38):
+            continue
+        _v = _lines[_i + 1].strip()
+        if '.' not in _v:
+            continue
+        _frac = _v.split('.', 1)[1]
+        # 去除指數尾（如 1.23400E+05）——本專案 DXF 為定點記法，仍防禦
+        for _sep in ('e', 'E'):
+            if _sep in _frac:
+                _frac = _frac.split(_sep, 1)[0]
+        if not _frac.isdigit():
+            continue
+        _seen += 1
+        if len(_frac) > _dmax:
+            _dmax = len(_frac)
+    if _seen == 0 or _dmax <= 0:
+        return None
+    return 10.0 ** (-_dmax)
 
 
 def _line_block_overlap(line_pts, block_poly, ang_tol_deg=2.0, perp_tol_m=1.0):
@@ -13526,7 +13619,8 @@ def main():
                         # 🆕 W-G.5 C-11：引擎層歧義 → 結構化例外 → **UI 承接**（禁以例外面對使用者）
                         try:
                             _cad_layers = parse_cad_precision_layers(
-                                _doc_cad_p7, classified_blocks)
+                                _doc_cad_p7, classified_blocks,
+                                dxf_bytes=up_cad.getvalue())
                         except CadBindingAmbiguity as _e_amb:
                             render_cad_binding_confirm(
                                 getattr(_e_amb, 'partial', {}) or {},

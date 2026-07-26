@@ -79,7 +79,7 @@ def build_pipeline(ns, fake_st, snapshot):
                    "burden_type": fcb.get(cat, "未分類"),
                    "has_corner": False, "corner_sides": []})
     doc = ns["_read_dxf_any_encoding"](raw)
-    cad = ns["parse_cad_precision_layers"](doc, cb)
+    cad = ns["parse_cad_precision_layers"](doc, cb, dxf_bytes=raw)
     cb = ns["_annotate_block_corner_flags"](cb, cad.get("side_lengths_by_side", {}) or {})
     flm = cad.get("front_lines", {}) or {}
     slm = cad.get("side_lines_by_side", {}) or {}

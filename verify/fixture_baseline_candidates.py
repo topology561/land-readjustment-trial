@@ -13,9 +13,9 @@ C-1/C-2 把 BASELINE 改成結構性 1:N 配對，但**決勝仍是「垂距最�
 
 | # | 條件 | 處置 |
 |---|---|---|
-| ① | ≥2 候選且**彼此共線**（方位 mod180 差 ≤ ang_tol ∧ 互垂距 ≤ perp_tol） | **幾何等價** ⇒ 取確定性規則（最小 DXF handle）＋記 `_match.equivalent_n`；**不進 `_ambig`** |
-| ② | ≥2 候選、**不共線**、勝差 ≤ `_BL_PERP_TOL_M` | **進 `_ambig`** → `CadBindingAmbiguity` → UI 確認頁。**禁靜默選** |
-| ③ | ≥2 候選、不共線、勝差 > 門檻 | 採垂距最小者（真正的屁股線） |
+| ① | ≥2 候選且**量測值等價**：`max(perp)−min(perp) ≤ eps`，`eps = max(_EPS_LEGAL, min(k·q·(L/ℓ), _EPS_LEGAL_CEIL))` | 取確定性規則（最小 DXF handle）＋記 `_match.equivalent_n`；**不進 `_ambig`** |
+| ② | ≥2 候選、非①、勝差 ≤ `_BL_PERP_TOL_M` | **進 `_ambig`** → `CadBindingAmbiguity` → UI 確認頁（**設計好的安全閥·非故障**·成本＝一次點選） |
+| ③ | ≥2 候選、非①、勝差 > 門檻 | 採垂距最小者（真正的屁股線） |
 
 ## 本夾具之檢查
 
@@ -84,11 +84,20 @@ def _synth_block(lbl, w=60.0, d=40.0, x0=0.0, y0=0.0):
     }
 
 
-def _run(ns, blocks, lines):
+def _synth_dxf_bytes(decimals):
+    """合成**最小 ASCII DXF 文字**，其坐標群碼之值恰有 `decimals` 位小數
+    ⇒ 供 `_detect_dxf_quantum` 測出 `q = 10**-decimals`。
+    （本夾具不解析此文字·僅用於 q 偵測·故毋須完整 DXF 結構。）"""
+    _v = "1." + "0" * decimals
+    return ("\n".join([" 10", _v, " 20", _v, " 11", _v, " 21", _v])).encode("ascii")
+
+
+def _run(ns, blocks, lines, dxf_bytes=None):
     """回 (result, exc)。exc 為 CadBindingAmbiguity 或 None。"""
     ents = [_E(ly, a, b, h) for (ly, a, b, h) in lines]
     try:
-        return ns["parse_cad_precision_layers"](_Doc(ents), blocks), None
+        return ns["parse_cad_precision_layers"](
+            _Doc(ents), blocks, dxf_bytes=dxf_bytes), None
     except ns["CadBindingAmbiguity"] as e:
         return None, e
 
@@ -175,6 +184,35 @@ def main():
         out.append(f"      候選：{[(c.get('baseline_handle'), c.get('perp_m')) for c in _it5['candidates']]}"
                    f"（手算 B1=40.0／B2=40.5·max−min=0.5）")
 
+    # ── 🆕 C-5 結案：**同一幾何、只換匯出精度 q** ⇒ 須由 ② 轉 ①（q 項吸收）─────────
+    #   手算：B1 = (0,D)→(25,D)；B2 = (30,D+6e-4)→(60,D+6e-4)。FRONT 中點 M=(30,0)、n=(0,1)。
+    #     perp(B1)=40.0、perp(B2)=40.0006 ⇒ **spread = 6e-4**。
+    #     `L/ℓ` 取**各候選之最大**（最保守·碼即如此）：
+    #       B2：最近點 (30,40.0006) ⇒ L=40.0006、ℓ=30 ⇒ 1.33335
+    #       B1：最近點 (25,40)      ⇒ L=√(5²+40²)=√1625=40.31129、ℓ=25 ⇒ **1.612452 ← max**
+    #     · q=1e-5（5dp）：k·q·(L/ℓ) = 4×1e-5×1.612452 = 6.450e-5 < _EPS_LEGAL(1e-4)
+    #       ⇒ eps = 1e-4；spread 6e-4 > 1e-4 ⇒ **落 ②**。
+    #     · q=1e-3（3dp·CAD 常見匯出）：4×1e-3×1.612452 = 6.450e-3 → **上限截為 5e-3**
+    #       ⇒ eps = 5e-3；spread 6e-4 ≤ 5e-3 ⇒ **落 ①**。
+    #   ⇒ 證「換匯出精度不會使同一幾何誤落②」，且門檻確由 q 驅動、非寫死。
+    _DZ = 6e-4
+    _lines_q = [FRONT,
+                ("BASELINE", (0.0, D), (25.0, D), "B1"),
+                ("BASELINE", (30.0, D + _DZ), (W, D + _DZ), "B2")]
+    r6a, e6a = _run(ns, blk, _lines_q, dxf_bytes=_synth_dxf_bytes(5))
+    _hit6a = (e6a is not None)
+    r6b, e6b = _run(ns, blk, _lines_q, dxf_bytes=_synth_dxf_bytes(3))
+    _m6b = (((r6b or {}).get("baselines") or {}).get("R9") or {}).get("_match") or {}
+    _hit6b = (e6b is None and _m6b.get("equivalent_n") == 2
+              and abs(float(_m6b.get("q_detected") or 0) - 1e-3) < 1e-12)
+    ok &= (_hit6a and _hit6b)
+    out.append(f"  🆕 同幾何(spread 6e-4)·q=1e-5(5dp)：期 **落②** ⇒ "
+               f"{'✅ 已 raise' if _hit6a else '🔴 未 raise'}")
+    out.append(f"  🆕 同幾何(spread 6e-4)·q=1e-3(3dp)：期 **落①**（q 項吸收）⇒ "
+               f"{'✅' if _hit6b else '🔴'}"
+               f"　eq_n={_m6b.get('equivalent_n')}　q={_m6b.get('q_detected')}"
+               f"　L/l={_m6b.get('L_over_l')}(手算 1.612452)　eps={_m6b.get('eps_used')}(手算 5e-3)")
+
     # ── 反例自證：把分支②之 B2 改成與 B1 共線 ⇒ 應由 ② 轉 ①（不再 raise）──────────
     r4, e4 = _run(ns, blk, [FRONT,
                             ("BASELINE", (0.0, D), (25.0, D), "B1"),
@@ -190,20 +228,27 @@ def main():
         _mR1 = ((cad.get("baselines") or {}).get("R1") or {}).get("_match") or {}
         _gn = _mR1.get("equivalent_n")
         _sp = float(_mR1.get("perp_spread_m") or 0.0)
-        _hitg = (_gn == 2 and _sp <= 1e-4)   # golden：R1 恰 2 條等價候選·離散遠低於門檻
+        _epsg = float(_mR1.get("eps_used") or 0.0)
+        _hitg = (_gn == 2 and _sp <= _epsg)   # 單邊斷言：只比不變式 spread ≤ eps_used
         ok &= _hitg
         out.append(f"  golden UC9898·R1：equivalent_n={_gn}(期 2)　"
-                   f"perp_spread={_sp:.3e}(期 ≤1e-4)　垂距={_mR1.get('perp_mid_m')}"
-                   f"　{'✅' if _hitg else '🔴'}")
-        # 🔴 R4 之離散 **5.795e-06 > 1e-6**（較 R1 之 5.169e-07 大 11 倍）
-        #    ⇒ 若門檻照「1e-6」字面取值，R4 會落出①、誤觸 ② raise。本格釘住該事實。
+                   f"perp_spread={_sp:.3e} ≤ eps_used={_epsg:.3e}　"
+                   f"垂距={_mR1.get('perp_mid_m')}　{'✅' if _hitg else '🔴'}")
+        # golden R4：**單邊斷言**（KL 令·C-5 結案 (3)）——只斷言真正的**不變式**：
+        #   `spread ≤ eps_used` ∧ `equivalent_n == 2`。
+        #   ⛔ **禁**加下界 `1e-6 < spread`：那會把「CAD 存在雜訊」釘成**必要條件**
+        #      ⇒ 日後圖資畫得更精準／換乾淨匯出鏈使離散下降時，**夾具會因輸入變好而轉紅**。
+        #   「門檻不得取 1e-6」之教訓寫在註解與正典即可，**不得寫成對圖資品質之執行期斷言**。
         _mR4 = ((cad.get("baselines") or {}).get("R4") or {}).get("_match") or {}
         _sp4 = float(_mR4.get("perp_spread_m") or 0.0)
-        _hit4 = (_mR4.get("equivalent_n") == 2 and 1e-6 < _sp4 <= 1e-4)
+        _eps4 = float(_mR4.get("eps_used") or 0.0)
+        _hit4 = (_mR4.get("equivalent_n") == 2 and _sp4 <= _eps4)
         ok &= _hit4
         out.append(f"  golden UC9898·R4：equivalent_n={_mR4.get('equivalent_n')}(期 2)　"
-                   f"perp_spread={_sp4:.3e}(期 1e-6 < x ≤ 1e-4·**證門檻不得取 1e-6**)"
-                   f"　{'✅' if _hit4 else '🔴'}")
+                   f"perp_spread={_sp4:.3e} ≤ eps_used={_eps4:.3e}　{'✅' if _hit4 else '🔴'}")
+        out.append(f"      （資訊性錨·**不參與判紅**：本次觀測 spread={_sp4:.3e}、"
+                   f"q={_mR4.get('q_detected')}、L/ℓ={_mR4.get('L_over_l')}；"
+                   f"史載 5.795e-06 曾證「門檻不得取 1e-6」）")
         _n6 = len(cad.get("baselines") or {})
         ok &= (_n6 == 6)
         out.append(f"  golden UC9898：配到 BASELINE 之街廓數={_n6}(期 6)　{'✅' if _n6 == 6 else '🔴'}")
