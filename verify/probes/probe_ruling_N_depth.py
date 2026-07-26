@@ -270,9 +270,13 @@ def main():
         _len = float(inter.length) if hasattr(inter, "length") else 0.0
         L.append(f"  ▸ {blk}｜s_min={s_min:.4f}｜楔形面積={float(w_area or 0):.4f}㎡")
         L.append(f"      楔形 ∩ FRONTLINE：型別 **{_typ}**｜長度 **{_len:.6f} m**")
-        if _typ == "Point" or _len <= 1e-9:
-            _pt = inter if _typ == "Point" else None
-            _d2p1 = (float(Point(p1).distance(inter)) if not inter.is_empty else float("nan"))
+        if inter.is_empty:
+            # 空交集：楔形與 FRONTLINE **完全不接觸**（浮點下角點未落在線段上）
+            _d_gap = float(wedge.distance(fl_seg))
+            L.append(f"      ⇒ **交集為空**（楔形↔FRONTLINE 最近距 {_d_gap:.3e} m）"
+                     f" ⇒ 接觸至多為角點·**臨街長度 0** ⇒ 依 KL N-2′ 屬**未臨正街土地** ✅")
+        elif _typ == "Point" or _len <= 1e-9:
+            _d2p1 = float(Point(p1).distance(inter))
             L.append(f"      ⇒ **接觸退化為單點**（距 p1 {_d2p1:.6e} m）"
                      f" ⇒ 依 KL N-2′ 屬**未臨正街土地**·不獨立受寬深檢驗 ✅")
         else:

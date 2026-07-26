@@ -1284,6 +1284,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
         lbl: (b, p, cen, fd) for lbl, (b, p, cen, fd) in blk_polys.items()
         if F3_CATEGORY_BURDEN.get(b.get('category', ''), '') == '可建築土地'
     }
+    _baseline_raw = []      # 🆕 C-1/C-2：BASELINE 暫存（配對移至第二階段·見迴圈後）
 
     for entity in entities:
         try:
@@ -1324,37 +1325,16 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                 angle = _m.degrees(_m.atan2(dy, dx))
             except Exception:
                 continue
-            _candidates = []   # [(distance, blk_lbl)]
-            for blk_lbl, (blk, blk_poly, cen, fd) in _buildable_blocks.items():
-                try:
-                    d = blk_poly.distance(ls)
-                    if d < 2.0:   # 2.0m 容差（CAD 繪製誤差）
-                        _candidates.append((d, blk_lbl))
-                except Exception:
-                    continue
-            if _candidates:
-                # 🆕 計入 raw matched count
-                result['baselines_matched_count'] += 1
-                _candidates.sort(key=lambda x: x[0])
-                # 貪婪式：嘗試指派給「尚未綁定」之街廓；若全部已綁則指派給最近且線段較長者
-                _winner_lbl = None
-                for _d, _lbl in _candidates:
-                    if _lbl not in result['baselines']:
-                        _winner_lbl = _lbl
-                        break
-                if _winner_lbl is None:
-                    _winner_lbl = _candidates[0][1]
-                _existing = result['baselines'].get(_winner_lbl)
-                if _existing is None or float(ls.length) > _existing.get('_length', 0):
-                    result['baselines'][_winner_lbl] = {
-                        'point': (float(pts[0][0]), float(pts[0][1])),
-                        'angle_deg': float(angle),
-                        'enabled': True,
-                        'source': 'cad',
-                        '_length': float(ls.length),
-                    }
-            else:
-                result['diagnostics']['unbound'].append(('BASELINE', pts[0]))
+            # 🆕 W-G.5 C-1/C-2（KL 裁定 2026-07-26 第二批）：**BASELINE 配對移至第二階段**。
+            #   本階段僅**暫存**原始線段——結構性配對需完整 `result['front_lines']`，
+            #   而 FRONT_LINE 與 BASELINE 於同一 entity 迴圈解析、此時尚未齊備。
+            #   ⛔ 舊法（最近距離 ＋ 貪婪 1:1）已廢——見第二階段之案由。
+            _baseline_raw.append({
+                'point': (float(pts[0][0]), float(pts[0][1])),
+                'angle_deg': float(angle),
+                'ls': ls,
+                'length': float(ls.length),
+            })
 
         elif layer == 'CENTERLINE':
             # 中點落於道路類街廓 → 綁定
@@ -1490,6 +1470,101 @@ def parse_cad_precision_layers(doc, classified_blocks: list) -> dict:
                 'dmin': round(_dmin_all, 3),
                 'tol': _TOL_SL,
             })
+
+    # ── 🆕 W-G.5 C-1／C-2：BASELINE **結構性 1:N 配對**（KL 裁定 2026-07-26 第二批）──────
+    #
+    # 【案由·失敗考古 #38】舊法＝`blk_poly.distance(ls) < 2.0` 取候選 ＋ **貪婪 1:1**
+    #   （先給尚未綁定之街廓、全綁則給最近者）。兩個獨立致命點，UC9898 實證：
+    #     ① **端點重合誤取**：`R1-baseline` 起點與 `R2-frontline` 終點座標**完全重合**
+    #        （距 <0.001m）⇒ 任何以最近／共端點為依據之配對必然把 R1 之線判給 R2。
+    #        後果：R2 之垂距沿近平行方向發散（實測 0～1414m，而其 面積÷臨街長 僅 43.67m）。
+    #     ② **1:1 耗盡**：本案 4 條 BASELINE 服務 6 街廓（**屁股對屁股共用**：
+    #        `R2_R3-baseline` 由 R2/R3 共用、`R5_R6-baseline` 由 R5/R6 共用）。
+    #        1:1 下 R1 之線被 R2 取走、R5_R6 之線給了 R6 ⇒ R1／R5 假性「缺件」。
+    #   ⇒ **角度無法救**：`R1-baseline` 與 `R4-baseline` 方位僅差 0.0005°。
+    #   ⇒ **`baselines_matched_count` 作為配對正確性證據之用法一併廢止（C-4）**——
+    #      該計數只計「有候選」，本案 4/4 全中卻 3 對 1 錯。保留欄位僅為向後相容。
+    #
+    # 【正典·C-3】「**屁股對屁股共用 BASELINE**」為合法繪法。不變式：
+    #     **每街廓恰有一條有效 BASELINE；一條 BASELINE 得服務 1~N 個街廓。**
+    #   配不到者 **loud raise**，禁靜默略過。
+    #
+    # 【配對條件·C-2】**禁用最近距離／共端點**。三條件**全部成立**才配（結構性）：
+    #     (a) 近平行：|Δθ(BASELINE, 該街廓 FRONTLINE)| ≤ _BL_PARALLEL_TOL_DEG
+    #     (b) 屁股側：垂距沿 FRONT 法向（指向街廓內）為**正**
+    #     (c) 深度域合理：垂距落於 [_BL_DEPTH_MIN_M, 街廓對角線] —— 排除「0」與「發散」
+    #   多條同時滿足 ⇒ 取**垂距最小**者（＝真正的屁股線；更遠者為他街廓之線穿越本塊法向）。
+    _BL_PARALLEL_TOL_DEG = 10.0   # 對照既有「結構閘 ⊥ ALLOC/FRONT」之 0.15（≈8.6°）
+    _BL_DEPTH_MIN_M = 1.0         # 垂距下限：排除退化（0）·非本案常數（任何街廓深度皆 ≫1m）
+
+    def _bl_perp_depth(_p, _n, _bl_pt, _bl_u):
+        """自 `_p` 沿 `_n` 至 BASELINE **無限直線**之有號垂距（N-12′ 之量測原語）。"""
+        _A = ((_n[0], -_bl_u[0]), (_n[1], -_bl_u[1]))
+        _det = _A[0][0] * _A[1][1] - _A[0][1] * _A[1][0]
+        if abs(_det) < 1e-12:
+            return None                      # BASELINE ∥ 量測軸 ⇒ 垂距不可定義
+        _rx = _bl_pt[0] - _p[0]; _ry = _bl_pt[1] - _p[1]
+        return (_rx * _A[1][1] - _A[0][1] * _ry) / _det
+
+    for _lbl, (_blk_b, _poly_b, _cen_b, _fd_b) in _buildable_blocks.items():
+        _flb = result['front_lines'].get(_lbl) or {}
+        if not (_flb.get('p1') and _flb.get('p2')):
+            continue                         # 無 FRONT_LINE ⇒ 非分配街廓·不配 BASELINE
+        _q1 = _flb['p1']; _q2 = _flb['p2']
+        _dxb = _q2[0] - _q1[0]; _dyb = _q2[1] - _q1[1]
+        _Lb = (_dxb ** 2 + _dyb ** 2) ** 0.5
+        if _Lb <= 0.1:
+            continue
+        _db = (_dxb / _Lb, _dyb / _Lb)
+        _fa = _m.degrees(_m.atan2(_db[1], _db[0]))
+        _nb = (-_db[1], _db[0])              # FRONT 法向·取號指向街廓內
+        try:
+            _cxy = _poly_b.centroid.coords[0]
+        except Exception:
+            continue
+        if (_cxy[0] - _q1[0]) * _nb[0] + (_cxy[1] - _q1[1]) * _nb[1] < 0:
+            _nb = (-_nb[0], -_nb[1])
+        try:
+            _b0 = _poly_b.bounds
+            _diag = ((_b0[2] - _b0[0]) ** 2 + (_b0[3] - _b0[1]) ** 2) ** 0.5
+        except Exception:
+            _diag = 1e9
+        _best = None
+        for _br in _baseline_raw:
+            _ang_d = abs((_fa - _br['angle_deg'] + 90.0) % 180.0 - 90.0)
+            if _ang_d > _BL_PARALLEL_TOL_DEG:               # (a)
+                continue
+            _ub = (_m.cos(_m.radians(_br['angle_deg'])), _m.sin(_m.radians(_br['angle_deg'])))
+            _t_mid = _bl_perp_depth(
+                ((_q1[0] + _q2[0]) / 2.0, (_q1[1] + _q2[1]) / 2.0), _nb, _br['point'], _ub)
+            if _t_mid is None or _t_mid <= 0:               # (b)
+                continue
+            if not (_BL_DEPTH_MIN_M <= _t_mid <= _diag):    # (c)
+                continue
+            if _best is None or _t_mid < _best[0]:
+                _best = (_t_mid, _br, _ang_d)
+        if _best is None:
+            raise RuntimeError(
+                f"🔴 BASELINE 配對失敗[{_lbl}]：無任一 BASELINE 同時滿足"
+                f"（a 近平行 ≤{_BL_PARALLEL_TOL_DEG}°／b 位於屁股側／"
+                f"c 垂距 ∈[{_BL_DEPTH_MIN_M}, {_diag:.1f}]）。"
+                f"CAD 內 BASELINE 共 {len(_baseline_raw)} 條——請檢查該街廓之屁股線"
+                f"（一條 BASELINE 得由多街廓共用，但每街廓須恰有一條有效者）"
+                f"·no-silent-fallback")
+        _t_best, _br_best, _ang_best = _best
+        result['baselines'][_lbl] = {
+            'point': _br_best['point'],
+            'angle_deg': _br_best['angle_deg'],
+            'enabled': True,
+            'source': 'cad',
+            '_match': {'perp_mid_m': round(float(_t_best), 4),
+                       'angle_diff_deg': round(float(_ang_best), 4)},
+        }
+    # C-4：`baselines_matched_count` 語意改為「**配到 BASELINE 之街廓數**」
+    #   （舊語意＝「有候選之 BASELINE 條數」·已證不足以佐證正確性）。
+    result['baselines_matched_count'] = len(result['baselines'])
+    if not _baseline_raw:
+        result['diagnostics']['unbound'].append(('BASELINE', None))
 
     # 移除 BASELINE 之 _length 內部欄位（不對外輸出）
     for _lbl, _bv in result['baselines'].items():
