@@ -53,7 +53,7 @@ FRONT/SIDE → BLOCK 邊配對三條件：方位 mod180 差 < ~2°；BLOCK 邊�
 
 | # | 條件 | 處置 |
 |---|---|---|
-| ① | ≥2 且**量測值相同**：`max(perp) − min(perp) ≤ _BL_EQUIV_EPS_M` | **等價** ⇒ 取確定性規則（**最小 DXF handle**）＋記 `_match.equivalent_n`；**不進 `_ambig`** |
+| ① | ≥2 且**量測值相同**：`max(perp) − min(perp) ≤ eps`，其中 `eps = max(_EPS_LEGAL, min(k·q·(L/ℓ), _EPS_LEGAL_CEIL))`（**逐塊現算·非單一常數**·見下表） | **等價** ⇒ 取確定性規則（**最小 DXF handle**）＋記 `_match.equivalent_n`／`equivalent_handles`；**不進 `_ambig`** |
 | ② | ≥2、非①、勝差 ≤ perp_tol | **進 `_ambig`** → `CadBindingAmbiguity` → UI 確認頁。**禁靜默選** |
 | | | 🔒 **②是設計好的安全閥、不是故障**（C-11 之後）：其成本＝**使用者一次點選**。**禁**以「避免落入②」為由放寬任何門檻——門檻**只以「何種差值在法規與下游決策上不具意義」為準**。（本案曾因「迴避②」把門檻上推 17 倍。） |
 | ③ | ≥2、非①、勝差 > perp_tol | 採垂距最小者 |

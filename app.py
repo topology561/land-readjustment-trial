@@ -1170,7 +1170,10 @@ def _parse_block_attribute_text(text: str):
     return t, ''
 
 
-def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> dict:
+def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
+    # D-5：`dxf_bytes` **必填**（非 `=None`）。三個呼叫端皆已傳，改必填零風險；
+    #   漏接線應是 **TypeError**（立即可見）而非靜默降級為「只用法定下限」。
+    #   無來源時呼叫端須**顯式**傳 `None`，以示「已知無 DXF 位元、接受只用下限」。
     """
     🆕 Phase 7 Module 1：CAD 精準圖層直讀
     🐛 Phase 11 Hotfix：
@@ -1574,7 +1577,11 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
     #     eps = max( _EPS_LEGAL , min( k · q · (L/ℓ) , _EPS_LEGAL_CEIL ) )
     #   · `_EPS_LEGAL = 1e-4 m`＝**法定粒度之 1/100**。法源：市地重劃實施辦法 §3
     #     「長度記至二位小數（第三位四捨五入）」⇒ 法定可辨粒度 0.01m。
-    #     低於本值者**不可能改變任何法定記載長度** ⇒ 無條件判等價。
+    #     🔴 **正確表述（D-2·勿再寫成「2dp 必相同」）**：差值 ≤ ε ⇒ 兩者之 2dp 法定記載值
+    #     **至多相差一個末位單位（0.01m）**；**不保證相同**——任何非零 ε 皆不保證同 2dp
+    #     （反例：`33.10499` 與 `33.10509` 差 1e-4，2dp 為 `33.10` vs `33.11`）。
+    #     取 1/100 之義：使「可能之法定記載差」被壓到**最小可表示單位之內**，
+    #     即該差在法規記載上**至多是末位的一跳、不可能是實質差異**。
     #     **此為下限·與案件無關。**
     #   · `q`＝**自 DXF 實測**之坐標量化步長（`_detect_dxf_quantum`·**禁硬編**）。
     #     偵測失敗（二進位 DXF 等）⇒ 只用下限。
@@ -1589,7 +1596,11 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
     #   皆低於下限 `_EPS_LEGAL` ⇒ 走**無條件等價**路徑（不倚賴 q 項）。
     #   併記：BASELINE 端點 8/8 與 BLOCK 頂點距離 0.000e+00 ⇒ 鎖點精確、該差**非繪圖誤差**。
     _EPS_LEGAL = 1e-4          # 法定粒度 0.01m（辦法 §3 長度 2dp）之 1/100
-    _EPS_LEGAL_CEIL = 0.005    # 法定 2dp 末位之半·硬上限
+    # 法定 2dp 末位之**半**·硬上限。🔴 同 D-2：此值亦**不保證** 2dp 相同——
+    #   其義為「差值 ≤ 半個末位單位者，於法定記載上至多造成一次末位進退」。
+    #   設上限之目的＝**封頂**：不論 q 與 L/ℓ 多大，等價判定所能吞掉之差
+    #   絕不超過半個法定末位。逾此即應由使用者裁（落②）。
+    _EPS_LEGAL_CEIL = 0.005
     _EPS_K = 4.0               # 兩線段各兩端點捨入 ＋ 量測點捨入
     _q_detected = _detect_dxf_quantum(dxf_bytes)
 
@@ -1597,7 +1608,9 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
         """**診斷標籤**（記入 `_match.same_line_geom`）：兩條 BASELINE 之幾何是否近同一直線。
 
         🔴 **不得作為靜默選取之閘**（C-5 收尾·KL 令）——閘一律用
-        `_BL_EQUIV_EPS_M` 對**量測值**（垂距）判等。本函式僅供人看／診斷輸出。
+        `eps = max(_EPS_LEGAL, min(k·q·(L/ℓ), _EPS_LEGAL_CEIL))`（**逐塊現算**） 對**量測值**（垂距）判等——**逐塊現算、無單一常數**。
+        （D-1：舊註曾引 `_BL_EQUIV_EPS_M`，該符號全庫**從未被賦值**＝幽靈符號·已除。）
+        本函式僅供人看／診斷輸出。
         """
         _d = abs((_a['angle_deg'] - _b['angle_deg'] + 90.0) % 180.0 - 90.0)
         if _d > _BL_PARALLEL_TOL_DEG:
@@ -1663,6 +1676,8 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
         _same_geom_out = True
         _eps_out = _EPS_LEGAL
         _lor_out = 0.0
+        _clamp_out = False
+        _equiv_handles = []
         if len(_cands) >= 2:
             _spread_out = _cands[-1]['perp_m'] - _cands[0]['perp_m']
             _same_geom_out = all(_bl_same_line(_cands[0]['br'], c['br']) for c in _cands)
@@ -1690,13 +1705,18 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
                     continue
                 _lo_r = max(_lo_r, _Ldist / _len_seg)
             _eps_used = _EPS_LEGAL
+            _clamped = False
             if _q_detected and _lo_r > 0:
-                _eps_used = max(_EPS_LEGAL,
-                                min(_EPS_K * _q_detected * _lo_r, _EPS_LEGAL_CEIL))
+                _raw_q = _EPS_K * _q_detected * _lo_r
+                _clamped = bool(_raw_q >= _EPS_LEGAL_CEIL)   # D-6：上限是否生效
+                _eps_used = max(_EPS_LEGAL, min(_raw_q, _EPS_LEGAL_CEIL))
             _eps_out = _eps_used
             _lor_out = _lo_r
+            _clamp_out = _clamped
             if _spread <= _eps_used:                         # 分支①
                 _equiv_n = len(_cands)
+                # D-7(b)：等價候選之 handle **全列**（UI 確認頁不得只顯示單一 handle）
+                _equiv_handles = sorted(str(c['br'].get('handle', '')) for c in _cands)
                 _pick = min(_cands, key=lambda c: str(c['br'].get('handle', '')))
                 _best = (_pick['perp_m'], _pick['br'], _pick['angle_diff_deg'])
             elif (_cands[1]['perp_m'] - _cands[0]['perp_m']) <= _BL_PERP_TOL_M:   # 分支②
@@ -1719,6 +1739,19 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
                 f"（一條 BASELINE 得由多街廓共用，但每街廓須恰有一條有效者）"
                 f"·no-silent-fallback")
         _t_best, _br_best, _ang_best = _best
+        # ── 🔒 D-7：本 dict **刻意只存 `point` + `angle_deg`（＝無限直線），丟棄線段範圍** ──
+        #   此即正典「一條 BASELINE 可畫成數段共線線段 ⇒ **配到哪一段幾何等價**」之落地形式：
+        #   下游一切量測（N-12′ 宗地深度／N-19 街廓平均深度）皆為「至 BASELINE **無限直線**
+        #   之垂距」，與線段起訖無關 ⇒ 存範圍反而製造「該用哪一段」之偽問題。
+        #   ⚠️ (a) `point` 是**該線段之起點**、**不得**被下游當「最近點／代表點」使用——
+        #          它只是定義該無限直線之任一過點。
+        #   ⚠️ (b) `_match.handle` 僅為**確定性決勝**之結果（最小 handle），
+        #          **不代表幾何歸屬**：實測 R1 綁到 handle 61，而 61 幾何上是 **R4 之屁股線段**
+        #          （R1 者為 63）——因僅存無限直線故**無害**，但
+        #          **UI 確認頁不得只顯示單一 handle** ⇒ `equivalent_n > 1` 時一併給
+        #          `equivalent_handles` 供全列。
+        #   ⚠️ (c) **DXF handle 於重新匯出後會變** ⇒ **P-5 持久化禁存 handle**，
+        #          須存**幾何**（point + angle_deg）。
         result['baselines'][_lbl] = {
             'point': _br_best['point'],
             'angle_deg': _br_best['angle_deg'],
@@ -1727,8 +1760,10 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes=None) -> 
             '_match': {'perp_mid_m': round(float(_t_best), 4),
                        'angle_diff_deg': round(float(_ang_best), 4),
                        'equivalent_n': int(_equiv_n),      # 🆕 C-5：量測等價候選數（1＝唯一）
+                       'equivalent_handles': list(_equiv_handles),      # D-7(b)：UI 須全列
                        'perp_spread_m': round(float(_spread_out), 9),   # ①之判定量（max−min）
                        'eps_used': float(_eps_out),                     # ①之門檻（現算）
+                       'eps_ceiling_clamped': bool(_clamp_out),         # D-6：上限是否生效
                        'q_detected': (float(_q_detected) if _q_detected else None),
                        'L_over_l': round(float(_lor_out), 6),
                        'same_line_geom': bool(_same_geom_out),          # 診斷標籤·**非閘**
@@ -1927,10 +1962,14 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
       3. `scenario_tag`（0m／3.5m）——兩情境匯出撞名、無法辨識。
       4. `stage_tag` ＋ **`G_原值(㎡)` 欄**——缺標記之直接代價：claude.ai 曾差點誤判 F.0 檔為終態。
          **⚠️ 本階段之真名＝`trunk A′`（Step G ＋ 步驟 J 就地改寫後）**：Phase 7 匯出時
-         `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·`grep -n "Patch B-2" app.py`）就地壓 G**
-         （寬<法定最小者 `G(㎡)=round(min(orig_G, min_area−0.01),2)`·真值存 `_G_before_width_violation`）。
+         `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·`grep -n "Patch B-2" app.py`）就地改寫**。
+         🆕 **N-13（KL 裁 2026-07-26）後其改寫範圍已縮**：步驟 J **只加旗標欄**
+         （`_below_min_width`／`_width_violation_note`／`實際寬度(m)`），**不再改 `G(㎡)`**
+         ——舊之「寬<法定最小者壓 G 至 `min_area−0.01`」已廢（KL：壓低帳面逼合併＝
+         **無償轉入調配池**；短少應走差額地價補償）⇒ **本階段之 `G(㎡)` 即 raw G**。
+         `A′` 之名仍成立（步驟 J 仍就地加欄），惟**不再涉及 G 之改寫**。
          **標錯比不標更糟：不標時人會去查，標錯時人會信。**（丙第 2 步 KL 實跑照出·報告 §8.3-1）
-         → 併增 **`G_原值(㎡)`**（被壓者取 `_G_before_width_violation`）＋**`增減(㎡)` 改以原值計**。
+         → `G_原值(㎡)` 欄與 `增減(㎡)` 於 N-13 後**恆等於**以 `G(㎡)` 計（`_g_orig` 已成恆等式）。
       5. 終態（trunk E）匯出——§N1 forced=range／池三則／鋪滿閘**全發生於終態**；F.0 與 E **兩錨都要**。
       6. `front_lines` → **池片穩定 key ＝ s_rel 起訖**（N0-19：身分鍵＝s 區間·出生即定）。
          **對拍禁以序號名稱為 key**：UI `R5-抵費地-2` 與 F.4 `R5-抵費地-1` 可為同一片。
@@ -1957,16 +1996,14 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     _setup_xlsx_header(ws1, headers1, row=3)
 
     def _g_orig(_r):
-        """乙-4（KL 2026-07-17）：**G 之原值**——步驟 J（Patch B-2 寬度驗證·`grep -n "Patch B-2" app.py`）
-        對「寬 < 法定最小」者**就地壓 G**（`round(min(orig_G, min_area−0.01), 2)`）以觸發合併，
-        並將真值存於 `_G_before_width_violation`。本欄取其真值；未被壓者即 `G(㎡)` 自身。
-        **`增減(㎡)` 一律以本欄計**——以被壓 G 計必失真（實測 628-34(3)：−103.35 vs 真值 −65.76）。"""
-        _bw = _r.get('_G_before_width_violation')
-        if _bw is not None:
-            try:
-                return float(_bw)
-            except (TypeError, ValueError):
-                pass
+        """**G 之原值** ＝ `G(㎡)` 自身。
+
+        🆕 **N-13（KL 裁 2026-07-26）後本函式已成恆等式**：步驟 J 之「壓 G」已廢止
+        （`grep -n "N-13（KL 裁" app.py`）⇒ **G 恆為真值**、`_G_before_width_violation`
+        不再被寫入 ⇒ 舊之回溯分支為死碼、**已整段刪**（`CLAUDE.md`：不留 fallback 舊邏輯）。
+        保留本具名存取器僅為呼叫端語意清晰（`增減(㎡)` 一律以 G 原值計）。
+        史載：舊壓 G 曾使 `增減(㎡)` 失真（628-34(3)：−103.35 vs 真值 −65.76）——
+        N-13 廢壓 G 後該失真自根消除。"""
         return float(_r.get('G(㎡)', 0) or 0)
 
     def _s_rel_key(_r):
@@ -5105,8 +5142,22 @@ def _detect_dxf_quantum(dxf_bytes):
     ASCII DXF 為「群碼 / 值」逐行成對。掃**坐標群碼**（10–18／20–28／30–38）之值，
     取其小數位數之**最大值** `d` ⇒ `q = 10**(-d)`。
     **非 ASCII DXF（二進位）／偵測失敗 → 回 None**（呼叫端只用法定下限·no-silent-fallback）。
+
+    ── 🔒 為何取 **max**（D-4·保守方向論證·**泛用化之正確理由**）──────────────────
+    兩種寫入端行為，取 max 皆**不會高估** `q`：
+      · **補零型**（如 `123.450000`·實際精度僅 2dp）：max 測得之 d **偏大** ⇒ `q` **偏小**
+        ⇒ `eps` **偏小** ⇒ 更容易落② ⇒ **fail-safe**（交由使用者裁，不會靜默吞差）。
+      · **去尾零型**（本檔即是：3039 個坐標值中 1888 個 5dp ＋ 1151 個 1dp）：
+        取 max 即得**真實精度** 5dp。
+    ⇒ **高估 `q` 不可能發生**——而高估 `q` 才是危險方向（會放寬 eps、靜默吞掉真實差異）。
+      取 min／平均則會被「1dp 之整數坐標」拉低 d ⇒ 反而高估 q ⇒ **不可用**。
     """
     if not dxf_bytes:
+        return None
+    # D-3：**二進位 DXF 立即回 None**（docstring 既已承諾·不得只宣告不實作·#38 形狀）
+    _BIN_SENTINEL = b"AutoCAD Binary DXF\r\n\x1a\x00"
+    if isinstance(dxf_bytes, (bytes, bytearray)) and \
+            bytes(dxf_bytes[:len(_BIN_SENTINEL)]) == _BIN_SENTINEL:
         return None
     try:
         _txt = dxf_bytes.decode('ascii', errors='ignore') \
@@ -5860,54 +5911,88 @@ def _get_block_d_hat(block_poly, allocation_dir=None):
     return dv / max(float(np.linalg.norm(dv)), 1e-9)
 
 
-def _compute_strip_width(cut_coords: list, d_hat=None) -> float:
+def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
+    """🆕 **N-14 宗地最小寬度**（KL 裁 2026-07-26·canonical）。
+
+    ── 定義（畸零地使用規則 §4③）──────────────────────────────────────────────
+    最小寬度＝**自 FRONTLINE 起算、深度至法定最小深度為止**之帶內，
+    **二側境界線間平行 FRONTLINE 之距離**之**最小值**。
+
+    ── 為何不能用舊的兩個來源（N-15·KL 令廢止）──────────────────────────────
+    · `S(m)`＝**剩餘正面道路可分配長**（`grep -n "S ∈ \\[0, S_max_limit\\]" app.py`），
+      **非** §4③ 之寬度——失敗考古 #35 之碼版、#36 之肇因。
+    · `_compute_strip_width` ＝ d_hat 投影長／**MBR 短邊** fallback，
+      **同樣不符 N-14**（未限深度帶、未沿 FRONTLINE 量）⇒ **禁作 fallback**。
+
+    ── 演算法（**精確·非取樣**）────────────────────────────────────────────────
+    令 `t` ＝ 沿 FRONT 法向（指向宗地內）之深度。宗地為多邊形 ⇒ 其於深度 `t` 之
+    **平行 FRONTLINE 弦長** `w(t)` 為 **分段線性**函式 ⇒ 極小值必落於**斷點**：
+    `{0, min_depth} ∪ {各頂點於法向之投影}∩[0, min_depth]`。
+    故**只在斷點取值**即得精確 min，**不做等距取樣**
+    （取樣會產生解析度產物——見 N-12′ 深度量測之教訓）。
+
+    缺件（座標不足／`min_depth` ≤0／`d_hat` 退化）→ **loud raise**（no-silent-fallback）。
     """
-    🚨 Patch B-2：從分配條 polygon 之 cut_coords 計算實際寬度。
-
-    若提供 d_hat：寬度 = polygon 在 d_hat「推進方向」上的 1D 投影長度
-                 = max(proj) - min(proj)
-    若未提供 d_hat：fallback 至 MBR 短邊（最小外接矩形之較短邊長度）
-
-    參數：
-      cut_coords  分配條 polygon 之頂點座標 list[[x, y]] 或 list[(x, y)]
-      d_hat       推進方向單位向量（np.array shape=(2,) 或 list[float]）
-
-    回傳：strip width (m)；若無法計算回傳 0.0
-    """
-    import numpy as _np_pw
+    import numpy as _np_w
+    from shapely.geometry import Polygon as _Poly_w, LineString as _LS_w
     if not cut_coords or len(cut_coords) < 3:
-        return 0.0
-    try:
-        if d_hat is not None:
-            d_vec = _np_pw.asarray(d_hat, dtype=float)
-            d_norm = float(_np_pw.linalg.norm(d_vec))
-            if d_norm < 1e-9:
-                return 0.0
-            d_unit = d_vec / d_norm
-            projs = []
-            for pt in cut_coords:
-                x = float(pt[0]); y = float(pt[1])
-                projs.append(float(_np_pw.dot([x, y], d_unit)))
-            return float(max(projs) - min(projs))
-        # Fallback：MBR 短邊
-        from shapely.geometry import Polygon as _SP_pw
-        try:
-            poly = _SP_pw(cut_coords)
-            if not poly.is_valid:
-                poly = poly.buffer(0)
-            if poly.is_empty:
-                return 0.0
-            mbr = poly.minimum_rotated_rectangle
-            mc = list(mbr.exterior.coords)
-            edges = []
-            for i in range(len(mc) - 1):
-                p0 = mc[i]; p1 = mc[i + 1]
-                edges.append(((p1[0] - p0[0]) ** 2 + (p1[1] - p0[1]) ** 2) ** 0.5)
-            return float(min(edges)) if edges else 0.0
-        except Exception:
-            return 0.0
-    except Exception:
-        return 0.0
+        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：cut_coords 不足（<3 點），"
+                           f"無法量 N-14 寬度·禁以 S(m)／MBR 短邊兜底")
+    if min_depth is None or float(min_depth) <= 0:
+        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：法定最小深度缺／≤0"
+                           f"（min_depth={min_depth}）——N-14 之量測帶不可定義，停")
+    _d = _np_w.asarray(d_hat, dtype=float)[:2]
+    _n_d = float(_np_w.linalg.norm(_d))
+    if _n_d < 1e-9:
+        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：d_hat 退化，停")
+    _d = _d / _n_d
+    _n = _np_w.array([-_d[1], _d[0]], dtype=float)     # FRONT 法向
+    _poly = _Poly_w([(float(p[0]), float(p[1])) for p in cut_coords])
+    if not _poly.is_valid:
+        _poly = _poly.buffer(0)
+    if _poly.is_empty:
+        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：宗地多邊形空，停")
+    _fp = _np_w.asarray(front_pt, dtype=float)[:2]
+    # 法向取號：指向宗地內（形心側）
+    _c = _np_w.asarray(_poly.centroid.coords[0], dtype=float)
+    if float(_np_w.dot(_c - _fp, _n)) < 0:
+        _n = -_n
+    _md = float(min_depth)
+
+    # 🔒 量測帶**夾至宗地自身之深度範圍**：`t ∈ [0, min(min_depth, 宗地最大深)]`。
+    #   ∵ 宗地若淺於法定最小深，帶之尾段**無宗地**、弦長為 0；若不夾，寬度會被算成 0
+    #   ⇒ **寬度閘因「深度不足」而觸發**、與 N-11(3) 之**深度閘重複計**
+    #   ⇒ 寬度閘不再只測寬度（違「一閘一事」）。深度不足由 N-11(3) 專責。
+    _tv = [float(_np_w.dot(_np_w.asarray(_p[:2], dtype=float) - _fp, _n))
+           for _p in list(_poly.exterior.coords)]
+    _t_hi = min(_md, max(_tv))
+    if _t_hi <= 0:
+        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：宗地於 FRONT 法向之深度 ≤0"
+                           f"（最大 {max(_tv):.6f}）——量測帶不可定義，停")
+    # 斷點集合（分段線性 ⇒ 極小值必在此）
+    _ts = {0.0, _t_hi}
+    for _t in _tv:
+        if 0.0 <= _t <= _t_hi:
+            _ts.add(_t)
+    _big = float(max(_poly.bounds[2] - _poly.bounds[0],
+                     _poly.bounds[3] - _poly.bounds[1])) * 4.0 + 100.0
+    _wmin = None
+    for _t in sorted(_ts):
+        _base = _fp + _t * _n
+        _ln = _LS_w([_base - _big * _d, _base + _big * _d]).intersection(_poly)
+        _w = float(_ln.length) if (not _ln.is_empty) else 0.0
+        if _wmin is None or _w < _wmin:
+            _wmin = _w
+    if _wmin is None:
+        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：量測帶與宗地無交集，停")
+    return float(_wmin)
+
+
+# ⛔ `_compute_strip_width` **已整段刪除**（N-15·KL 裁 2026-07-26）。
+#   案由：其兩條路徑（d_hat 投影長／**MBR 短邊** fallback）**皆不符 N-14**
+#   （未限「深度至法定最小深」之帶、未沿 FRONTLINE 量）⇒ KL 明令**禁作 fallback**。
+#   替代＝`parcel_min_width_n14`（`grep -n "def parcel_min_width_n14" app.py`）。
+#   刪之而不留：留著即邀請未來誤用（`CLAUDE.md`：舊函式整個刪·不留 fallback）。
 
 
 def _safe_num_e1(v) -> float:
@@ -9764,13 +9849,13 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
         "winners": _need("f3_corner_winners"),
         "forced": _need("f3L_forced_offset"),
         "setback": float(_need("f3L_setback_default")),
-        # 🚨 KL 2026-07-13 修：還原 raw G（app Patch B-2 寬度驗證（`grep -n "Patch B-2" app.py`）把寬<min_width 宗之
-        #   G(㎡) 壓成 min_area-0.01 觸發舊合併，原 G 存 _G_before_width_violation）。引擎 trunk A 要 raw G
-        #   ——harness run_step_g 無此壓縮，故 live gA 須還原否則 GSA 錨破（G014 131.79 vs 133.22）；
-        #   寬度違規由引擎 f4 裁示1(a)/Q3 增配處理、非 trunk A。拷貝列、不改 session_state。
-        "gA": [({**_r, "G(㎡)": _r["_G_before_width_violation"]}
-                if _r.get("_G_before_width_violation") is not None else _r)
-               for _r in _need("f3_G_values")],
+        # 🆕 **N-13（KL 裁 2026-07-26）後：還原步驟已廢**——步驟 J 之「壓 G」已廢止
+        #   ⇒ `f3_G_values` 之 `G(㎡)` **本即 raw G**，毋須還原（`_G_before_width_violation`
+        #   不再被寫入）。舊還原式為死碼、已整段刪。
+        #   史載（保留其結論）：昔日 app 壓 G 而 harness `run_step_g` 無此壓縮 ⇒ live gA
+        #   須還原否則 GSA 錨破（G014 131.79 vs 133.22）；**N-13 後兩路本即同源**。
+        #   寬度違規由引擎 f4 裁示 1(a)/Q3 增配處理、非 trunk A。
+        "gA": list(_need("f3_G_values")),
         "poolA": _need("f3_wd2_pool_diag"),
     }
 
@@ -18051,10 +18136,10 @@ def main():
                                 front_lines=_p7_fls,           # 乙-6
                             )
 
-                        # 階段 A′（⚠️ **非** raw trunk A·KL 2026-07-17 落章更正）：
-                        #   Phase 7 匯出時 `f3_G_values` **已被步驟 J（Patch B-2 寬度驗證·16717-16732）
-                        #   就地壓 G**（寬<法定最小者 → G=min(orig_G, min_area−0.01)，真值存
-                        #   `_G_before_width_violation`）→ 故階段之真名為 **trunk A′**。
+                        # 階段 A′：`f3_G_values` 已被步驟 J（Patch B-2 寬度驗證·
+                        #   `grep -n "Patch B-2 寬度驗證" app.py`）**就地改寫**（加旗標欄）。
+                        #   🆕 **N-13（KL 裁 2026-07-26）後不再改 `G(㎡)`**——舊之壓 G 已廢
+                        #   ⇒ 本階段 `G(㎡)` **即 raw G**；`A′` 之名僅指「已加旗標欄」。
                         #   丙第 2 步 KL 實跑照出（報告 §8.3-1）：**標錯比不標更糟**。
                         _xls_bytes_p7 = _mk_xls(st.session_state.get('f3_G_values', []),
                                                 'trunk A′（Step G＋步驟J 就地改寫後）')
@@ -18143,6 +18228,7 @@ def main():
                 # 強制標記 _below_min_width=True；後續 merge_subparcels_by_parent 會以
                 # 「擴充合併條件」處理（面積 < min OR 寬度 < min 任一即觸發合併）
                 _min_width_by_block = {}
+                _min_depth_by_block = {}     # 🆕 N-15：N-14 量測帶之深度上界（法定最小深）
                 for _b_w in classified_blocks:
                     _lbl_w = _b_w['label']
                     _cat_w = _b_w.get('category', '')
@@ -18150,40 +18236,54 @@ def main():
                     _fw_w = float(_sb_w.get('正面路寬(m)', 0.0) or 0.0)
                     _mw_info = get_min_lot_size(_cat_w, _fw_w)
                     _min_width_by_block[_lbl_w] = float(_mw_info.get('min_width', 0.0) or 0.0)
+                    _min_depth_by_block[_lbl_w] = float(_mw_info.get('min_depth', 0.0) or 0.0)
 
                 _width_violation_count = 0
                 for _r_jw in st.session_state.get('f3_G_values', []) or []:
                     if _r_jw.get('推進側別') in ('抵費地', '🟠 孤立公設地', '💰 現金補償'):
                         continue
-                    # 🚨 Patch E-1.6：寬度判定優先用 G 迭代的 S(m) 推進值
-                    _s_from_iter = _r_jw.get('S(m)')
-                    if _s_from_iter is not None:
-                        try:
-                            _w_jw = float(_s_from_iter)
-                        except Exception:
-                            _w_jw = 0.0
-                    else:
-                        _cut_jw = _r_jw.get('cut_coords') or []
-                        if len(_cut_jw) < 3:
-                            continue
-                        _w_jw = _compute_strip_width(_cut_jw, d_hat=None)
+                    # ── 🆕 N-15（KL 裁 2026-07-26）：**廢止以 S 充當寬度**·改 N-14 真量測 ──
+                    #   ⛔ 舊碼一：`_w_jw = float(_r_jw['S(m)'])`——`S` 係**剩餘正面道路可分配長**
+                    #      （`grep -n "S ∈ \[0, S_max_limit\]" app.py`），**非** §4③ 之寬度。
+                    #      此為失敗考古 **#35 之碼版、#36 之肇因**。
+                    #   ⛔ 舊碼二：`_compute_strip_width(..., d_hat=None)` ＝ **MBR 短邊** fallback，
+                    #      **同樣不符 N-14**（未限深度帶、未沿 FRONTLINE 量）⇒ **禁作 fallback**。
+                    #   ⇒ 一律走 `parcel_min_width_n14`；**缺件 loud raise、禁靜默兜底**。
+                    _blk_jw = _r_jw.get('所屬街廓', '')
+                    _cut_jw = _r_jw.get('cut_coords') or []
+                    _fl_jw = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(_blk_jw) or {}
+                    _md_jw = float(_min_depth_by_block.get(_blk_jw, 0.0) or 0.0)
+                    if not (_fl_jw.get('p1') and _fl_jw.get('p2')):
+                        raise RuntimeError(
+                            f"🔴 N-15[{_r_jw.get('暫編地號')}]：街廓 {_blk_jw} 缺 FRONT_LINE"
+                            f"——N-14 寬度不可量·**禁以 S(m)／MBR 短邊兜底**，停")
+                    _p1_jw = _fl_jw['p1']; _p2_jw = _fl_jw['p2']
+                    _dx_jw = _p2_jw[0] - _p1_jw[0]; _dy_jw = _p2_jw[1] - _p1_jw[1]
+                    _L_jw = (_dx_jw ** 2 + _dy_jw ** 2) ** 0.5
+                    _w_jw = parcel_min_width_n14(
+                        _cut_jw, (_dx_jw / _L_jw, _dy_jw / _L_jw), _p1_jw, _md_jw,
+                        _label=f"{_blk_jw}·{_r_jw.get('暫編地號')}")
+                    # 🚩 N-11(2)(3)：**街角地之寬深應以「截角前」範圍計**（KL 明令·禁「修正」）。
+                    #   本處之 `cut_coords` 係**截角後**幾何 ⇒ 街角宗之值尚未套截角前口徑。
+                    #   **不靜默當作已符合**：標旗、俟 N-17／P-3 之截角前範圍落地後接上。
+                    if str(_r_jw.get('街角地', '')).strip() == '是':
+                        _r_jw['_width_chamfer_pending'] = True
                     _r_jw['實際寬度(m)'] = round(_w_jw, 2)
-                    _legal_w = float(_min_width_by_block.get(
-                        _r_jw.get('所屬街廓', ''), 0.0) or 0.0)
+                    _legal_w = float(_min_width_by_block.get(_blk_jw, 0.0) or 0.0)
                     if _legal_w > 0 and _w_jw < _legal_w:
+                        # ── 🆕 N-13（KL 裁 2026-07-26）：**廢止壓 G**·改**純旗標** ──────────
+                        #   ⛔ 舊碼：`G(㎡) = round(min(orig_G, min_area − 0.01), 2)`
+                        #      ＋ 真值存 `_G_before_width_violation` 供回溯。
+                        #   **KL 理由**：G 係地主依**重劃前面積與地價**計得之**應分配面積**；
+                        #   壓低帳面以逼合併 ＝ **無償轉入調配池**。
+                        #   實配短少應走**差額地價補償**，不得以改寫 G 達成。
+                        #   ⇒ **G 保持真值**；寬度不合格僅以 `_below_min_width` 旗標表示，
+                        #     由 `_need_merge`（面積不足 or 寬度不足）之**寬度分支**消費——
+                        #     該分支**不得依賴被壓過的 G**（本改動即除去該依賴）。
                         _r_jw['_below_min_width'] = True
                         _r_jw['_width_violation_note'] = (
                             f"寬度 {_w_jw:.2f}m < 法定最小 {_legal_w:.2f}m"
                         )
-                        # 將寬度未達者之 G 強制壓為 < min_area，觸發合併條件
-                        # （具體做法：將 G 設為 1，使其落入 < min_area 區段；
-                        #  保留原 G 至 _G_before_width_violation 供回溯）
-                        _orig_G = float(_r_jw.get('G(㎡)', 0.0) or 0.0)
-                        _min_a_jw = float(_min_area_by_block.get(
-                            _r_jw.get('所屬街廓', ''), 0.0) or 0.0)
-                        if _orig_G >= _min_a_jw and _min_a_jw > 0:
-                            _r_jw['_G_before_width_violation'] = _orig_G
-                            _r_jw['G(㎡)'] = round(min(_orig_G, _min_a_jw - 0.01), 2)
                         _width_violation_count += 1
                 if _width_violation_count > 0:
                     st.warning(

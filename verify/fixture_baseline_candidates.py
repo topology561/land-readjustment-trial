@@ -171,7 +171,8 @@ def main():
     #    max−min = 0.5m。舊碼以 `perp_tol_m=1.0` 判「同一條線」⇒ 0.5 ≤ 1.0 ⇒ **被①吸收**
     #    ⇒ 靜默取最小 handle ⇒ 深度平移 0.5m 而無訊號（KL 指認之洞·對照最淺街廓
     #    R4 vs R1 僅差 0.0415m ⇒ 該洞為決勝差距之 12 倍）。
-    #    新閘 `_BL_EQUIV_EPS_M=1e-4` ⇒ 0.5 ≫ 1e-4 ⇒ 落 ②。
+    #    新閘 `eps = max(_EPS_LEGAL, min(k·q·(L/ℓ), _EPS_LEGAL_CEIL))`（**逐塊現算**）：本案 q=1e-5、L/ℓ≈1 ⇒ eps 落法定下限 1e-4；
+    #    0.5 ≫ 1e-4 ⇒ **落 ②**。（D-1：`_BL_EQUIV_EPS_M` 為幽靈符號·從未賦值·已除。）
     r5, e5 = _run(ns, blk, [FRONT,
                             ("BASELINE", (0.0, D), (W, D), "B1"),
                             ("BASELINE", (0.0, D + 0.5), (W, D + 0.5), "B2")])

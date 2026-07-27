@@ -98,11 +98,13 @@ def main():
     doc = ezdxf.readfile(rv.V6DXF)
     ents = list(doc.modelspace().query("LINE LWPOLYLINE POLYLINE"))
 
-    base = _canon(fn(_DocShim(ents), classified))
+    # D-5：`dxf_bytes` 已改必填。本夾具測「順序不變性」，與 q 無關
+    #   ⇒ **顯式**傳 None（＝已知無需 q·接受只用法定下限），非漏傳。
+    base = _canon(fn(_DocShim(ents), classified, None))
     out = []
     ok = True
     for how in PERMUTATIONS:
-        got = _canon(fn(_DocShim(_permute(ents, how)), classified))
+        got = _canon(fn(_DocShim(_permute(ents, how)), classified, None))
         same = (got == base)
         ok &= same
         out.append(f"  置換 {how:<16} 逐位元組相等：{'✅' if same else '🔴'}")
