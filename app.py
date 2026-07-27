@@ -5671,6 +5671,20 @@ def calc_C_value(engineering_cost: float, redev_cost: float, loan_interest: floa
     return (float(engineering_cost or 0.0) + float(redev_cost or 0.0) + float(loan_interest or 0.0)) / denom
 
 
+# ══ 🆕 N-17 §8.3：`18.0` 去硬編（claude.ai 泛用化硬要求·reviewer 修正其範圍）══════════
+#   **本數之身分＝法定 Rw 表之飽和寬度**（實施辦法 §29 附件二：W ≥ 18m → 100%），
+#   同時即 v3.1 §5 之「側街負擔範圍 W=18m」——**同一個 18，同一個法源**。
+#   ⇒ 做成**單一具名常數**（`rw_from_width` 與 `_build_burden_range` 共用），
+#     而**非**案件參數 JSON 鍵：若可自由覆寫，會出現「負擔範圍 20m 但 Rw 於 18m 已飽和」
+#     之內部矛盾態（reviewer 指認）。缺值不可能發生（常數），故無 fallback 之問。
+#   🚩 **上呈 KL**：「18 究係法定常數抑或案件參數」屬**法規解釋題**（U-E4）。
+#      若日後裁為案件參數，改法＝加 `global.側街負擔範圍寬_m` ＋ **等值閘**
+#      （須 == Rw 表飽和寬），缺值 loud raise、禁 `or 18.0` 兜底。
+#   ⛔ **豁免（非本常數·勿改）**：`HUALIEN_MIN_LOT_TABLE` 內之 `18.00`
+#      ＝**畸零地附表之最小深度**（法定附表·與 Rw 無關·同值純屬巧合）。
+RW_SATURATION_WIDTH_M = 18.0
+
+
 def rw_from_width(W: float) -> float:
     """
     街角地側面道路負擔百分率（Rw %）— 依《市地重劃實施辦法》第 29 條附件二
@@ -5686,7 +5700,7 @@ def rw_from_width(W: float) -> float:
         return 0.0
     table = [0.0, 17.4, 24.4, 31.3, 37.8, 44.0, 50.0, 55.7, 61.1, 66.3,
              71.1, 75.7, 80.0, 84.0, 87.8, 91.3, 94.4, 97.4, 100.0]
-    if W >= 18.0:
+    if W >= RW_SATURATION_WIDTH_M:
         return 100.0
     i = int(W)
     frac = W - i
@@ -8071,7 +8085,7 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
                         solve_one, build_g_row, mark_zaling,
                         has_side_left=True, has_side_right=True,
                         min_width=0.0, s_front_p2=None,
-                        burden_shift=18.0, _verbose=True):
+                        burden_shift=RW_SATURATION_WIDTH_M, _verbose=True):
     """§4 階段2（裁定B/B5·**單一真相源**）：於**池範圍內**逐筆落位池內遞補宗。
 
     ── 為何存在 ────────────────────────────────────────────────────────────────
@@ -8165,11 +8179,12 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
         for _sd, _mid in (('left', side_mid_left), ('right', side_mid_right)):
             if _mid is None:
                 continue                       # 該側無 SIDE_LINE ⇒ 無 18m 範圍 ⇒ 跨占 0
-            _bp = _build_corner_range_v2(_mid, blk_vertices, blk_centroid,
-                                         alloc_dir_cad, float(burden_shift), None)
+            _bp = _build_burden_range(_mid, blk_vertices, blk_centroid,
+                                      alloc_dir_cad, float(burden_shift))
             if _bp is None:
-                # `_build_corner_range_v2` 內含 bare except→None；該側有 SIDE_LINE 卻建不出
-                # 範圍＝幾何異常，靜默視為「無跨占」會使裁定F 誤判 → loud（no-silent-fallback）。
+                # 🆕 N-17：`_shift_cut_block_range` 之三個 bare except **已全改 loud raise**
+                #   ⇒ 回 None 僅剩「該側確實無範圍」一義。該側有 SIDE_LINE 卻建不出範圍
+                #   ＝幾何異常，靜默視為「無跨占」會使裁定F 誤判 → loud（no-silent-fallback）。
                 raise RuntimeError(
                     f"🔴 _place_pool_parcels[{blk_label}]：{_sd} 側有 SIDE_LINE 中點但 18m "
                     f"負擔範圍建構失敗（_build_corner_range_v2 回 None）·裁定F 跨占判定不可定義，停")
@@ -8642,6 +8657,8 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
 # ============ 最小分配面積 / 畸零地附表（花蓮縣畸零地使用規則 §3 第 1 款 一般建築基地） ============
 # 依正面路寬分 4 段，對應 5 類使用分區（寬 × 深 公尺）
 # 來源：references/1091021花蓮縣畸零地使用規則-附表.pdf
+#   ⛔ 本表內之 `18.00` ＝ **最小深度**（法定附表值），**與 `RW_SATURATION_WIDTH_M` 無關**
+#      （同值純屬巧合）。N-17 之「去硬編 18.0」**不及於本表**——動之即改法定附表。
 HUALIEN_MIN_LOT_TABLE = {
     # 路寬區間上限 (含)；以 <= 比較，> 25 m 走 999.0
     '住宅區':  [(7.0, 3.00, 12.00), (15.0, 3.50, 14.00), (25.0, 4.00, 16.00), (999.0, 4.00, 16.00)],
@@ -8879,56 +8896,114 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
 # 參考《市地重劃作業手冊》P.182-184 + 《花蓮縣畸零地使用規則》
 # 與 Tab 1（土地歸戶）資料連動，實作街角地優先分配規則。
 
+# ══ 🆕 N-17 三物件分家（KL 裁 ＋ claude.ai 2026-07-27）══════════════════════════════════
+#   同一個「平移切帶」幾何原語曾被**三種不同語意**共用，且以參數區分（`chamfer=None` 與否），
+#   讀碼者無從辨識呼叫端要的是哪一個 ⇒ 一改兩壞。本波**先分家**：
+#     · **(Ⅰ) 街角規定範圍**＝`_build_corner_range_v2`（退縮＋min_width 平移·**扣截角**）
+#       ——供 W-D.1.3 街角地 PK 資格判定（per-side）。
+#     · **(Ⅱ) 側街負擔範圍**＝`_build_burden_range`（W ＝ Rw 飽和寬·**不扣截角**）
+#       ——供 Rw 側街負擔。
+#     · **(Ⅲ) 量測用虛擬範圍**（實配街角宗**補回截角**）＝**本波不建**：
+#       建而不接 ＝ 死碼（`CLAUDE.md` 不留 stub）；其接線屬 E-7 (Ⅲ) 階段，
+#       且會改街角宗之寬度判定 ⇒ **改面積歸屬** ⇒ 須先過 KL。**列 backlog**。
+#   二者共用**同一幾何原語** `_shift_cut_block_range`（單一真相源·禁複製幾何）。
+
+def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
+                           alloc_dir, shift_distance, chamfer_tri=None, _who=''):
+    """幾何原語：SIDE_LINE 中點 → 沿宗地分配線法向平移 `shift_distance` → 切 BLOCK
+    → （可選）扣截角。**呼叫端請用 (Ⅰ)/(Ⅱ) 之具名 wrapper，勿直呼本函式。**
+
+    ── 🔒 三個 bare except 已全改 loud raise（claude.ai 2026-07-27·**活炸彈**）─────────
+    舊碼之三處靜默捕捉，各自的後果是：
+      1. `split` 失敗 → `target = block_poly` ⇒ **靜默回整個街廓**當街角規定範圍
+         （範圍面積暴增數十倍 ⇒ 街角地最小分配面積門檻整個失真）。
+      2. `difference(chamfer_tri)` 失敗 → `pass` ⇒ **靜默保留未扣截角**
+         （R3 右實測差 **6.2㎡**）。
+      3. 外層 → `return None` ⇒ 把任何內部錯誤一律洗成「本側無範圍」。
+    三者**皆直接污染街角地最小分配面積門檻** ⇒ no-silent-fallback：一律 loud。
+
+    ⚠️ **未改**：`block_poly.is_empty`／`target.is_empty` 之顯式 `return None`
+       ——那是「本側確實無範圍」之**有意義回值**（呼叫端 `_place_pool_parcels`
+       已對 None 設 loud 守衛），與「吞掉例外」不同類。
+    """
+    from shapely.geometry import Polygon as _SPv2, LineString as _LSv2, Point as _Pv2
+    from shapely.ops import split as _split_v2
+    _tag = f"{_who or '_shift_cut_block_range'}"
+    block_poly = _SPv2(block_vertices)
+    if not block_poly.is_valid:
+        block_poly = block_poly.buffer(0)
+    if block_poly.is_empty:
+        return None
+    ux, uy = alloc_dir
+    nx, ny = -uy, ux
+    _cen = block_centroid
+    _tp = (side_mid[0] + nx, side_mid[1] + ny)
+    _tm = (side_mid[0] - nx, side_mid[1] - ny)
+    if ((_tm[0]-_cen[0])**2+(_tm[1]-_cen[1])**2) < ((_tp[0]-_cen[0])**2+(_tp[1]-_cen[1])**2):
+        nx, ny = -nx, -ny
+    shifted_pt = (side_mid[0] + nx * shift_distance,
+                  side_mid[1] + ny * shift_distance)
+    _ext = 500.0
+    cut_line = _LSv2([
+        (shifted_pt[0] - ux * _ext, shifted_pt[1] - uy * _ext),
+        (shifted_pt[0] + ux * _ext, shifted_pt[1] + uy * _ext),
+    ])
+    try:
+        pieces = _split_v2(block_poly, cut_line)
+        target = min(pieces.geoms,
+                     key=lambda g: g.centroid.distance(_Pv2(side_mid)))
+    except Exception as _e_split:
+        raise RuntimeError(
+            f"🔴 {_tag}：`split(block, cut_line)` 失敗（{type(_e_split).__name__}: {_e_split}）。"
+            f"⛔ **禁 fallback 為整個街廓**——那會把街角規定範圍放大到全街廓、"
+            f"使最小分配面積門檻整個失真。上游幾何有誤，停") from _e_split
+    if target.is_empty:
+        return None
+    if chamfer_tri is not None:
+        try:
+            target = target.difference(chamfer_tri)
+        except Exception as _e_ch:
+            raise RuntimeError(
+                f"🔴 {_tag}：扣道路截角 `difference(chamfer_tri)` 失敗"
+                f"（{type(_e_ch).__name__}: {_e_ch}）。"
+                f"⛔ **禁靜默保留未扣截角**——R3 右實測差 6.2㎡，直接污染"
+                f"街角地最小分配面積門檻。停") from _e_ch
+    if not target.is_valid:
+        target = target.buffer(0)
+    return target if not target.is_empty else None
+
+
 def _build_corner_range_v2(side_mid, block_vertices, block_centroid,
                             alloc_dir, shift_distance, chamfer_tri=None):
-    """街角規定範圍 = SIDE_LINE 中點 + 宗地分配線法向平移 shift_distance → 切 BLOCK → 扣截角。
+    """**(Ⅰ) 街角規定範圍** ＝ SIDE_LINE 中點 + 宗地分配線法向平移 `shift_distance`
+    → 切 BLOCK → **扣截角**。供 W-D.1.3 街角地 PK 資格判定（per-side）。
+
+    ⚠️ 與 **(Ⅱ) 側街負擔範圍**（`_build_burden_range`）**同名不同量·禁互代**
+    （WARNING-C 裁定 2026-07-08）：本函式之 `shift_distance` ＝ 退縮 ＋ 畸零地最小寬，
+    且**扣**道路截角；(Ⅱ) 之 W ＝ Rw 飽和寬且**不扣**截角。
 
     alloc_dir       宗地分配線方向單位向量 (ux, uy)
     shift_distance  退縮 + 畸零地最小寬
-    chamfer_tri     道路截角三角形 shapely Polygon（可 None）
-    回傳 shapely Polygon 或 None
+    chamfer_tri     道路截角三角形 shapely Polygon（可 None＝該側無截角）
+    回傳 shapely Polygon 或 None（該側確實無範圍）；**內部錯誤一律 loud raise**
     """
-    try:
-        from shapely.geometry import Polygon as _SPv2, LineString as _LSv2
-        from shapely.ops import split as _split_v2
-        block_poly = _SPv2(block_vertices)
-        if not block_poly.is_valid:
-            block_poly = block_poly.buffer(0)
-        if block_poly.is_empty:
-            return None
-        ux, uy = alloc_dir
-        nx, ny = -uy, ux
-        _cen = block_centroid
-        _tp = (side_mid[0] + nx, side_mid[1] + ny)
-        _tm = (side_mid[0] - nx, side_mid[1] - ny)
-        if ((_tm[0]-_cen[0])**2+(_tm[1]-_cen[1])**2) < ((_tp[0]-_cen[0])**2+(_tp[1]-_cen[1])**2):
-            nx, ny = -nx, -ny
-        shifted_pt = (side_mid[0] + nx * shift_distance,
-                      side_mid[1] + ny * shift_distance)
-        _ext = 500.0
-        cut_line = _LSv2([
-            (shifted_pt[0] - ux * _ext, shifted_pt[1] - uy * _ext),
-            (shifted_pt[0] + ux * _ext, shifted_pt[1] + uy * _ext),
-        ])
-        try:
-            from shapely.geometry import Point as _Pv2
-            pieces = _split_v2(block_poly, cut_line)
-            target = min(pieces.geoms,
-                         key=lambda g: g.centroid.distance(_Pv2(side_mid)))
-        except Exception:
-            target = block_poly
-        if target.is_empty:
-            return None
-        if chamfer_tri is not None:
-            try:
-                target = target.difference(chamfer_tri)
-            except Exception:
-                pass
-        if not target.is_valid:
-            target = target.buffer(0)
-        return target if not target.is_empty else None
-    except Exception:
-        return None
+    return _shift_cut_block_range(side_mid, block_vertices, block_centroid,
+                                  alloc_dir, shift_distance, chamfer_tri,
+                                  _who='_build_corner_range_v2(Ⅰ街角規定範圍)')
+
+
+def _build_burden_range(side_mid, block_vertices, block_centroid,
+                        alloc_dir, burden_width):
+    """**(Ⅱ) 側街負擔範圍** ＝ 同一平移切帶原語，惟
+    `shift = burden_width`（＝ `RW_SATURATION_WIDTH_M`）且 **恆不扣截角**。
+
+    分家之理由（N-17）：舊碼以「`chamfer=None` 與否」隱含區分兩種語意，
+    讀碼者無從辨識呼叫端要的是哪一個。具名之後，`chamfer` 不再是**可調參數**
+    ——(Ⅱ) **結構上**不可能誤扣截角。
+    """
+    return _shift_cut_block_range(side_mid, block_vertices, block_centroid,
+                                  alloc_dir, float(burden_width), None,
+                                  _who='_build_burden_range(Ⅱ側街負擔範圍)')
 
 
 def _make_chamfer_tri_wb(blk_meta, which_side):
@@ -9982,9 +10057,12 @@ _WF_NS_NAMES = [
     #   app 路徑（「執行七級調配」→ `_build_wf_ctx` → wf_f4.compute）取不到即 **KeyError**。
     #   舊 :1110 閘只驗 `_WF_NS_NAMES ⊆ ns`（單向）故抓不到「引擎要、清單沒有」——閘已改雙向。
     "_strip_axis", "_end_region_R",
-    # 🆕 B-5（plan v3 §四·D-3 寬度制）：18m 負擔範圍多邊形**即算即用**之單一真相源。
+    # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
-    #      且 harness（run_verification）從不算 18m，存鍵在 harness 路徑必缺。
+    #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
+    #   🆕 **N-17 分家後**：本名之語意已收斂為 **(Ⅰ) 街角規定範圍**（扣截角）；
+    #      **(Ⅱ) 側街負擔範圍** 另有其名 `_build_burden_range`（不扣截角·W＝`RW_SATURATION_WIDTH_M`），
+    #      由 `_place_pool_parcels` 自 app globals 直呼，**不經 ns**（故不列於此）。
     "_build_corner_range_v2",
     # 🆕 §4 P2-b（裁定B 兩階段落位）：階段2 池內落位之**單一真相源**。
     #   函式置 app module 級、stepg 經 ns 取用（同 `_oblique_s_max`／`_corner_buffer_S` 先例·**禁 fork**）。
@@ -15742,14 +15820,14 @@ def main():
                         _burden_l = _burden_r = None
                         if _alloc_cr and len(_blk_verts_cr) >= 3:
                             if has_left and 'left' in _side_cr:
-                                _br_l = _build_corner_range_v2(
+                                _br_l = _build_burden_range(
                                     _side_cr['left']['mid'], _blk_verts_cr, _blk_cen_cr,
-                                    _alloc_cr, 18.0, None)
+                                    _alloc_cr, RW_SATURATION_WIDTH_M)
                                 _burden_l = round(float(_br_l.area), 2) if _br_l is not None else None
                             if has_right and 'right' in _side_cr:
-                                _br_r = _build_corner_range_v2(
+                                _br_r = _build_burden_range(
                                     _side_cr['right']['mid'], _blk_verts_cr, _blk_cen_cr,
-                                    _alloc_cr, 18.0, None)
+                                    _alloc_cr, RW_SATURATION_WIDTH_M)
                                 _burden_r = round(float(_br_r.area), 2) if _br_r is not None else None
                         _burden_18m_by_blk[_lbl] = {'left': _burden_l, 'right': _burden_r}
                         _corner_rows_init.append({
@@ -17950,14 +18028,16 @@ def main():
                         # ① 負擔範圍 W=18m
                         _br = st.session_state.get('f3_burden_range_18m', {}) or {}
                         if _br:
-                            st.markdown("**① 負擔範圍 W=18m 面積（未扣截角，軟驗證 ≈ 18×D_avg）**")
+                            st.markdown(f"**① 負擔範圍 W={RW_SATURATION_WIDTH_M:g}m 面積"
+                                        f"（未扣截角，軟驗證 ≈ {RW_SATURATION_WIDTH_M:g}×D_avg）**")
                             _rows_br = []
                             for _lbl in sorted(_br):
                                 _da = (_dep.get(_lbl, {}) or {}).get('D_avg')
                                 _rows_br.append({
                                     '街廓': _lbl, '左 W18(㎡)': _br[_lbl].get('left'),
                                     '右 W18(㎡)': _br[_lbl].get('right'), 'D_avg(m)': _da,
-                                    '18×D_avg(㎡)': round(18.0 * _da, 1) if _da else None})
+                                    f'{RW_SATURATION_WIDTH_M:g}×D_avg(㎡)':
+                                        round(RW_SATURATION_WIDTH_M * _da, 1) if _da else None})
                             st.dataframe(_pd.DataFrame(_rows_br), use_container_width=True, hide_index=True)
                         # ② ΣRw per 角側（B-2 修假警報：驗收式改 telescoping）
                         #   ΣRw_側 = R(末筆W) − R(起始W)；起始W = 該側 forced buffer 寬，無 forced 則 0。

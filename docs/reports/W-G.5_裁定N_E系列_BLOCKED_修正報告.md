@@ -203,6 +203,66 @@ claude.ai 側之兩條（KL 指認·照錄）已一併記入 plan §十。
 
 ---
 
+## 六之二、N-17 前置（第二枚 commit）
+
+### 6.2.1 三個 bare except → loud raise（**活炸彈**·優先於分家）
+
+`_shift_cut_block_range`（自 `_build_corner_range_v2` 抽出之幾何原語）內：
+
+| # | 舊行為 | 後果 |
+|---|---|---|
+| 1 | `split` 失敗 → `target = block_poly` | **靜默回整個街廓**當街角規定範圍 ⇒ 門檻整個失真 |
+| 2 | `difference(chamfer_tri)` 失敗 → `pass` | **靜默保留未扣截角**（R3 右差 **6.2㎡**）|
+| 3 | 外層 → `return None` | 把任何內部錯誤洗成「本側無範圍」 |
+
+三者**皆直接污染街角地最小分配面積門檻** ⇒ 全改 loud raise。
+**未改**：`block_poly.is_empty`／`target.is_empty` 之顯式 `return None`——那是
+「本側確實無範圍」之**有意義回值**（`_place_pool_parcels` 已對 None 設 loud 守衛），
+與「吞掉例外」不同類。
+同步更新 `_place_pool_parcels` 內「`_build_corner_range_v2` 內含 bare except→None」
+之**過期依據句**（血訓 6.1：改依據時要搜出所有引用該依據處）。
+
+### 6.2.2 (Ⅰ)/(Ⅱ) 分家
+
+- **(Ⅰ) 街角規定範圍**＝`_build_corner_range_v2`（退縮＋min_width·**扣截角**）——4 處呼叫不動。
+- **(Ⅱ) 側街負擔範圍**＝`_build_burden_range`（**新**·W＝`RW_SATURATION_WIDTH_M`·**恆不扣截角**）
+  ——3 處呼叫改接。具名之後 `chamfer` 不再是可調參數，**(Ⅱ) 結構上不可能誤扣截角**。
+- 二者共用**同一幾何原語** `_shift_cut_block_range`（單一真相源·**禁複製幾何**）。
+- **(Ⅲ) 量測用虛擬範圍：本波不建**——建而不接＝死碼（`CLAUDE.md` 不留 stub）；
+  其接線屬 E-7 (Ⅲ) 階段，會改街角宗寬度判定 ⇒ **改面積歸屬** ⇒ 須先過 KL。**列 backlog**。
+
+### 6.2.3 `18.0` 去硬編
+
+改為**單一具名常數** `RW_SATURATION_WIDTH_M = 18.0`，由 `rw_from_width`
+與 `_build_burden_range` **共用**。理由（採 reviewer 之判斷）：
+該數之身分＝**法定 Rw 表之飽和寬度**（實施辦法 §29 附件二 W≥18m→100%），
+與 v3.1 §5「側街負擔範圍 W=18m」**是同一個 18、同一個法源**；
+若做成可自由覆寫之 JSON 鍵，會出現「負擔範圍 20m 但 Rw 於 18m 已飽和」之**內部矛盾態**。
+
+**⚠️ claude.ai 原令「禁留任何字面 18.0」須限縮**（reviewer BLOCKED-5·成立）：
+`HUALIEN_MIN_LOT_TABLE` 內之 `18.00` ＝ **畸零地附表之最小深度**（法定附表·與 Rw 無關·
+同值純屬巧合），**照字面施工就會改到法定表**。已於該表上方加豁免註記。
+另 reviewer 抓出語意 18m 實有 **4 處**（plan 原列 3 處·**漏了軟驗證顯示欄**），已一併改。
+
+改後全倉殘留之 `18.0`／`18.00` 僅剩：常數定義本身、註解、與**已豁免之法定附表兩格**。
+
+### 6.2.4 具名常數之隱藏代價（`run_all` 活抓·已修）
+
+`tests/test_pool_slot.py` 以 **AST 抽 top-level 函式 → exec 進獨立 ns**（刻意不 import app.py），
+而其抽取器**只抽 `FunctionDef`、不抽 module 級 `Assign`**
+⇒ `rw_from_width` 去硬編後於該 ns 內 `NameError: RW_SATURATION_WIDTH_M`
+⇒ **滑池槽 golden 由 8/8 轉紅**。
+
+**修法**：抽取器加 `_CONSTS = ("RW_SATURATION_WIDTH_M",)`，一併抽出對應之 `Assign` 節點，
+且**缺常數 loud AssertionError**（與既有「缺函式」守衛同族）。
+已實測該守衛之**鑑別力**（塞入不存在之常數名 → 確實 raise），非空守衛。
+
+⇒ **記一筆**：把字面值收斂成具名常數，會**破壞任何「按符號名逐個抽取」的測試載入器**。
+去硬編時要一併盤點 `ast.parse` / `exec` 這類**非 import 式**的載入路徑——
+`grep -rn "ast.parse\|exec(compile" tests/ verify/`。
+
+---
+
 ## 七、驗收
 
 - `python -m py_compile app.py` → OK

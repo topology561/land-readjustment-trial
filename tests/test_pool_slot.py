@@ -22,6 +22,11 @@ for _stream in (sys.stdout, sys.stderr):
 
 _APP_PY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app.py")
 _FUNCS = ("rw_from_width", "_select_pool_slot")
+# 🆕 N-17 §8.3：被抽出之函式所引用之 **module 級具名常數**亦須一併抽出，
+#   否則 exec 進獨立 ns 後 `NameError`（`rw_from_width` 於去硬編後引用飽和寬常數）。
+#   ⚠️ 本清單**手動維護**——新增常數引用時要同步，缺漏會 loud（見下 `missing_c`），
+#      不會靜默回舊值。
+_CONSTS = ("RW_SATURATION_WIDTH_M",)
 
 
 def _extract():
@@ -33,7 +38,14 @@ def _extract():
     missing = set(_FUNCS) - got
     if missing:
         raise AssertionError(f"app.py 缺 top-level 函式 {sorted(missing)}——被改名或刪除？")
-    mod = ast.Module(body=nodes, type_ignores=[])
+    consts = [n for n in tree.body
+              if isinstance(n, ast.Assign)
+              and any(isinstance(t, ast.Name) and t.id in _CONSTS for t in n.targets)]
+    got_c = {t.id for n in consts for t in n.targets if isinstance(t, ast.Name)}
+    missing_c = set(_CONSTS) - got_c
+    if missing_c:
+        raise AssertionError(f"app.py 缺 module 級常數 {sorted(missing_c)}——被改名或刪除？")
+    mod = ast.Module(body=consts + nodes, type_ignores=[])
     ns = {}
     exec(compile(mod, filename="<pool_slot@app.py>", mode="exec"), ns)
     return ns["_select_pool_slot"], ns["rw_from_width"]
