@@ -5950,8 +5950,13 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
     _poly = _Poly_w([(float(p[0]), float(p[1])) for p in cut_coords])
     if not _poly.is_valid:
         _poly = _poly.buffer(0)
-    if _poly.is_empty:
-        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：宗地多邊形空，停")
+    # E-4：`buffer(0)` 後仍非單一 Polygon（自交被拆成 MultiPolygon 等）⇒ loud raise。
+    #   可達形狀集合封閉 ⇒ 宗地恆為單一簡單多邊形；非之即上游幾何有誤。
+    if _poly.is_empty or _poly.geom_type != 'Polygon':
+        raise RuntimeError(
+            f"🔴 parcel_min_width_n14[{_label}]：宗地幾何非單一 Polygon"
+            f"（`{_poly.geom_type}`{'·空' if _poly.is_empty else ''}）"
+            f"——可達形狀集合封閉下不應發生 ⇒ 上游幾何有誤，停")
     _fp = _np_w.asarray(front_pt, dtype=float)[:2]
     # 法向取號：指向宗地內（形心側）
     _c = _np_w.asarray(_poly.centroid.coords[0], dtype=float)
@@ -5959,28 +5964,101 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
         _n = -_n
     _md = float(min_depth)
 
-    # 🔒 量測帶**夾至宗地自身之深度範圍**：`t ∈ [0, min(min_depth, 宗地最大深)]`。
-    #   ∵ 宗地若淺於法定最小深，帶之尾段**無宗地**、弦長為 0；若不夾，寬度會被算成 0
-    #   ⇒ **寬度閘因「深度不足」而觸發**、與 N-11(3) 之**深度閘重複計**
-    #   ⇒ 寬度閘不再只測寬度（違「一閘一事」）。深度不足由 N-11(3) 專責。
     _tv = [float(_np_w.dot(_np_w.asarray(_p[:2], dtype=float) - _fp, _n))
            for _p in list(_poly.exterior.coords)]
-    _t_hi = min(_md, max(_tv))
-    if _t_hi <= 0:
-        raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：宗地於 FRONT 法向之深度 ≤0"
-                           f"（最大 {max(_tv):.6f}）——量測帶不可定義，停")
+
+    # ── 🔒 E-1′～E-3′ 不變量守衛（KL 裁 2026-07-27·量測前先驗·一律 loud raise）────────
+    #   **可達宗地形狀集合封閉**（①街角地／②中間宗地／③末端塊）⇒ 下列情形依作業規範
+    #   **不可能發生**；發生即**上游有誤**，**禁回任何數字**（回數字＝把上游錯誤洗成「量測結果」）。
+    #
+    # E-1′ 本宗未臨接正面路街線
+    #   ── 🚩 容差 **偏離 KL 交辦文字面之 `1e-6`·已標旗上呈**（依據如下·非隨手放寬）────
+    #   KL 交辦文寫 `min(_tv) > 1e-6`。**實測 UC9898 59 筆業主宗中 45 筆會觸發**，
+    #   而其距離全在 **4µm～247µm**——**非「未臨正街」，係 BLOCK 邊與 FRONT_LINE 之
+    #   繪圖／座標精度差**：`cut_coords` 由 `_block_strip` 對 **BLOCK 多邊形**裁切而得，
+    #   而 FRONT_LINE 係**另一圖層**、且畫到**未截角尖角**（見 `cad-layer-semantics`）。
+    #   倉內正典早已明文：「直弦離邊界 ~2mm → **線上判定容差 ≥1cm**（`perp_tol=0.05` 實用），
+    #   **`1e-6` 會漏量**」——`1e-6` 正是該處點名之失效值。
+    #   ⇒ 取 **法定粒度 `0.01m`**（實施辦法 §3 長度 2dp）為容差，理由與 C-5 同族：
+    #     **低於法定記載粒度之偏移，在法規上不可能被記載為「不臨街」**。
+    #     實測最大 2.47e-4 低其 **40 倍**；而真正「未臨街」之錯誤為**公尺級** ⇒ 鑑別力充分。
+    #     （較正典 `perp_tol=0.05` 仍嚴 5 倍。）
+    _EPS_TOUCH_FRONT = 0.01
+    if min(_tv) > _EPS_TOUCH_FRONT:
+        raise RuntimeError(
+            f"🔴 parcel_min_width_n14[{_label}]：本宗未臨接正面路街線"
+            f"（距 FRONT 最近之頂點仍有 {min(_tv):.6f}m > 容差 {_EPS_TOUCH_FRONT}m）。"
+            f"重劃後**每宗均應臨正街** ⇒ **宗地分配線或 cut_coords 上游有誤，非寬度不足**。"
+            f"（⛔ 禁改為「夾近端後續算」——那會把上游錯誤靜默吸收）")
+    # E-2′ 宗地深度 < 法定最小深度
+    #   ⛔ **已撤掉舊之 `_t_hi = min(min_depth, max(_tv))` 夾制**（KL 令）：
+    #      該夾制會**靜默吸收不合規之分配線**——街廓分配線深度本就**不得**小於
+    #      畸零地規則之最小深度（手冊 二(一)3）⇒ 淺於此即**分配線不合規**，
+    #      屬上游錯誤、非「寬度閘與深度閘重複計」之問題。
+    if max(_tv) < _md:
+        raise RuntimeError(
+            f"🔴 parcel_min_width_n14[{_label}]：本宗深度 {max(_tv):.4f}m "
+            f"< 法定最小深度 {_md:.4f}m。**街廓分配線深度不得小於畸零地規則最小深度**"
+            f"（手冊 二(一)3）⇒ **分配線不合規**，停")
+    _t_hi = _md
+    # 量測起點對齊**宗地自身前緣** `t_lo = max(0, min(t))`。
+    #   🔒 **此非 KL 所禁之「夾近端後續算」**——二者差別在**是否取代 raise**：
+    #     · 禁者＝以夾制**取代** E-1′ 之 raise ⇒ 把「真的沒臨街」靜默吸收。
+    #     · 本處＝E-1′ **已先驗過**（偏移 ≤ 法定粒度 0.01m·真錯誤仍 raise），
+    #       此後僅將起點對齊宗地實際前緣。
+    #   ⇒ 必要性（實測）：`cut_coords` 之前緣較 FRONT_LINE 高 4µm～247µm
+    #     ⇒ **恰在 FRONT_LINE 上之弦為空**（E-3′ 會誤判「0 段」）。
+    #     位移量 ≤0.01m ＝ 法定粒度以下 ⇒ 對 2dp 記載無影響。
+    _t_lo = max(0.0, min(_tv))
+    if _t_lo >= _t_hi:
+        raise RuntimeError(
+            f"🔴 parcel_min_width_n14[{_label}]：量測帶退化"
+            f"（起點 {_t_lo:.6f} ≥ 終點 {_t_hi:.6f}），停")
     # 斷點集合（分段線性 ⇒ 極小值必在此）
-    _ts = {0.0, _t_hi}
+    _ts = {_t_lo, _t_hi}
     for _t in _tv:
-        if 0.0 <= _t <= _t_hi:
+        if _t_lo <= _t <= _t_hi:
             _ts.add(_t)
     _big = float(max(_poly.bounds[2] - _poly.bounds[0],
                      _poly.bounds[3] - _poly.bounds[1])) * 4.0 + 100.0
+    # ── 斷點取值（**退避法**·數值穩健）────────────────────────────────────────────
+    #   `w(t)` 於 `[t_lo, t_hi]` **連續且分段線性** ⇒ 斷點之值 ＝ 自任一側之極限。
+    #   而**恰在多邊形極值頂點上**取弦，浮點下會**相切**：`line ∩ poly` 可得**空集**
+    #   或**兩段共線**（實測 UC9898：`LineString(0 段)`／`MultiLineString(2 段)`
+    #   皆於 t 落在邊界處出現）⇒ 於斷點**退避** `_NUDGE` 取值。
+    #   `_NUDGE = 1e-7 m`：遠高於本座標量級（~3e5）之浮點噪訊（~7e-11），
+    #   且**低於法定粒度 1e-2 之十萬分之一** ⇒ 對 2dp 記載零影響。
+    #   🔒 **退避僅用於解相切**：退避後**仍**非單段 ⇒ **照常 raise**（E-3′ 鑑別力保留）。
+    _NUDGE = 1e-7
+
+    def _chord_at_t(_tq):
+        _b = _fp + _tq * _n
+        return _LS_w([_b - _big * _d, _b + _big * _d]).intersection(_poly)
+
     _wmin = None
     for _t in sorted(_ts):
-        _base = _fp + _t * _n
-        _ln = _LS_w([_base - _big * _d, _base + _big * _d]).intersection(_poly)
-        _w = float(_ln.length) if (not _ln.is_empty) else 0.0
+        _ln = _chord_at_t(_t)
+        if _ln.is_empty or _ln.geom_type != 'LineString':
+            for _alt in (_t + _NUDGE, _t - _NUDGE):
+                if not (_t_lo - _NUDGE <= _alt <= _t_hi + _NUDGE):
+                    continue
+                _cand = _chord_at_t(_alt)
+                if (not _cand.is_empty) and _cand.geom_type == 'LineString':
+                    _ln = _cand
+                    break
+        # E-3′ 弦須為**單一 LineString**
+        #   ⛔ **已撤掉 `_ln.length` 之「總長」語意**：三種可達形狀之弦**恆為單段**；
+        #      若被切為多段，`.length` 會把數段加總、**製造一個不存在的寬度**。
+        #   附註：「U 字形宗地」之讀法選項已由 KL 裁定作廢（該形狀不可能存在）
+        #        ⇒ **不得實作任何讀法選項**。
+        if _ln.is_empty or _ln.geom_type != 'LineString':
+            _n_seg = (len(getattr(_ln, 'geoms', [])) if hasattr(_ln, 'geoms')
+                      else (0 if _ln.is_empty else 1))
+            raise RuntimeError(
+                f"🔴 parcel_min_width_n14[{_label}]：深度 t={_t:.4f}m 處之弦"
+                f"為 `{_ln.geom_type}`（{_n_seg} 段·**已試退避 {_NUDGE}m 仍然如此**）。"
+                f"**三種可達形狀之弦恆為單段** ⇒ **宗地幾何違反分配模型**，停")
+        _w = float(_ln.length)
         if _wmin is None or _w < _wmin:
             _wmin = _w
     if _wmin is None:
@@ -18257,17 +18335,25 @@ def main():
                         raise RuntimeError(
                             f"🔴 N-15[{_r_jw.get('暫編地號')}]：街廓 {_blk_jw} 缺 FRONT_LINE"
                             f"——N-14 寬度不可量·**禁以 S(m)／MBR 短邊兜底**，停")
+                    # ── 🔒 E-7（KL 裁 2026-07-27）：**街角宗於 (Ⅲ) 落地前不得輸出寬度結論** ──
+                    #   K-2(Ⅲ)「量測用虛擬範圍」＝**實配**街角地第 1 宗之幾何**補回截角**
+                    #   （FRONT 與 SIDE 兩線延伸相交還原角點之四邊形）。
+                    #   而此處之 `cut_coords` 為**截角後**幾何 ⇒ 量出之寬度**非** N-14 所指之值。
+                    #   實測坐實：R3 之 `628-45(2)`（街角地·第1筆·右側）坐落 R3 右側**道路截角
+                    #   斜邊**上（街廓頂點 s=89.84,t=0 → s=93.35,t=3.478）⇒ 其最近頂點距 FRONT
+                    #   **0.7655m**。此**非上游錯誤**，正是截角所致 ⇒ **不得**以截角後幾何評斷。
+                    #   ⇒ **跳過量測、標 pending、不輸出合格與否**（E-7 明令）。
+                    #     俟 K-2 三物件分家（N-17）後接上 (Ⅲ) 再量。
+                    if str(_r_jw.get('街角地', '')).strip() == '是':
+                        _r_jw['_width_chamfer_pending'] = True
+                        _r_jw['實際寬度(m)'] = None      # **不輸出數字**（避免被下游當結論）
+                        continue
                     _p1_jw = _fl_jw['p1']; _p2_jw = _fl_jw['p2']
                     _dx_jw = _p2_jw[0] - _p1_jw[0]; _dy_jw = _p2_jw[1] - _p1_jw[1]
                     _L_jw = (_dx_jw ** 2 + _dy_jw ** 2) ** 0.5
                     _w_jw = parcel_min_width_n14(
                         _cut_jw, (_dx_jw / _L_jw, _dy_jw / _L_jw), _p1_jw, _md_jw,
                         _label=f"{_blk_jw}·{_r_jw.get('暫編地號')}")
-                    # 🚩 N-11(2)(3)：**街角地之寬深應以「截角前」範圍計**（KL 明令·禁「修正」）。
-                    #   本處之 `cut_coords` 係**截角後**幾何 ⇒ 街角宗之值尚未套截角前口徑。
-                    #   **不靜默當作已符合**：標旗、俟 N-17／P-3 之截角前範圍落地後接上。
-                    if str(_r_jw.get('街角地', '')).strip() == '是':
-                        _r_jw['_width_chamfer_pending'] = True
                     _r_jw['實際寬度(m)'] = round(_w_jw, 2)
                     _legal_w = float(_min_width_by_block.get(_blk_jw, 0.0) or 0.0)
                     if _legal_w > 0 and _w_jw < _legal_w:
