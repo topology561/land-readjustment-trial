@@ -147,6 +147,28 @@ def main():
                 print("     " + _ln)
     if not _ok_pr:
         rc = 1
+
+    # ── 🆕 K-4 第 5 條（KL 裁 2026-07-27）：街角第 1 宗之 S 起算點 ──────────────────
+    #   閘內容：①FRONT_LINE 端點 ≡ FRONT×SIDE 無限直線交點（八側·1e-6）
+    #          ②`s(p2) ≡ |FRONT|` 恆等式（斜交軸可比性之前提）
+    #          ③三變體衝擊表（含 **patch 載具自檢**：以 patch 重現未 patch 語意須逐格全等）
+    #   ⚠️ 同 F-2：走 `[1/3]` golden 段 ⇒ **不動 PASS/FAIL 計數**。
+    _probe_k4 = os.path.join(HERE, "probes", "probe_ruling_K4_s_origin.py")
+    try:
+        _rk = subprocess.run([sys.executable, _probe_k4],
+                             capture_output=True, text=True, encoding="utf-8", timeout=1800)
+        _ok_k4 = (_rk.returncode == 0)
+    except Exception as _e_k4:
+        _rk, _ok_k4 = None, False
+        print(f"  🔴 K-4 S 起算點閘 執行失敗：{_e_k4}")
+    if _rk is not None:
+        print(f"  {'✅' if _ok_k4 else '🔴'} K-4 S 起算點閘"
+              f"（FRONT 端點≡理論角/恆等式/三變體衝擊·patch 載具自檢）rc={_rk.returncode}")
+        if not _ok_k4:
+            for _ln in ((_rk.stdout or "") + (_rk.stderr or "")).strip().splitlines()[-14:]:
+                print("     " + _ln)
+    if not _ok_k4:
+        rc = 1
     print()
 
     print("### [2/3] diff 引擎自檢（竄改必咬＋Gxxx 分流；證綠非虛）")

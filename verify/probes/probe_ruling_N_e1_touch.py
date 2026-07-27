@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""W-G.5 裁定 N — **E 系列實測快照**（E-1′／E-2′／E-7／E-8·逐宗·兩情境）。
+"""W-G.5 裁定 N — **E 系列實測快照**（E-1′／E-2′／E-8／E-9／K-4·逐宗·兩情境）。
 
 ## 為何存在（BLOCKED-3·claude.ai 二度指認）
 
@@ -60,6 +60,12 @@ COLS = ["情境", "街廓", "暫編地號", "街角地", "第1筆街角", "街�
 _SKIP_SIDES = ("抵費地", "🟠 孤立公設地", "💰 現金補償")
 
 EPS_TOUCH = 0.01        # 法定粒度（實施辦法 §3 長度 2dp）——KL 域裁·已鎖
+# 🆕 快照 `min_t` 之**零判定**：|t| < 1e-12 一律記為 `0.000e+00`。
+#   理由：快照係**跨機回歸**比對；(s,t) 局部框座標量級 O(1e2) ⇒ 雙精度絕對噪訊 ~1e-14，
+#   而 `%.3e` 會把 −4.6e-14 與 +1.2e-14 印成**不同字串** ⇒ 產生與幾何無關之假紅。
+#   1e-12 ＝ 噪訊上界之 100 倍、且**低於本案最小真實 |min t|（1.04e-08）四個數量級**
+#   ⇒ 不損鑑別力。**非**法律門檻、**非**實測殘差定閘（僅為列印之零規範化）。
+EPS_SNAP_ZERO = 1e-12
 EPS_CONVEX = 0.01       # 法定粒度（面積 2dp）——E-8a 判準寬
 
 _SNAP_CACHE = {}        # 案例快照（T4 之 SIDE_LINE 側數由此導出·非寫死）
@@ -67,38 +73,70 @@ _Q_CACHE = {}           # DXF 實測坐標量化步長 q（T6 之閘寬·逐檔�
 _MERGE_CACHE = {}       # T7：步驟 J 判定 → merge_subparcels_by_parent 之真跑結果
 
 
-def _e7_merge_gate(ns, g_rows, front_lines, min_depth_by_blk, min_width_by_blk, mina_by_blk):
-    """T7 之實料：以 **module 級真判定** 逐宗評 ＋ 真跑 `merge_subparcels_by_parent`。
+def _e7_merge_gate(ns, g_rows, front_lines, min_depth_by_blk, min_width_by_blk,
+                   mina_by_blk, corner_area_by_blk):
+    """T7（**K-4 版**）之實料：以 module 級真判定逐宗評 ＋ 真跑 `merge_subparcels_by_parent`。
+
+    K-4（KL 裁 2026-07-27）：街角第 1 宗**不走 N-14**，其判定 ＝
+    `G ≥ 街角最小分配面積`（＝ (Ⅰ) 街角規定範圍面積）之**蘊含**。
+    ⇒ 舊「待判（截角）」框架作廢；`PENDING` 態自此**不應再產生**。
 
     ⚠️ **不改引擎狀態**：`g_rows` 先 deepcopy（探針零注入）。
     """
     import copy as _cp
-    _rows = _cp.deepcopy(g_rows)
     _ev = ns["evaluate_parcel_width_n14"]
-    _pending = set()
-    for r in _rows:
-        _blk = str(r.get("所屬街廓", ""))
-        r.update(_ev(r, (front_lines or {}).get(_blk) or {},
-                     float(min_depth_by_blk.get(_blk, 0.0) or 0.0),
-                     float(min_width_by_blk.get(_blk, 0.0) or 0.0),
-                     _label=f"{_blk}·{r.get('暫編地號')}"))
-        if r.get("寬度判定") == ns["WIDTH_VERDICT_PENDING"]:
-            _pending.add(str(r.get("暫編地號")))
+
+    def _eval_rows(_src, _g_override=None):
+        _rows = _cp.deepcopy(_src)
+        _k4, _pend = [], []
+        for r in _rows:
+            _blk = str(r.get("所屬街廓", ""))
+            _sd = {"左側": "left", "右側": "right"}.get(str(r.get("街角側別", "")).strip())
+            _thr = (corner_area_by_blk.get(_blk) or {}).get(_sd) if _sd else None
+            if _g_override and str(r.get("暫編地號")) in _g_override:
+                r["G(㎡)"] = _g_override[str(r.get("暫編地號"))]
+            r.update(_ev(r, (front_lines or {}).get(_blk) or {},
+                         float(min_depth_by_blk.get(_blk, 0.0) or 0.0),
+                         float(min_width_by_blk.get(_blk, 0.0) or 0.0),
+                         corner_min_area=_thr,
+                         _label=f"{_blk}·{r.get('暫編地號')}"))
+            _v = r.get("寬度判定")
+            if _v == ns["WIDTH_VERDICT_CORNER_K4"]:
+                _k4.append(r)
+            elif _v == ns["WIDTH_VERDICT_PENDING"]:
+                _pend.append(str(r.get("暫編地號")))
+        return _rows, _k4, _pend
+
+    _rows, _k4, _pend = _eval_rows(g_rows)
+    # ① 街角 winner 皆 G ≥ 門檻（K-4 之實質檢驗·門檻缺者另計）
+    _viol, _nothr = [], []
+    for r in _k4:
+        _g = r.get("_width_k4_G")
+        _t = r.get("_width_k4_threshold")
+        if _t is None or _g is None:
+            _nothr.append(str(r.get("暫編地號")))
+        elif float(_g) < float(_t):
+            _viol.append(f"{r.get('所屬街廓')}·{r.get('暫編地號')}：G {_g} < 門檻 {_t}")
     _merged = ns["merge_subparcels_by_parent"](_rows, mina_by_blk)["merged_rows"]
-    # 洩漏 ＝ pending 筆卻輸出乾淨 `✅`（無「待判」字樣）＝「寬度合格」之結論
+    # ② 無街角 winner 以 PENDING 態產出（K-4 後該態邏輯上不可能）
     _leak = [str(m.get("暫編地號")) for m in _merged
-             if str(m.get("暫編地號")) in _pending
-             and str(m.get("是否達最小", "")).startswith("✅")
-             and ns["WIDTH_VERDICT_PENDING"] not in str(m.get("是否達最小", ""))]
-    # 🔒 **鑑別力**：pending 筆須**真的走到 `✅` 分支**（帶待判標記），否則本閘空真
-    #    （＝夾具之(乙)死碼形：閘綠只因該路徑從未被踩到）。
-    _marked = [str(m.get("暫編地號")) for m in _merged
-               if str(m.get("暫編地號")) in _pending
-               and ns["WIDTH_VERDICT_PENDING"] in str(m.get("是否達最小", ""))]
-    return {"n_pending": len(_pending),
+             if str(m.get("寬度判定", "")) == ns["WIDTH_VERDICT_PENDING"]]
+    # ③ **鑑別力**：刻意把某街角 winner 之 G 壓到門檻下 ⇒ ① 必須抓到
+    _disc = None
+    if _k4:
+        _t0 = next((r for r in _k4 if r.get("_width_k4_threshold") is not None), None)
+        if _t0 is not None:
+            _pid0 = str(_t0.get("暫編地號"))
+            _low = round(float(_t0["_width_k4_threshold"]) - 1.0, 2)
+            _, _k4b, _ = _eval_rows(g_rows, {_pid0: _low})
+            _hit = any(float(r.get("_width_k4_G", 0) or 0)
+                       < float(r.get("_width_k4_threshold", 0) or 0)
+                       for r in _k4b if str(r.get("暫編地號")) == _pid0)
+            _disc = (_pid0, _low, _hit)
+    return {"n_k4": len(_k4), "n_pending": len(_pend),
             "n_corner": sum(1 for r in g_rows if str(r.get("街角地", "")).strip() == "是"),
-            "n_merged": len(_merged), "clean_ok_pending": _leak,
-            "n_marked": len(_marked)}
+            "n_merged": len(_merged), "viol": _viol, "no_thr": _nothr,
+            "leak": _leak, "disc": _disc}
 
 
 def _fail(msg):
@@ -150,9 +188,10 @@ def _measure(g_rows, front_lines, min_depth_by_blk, width_fn, tag):
         is_corner = str(r.get("街角地", "")).strip() == "是"
         md = float(min_depth_by_blk.get(blk, 0.0) or 0.0)
         if is_corner:
-            # E-7：街角宗之 `cut_coords` 為**截角後**幾何 ⇒ 量出之值非 N-14 所指
-            #      ⇒ **不量、不輸出寬度結論**（俟 K-2(Ⅲ) 分家後接上）。
-            w_s, verdict, e6 = "—", "街角·E-7待判（截角）", "—"
+            # 🆕 **K-4**（KL 裁 2026-07-27）：街角第 1 宗**不走 N-14**——(Ⅰ) 街角規定範圍
+            #    之寬度即法規最小寬 ⇒ `G ≥ 街角最小分配面積` 蘊含寬深合格（已於 winner
+            #    選拔時檢過）。舊「待判（截角）」框架**作廢**。
+            w_s, verdict, e6 = "—", "街角·K-4 面積門檻蘊含（N-14 不適用）", "—"
         else:
             try:
                 _w = float(width_fn(cc, tuple(d), tuple(p1), md, _label=f'{blk}·{pid}'))
@@ -166,7 +205,8 @@ def _measure(g_rows, front_lines, min_depth_by_blk, width_fn, tag):
             "情境": tag, "街廓": blk, "暫編地號": pid,
             "街角地": str(r.get("街角地", "")), "第1筆街角": str(r.get("第1筆街角", "")),
             "街角側別": str(r.get("街角側別", "")),
-            "min_t": f"{t_min:.3e}", "max_t": f"{t_max:.4f}",
+            "min_t": ("0.000e+00" if abs(t_min) < EPS_SNAP_ZERO else f"{t_min:.3e}"),
+            "max_t": f"{t_max:.4f}",
             "凸性Δ(㎡)": f"{conv:.6f}", "寬度(m)": w_s,
             "臨街邊長(m)": f"{fl_len:.4f}", "E-6差(m)": e6, "判定": verdict,
         })
@@ -284,33 +324,36 @@ def _truth_assertions(rows_by_tag, L):
             if not _ok:
                 bad.append(f"T6[{tag}] {_mx[0]:.3e} > q={_q:.0e} @ {_mx[1]}·{_mx[2]}")
 
-    # T7 **E-7 顯性未決態機器閘**（claude.ai BLOCKED-1 (b)）
-    #    ① `待判（截角）` 筆數 == 街角 winner 筆數
-    #    ② **無 pending 筆以「寬度合格」身分自 `merge_subparcels_by_parent` 產出**
-    #       （即：其 `是否達最小` 欄不得為乾淨之 `✅`）
-    #    ⚠️ 本閘之所以能跑，係因判定邏輯已抽為 module 級 `evaluate_parcel_width_n14`
-    #       ——留在 Tab body 內則 headless 不可測、只能寫成 AST／prose gate（N0-17-b 之忌）。
+    # T7 **K-4 機器閘**（KL 裁 2026-07-27·取代舊 E-7 待判框架）
+    #    ① 街角 winner 皆 `G ≥ 街角最小分配面積`（K-4 之實質檢驗）
+    #    ② 無任何筆以已作廢之 `待判（截角）` 態自 `merge_subparcels_by_parent` 產出
+    #    ③ **鑑別力**：刻意把一筆街角 winner 之 G 壓到門檻下 ⇒ ① 必須抓到（否則 ① 空真）
     for tag in ("0m", "3.5m"):
-        _mrg = _MERGE_CACHE.get(tag) or {}
-        _n_pend, _n_corner = _mrg.get("n_pending", -1), _mrg.get("n_corner", -2)
-        _ok = (_n_pend == _n_corner)
-        L.append(f"  T7①[{tag}] 待判筆數 {_n_pend} == 街角 winner 筆數 {_n_corner}"
-                 f"  {'✅' if _ok else '🔴'}")
-        if not _ok:
-            bad.append(f"T7①[{tag}] 待判 {_n_pend} ≠ 街角 {_n_corner}")
-        _leak = _mrg.get("clean_ok_pending") or []
+        _m = _MERGE_CACHE.get(tag) or {}
+        _nk4, _nc = _m.get("n_k4", -1), _m.get("n_corner", -2)
+        _viol = _m.get("viol") or []
+        _ok1 = (_nk4 == _nc) and not _viol
+        L.append(f"  T7①[{tag}] 街角 winner {_nc} 筆全數以 K-4 面積門檻判定"
+                 f"（K-4 態 {_nk4} 筆）且 G ≥ 門檻  {'✅' if _ok1 else '🔴'}")
+        for _v in _viol[:5]:
+            L.append(f"        🔴 {_v}")
+        if _m.get("no_thr"):
+            L.append(f"        ⚠️ 門檻取不到 {len(_m['no_thr'])} 筆：{_m['no_thr'][:5]}")
+        if not _ok1:
+            bad.append(f"T7①[{tag}] K-4 態 {_nk4} vs 街角 {_nc}／違例 {_viol[:3]}")
+        _leak = _m.get("leak") or []
         _ok2 = not _leak
-        L.append(f"  T7②[{tag}] 無 pending 筆以「寬度合格」身分產出"
-                 f"（合併後 {_mrg.get('n_merged', 0)} 列）"
-                 f"  {'✅' if _ok2 else '🔴 洩漏 ' + str(_leak[:5])}")
+        L.append(f"  T7②[{tag}] 無已作廢之 `待判（截角）` 態產出"
+                 f"（合併後 {_m.get('n_merged', 0)} 列）  {'✅' if _ok2 else '🔴 ' + str(_leak[:5])}")
         if not _ok2:
-            bad.append(f"T7②[{tag}] pending 以 ✅ 產出：{_leak[:5]}")
-        _nm = _mrg.get("n_marked", 0)
-        _ok3 = _nm > 0
-        L.append(f"  T7③[{tag}] **鑑別力**：{_nm} 筆 pending 真的走到 `✅` 分支"
-                 f"並帶待判標記（0 ⇒ T7② 空真）  {'✅' if _ok3 else '🔴'}")
+            bad.append(f"T7②[{tag}] PENDING 殘留：{_leak[:5]}")
+        _d = _m.get("disc")
+        _ok3 = bool(_d and _d[2])
+        L.append(f"  T7③[{tag}] **鑑別力**：壓 {(_d[0] if _d else '—')} 之 G 至 "
+                 f"{(_d[1] if _d else '—')}（門檻下）⇒ ① 有抓到"
+                 f"  {'✅' if _ok3 else '🔴（① 為空真）'}")
         if not _ok3:
-            bad.append(f"T7③[{tag}] 無 pending 筆走到 ✅ 分支 ⇒ T7② 空真、零鑑別力")
+            bad.append(f"T7③[{tag}] 壓 G 後 ① 未咬 ⇒ 零鑑別力")
 
     # T5 凸性：可達形狀集合①②③全為凸多邊形（KL 裁）⇒ 凸性Δ ≤ 法定粒度 0.01㎡
     #    出處：KL 之可達形狀集合封閉性。此條斷言「資料滿足該前提」＝ E-8a 之立閘依據。
@@ -402,7 +445,8 @@ def main():
             _mw_by[str(p["街廓"])] = float(p.get("法定最小寬(m)", 0) or 0)
         _MERGE_CACHE[tag] = _e7_merge_gate(
             ns, sg["g_rows"], front_lines, _md_by, _mw_by,
-            rv.wf_f0_mina(ns, snapshot, cb_by))
+            rv.wf_f0_mina(ns, snapshot, cb_by),
+            fake_st.session_state.get("f3_corner_range_areas", {}) or {})
         _got = os.path.join(OUTDIR, SNAP_NAME.format(tag=tag))
         _write_csv(_got, rows)
         _n_corner = sum(1 for r in rows if r["街角地"] == "是")

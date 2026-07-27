@@ -94,7 +94,7 @@ NUMERIC_COLS = set(FLOAT_TOL.keys())
 PATCH_B2_COLS = {"_below_min_width", "_width_violation_note",
                  "實際寬度(m)", "_G_before_width_violation",
                  "_width_chamfer_pending", "寬度判定",
-                 "_width_pending", "_width_pending_unchecked"}
+                 "_width_by_area_gate", "_width_k4_G", "_width_k4_threshold"}
 # 對拍主鍵
 KEY = "暫編地號"
 # 幾何欄（純視覺·CSV 中列數/座標抖動不視為 sub-cent 分岔·單獨統計）
