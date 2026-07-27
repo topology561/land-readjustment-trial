@@ -65,7 +65,7 @@ def _fail(msg):
 
 def _true_G(ns, *, a_m2, A_ratio, B, C, l_front, l_side, F, blk_poly, d_hat,
             corner_pt, s_max_L, s_max_R, side, alloc_axis, side_mid, avg_depth,
-            tab6_burden, _label):
+            tab6_burden, front_p2, _label):
     """假設第 1 宗之真 G（樂觀口徑）。**P-A 起改呼生產函式 `_corner_first_lot_G`**
     （內呼 `_solve_G_one`＝與實配同一 solve 路徑·左右 S_max 不同源之映射內建）——
     此即 A-1（同一路徑）＋A-2（左右 S_max 不同源）之**真幾何**驗證：本探針輸出與 T1
@@ -75,7 +75,7 @@ def _true_G(ns, *, a_m2, A_ratio, B, C, l_front, l_side, F, blk_poly, d_hat,
         block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt,
         s_max_left=s_max_L, s_max_right=s_max_R, side=side,
         allocation_dir=alloc_axis, side_mid=side_mid, avg_depth=avg_depth,
-        tab6_burden=tab6_burden, _label=_label)
+        tab6_burden=tab6_burden, front_p2=front_p2, _label=_label)
 
 
 def _run_tag(ns, fake_st, snapshot, setback, tag, L):
@@ -156,7 +156,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
                      l_side=l_side, F=F, blk_poly=blk_poly, d_hat=d_hat,
                      corner_pt=p1, s_max_L=s_max_L, s_max_R=s_max_R, side=end,
                      alloc_axis=alloc_axis, side_mid=side_mid, avg_depth=depth,
-                     tab6_burden=_tab6, _label=f"{blk}{end}·{pid}")
+                     tab6_burden=_tab6, front_p2=p2, _label=f"{blk}{end}·{pid}")
         thr = float(r["門檻(㎡)"]); ge = float(r["G估(㎡)"])
         # 🔴 欄值以**倉檔實查**為準（首版誤猜 '✅' 致舊達標全 ❌·結論全錯）：
         #    『達標』∈{'達標','未達標'}；『選中』∈{'✅',''}＝**舊 winner 標記**（不自行推導）。
@@ -190,6 +190,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
             "rank": _num(r.get("原位次(投影序)"), 1e9),
             "a": a_m2, "A": A_ratio, "l_front": l_front, "l_side": l_side, "F": F,
             "geom": (blk_poly, d_hat, p1, s_max_L, s_max_R, alloc_axis, side_mid, depth),
+            "p2": p2,          # 🔒 K-4 第 5 條前提（front_p2·獨立自 CAD 讀）
             "BC": (B, C),
         })
 
@@ -255,7 +256,7 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
                         s_max_R=sR_, side=[e for (b, e), cs in by_end.items()
                                            if c in cs][0],
                         alloc_axis=ax_, side_mid=sm_, avg_depth=dep_,
-                        tab6_burden=_tab6, _label=c["pid"])
+                        tab6_burden=_tab6, front_p2=c["p2"], _label=c["pid"])
             row.append(f"Δa{da:+.2f}→G {g:.2f}（餘裕{g - c['thr']:+.2f}）"
                        f"{'❌翻' if g < c['thr'] else ''}")
         L.append(f"  {c['pid']:14} 門檻={c['thr']:.2f}｜" + "｜".join(row))

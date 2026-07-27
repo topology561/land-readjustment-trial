@@ -12,7 +12,17 @@
   ② 餘額再併其他「**較大但未達該街廓 MinA**」土地（**至達 MinA**）；
   ③ 目標皆達標而仍有餘額 ⇒ 餘額併入**該街角地**（街角＝**最後歸宿**）。
 此序**凌駕 F.0 級0 之既有集中結果**（前態係**未帶優先序之中間態**·非被推翻之裁定）。
-M-2「**其他可建築街廓**」來源要件**不變**。
+**🆕 K-4-3（KL 裁 2026-07-27）：M-2「其他可建築街廓」要件於 ①（街角救援）排除適用。**
+  來源須**同時**滿足 (a) 同歸戶 (b) **未達**其所在街廓可分配面積
+  (c) 其應分配面積 **<** 該街角地候選之應分配面積（「小往較大集中」）；**街廓別不設限**。
+  反面（KL 原話）：「本身已達可分配面積，就要在那原位次位置辦理分配，**分配後面積不能再分出去**」
+  ⇒ 已達可分配面積者**恆不得為來源**。併鎖：**K-4 第 3 條 ≡ 本 ①，禁另建第二套機制**。
+  ⚠️ **連動（reviewer 活抓·勿再寫成「②③不受影響」）**：
+    · **③ 之來源集 ≡ ① 之來源集**（`_rest ⊆ aw["srcs"]`）⇒ (a)(b)(c) **自動及於 ③**。
+    · **② 碼中本無街廓要件**（`_t2` 只看 gid／is_source／is_target／`_src_pids`／`G < MinA`）
+      ⇒「M-2 於②不變」是在描述一個**碼裡不存在的要件**；②為**目標側**、非來源側。
+  ⚠️ **適用界**：本條只及於 M-5 ①③ 之來源述詞。`wf_f2` 之級1/2/3 塊級鄰接邏輯
+    （`grep -n "frozenset((sblk, tgt_blk))" verify/wf_f2.py`）**屬另一機制·不受影響**。
 
 ## 技術詮釋（§7.2）
 - **T-2**：M-5 **非**「PK 自救→registry 拿回 F.0」，而是**同歸戶合併整體規劃帶優先序重跑**
@@ -40,10 +50,22 @@ class ConsumedRegistry:
     """
 
     def __init__(self):
+        self._u0 = None          # 🆕 K-4-3 結算層硬閘之母體（未注入即呼 claim ⇒ loud）
         self._consumed = {}      # pid → 已消費之 a（源口徑㎡）
         self._orig_a = {}        # pid → 原 a
         self._as_source = set()
         self._as_target = set()
+
+    def set_u0(self, u0):
+        """🆕 **K-4-3 結算層硬閘**（KL 2026-07-27）：注入 U₀（未達其街廓可分配面積之宗）。
+
+        ⚠️ **本閘現為恆真**（reviewer 實證：`claim` 之全部呼叫點——①補足／③餘額——之來源
+        皆已由 `_source_ok` 之 (b) 濾過；② 完全不呼叫 `claim`）。
+        **其值不在「已驗之閘」**，而在**凍結未來新增之 `claim` 呼叫點**：
+        任何日後繞過 `_source_ok` 而直接 `claim` 者，於結算層被咬。
+        ⛔ **不得**把本條當作 (b) 之獨立佐證（那是 `rot90(rot90(x))∥x` 同族）。
+        """
+        self._u0 = set(u0)
 
     def set_orig(self, pid, a):
         self._orig_a[pid] = float(a)
@@ -52,7 +74,16 @@ class ConsumedRegistry:
         return round(self._orig_a.get(pid, 0.0) - self._consumed.get(pid, 0.0), 6)
 
     def claim(self, pid, amount, *, stage, target):
-        """源宗出資 amount（源口徑）。超額／已為 target ⇒ loud raise。"""
+        """源宗出資 amount（源口徑）。超額／已為 target／**非 U₀ 成員** ⇒ loud raise。"""
+        if self._u0 is None:
+            raise RuntimeError(
+                "🔴 M-5 registry：未注入 U₀ 即呼 claim（`set_u0` 漏呼）"
+                "——K-4-3 結算層硬閘不可定義·禁預設放行（no-silent-fallback）")
+        if pid not in self._u0:
+            raise RuntimeError(
+                f"🔴 M-5 registry：{pid} **已達其所在街廓可分配面積**，不得為來源"
+                f"（K-4-3 題二：「本身已達可分配面積，就要在那原位次位置辦理分配，"
+                f"分配後面積不能再分出去」）·{stage}→{target}")
         if pid in self._as_target:
             raise RuntimeError(
                 f"🔴 M-5 registry：{pid} 已為 target（受贈宗）·不得再當源（源→target 對稱凍結·{stage}）")
@@ -135,6 +166,48 @@ def _q3_source_order(cands):
     return sorted(cands, key=lambda s: (-float(s["a"]), s["pid"]))
 
 
+def source_g_a0(sr, spid):
+    """來源宗之**應分配面積**（**趟0 trunk A₀ 口徑**·與 U₀ 同源）。
+
+    缺值 ⇒ **loud raise**（no-silent-fallback）。
+    ⚠️ 與 `U0` 建構式之對稱性（reviewer NOTE-4）：`U0` 舊以 `float(r.get("G(㎡)",0) or 0)`
+    取值 ⇒ **缺值靜默作 0** ⇒ 必然落入 U₀（(b) 放行）而 (c) 停機，**兩條口徑相反**。
+    本波已把 `U0` 之建構改走同一函式 ⇒ 兩條**同一口徑、同時 loud**。
+    """
+    _v = (sr or {}).get("G(㎡)")
+    if _v is None or _v == "":
+        raise RuntimeError(
+            f"🔴 M-5 K-4-3：{spid} 無 `G(㎡)`（趟0 trunk A₀ 應分配面積）"
+            f"——(b)/(c) 皆不可判·禁靜默作 0（no-silent-fallback）")
+    return float(_v)
+
+
+def _source_ok(spid, sr, *, pid, gid, gid_of, u0, reg, gtrue):
+    """**K-4-3 來源述詞**（KL 裁 2026-07-27）——module 級，供探針以**自建替代述詞**做變體對照。
+
+    ⚠️ **非 feature flag**（reviewer WARNING-5）：本函式**只有一個行為**，
+    且**不接受任何切換參數**（尤其**不含 `tgt_blk`**——同塊排除已刪，留該參數即參數式 flag）。
+    變體量測由探針**各自提供完整替代述詞閉包**達成。
+
+    (a) 同歸戶（`gid`）／(b) `spid ∈ U0`（未達其所在街廓可分配面積）／
+    (c) `G_A₀(spid) < gtrue`（「小往較大集中」）。
+    ＋ registry 可用性（非 target、尚有餘量）。
+
+    🚩 **(c) 之右式為「街角第 1 槽試算 G」`gtrue`**（KL K-4 第 3 條原文：
+    「判**該試算 G** 是否為同歸戶中**應分配面積**最小者」⇒ 左式原位次、右式街角槽·**跨口徑係原文如此**）。
+    **已上呈之副作用（U-K3）**：`_corner_first_lot_G` 只吃 `a` ⇒ 同 `a` 之同歸戶宗 `gtrue` 相同
+    ⇒ 二者**互為合格來源**、(c) 於該對**喪失反對稱性**（實測 R3 右 `628-28(1)`／`628-29(1)`
+    皆 a=114.00、gtrue=65.61）。改以 `G_A₀` 為右式則恢復嚴格序。**兩讀法之差異已由探針逐格量出**。
+    """
+    if spid == pid or gid_of.get(spid, "") != gid:
+        return False                                    # (a)
+    if spid not in u0:
+        return False                                    # (b)
+    if not (source_g_a0(sr, spid) < float(gtrue)):
+        return False                                    # (c)
+    return not reg.is_target(spid) and reg.remaining(spid) > 1e-6
+
+
 def build_plan(*, tag, gA_rows, mina_by_blk, gid_of, corner_ctx, zone_of, pre_price,
                true_g_fn, diag_rows):
     """M-5 單一規劃（①②③·per-candidate·假設帳面）。
@@ -159,8 +232,11 @@ def build_plan(*, tag, gA_rows, mina_by_blk, gid_of, corner_ctx, zone_of, pre_pr
         reg.set_orig(pid, _a)
 
     # U₀＝未達所屬街廓 MinA 之宗（＝可出資之「未達地」母體）
+    # 🆕 NOTE-4（reviewer）：與 (c) **同一口徑、同時 loud**——舊式 `float(r.get("G(㎡)",0) or 0)`
+    #   缺值靜默作 0 ⇒ 必然落入 U₀（(b) 放行）而 (c) 停機，兩條相反。改走 `source_g_a0`。
     U0 = {pid for pid, r in A.items()
-          if float(r.get("G(㎡)", 0) or 0) < mina_by_blk.get(r.get("所屬街廓"), 0.0)}
+          if source_g_a0(r, pid) < mina_by_blk.get(r.get("所屬街廓"), 0.0)}
+    reg.set_u0(U0)                       # 🆕 K-4-3 結算層硬閘之母體
     L.append(f"[{tag}] U₀（未達 MinA·可出資）＝{len(U0)} 宗")
 
     awards = []
@@ -184,19 +260,19 @@ def build_plan(*, tag, gA_rows, mina_by_blk, gid_of, corner_ctx, zone_of, pre_pr
                 continue
             if gtrue >= thr:
                 continue        # 本已達標（非①母體·由既有 PK 處理）
-            # 救援源：同歸戶 ∧ **其他**可建築街廓（M-2 要件不變）∧ ∈U₀ ∧ registry 可用
+            # 救援源（**K-4-3**·KL 裁 2026-07-27）：(a) 同歸戶 ∧ (b) ∈U₀（未達其街廓可分配面積）
+            #   ∧ (c) 其應分配面積 < 該候選之應分配面積 ∧ registry 可用。**街廓別不設限**。
+            #   ⛔ 舊之同塊排除（M-2「其他可建築街廓」）**已刪**——K-4-3 明令於 ① 排除適用。
             srcs = []
             for spid, sr in A.items():
-                if spid == pid or gid_of.get(spid, "") != gid:
-                    continue
-                if sr.get("所屬街廓") == A.get(pid, {}).get("所屬街廓"):
-                    continue    # 同塊 ⇒ 非「其他可建築街廓」
-                if spid not in U0 or reg.is_target(spid) or reg.remaining(spid) <= 1e-6:
+                if not _source_ok(spid, sr, pid=pid, gid=gid, gid_of=gid_of,
+                                  u0=U0, reg=reg, gtrue=gtrue):
                     continue
                 srcs.append({"pid": spid, "a": reg.remaining(spid),
                              "blk": sr.get("所屬街廓"), "zone": zone_of.get(spid, "")})
             if not srcs:
-                L.append(f"  ① {blk}{side} {pid}：救援池 ∅（同歸戶無其他街廓未達地）⇒ 跳過")
+                L.append(f"  ① {blk}{side} {pid}：救援池 ∅"
+                         f"（同歸戶內無滿足 (b) 未達地 ∧ (c) 應分配面積 < {gtrue:.2f} 者）⇒ 跳過")
                 continue
             srcs = _q3_source_order(srcs)
             z_tgt = zone_of.get(pid, "")

@@ -434,7 +434,9 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
             B=_B_pc, C=_C_pc, post_price_blk=float(_post_price_pc.get(_lbl, 0.0) or 0.0),
             pre_price_by_zone=_pre_price_pc, avg_depth=float(_SB_pc[_lbl]["街廓分配深度_m"]),
             tab6_burden=_tab6_pc, has_left=(_smL_pc is not None),
-            has_right=(_smR_pc is not None), _blk=_lbl)
+            has_right=(_smR_pc is not None),
+            # 🔒 K-4 第 5 條前提：**獨立**自 cad front_lines 讀 p2（非由 _sblkL_pc 反推）
+            front_p2=_p2_pc, _blk=_lbl)
         for _c_pc in _candidates:
             _gp_pc = _true_map_pc.get(_c_pc['暫編地號'], {})
             _c_pc['_G_true_p1'] = _gp_pc.get('p1')

@@ -266,10 +266,40 @@ def _classify_gxxx(violations):
     return hard, warn
 
 
+# ══ 🆕 U-K2：**已宣告 extras 帳**（KL 2026-07-27）════════════════════════════════════
+#   案由：`diff_rows` 之比對迴圈為 `for col in b`（**只走 baseline 之欄**）
+#   ⇒ **got 多出來的欄結構上不可能被咬**（只有多「列」會）。
+#   實測：`真G(㎡)` 係 P-C 後才加於 got 表、v3 baseline 內無此欄
+#   ⇒ K-4 第 5 條那個**確實改了數字**的改動，在既有 run_all 下**完全隱形**。
+#
+#   對治＝`got 欄集 == baseline 欄集 ∪ declared_extras`，**未申報即紅**。
+#   ⛔ **不重烤 v3 baseline、不解凍 P-H**——`_bake_csv` 已會把新欄追加於後
+#      ⇒ **單一次重烤週期到來時 extras 自然歸零**（已寫入 README 重烤 checklist）。
+#
+#   ⚠️ **母體不完整（reviewer WARNING-7）**：`wf/f0~f4` 之 gate 因 F.0 raise 而**從未執行**
+#      ⇒ 其 extras **現不可觀測**。故本表**只宣告已實際執行過之 baseline**；
+#      F.0 恢復後須**補跑枚舉並補宣告**（README checklist 已列）。
+_DECLARED_EXTRAS = {
+    # baseline 檔名（basename）→ {欄名: "理由（加入日）"}
+    "W-D.1.2 診斷_退縮0m.csv": {
+        "真G(㎡)": "P-C（裁定M·Q1）之側特定『假設第 1 宗真 G』；baseline 烤於其之前（2026-07-27 宣告）",
+    },
+    "W-D.1.2 診斷_退縮3.5m.csv": {
+        "真G(㎡)": "同上（2026-07-27 宣告）",
+    },
+}
+
+
+def declared_extras_for(baseline_path):
+    """本 baseline 之已宣告 got-only 欄集。未列 ⇒ 空集（＝任何 got-only 欄皆紅）。"""
+    return set(_DECLARED_EXTRAS.get(os.path.basename(baseline_path), {}))
+
+
 def diff_rows(got_rows, baseline_path, key_cols, label, skip_cols=None):
     """逐格比對 got_rows vs baseline CSV。key_cols 定位（宗地地號/街廓/端，非群組號）。
     skip_cols：豁免欄（每一條＝鬆一格閘，README 白名單記帳；現僅
     『原位次(距角序·暫行)』於 v1 診斷——v2 轉正換源投影序 rank，KL 放行）。
+    🆕 **U-K2**：另檢 got-only 欄須在 `_DECLARED_EXTRAS` 內（未申報即紅）。
     回傳 (ok, violations)。"""
     skip_cols = skip_cols or set()
     base = _read_csv(baseline_path)
@@ -304,6 +334,15 @@ def diff_rows(got_rows, baseline_path, key_cols, label, skip_cols=None):
                 viol.append(f"[{label}] {k} 缺欄 {col}"); continue
             if _norm(b[col]) != _norm(g[col]):
                 viol.append(f"[{label}] {k} 欄「{col}」: baseline={b[col]!r} got={g[col]!r}")
+    # 🆕 U-K2：got-only 欄須已宣告（母體取任一列即可·各列欄集同構）
+    if base and got_rows:
+        _extras = set(next(iter(got_by.values()))) - set(next(iter(base_by.values())))
+        _undecl = sorted(_extras - declared_extras_for(baseline_path))
+        if _undecl:
+            viol.append(
+                f"[{label}] **未宣告之 got-only 欄** {_undecl}——`diff_rows` 只走 baseline 欄，"
+                f"此類欄**永不被比對**（U-K2）。請於 `_DECLARED_EXTRAS` 具名申報"
+                f"（欄名＋理由＋加入日），或補入 baseline。")
     return (not viol), viol
 
 
@@ -417,6 +456,7 @@ def _m5_true_g_fn(ns, fake_st, cb_by, cad, snapshot, params, build_parcels, setb
                 block_poly=_poly, d_hat=_dh, corner_pt=_p1, s_max_left=_sL, s_max_right=_sR,
                 side=_cn, allocation_dir=_ax, side_mid=_mid,
                 avg_depth=float(_SB[blk]["街廓分配深度_m"]), tab6_burden=_tab6,
+                front_p2=_p2,          # 🔒 K-4 第 5 條前提（獨立讀 p2·非由 _sL 反推）
                 _label=f"M5·{blk}{_cn}·{pid}")
         return _g_of_a
     return _mk

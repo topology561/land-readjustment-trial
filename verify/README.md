@@ -46,6 +46,30 @@ harness **禁吃 UI 預設**，一律載本快照（KL 域裁示、lock 2026-07-
   「(分區,路寬)→最小寬/深」查表接線。harness 忠實重現 app 現行為（不餵該 key）＝正確；
   接線波落地時 baselines/快照升 v2。
 
+## 🆕 已宣告 extras 帳（U-K2·2026-07-27·**與 skip_cols 同族之記帳**）
+
+`diff_rows` 之比對迴圈為 `for col in b`（**只走 baseline 之欄**）
+⇒ **got 多出來的欄結構上永不被咬**（只有多「列」會）。
+實測：`真G(㎡)`（P-C 後才加於 got 表）不在 v3 baseline 內
+⇒ **K-4 第 5 條那個確實改了數字的改動，在既有 run_all 下完全隱形**。
+
+**現行閘**：`got 欄集 == baseline 欄集 ∪ declared_extras`，**未申報即紅**
+（`grep -n "_DECLARED_EXTRAS" verify/run_verification.py`）。
+
+| baseline | 已宣告 extras | 理由 | 加入日 |
+|---|---|---|---|
+| `W-D.1.2 診斷_退縮0m.csv` | `真G(㎡)` | P-C（裁定M·Q1）之側特定「假設第 1 宗真 G」；baseline 烤於其之前 | 2026-07-27 |
+| `W-D.1.2 診斷_退縮3.5m.csv` | `真G(㎡)` | 同上 | 2026-07-27 |
+
+**⚠️ 母體不完整（須知）**：`baselines/wf/f0~f4` 之 gate 因 **F.0 raise** 而**從未執行**
+⇒ 其 extras **現不可觀測**、故**未宣告**。
+
+### 🔁 重烤 checklist（每次 `WV_BAKE` 週期必辦）
+1. 重烤後 **extras 自然歸零**（`_bake_csv` 保 baseline 欄序、新欄追加於後）
+   ⇒ **清空 `_DECLARED_EXTRAS` 中該 baseline 之條目**，勿留過期宣告。
+2. **F.0 恢復後**：補跑 `wf/f0~f4` 之 extras 枚舉並補宣告（本表現缺該五組）。
+3. 另一 `diff_rows` 消費者 **`verify/wg_g3.py`** 亦走同一閘 ⇒ 其 baseline 之 extras 一併檢。
+
 ## 正規化白名單（嚴格為預設，鬆綁記帳）
 diff 引擎每加一條 `_norm` 等價＝鬆一格閘門。**現行白名單三條**：
 1. `None ↔ 空字串`：CSV 往返把 None 寫成空格；非遮真 diverge。

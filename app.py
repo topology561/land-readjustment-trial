@@ -5952,18 +5952,29 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
     故**只在斷點取值**即得精確 min，**不做等距取樣**
     （取樣會產生解析度產物——見 N-12′ 深度量測之教訓）。
 
-    🔒 **弦長一律解析求，禁呼叫 `LineString ∩ Polygon`**（W-G.5 E-10·reviewer 活抓）：
-      舊碼以「超長切線 ∩ 多邊形」之 `.length` 取弦。實測誤差達 **1.08e-2 m**
-      （R3 `628(4)`：1.015735 vs 解析 1.026535）——**大於法定粒度 0.01**，
-      即**足以改變 2dp 記載值**。
-      ⚠️ **歸因須精確**（失敗考古 #32）：這**不是** GEOS 的缺陷，而是**呼叫方式**的缺陷
-      ——以 **絕對大地座標（~3.1e5）** ＋ **±1e5 超長切線** 餵布林運算，等於要求
-      浮點在 ~1e11 的動態範圍內保住 1e-2 的絕對精度。責任在呼叫端，**不在函式庫**；
-      故正解是**改呼叫方式**（局部框＋閉式解），而非換 GEOS 版本或調其 precision model。
-      · 只把座標平移到局部原點**不夠**（實測仍差 1.6e-4：切線兩端仍延伸 ±1e5）。
+    🔒 **E-10：不得在絕對大地座標下取弦**（W-G.5·**歸因已三度更正**·失敗考古 #32）：
+      ── 實證（**同宗 R3 `628(4)`·同絕對座標·只換量測點 T**）────────────────────
+      | T | GEOS@絕對座標 | 解析 | 差 |
+      |---|---|---|---|
+      | **1.230729e-08**（＝**E-9 量測點**·前緣邊之 t） | 1.01575637 | 1.02653549 | **−1.0779e-02** |
+      | 1e-5／1e-3／1e-2／0.1／1／7／14 | 1.02653549 | 1.02653549 | **~1e-10** |
+      | **1.230729e-08 但改於 (s,t) 局部框** | 1.02653549 | 1.02653549 | **+2.22e-16** |
+
+      ⇒ **硬前置 ＝「E-9 不得在絕對大地座標下取弦」**。
+        · 誤差**只在量測線與前緣邊近乎共線之該點**出現；其餘深度全 ~1e-10
+          ⇒ **不是**「大座標下處處少算」（該說法已否證·**勿再寫**）。
+        · 而 **E-9 之量測點依定義落在前緣邊上** ⇒ 共線是**必然、非偶然**。
+        · **局部框**與**解析式**各自即足以消滅之（見表末行 2.22e-16）。
+      ⇒ 解析式之**獨立**理由（**非**「E-9 之硬前置」）：
+        消滅舊碼之 `_NUDGE = 1e-7` 退避法、以及 GEOS 於相切處回 `empty`／`MultiLineString`
+        之分支 ⇒ **E-3′／E-8b 之可靠性**。**本實作二者並用。**
       · 解析式：對每條邊 `(t_i,s_i)-(t_j,s_j)`，若 `t=T` 落其間則線性內插得交點 `s`；
         凸多邊形之弦 ＝ `max(s交) − min(s交)`（凸性由 **E-8a** 先驗保證）。
-        **無 GEOS、無退避、無超長線** ⇒ 誤差降至 ~1e-11（實測全宗 max 1.8e-9 於原座標對照）。
+      ⚠️ **舊碼特徵值之勘誤**（reviewer 活抓）：本註解前版寫「**±1e5 超長切線**」與
+        「1.015735」——**皆非舊碼實況**。舊碼之輔助線半長為
+        `_big = max(bounds寬, bounds高) × 4 + 100`（R3 `628(4)` 實測 **≈230.6**），
+        其誤差為 **−1.077912e-02**（→ 1.01575637）。`1.015735`／`±1e5` 係**我 recon 腳本
+        之組態**，從未上線 ⇒ 曾被誤寫為舊碼特徵值，已更正。
 
     缺件（座標不足／`min_depth` ≤0／`d_hat` 退化）→ **loud raise**（no-silent-fallback）。
 
@@ -9742,7 +9753,7 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
 def _corner_first_lot_G(*, a_m2, A_ratio, B, C, l_front, l_side, F,
                         block_poly, d_hat, corner_pt, s_max_left, s_max_right,
                         side, allocation_dir, side_mid, avg_depth, tab6_burden,
-                        _label=''):
+                        front_p2, _label=''):
     """🆕 P-A（裁定M·M-2/Q1）：**假設第 1 宗**之真 G（樂觀口徑）。
 
     **與實配第 1 宗共用同一 solve 路徑**（內呼 `_solve_G_one`·Q-M4「禁另寫平行式」#20）。
@@ -9791,6 +9802,28 @@ def _corner_first_lot_G(*, a_m2, A_ratio, B, C, l_front, l_side, F,
         raise RuntimeError(
             f"🔴 _corner_first_lot_G[{_label}]：side_mid 缺（{side} 側無 SIDE_LINE·"
             "上游不應對非街角端問假設第 1 宗真 G）")
+    # ── 🔒 K-4 第 5 條之**前提斷言**（消費端·非呼叫端）────────────────────────────
+    #   右側錨 ＝ `corner_pt + s_max_left·d̂`，其**成立所繫**＝`s_max_left ≡ ‖p2−p1‖`。
+    #   ⛔ **放在呼叫端是恆真式**（reviewer 活抓）：三個生產呼叫端之 `s_max_left`
+    #      皆在前一兩行由 `norm(p2−p1)` 現算 ⇒ 拿值與其自身定義式比、位元恆等、不可能失敗。
+    #   ⇒ 改於**消費端**驗，並要求呼叫端**另行獨立讀取** `front_p2`
+    #     （來自 `cad['front_lines'][blk]['p2']`）⇒ 真正擋住「有人把 `_oblique_s_max`
+    #     或帶長塞進 `s_max_left` 槽」。
+    #   容差 `1e-9`：TWD97 量級 ~3.1e5 × 2⁻⁵² ≈ 7e-11／座標，`norm` 累積數 ulp ⇒ ~1e-10；
+    #     取其 10 倍。⚠️ **與 `_EPS_ZERO_CHORD` 之 1e-9 數值同、依據不同**
+    #     （後者係 (s,t) 局部框 O(1e2) 之噪訊 ~1e-14）——**勿互相引用為依據**。
+    if front_p2 is None:
+        raise RuntimeError(
+            f"🔴 _corner_first_lot_G[{_label}]：`front_p2` 缺——K-4 第 5 條之錨點前提"
+            f"（`s_max_left ≡ ‖p2−p1‖`）不可驗·禁預設放行（no-silent-fallback）")
+    _d_p2 = float(np.linalg.norm(np.asarray(front_p2, dtype=float)[:2]
+                                - np.asarray(corner_pt, dtype=float)[:2]))
+    if abs(_d_p2 - float(s_max_left)) > 1e-9:
+        raise RuntimeError(
+            f"🔴 _corner_first_lot_G[{_label}]：`s_max_left`＝{float(s_max_left):.9f} "
+            f"≠ ‖front_p2 − corner_pt‖＝{_d_p2:.9f}（Δ={abs(_d_p2 - float(s_max_left)):.3e}）。"
+            f"K-4 第 5 條之右側錨 ＝ 未截角理論角（FRONT p2）⇒ 該槽**只准收 FRONT 全長**，"
+            f"禁塞 `_oblique_s_max`／帶長／街廓 MBR 等他量，停")
     _side_cn = {'左': '左側', '右': '右側'}.get(side, side)
     _dh = np.asarray(d_hat, dtype=float)
     _cp = np.asarray(corner_pt, dtype=float)
@@ -9814,7 +9847,8 @@ def _corner_block_true_G(*, candidates, a_by_pid, zone_by_pid, blk_poly, corner_
                          d_hat, s_max_left, s_max_right, alloc_dir, side_mid_left,
                          side_mid_right, l_front, l_side_left, l_side_right,
                          F_left, F_right, B, C, post_price_blk, pre_price_by_zone,
-                         avg_depth, tab6_burden, has_left, has_right, _blk=''):
+                         avg_depth, tab6_burden, has_left, has_right, front_p2,
+                         _blk=''):
     """🆕 P-C（裁定M·Q1）：本塊逐候選逐側之**假設第 1 宗真 G**（資格閘·**側特定**）。
 
     回 `{pid: {'p1': gL|None, 'p2': gR|None}}`。內呼 `_corner_first_lot_G`（Q-M4 同 solve 路徑·
@@ -9838,7 +9872,7 @@ def _corner_block_true_G(*, candidates, a_by_pid, zone_by_pid, blk_poly, corner_
                     corner_pt=corner_pt, s_max_left=s_max_left, s_max_right=s_max_right,
                     side='左', allocation_dir=alloc_dir, side_mid=side_mid_left,
                     avg_depth=avg_depth, tab6_burden=tab6_burden,
-                    _label=f'{_blk}·{pid}·左'), 2)
+                    front_p2=front_p2, _label=f'{_blk}·{pid}·左'), 2)
             if has_right and side_mid_right is not None:
                 gp['p2'] = round(_corner_first_lot_G(
                     a_m2=float(a), A_ratio=A_ratio, B=B, C=C, l_front=l_front,
@@ -9846,7 +9880,7 @@ def _corner_block_true_G(*, candidates, a_by_pid, zone_by_pid, blk_poly, corner_
                     corner_pt=corner_pt, s_max_left=s_max_left, s_max_right=s_max_right,
                     side='右', allocation_dir=alloc_dir, side_mid=side_mid_right,
                     avg_depth=avg_depth, tab6_burden=tab6_burden,
-                    _label=f'{_blk}·{pid}·右'), 2)
+                    front_p2=front_p2, _label=f'{_blk}·{pid}·右'), 2)
         out[pid] = gp
     return out
 
@@ -16164,7 +16198,9 @@ def main():
                                         post_price_blk=float(post_price_by_block.get(_lbl, 0) or 0),
                                         pre_price_by_zone=pre_price_by_zone, avg_depth=_depth_ap,
                                         tab6_burden=_tab6_ap, has_left=(_smL_ap is not None),
-                                        has_right=(_smR_ap is not None), _blk=_lbl)
+                                        has_right=(_smR_ap is not None),
+                                        # 🔒 K-4 第 5 條前提：**獨立**自 CAD 讀 p2（非由 _sL_ap 反推）
+                                        front_p2=_fl_p2_lstep, _blk=_lbl)
                                     for _c_ap in _candidates:
                                         _gp_ap = _true_map_ap.get(_c_ap['暫編地號'], {})
                                         _c_ap['_G_true_p1'] = _gp_ap.get('p1')

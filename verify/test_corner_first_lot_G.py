@@ -31,6 +31,7 @@ BLK = Polygon([(0, 0), (100, 0), (100, 40), (0, 40)])
 BASE = dict(a_m2=200.0, A_ratio=1.0, B=0.171043, C=0.091319, l_front=100.0,
             l_side=40.0, F=8.0, block_poly=BLK, d_hat=(1.0, 0.0),
             corner_pt=(0.0, 0.0), s_max_left=100.0, s_max_right=60.0,
+            front_p2=(100.0, 0.0),   # 🔒 K-4 第 5 條前提：‖p2−corner‖ ≡ s_max_left
             side='左', allocation_dir=(0.0, 1.0), side_mid=(0.0, 20.0),
             avg_depth=32.59, tab6_burden=0.40712387)
 

@@ -213,7 +213,15 @@ def main():
     def _make_variant(bp_from_left, smax_from_left):
         def _f(*, a_m2, A_ratio, B, C, l_front, l_side, F, block_poly, d_hat,
                corner_pt, s_max_left, s_max_right, side, allocation_dir, side_mid,
-               avg_depth, tab6_burden, _label=''):
+               avg_depth, tab6_burden, front_p2, _label=''):
+            # 🔒 與生產 `_corner_first_lot_G` **同簽名**——K-4 第 5 條之 `front_p2` 前提
+            #   斷言於此**照樣驗**（變體只換錨之取法，不豁免前提）。
+            _dp2 = float(_np5.linalg.norm(_np5.asarray(front_p2, dtype=float)[:2]
+                                          - _np5.asarray(corner_pt, dtype=float)[:2]))
+            if abs(_dp2 - float(s_max_left)) > 1e-9:
+                raise RuntimeError(
+                    f"🔴 probe 變體：s_max_left {float(s_max_left):.9f} ≠ "
+                    f"‖front_p2−corner_pt‖ {_dp2:.9f}")
             _side_cn = {'左': '左側', '右': '右側'}.get(side, side)
             _dh = _np5.asarray(d_hat, dtype=float)
             _cp = _np5.asarray(corner_pt, dtype=float)
