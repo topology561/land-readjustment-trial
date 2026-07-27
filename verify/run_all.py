@@ -122,6 +122,31 @@ def main():
                     print("     " + _ln)
         if not _ok_fx:
             rc = 1
+
+    # ── 🆕 BLOCKED-3（claude.ai 2026-07-27·**二度指認**）：E 系列實測快照比對閘 ──────────
+    #   案由：E 系列之全部實測依據（45/59 之 µm 級距離／R3 0.7655／R4 −1.48e-2／R3 頂點）
+    #   先前**只存在於聊天與註解**，`verify/probes/` 無對應檔 ⇒ **倉內不可重現**。
+    #   本閘＝逐宗快照 diff ＋ **T1–T6 獨立真值斷言**（後者才是正確性舉證；
+    #   快照本身之身分為**回歸快照**、非真值錨——見探針 docstring）。
+    #   ⚠️ 同 F-2：本段屬 `[1/3]` golden 段、**不進** `run_verification.results`
+    #      ⇒ **不動 PASS/FAIL 計數**，亦不動 P-H 之名目母體。
+    _probe = os.path.join(HERE, "probes", "probe_ruling_N_e1_touch.py")
+    try:
+        _rp = subprocess.run([sys.executable, _probe],
+                             capture_output=True, text=True, encoding="utf-8", timeout=900)
+        _ok_pr = (_rp.returncode == 0)
+    except Exception as _e_pr:
+        _rp, _ok_pr = None, False
+        print(f"  🔴 E 系列實測快照閘 執行失敗：{_e_pr}")
+    if _rp is not None:
+        print(f"  {'✅' if _ok_pr else '🔴'} E 系列實測快照閘"
+              f"（E-1′雙向/E-2′/E-8a凸性/E-8b單點/E-9起點/E-10解析弦·兩情境逐宗）"
+              f"rc={_rp.returncode}")
+        if not _ok_pr:
+            for _ln in ((_rp.stdout or "") + (_rp.stderr or "")).strip().splitlines()[-14:]:
+                print("     " + _ln)
+    if not _ok_pr:
+        rc = 1
     print()
 
     print("### [2/3] diff 引擎自檢（竄改必咬＋Gxxx 分流；證綠非虛）")

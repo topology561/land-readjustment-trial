@@ -88,8 +88,13 @@ FLOAT_TOL = {
 }
 NUMERIC_COLS = set(FLOAT_TOL.keys())
 # Patch B-2 加欄（本 dump 不出現·若出現需另處理）
+# 🆕 E-7 三態（W-G.5·2026-07-27）：`_width_chamfer_pending`／`寬度判定`／`_width_pending`
+#    為步驟 J 之顯性未決態欄；`_G_before_width_violation` 已隨 N-13 廢壓 G 成幽靈符號
+#    （全倉零寫入·僅存於註解），本集保留其名僅為讀舊 dump 之相容，**不得再寫入**。
 PATCH_B2_COLS = {"_below_min_width", "_width_violation_note",
-                 "實際寬度(m)", "_G_before_width_violation"}
+                 "實際寬度(m)", "_G_before_width_violation",
+                 "_width_chamfer_pending", "寬度判定",
+                 "_width_pending", "_width_pending_unchecked"}
 # 對拍主鍵
 KEY = "暫編地號"
 # 幾何欄（純視覺·CSV 中列數/座標抖動不視為 sub-cent 分岔·單獨統計）

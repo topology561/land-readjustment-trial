@@ -1986,13 +1986,17 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
     ws1.title = "對照清冊"
     ws1['A1'] = '重劃前後土地分配對照清冊'
     ws1['A1'].font = Font(size=14, bold=True)
-    ws1.merge_cells('A1:L1')
+    ws1.merge_cells('A1:M1')
     ws1['A2'] = (f'情境：{scenario_tag or "（未標）"}　｜　階段：{stage_tag or "（未標）"}'
                  f'　｜　面積精度：2dp（N0-18 法定成果慣例）')
     ws1['A2'].font = Font(size=10, italic=True)
     # 乙-1 街廓面積欄／乙-3 情境／乙-4 階段＋G_原值（欄序：辨識欄在前，便於對拍腳本 groupby）
+    # 🆕 E-7（claude.ai BLOCKED-1 (c)）：`寬度判定` 入交付物欄集——**禁靜默**。
+    #   街角宗於 K-2(Ⅲ) 落地前為 `待判（截角）`；空白／None 代表未決者一律禁止。
+    #   🚩 上呈：本欄使對照清冊自 12 欄增為 13 欄＝**交付物格式異動**（reviewer NOTE）。
     headers1 = ['情境', '階段', '原地號', '原面積(㎡)', '所屬街廓', '街廓面積(㎡)',
-                '暫編地號', '應分配G(㎡)', 'G_原值(㎡)', '幾何分配(㎡)', '增減(㎡)', '街角地']
+                '暫編地號', '應分配G(㎡)', 'G_原值(㎡)', '幾何分配(㎡)', '增減(㎡)', '街角地',
+                '寬度判定']
     _setup_xlsx_header(ws1, headers1, row=3)
 
     def _g_orig(_r):
@@ -2046,6 +2050,7 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
         ws1.cell(row=row, column=10, value=round(float(r.get('幾何面積(㎡)', 0) or 0), 2))
         ws1.cell(row=row, column=11, value=round(g0 - a, 2))  # 增減＝以**原值**計（KL 2026-07-17）
         ws1.cell(row=row, column=12, value=str(r.get('街角地', '否')))
+        ws1.cell(row=row, column=13, value=width_verdict_of(r))
         row += 1
     # 抵費地另起一段（乙-6 穩定 key／乙-7 幾何另立欄）
     _offsets = [r for r in (g_rows or []) if r.get('推進側別') == '抵費地']
@@ -2067,10 +2072,11 @@ def export_legal_excel(g_rows: list, ownership_map: dict,
                      value=round(float(r.get('幾何面積(㎡)', 0) or 0), 2))
             ws1.cell(row=row, column=11, value='—')
             ws1.cell(row=row, column=12, value='抵費地')
+            ws1.cell(row=row, column=13, value=WIDTH_VERDICT_NA)
             row += 1
     # 欄寬
-    for col_letter, width in zip('ABCDEFGHIJKL',
-                                 [8, 30, 16, 14, 12, 14, 30, 14, 14, 14, 12, 12]):
+    for col_letter, width in zip('ABCDEFGHIJKLM',
+                                 [8, 30, 16, 14, 12, 14, 30, 14, 14, 14, 12, 12, 16]):
         ws1.column_dimensions[col_letter].width = width
     _apply_xlsx_page_setup(ws1, orientation='landscape', fit_to_width=1)
 
@@ -5924,17 +5930,26 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
     · `_compute_strip_width` ＝ d_hat 投影長／**MBR 短邊** fallback，
       **同樣不符 N-14**（未限深度帶、未沿 FRONTLINE 量）⇒ **禁作 fallback**。
 
-    ── 演算法（**精確·非取樣**）────────────────────────────────────────────────
-    令 `t` ＝ 沿 FRONT 法向（指向宗地內）之深度。宗地為多邊形 ⇒ 其於深度 `t` 之
-    **平行 FRONTLINE 弦長** `w(t)` 為 **分段線性**函式 ⇒ 極小值必落於**斷點**：
-    `{0, min_depth} ∪ {各頂點於法向之投影}∩[0, min_depth]`。
+    ── 演算法（**精確·非取樣·非 GEOS**）──────────────────────────────────────
+    令 `t` ＝ 沿 FRONT 法向（指向宗地內）之深度、`s` ＝ 沿 FRONT 之橫向座標。
+    宗地為多邊形 ⇒ 其於深度 `t` 之**平行 FRONTLINE 弦長** `w(t)` 為 **分段線性**函式
+    ⇒ 極小值必落於**斷點**：`{t_lo, min_depth} ∪ {各頂點之 t}∩[t_lo, min_depth]`。
     故**只在斷點取值**即得精確 min，**不做等距取樣**
     （取樣會產生解析度產物——見 N-12′ 深度量測之教訓）。
+
+    🔒 **弦長一律解析求，禁呼叫 `LineString ∩ Polygon`**（W-G.5 E-10·reviewer 活抓）：
+      舊碼以「超長切線 ∩ 多邊形」之 `.length` 取弦。**在 TWD97 量級（~3.1e5）座標下
+      GEOS 會少算至 1.08e-2 m**（實測 R3 `628(4)`：GEOS 1.015735 vs 解析 1.026535）
+      ——**大於法定粒度 0.01**，即**足以改變 2dp 記載值**。
+      · 只把座標平移到局部原點**不夠**（實測仍差 1.6e-4：切線兩端仍延伸 ±1e5）。
+      · 解析式：對每條邊 `(t_i,s_i)-(t_j,s_j)`，若 `t=T` 落其間則線性內插得交點 `s`；
+        凸多邊形之弦 ＝ `max(s交) − min(s交)`（凸性由 **E-8a** 先驗保證）。
+        **無 GEOS、無退避、無超長線** ⇒ 誤差降至 ~1e-11（實測全宗 max 1.8e-9 於原座標對照）。
 
     缺件（座標不足／`min_depth` ≤0／`d_hat` 退化）→ **loud raise**（no-silent-fallback）。
     """
     import numpy as _np_w
-    from shapely.geometry import Polygon as _Poly_w, LineString as _LS_w
+    from shapely.geometry import Polygon as _Poly_w
     if not cut_coords or len(cut_coords) < 3:
         raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：cut_coords 不足（<3 點），"
                            f"無法量 N-14 寬度·禁以 S(m)／MBR 短邊兜底")
@@ -5947,7 +5962,15 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
         raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：d_hat 退化，停")
     _d = _d / _n_d
     _n = _np_w.array([-_d[1], _d[0]], dtype=float)     # FRONT 法向
-    _poly = _Poly_w([(float(p[0]), float(p[1])) for p in cut_coords])
+    _fp = _np_w.asarray(front_pt, dtype=float)[:2]
+    # ── 🔒 E-10：改於 **(s,t) 局部框**作業（KL 域裁之法定粒度 0.01 為據·reviewer 活抓）──
+    #   `s = (P−front_pt)·d̂`／`t = (P−front_pt)·n̂` ＝ **剛體變換**（旋轉＋平移）
+    #   ⇒ 面積／有效性／凸性**逐一不變**，而座標量級自 TWD97 ~3.1e5 降至 O(1e2)
+    #   ⇒ 浮點絕對噪訊自 ~1e-11 降至 ~1e-14。
+    _P = _np_w.asarray([[float(p[0]), float(p[1])] for p in cut_coords], dtype=float) - _fp
+    _sv_all = _P @ _d
+    _tv_all = _P @ _n
+    _poly = _Poly_w(list(zip(_sv_all.tolist(), _tv_all.tolist())))
     if not _poly.is_valid:
         _poly = _poly.buffer(0)
     # E-4：`buffer(0)` 後仍非單一 Polygon（自交被拆成 MultiPolygon 等）⇒ loud raise。
@@ -5957,37 +5980,62 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
             f"🔴 parcel_min_width_n14[{_label}]：宗地幾何非單一 Polygon"
             f"（`{_poly.geom_type}`{'·空' if _poly.is_empty else ''}）"
             f"——可達形狀集合封閉下不應發生 ⇒ 上游幾何有誤，停")
-    _fp = _np_w.asarray(front_pt, dtype=float)[:2]
-    # 法向取號：指向宗地內（形心側）
-    _c = _np_w.asarray(_poly.centroid.coords[0], dtype=float)
-    if float(_np_w.dot(_c - _fp, _n)) < 0:
-        _n = -_n
+    # 法向取號：指向宗地內（形心側）。(s,t) 框下即「形心之 t ≥ 0」。
+    _ring = [(float(_p[0]), float(_p[1])) for _p in list(_poly.exterior.coords)]
+    if float(_poly.centroid.coords[0][1]) < 0:
+        _ring = [(_s, -_t) for _s, _t in _ring]
+        _poly = _Poly_w(_ring)
     _md = float(min_depth)
 
-    _tv = [float(_np_w.dot(_np_w.asarray(_p[:2], dtype=float) - _fp, _n))
-           for _p in list(_poly.exterior.coords)]
+    _tv = [_t for _s, _t in _ring]
 
     # ── 🔒 E-1′～E-3′ 不變量守衛（KL 裁 2026-07-27·量測前先驗·一律 loud raise）────────
     #   **可達宗地形狀集合封閉**（①街角地／②中間宗地／③末端塊）⇒ 下列情形依作業規範
     #   **不可能發生**；發生即**上游有誤**，**禁回任何數字**（回數字＝把上游錯誤洗成「量測結果」）。
     #
-    # E-1′ 本宗未臨接正面路街線
-    #   ── 🚩 容差 **偏離 KL 交辦文字面之 `1e-6`·已標旗上呈**（依據如下·非隨手放寬）────
-    #   KL 交辦文寫 `min(_tv) > 1e-6`。**實測 UC9898 59 筆業主宗中 45 筆會觸發**，
-    #   而其距離全在 **4µm～247µm**——**非「未臨正街」，係 BLOCK 邊與 FRONT_LINE 之
-    #   繪圖／座標精度差**：`cut_coords` 由 `_block_strip` 對 **BLOCK 多邊形**裁切而得，
-    #   而 FRONT_LINE 係**另一圖層**、且畫到**未截角尖角**（見 `cad-layer-semantics`）。
-    #   倉內正典早已明文：「直弦離邊界 ~2mm → **線上判定容差 ≥1cm**（`perp_tol=0.05` 實用），
-    #   **`1e-6` 會漏量**」——`1e-6` 正是該處點名之失效值。
-    #   ⇒ 取 **法定粒度 `0.01m`**（實施辦法 §3 長度 2dp）為容差，理由與 C-5 同族：
-    #     **低於法定記載粒度之偏移，在法規上不可能被記載為「不臨街」**。
-    #     實測最大 2.47e-4 低其 **40 倍**；而真正「未臨街」之錯誤為**公尺級** ⇒ 鑑別力充分。
-    #     （較正典 `perp_tol=0.05` 仍嚴 5 倍。）
+    # E-1′ 本宗未臨接正面路街線（**雙向**）
+    #   ── 容差 `0.01m` ＝ **法定粒度**（實施辦法 §3 長度 2dp）。**KL 域裁·已鎖。** ────
+    #   KL 交辦文原寫 `min(_tv) > 1e-6`；倉內正典早已明文「直弦離邊界 ~2mm →
+    #   **線上判定容差 ≥1cm**（`perp_tol=0.05` 實用），**`1e-6` 會漏量**」
+    #   ——`1e-6` 正是該處點名之失效值（實測 0m 25 筆／3.5m 23 筆會被誤咬）。
+    #   理由與 C-5 同族：**低於法定記載粒度之偏移，在法規上不可能被記載為「不臨街」**。
+    #   ⛔ **依據不是「實測留 N 倍餘量」**（N-17 明禁以觀測殘差定閘寬）——實測值僅供
+    #      「本閘不誤咬真值」之**安全性佐證**，非其**依據**。
+    #
+    #   🔒 **雙向**（claude.ai 判定之施工完整性要求·**純技術·非 KL 裁示**）：
+    #      負向＝宗地越過正面路街線進入道路，同屬上游錯誤 ⇒ 判準取 `abs(min(_tv))`。
+    #
+    #   ── 實測母體與上下界（**母體聲明**·失敗考古 #30 之直接對治）─────────────────
+    #      舊註解寫「實測最大 2.47e-4、低容差 40 倍」，其統計母體**只涵蓋會觸發的正側子集**
+    #      ⇒ 以子集上界冒充全體上界。正確之全體（59 宗業主宗·`min(_tv)` 本身）：
+    #        · **正側**上界 **+2.4746e-04**（R1 `628(5)`·街角宗）
+    #          ／非街角宗之正側上界 **+2.3953e-04**（R1 `628-34(3)`）
+    #        · **負側**下界 **−1.4826e-02**（R4 `628-1(1)`·街角宗）——**已超本容差**，
+    #          正是 E-7 於量測前跳過之族；其成因為截角，非「未臨街」。
+    #      ⇒ 對**現行**路徑（街角宗依 E-7 `continue`）本閘之觸發數為 **0**。
+    #
+    #   ── 前提句「重劃後每宗均應臨正街」之泛用性查證（W-G.5·2026-07-27·**已結案**）──
+    #      疑點：倉內另有「**未臨正街**」語彙（`grep -n "未臨正街" app.py`），
+    #            若業主宗可能整宗未臨正街，本閘之前提句對其他案件即不成立。
+    #      查證（依碼·非依實測）：
+    #        · 「未臨正街」係**半平面判別語彙**（left `block∩{s<0}`／right `block∩{s>s(p2)}`），
+    #          **非**輸出類別——`g_rows` 之 `推進側別` 僅 `{left, right, 抵費地}`。
+    #          其**面積實體**＝`frag_poly`（碎片·補丁十「乙」：半平面僅判別、不供面積）。
+    #        · `R_end = 未臨正街 ∪ 末端帶`（`_end_region_R`），**末端帶**過 `end_pt`
+    #          （＝FRONT 端點）之 `min_width` ⊥ 帶 ⇒ `R_end` **恆含臨正街構件**。
+    #        · 業主宗占 `R_end` 之門檻＝`G ≥ area(R_end)`（`grep -n "_end_gate" verify/wf_f4.py`），
+    #          且其幾何 ＝ `_fuse(strip_at(0, S_new), wedge)`——`strip_at` 係
+    #          `block ∩ 一段 s 區間`、自街廓角落**連續單調**鋪出
+    #          ⇒ 面積既 ≥ area(R_end) ⊋ area(wedge)，該 s 區間**必越過** `s(p2)`
+    #            進入臨正街段，且其臨街段長 **≳ min_width**（因 `R_end ⊇ 末端帶`）。
+    #        · 無勝者 ⇒ `R_end` 整區轉 `{blk}-抵費地末` ＝ **池片**。
+    #      ⇒ **僅池片可為「純未臨正街」；業主宗恆含臨正街構件** ⇒ 前提句成立，
+    #        **不需**改為「以 ALLOC 方向追跡 FRONTLINE」之判準。（claude.ai 指示：註解結案。）
     _EPS_TOUCH_FRONT = 0.01
-    if min(_tv) > _EPS_TOUCH_FRONT:
+    if abs(min(_tv)) > _EPS_TOUCH_FRONT:
         raise RuntimeError(
             f"🔴 parcel_min_width_n14[{_label}]：本宗未臨接正面路街線"
-            f"（距 FRONT 最近之頂點仍有 {min(_tv):.6f}m > 容差 {_EPS_TOUCH_FRONT}m）。"
+            f"（距 FRONT 最近之頂點 {min(_tv):+.6f}m·|偏移| > 容差 {_EPS_TOUCH_FRONT}m）。"
             f"重劃後**每宗均應臨正街** ⇒ **宗地分配線或 cut_coords 上游有誤，非寬度不足**。"
             f"（⛔ 禁改為「夾近端後續算」——那會把上游錯誤靜默吸收）")
     # E-2′ 宗地深度 < 法定最小深度
@@ -6000,16 +6048,46 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
             f"🔴 parcel_min_width_n14[{_label}]：本宗深度 {max(_tv):.4f}m "
             f"< 法定最小深度 {_md:.4f}m。**街廓分配線深度不得小於畸零地規則最小深度**"
             f"（手冊 二(一)3）⇒ **分配線不合規**，停")
+    # E-8a 凸性（KL 裁 2026-07-27·claude.ai 立）
+    #   可達宗地形狀集合①②③**全為凸多邊形** ⇒ 非凸即上游有誤。
+    #   閘寬 `0.01㎡` ＝ **面積之法定粒度**（實施辦法 §3 第三位四捨五入·與 C-5／E-1′ 同族），
+    #   **非**實測殘差。實測安全性（**佐證·非依據**）：59 宗之 `hull.area − area`
+    #   上界 **1.3474e-09㎡**（R6 `628-18(1)`），離閘寬 7 個數量級。
+    #   ⇒ 一擊同滅：尖刺（可越過 E-2′ 之深度判準）／U 形／多段弦。
+    #   🔒 **適用域＝原位次宗形（①②③）**。E 世代之 `_fuse(cut, wedge)`（`wf_f4` E3）
+    #      **未必凸** ⇒ **本閘不得外推至 E 世代幾何**（元模式：正典條文只在其落點適用）。
+    _EPS_CONVEX = 0.01
+    _conv_gap = float(_poly.convex_hull.area - _poly.area)
+    if _conv_gap > _EPS_CONVEX:
+        raise RuntimeError(
+            f"🔴 parcel_min_width_n14[{_label}]：宗地非凸"
+            f"（convex_hull − poly ＝ {_conv_gap:.4f}㎡ > 法定粒度 {_EPS_CONVEX}㎡）。"
+            f"**可達形狀集合①②③全為凸多邊形** ⇒ **上游幾何有誤**，停"
+            f"（⛔ 禁回數字——尖刺／U 形會被當成寬度）")
     _t_hi = _md
-    # 量測起點對齊**宗地自身前緣** `t_lo = max(0, min(t))`。
-    #   🔒 **此非 KL 所禁之「夾近端後續算」**——二者差別在**是否取代 raise**：
-    #     · 禁者＝以夾制**取代** E-1′ 之 raise ⇒ 把「真的沒臨街」靜默吸收。
-    #     · 本處＝E-1′ **已先驗過**（偏移 ≤ 法定粒度 0.01m·真錯誤仍 raise），
-    #       此後僅將起點對齊宗地實際前緣。
-    #   ⇒ 必要性（實測）：`cut_coords` 之前緣較 FRONT_LINE 高 4µm～247µm
-    #     ⇒ **恰在 FRONT_LINE 上之弦為空**（E-3′ 會誤判「0 段」）。
-    #     位移量 ≤0.01m ＝ 法定粒度以下 ⇒ 對 2dp 記載無影響。
-    _t_lo = max(0.0, min(_tv))
+    # ── 🔒 E-9 量測起點 ＝ **前緣邊之上緣**（W-G.5·本波立）──────────────────────────
+    #   **舊式 `_t_lo = max(0, min(_tv))` 是錯的**：取「全宗最低頂點」之深度。
+    #   `cut_coords` 之前緣邊與 FRONT_LINE **近平行但非嚴格平行**（實測兩端 t 差
+    #   5e-8～5.5e-5 m）⇒ 於 `min(t)` 之弦**只切到前緣邊的一個角**
+    #   ⇒ 回一個 **0.03m 級的薄片長度**並被下游當作宗地寬度
+    #   （實測 R1 `628-35(2)`：舊式回 **0.0327**，其真實臨街邊長 **18.1027**）。
+    #
+    #   正解：凡 `|t| ≤ 法定粒度` 之頂點，**法律上即位於正面路街線上**
+    #   ⇒ 前緣諸頂點同屬 `t=0` 之等價類 ⇒ 量測帶起點取該等價類之**上緣**，
+    #     使該處之弦**橫跨整條前緣**。
+    #
+    #   🔒 **邊基·非頂點門檻基**（reviewer WARNING）：以「**兩端點皆在容差內之邊**」
+    #      定義前緣，而非「所有 t ≤ 容差之頂點」。二者對本案同值，但前者：
+    #        (a) 對①街角地封閉——截角腿若淺於容差，仍因其為**邊**而被正確納入；
+    #        (b) **單點接觸**（無任何前緣邊）自然落入 raise，不需另設長度門檻。
+    _fe_t = [max(_tv[_i], _tv[_i + 1]) for _i in range(len(_tv) - 1)
+             if abs(_tv[_i]) <= _EPS_TOUCH_FRONT and abs(_tv[_i + 1]) <= _EPS_TOUCH_FRONT]
+    if not _fe_t:
+        raise RuntimeError(
+            f"🔴 parcel_min_width_n14[{_label}]：本宗與正面路街線**僅單點接觸**"
+            f"（無任何兩端點皆在容差 {_EPS_TOUCH_FRONT}m 內之邊）。"
+            f"**法律上單點不構成臨街** ⇒ 上游幾何有誤，停")
+    _t_lo = max(0.0, max(_fe_t))
     if _t_lo >= _t_hi:
         raise RuntimeError(
             f"🔴 parcel_min_width_n14[{_label}]：量測帶退化"
@@ -6019,46 +6097,47 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
     for _t in _tv:
         if _t_lo <= _t <= _t_hi:
             _ts.add(_t)
-    _big = float(max(_poly.bounds[2] - _poly.bounds[0],
-                     _poly.bounds[3] - _poly.bounds[1])) * 4.0 + 100.0
-    # ── 斷點取值（**退避法**·數值穩健）────────────────────────────────────────────
-    #   `w(t)` 於 `[t_lo, t_hi]` **連續且分段線性** ⇒ 斷點之值 ＝ 自任一側之極限。
-    #   而**恰在多邊形極值頂點上**取弦，浮點下會**相切**：`line ∩ poly` 可得**空集**
-    #   或**兩段共線**（實測 UC9898：`LineString(0 段)`／`MultiLineString(2 段)`
-    #   皆於 t 落在邊界處出現）⇒ 於斷點**退避** `_NUDGE` 取值。
-    #   `_NUDGE = 1e-7 m`：遠高於本座標量級（~3e5）之浮點噪訊（~7e-11），
-    #   且**低於法定粒度 1e-2 之十萬分之一** ⇒ 對 2dp 記載零影響。
-    #   🔒 **退避僅用於解相切**：退避後**仍**非單段 ⇒ **照常 raise**（E-3′ 鑑別力保留）。
-    _NUDGE = 1e-7
 
-    def _chord_at_t(_tq):
-        _b = _fp + _tq * _n
-        return _LS_w([_b - _big * _d, _b + _big * _d]).intersection(_poly)
+    # ── 🔒 E-10 弦長**解析求**（禁 GEOS·見 docstring）────────────────────────────
+    #   凸多邊形於 `t=T` 之弦 ＝ `max(s交) − min(s交)`。交點由邊之線性內插得，
+    #   **恰過頂點者兩鄰邊各回同一 s**（重根）⇒ 單點接觸自然得弦長 0（見 E-8b）。
+    def _chord_len_at(_T):
+        _xs = []
+        for _i in range(len(_ring) - 1):
+            _s0, _t0 = _ring[_i]
+            _s1, _t1 = _ring[_i + 1]
+            if _t0 == _t1:
+                if _t0 == _T:                     # 邊與量測線共線 ⇒ 兩端點皆為交點
+                    _xs.append(_s0); _xs.append(_s1)
+                continue
+            if (_t0 - _T) * (_t1 - _T) <= 0.0:
+                _u = (_T - _t0) / (_t1 - _t0)
+                _xs.append(_s0 + _u * (_s1 - _s0))
+        return (None if not _xs else (max(_xs) - min(_xs), len(_xs)))
 
+    # E-8b 單點接觸（弦長 0）⇒ loud raise。
+    #   `_EPS_ZERO_CHORD` ＝ **數值零**判定，**非**法律門檻：(s,t) 局部框座標量級 O(1e2)
+    #   ⇒ 雙精度絕對噪訊 ~1e-14；取 1e-9 為零判定。
+    #   ⚠️ **不得改用法定粒度 0.01m**——本案存在**真實 5.87mm 臨街邊**
+    #      （R6 `628-53(1)`；R2 `628-43(1)` 為 5.98mm），0.01 門檻會把真值咬成錯誤。
+    _EPS_ZERO_CHORD = 1e-9
     _wmin = None
     for _t in sorted(_ts):
-        _ln = _chord_at_t(_t)
-        if _ln.is_empty or _ln.geom_type != 'LineString':
-            for _alt in (_t + _NUDGE, _t - _NUDGE):
-                if not (_t_lo - _NUDGE <= _alt <= _t_hi + _NUDGE):
-                    continue
-                _cand = _chord_at_t(_alt)
-                if (not _cand.is_empty) and _cand.geom_type == 'LineString':
-                    _ln = _cand
-                    break
-        # E-3′ 弦須為**單一 LineString**
-        #   ⛔ **已撤掉 `_ln.length` 之「總長」語意**：三種可達形狀之弦**恆為單段**；
-        #      若被切為多段，`.length` 會把數段加總、**製造一個不存在的寬度**。
-        #   附註：「U 字形宗地」之讀法選項已由 KL 裁定作廢（該形狀不可能存在）
-        #        ⇒ **不得實作任何讀法選項**。
-        if _ln.is_empty or _ln.geom_type != 'LineString':
-            _n_seg = (len(getattr(_ln, 'geoms', [])) if hasattr(_ln, 'geoms')
-                      else (0 if _ln.is_empty else 1))
+        _res = _chord_len_at(_t)
+        # E-3′ 帶內每斷點之弦須存在
+        #   ⛔ **已撤掉舊之 `_ln.length` 總長語意**：多段加總會**製造一個不存在的寬度**。
+        #      非單段之情形已由 **E-8a 凸性**於量測前根除（凸多邊形之弦恆為單段）。
+        #   附註：「U 字形宗地」之讀法選項經 KL 裁定作廢 ⇒ **禁實作任何讀法選項**。
+        if _res is None:
             raise RuntimeError(
-                f"🔴 parcel_min_width_n14[{_label}]：深度 t={_t:.4f}m 處之弦"
-                f"為 `{_ln.geom_type}`（{_n_seg} 段·**已試退避 {_NUDGE}m 仍然如此**）。"
-                f"**三種可達形狀之弦恆為單段** ⇒ **宗地幾何違反分配模型**，停")
-        _w = float(_ln.length)
+                f"🔴 parcel_min_width_n14[{_label}]：深度 t={_t:.6f}m 處之弦"
+                f"與宗地無交點——**帶內每斷點皆應有弦** ⇒ 宗地幾何違反分配模型，停")
+        _w, _nx = _res
+        if _w <= _EPS_ZERO_CHORD:
+            raise RuntimeError(
+                f"🔴 parcel_min_width_n14[{_label}]：深度 t={_t:.6f}m 處之弦長為 "
+                f"{_w:.3e}m（≤ 數值零 {_EPS_ZERO_CHORD}·交點 {_nx} 個）＝**單點接觸**。"
+                f"**法律上單點不構成臨街** ⇒ 上游幾何有誤，停")
         if _wmin is None or _w < _wmin:
             _wmin = _w
     if _wmin is None:
@@ -6071,6 +6150,87 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
 #   （未限「深度至法定最小深」之帶、未沿 FRONTLINE 量）⇒ KL 明令**禁作 fallback**。
 #   替代＝`parcel_min_width_n14`（`grep -n "def parcel_min_width_n14" app.py`）。
 #   刪之而不留：留著即邀請未來誤用（`CLAUDE.md`：舊函式整個刪·不留 fallback）。
+
+
+# ══ 🆕 E-7 顯性未決態（KL 裁 2026-07-27 ＋ claude.ai BLOCKED-1 2026-07-27）══════════════
+#   **禁以空白／None 代表未決**——未決必須是**具名的第三態**，否則下游之
+#   `bool(r.get('_below_min_width', False))` 會把它讀成 `False` ＝「寬度合格」。
+WIDTH_VERDICT_OK = '合格'
+WIDTH_VERDICT_BAD = '不合格'
+WIDTH_VERDICT_PENDING = '待判（截角）'
+WIDTH_VERDICT_NA = '不適用（非配地列）'
+
+
+def evaluate_parcel_width_n14(row, front_line, min_depth, legal_min_width, _label=''):
+    """🆕 **宗地寬度判定**（N-14 量測 ＋ E-7 三態）——**module 級純函式**（不改 `row`）。
+
+    ── 為何抽成 module 級（非留在 Tab body）─────────────────────────────────────
+    留在 `main()` 內即 **headless 不可測** ⇒ claude.ai 要求之機器閘
+    「pending 筆數 == 街角 winner 筆數」**無從落地**（只能寫成 AST／prose gate＝N0-17-b 之忌）。
+    抽出後 `harvest()` 取得到 ⇒ 探針可對**實資料**逐宗跑真判定。
+    （同 §7 接線鐵律之 `_build_wf_ctx`：module 級純函式·+1 gate 可測。）
+
+    ── 回傳 ────────────────────────────────────────────────────────────────────
+    `dict` 之欄位增量（呼叫端 `row.update(...)`）：
+      `寬度判定`（四態·**恆有值**）／`實際寬度(m)`／`_below_min_width`／
+      `_width_chamfer_pending`／`_width_violation_note`
+
+    ── 🔒 E-7：街角宗**不得輸出寬度合格與否之結論**（KL 明令）───────────────────
+    街角宗之 `cut_coords` 為**截角後**幾何 ⇒ 量出之值**非** N-14 所指之量
+    （實測坐實：R3 `628-45(2)` 坐落道路截角斜邊上，最近頂點距 FRONT **0.7655m**；
+     R4 `628-1(1)` 反向越線 **−1.4826e-2m**——皆截角所致、非上游錯誤）。
+    ⇒ **跳過量測、標 `待判（截角）`**，俟 K-2(Ⅲ)「量測用虛擬範圍」（補回截角）落地後再量。
+    ⚠️ **`待判` 不等於 `合格`**——「待判筆可否以合格身分參與合併／被選為 primary」
+       屬**面積歸屬＝域邊界**，**未裁**；本函式只負責讓該狀態**顯性**，不代為決定。
+    """
+    _side = str((row or {}).get('推進側別', ''))
+    if _side in ('抵費地', '🟠 孤立公設地', '💰 現金補償'):
+        return {'寬度判定': WIDTH_VERDICT_NA}
+    if not (front_line and front_line.get('p1') and front_line.get('p2')):
+        raise RuntimeError(
+            f"🔴 evaluate_parcel_width_n14[{_label}]：缺 FRONT_LINE"
+            f"——N-14 寬度不可量·**禁以 S(m)／MBR 短邊兜底**，停")
+    if str((row or {}).get('街角地', '')).strip() == '是':
+        return {'寬度判定': WIDTH_VERDICT_PENDING,
+                '_width_chamfer_pending': True,
+                '實際寬度(m)': None}          # **不輸出數字**（避免被下游當結論）
+    _p1 = front_line['p1']; _p2 = front_line['p2']
+    _dx = _p2[0] - _p1[0]; _dy = _p2[1] - _p1[1]
+    _L = (_dx ** 2 + _dy ** 2) ** 0.5
+    if _L <= 0:
+        raise RuntimeError(f"🔴 evaluate_parcel_width_n14[{_label}]：FRONT_LINE 長度 0，停")
+    _w = parcel_min_width_n14(row.get('cut_coords') or [],
+                              (_dx / _L, _dy / _L), _p1, min_depth, _label=_label)
+    _out = {'實際寬度(m)': round(_w, 2)}
+    _lw = float(legal_min_width or 0.0)
+    if _lw > 0 and _w < _lw:
+        # 🆕 N-13（KL 裁 2026-07-26）：**廢止壓 G**·改**純旗標**。
+        #   G 係地主依重劃前面積與地價計得之**應分配面積**；壓低帳面以逼合併
+        #   ＝ **無償轉入調配池**。實配短少應走**差額地價補償**。
+        _out['寬度判定'] = WIDTH_VERDICT_BAD
+        _out['_below_min_width'] = True
+        _out['_width_violation_note'] = f"寬度 {_w:.2f}m < 法定最小 {_lw:.2f}m"
+    else:
+        _out['寬度判定'] = WIDTH_VERDICT_OK
+    return _out
+
+
+def width_verdict_of(row):
+    """自 row 之旗標**還原**寬度判定（四態·**恆有值·禁回 None**）。
+
+    `merge_subparcels_by_parent` 以此讀三態，**取代**舊之
+    `bool(r.get('_below_min_width', False))`——後者把「待判」靜默讀成「合格」
+    （claude.ai BLOCKED-1：`_width_chamfer_pending` 寫於步驟 J 卻**全倉零讀取**）。
+    """
+    if (row or {}).get('寬度判定'):
+        return str(row['寬度判定'])
+    if bool((row or {}).get('_width_chamfer_pending', False)):
+        return WIDTH_VERDICT_PENDING
+    if bool((row or {}).get('_below_min_width', False)):
+        return WIDTH_VERDICT_BAD
+    if (row or {}).get('實際寬度(m)') is not None:
+        return WIDTH_VERDICT_OK
+    return WIDTH_VERDICT_NA
 
 
 def _safe_num_e1(v) -> float:
@@ -8586,9 +8746,23 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
             g = float(r.get('G(㎡)', 0.0) or 0.0)
             r['_min_area'] = round(min_area, 2)
             # 🚨 Patch D-4：合併觸發條件擴充 — 面積 OR 寬度任一不足即需合併
-            _below_width = bool(r.get('_below_min_width', False))
+            # ── 🆕 E-7 三態（claude.ai BLOCKED-1 2026-07-27）────────────────────────
+            #   ⛔ 舊碼 `_below_width = bool(r.get('_below_min_width', False))`：
+            #      街角宗（`待判`）之該旗標**不存在** ⇒ 讀成 `False` ⇒ 以「**寬度合格**」
+            #      身分落入 `cand_ok`、**得被選為 `primary`**（吸收其他宗）——
+            #      而 KL 明令「街角宗不得輸出寬度合格與否之結論」。
+            #   ⇒ 改讀 `width_verdict_of` 之顯性三態。
+            _wv = width_verdict_of(r)
+            r['寬度判定'] = _wv
+            _below_width = (_wv == WIDTH_VERDICT_BAD)
+            _w_pending = (_wv == WIDTH_VERDICT_PENDING)
+            r['_width_pending'] = _w_pending
             r['_need_merge'] = (min_area > 0 and g < min_area) or _below_width
             r['_half_min'] = (min_area > 0 and g < min_area / 2.0)
+            # 🚩 **待判筆正以「寬度未受檢」之身分通過合併判定**——標旗、**不靜默**。
+            #   ⚠️ 「待判可否算合格」屬**面積歸屬＝域邊界**，**未裁** ⇒ 本函式
+            #      **不代為決定** `_need_merge`（動之即改分配結果），只讓其**可見**。
+            r['_width_pending_unchecked'] = bool(_w_pending and not r['_need_merge'])
             # 紀錄合併原因（供 UI 顯示）
             if r['_need_merge']:
                 if _below_width:
@@ -8597,6 +8771,11 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
                     )
                 else:
                     r['_merge_reason'] = f"面積 {g:.1f}㎡ < {min_area:.0f}㎡"
+
+        def _ok_mark(_r, _base):
+            """🔒 E-7：`待判（截角）` 筆**不得**輸出乾淨之 `✅`（那即是「合格」之結論）。"""
+            return (f"{_base}｜⏸️ 寬度{WIDTH_VERDICT_PENDING}"
+                    if _r.get('_width_pending') else _base)
 
         # 1/2 以下 → 建議現金補償（仍先參與合併，但額外標記）
         for r in rows:
@@ -8614,7 +8793,7 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
             r['合併來源'] = ''
             r['最小分配面積(㎡)'] = r['_min_area']
             r['合併後G(㎡)'] = r['G(㎡)']
-            r['是否達最小'] = '✅' if not r['_need_merge'] else '⚠️'
+            r['是否達最小'] = _ok_mark(r, '✅') if not r['_need_merge'] else '⚠️'
             if r['_need_merge']:
                 cross_block.append({
                     '原地號': parent, '主要暫編地號': r['暫編地號'],
@@ -8662,7 +8841,7 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
                 r_out['合併來源'] = ''
                 r_out['最小分配面積(㎡)'] = r['_min_area']
                 r_out['合併後G(㎡)'] = r['G(㎡)']
-                r_out['是否達最小'] = '✅'
+                r_out['是否達最小'] = _ok_mark(r, '✅')
                 for k in ('_min_area', '_need_merge', '_half_min'):
                     r_out.pop(k, None)
                 merged.append(r_out)
@@ -8683,7 +8862,8 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
                 '所屬街廓': primary['所屬街廓'],
             })
         else:
-            p_out['是否達最小'] = '✅' if not merged_sources else f'✅ 已合併 {len(merged_sources)} 筆'
+            p_out['是否達最小'] = _ok_mark(
+                primary, '✅' if not merged_sources else f'✅ 已合併 {len(merged_sources)} 筆')
         for k in ('_min_area', '_need_merge', '_half_min'):
             p_out.pop(k, None)
         merged.append(p_out)
@@ -18316,66 +18496,44 @@ def main():
                     _min_width_by_block[_lbl_w] = float(_mw_info.get('min_width', 0.0) or 0.0)
                     _min_depth_by_block[_lbl_w] = float(_mw_info.get('min_depth', 0.0) or 0.0)
 
+                # ── 🆕 N-15（KL 裁 2026-07-26）：**廢止以 S 充當寬度**·改 N-14 真量測 ──────
+                #   ⛔ 舊碼一：`_w_jw = float(_r_jw['S(m)'])`——`S` 係**剩餘正面道路可分配長**
+                #      （`grep -n "S ∈ \[0, S_max_limit\]" app.py`），**非** §4③ 之寬度。
+                #      此為失敗考古 **#35 之碼版、#36 之肇因**。
+                #   ⛔ 舊碼二：`_compute_strip_width(..., d_hat=None)` ＝ **MBR 短邊** fallback，
+                #      **同樣不符 N-14**（未限深度帶、未沿 FRONTLINE 量）⇒ **禁作 fallback**。
+                #   ⇒ 一律走 `evaluate_parcel_width_n14`（module 級純函式·headless 可測）；
+                #     **缺件 loud raise、禁靜默兜底**。
                 _width_violation_count = 0
+                _width_pending_count = 0
                 for _r_jw in st.session_state.get('f3_G_values', []) or []:
-                    if _r_jw.get('推進側別') in ('抵費地', '🟠 孤立公設地', '💰 現金補償'):
-                        continue
-                    # ── 🆕 N-15（KL 裁 2026-07-26）：**廢止以 S 充當寬度**·改 N-14 真量測 ──
-                    #   ⛔ 舊碼一：`_w_jw = float(_r_jw['S(m)'])`——`S` 係**剩餘正面道路可分配長**
-                    #      （`grep -n "S ∈ \[0, S_max_limit\]" app.py`），**非** §4③ 之寬度。
-                    #      此為失敗考古 **#35 之碼版、#36 之肇因**。
-                    #   ⛔ 舊碼二：`_compute_strip_width(..., d_hat=None)` ＝ **MBR 短邊** fallback，
-                    #      **同樣不符 N-14**（未限深度帶、未沿 FRONTLINE 量）⇒ **禁作 fallback**。
-                    #   ⇒ 一律走 `parcel_min_width_n14`；**缺件 loud raise、禁靜默兜底**。
                     _blk_jw = _r_jw.get('所屬街廓', '')
-                    _cut_jw = _r_jw.get('cut_coords') or []
-                    _fl_jw = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(_blk_jw) or {}
-                    _md_jw = float(_min_depth_by_block.get(_blk_jw, 0.0) or 0.0)
-                    if not (_fl_jw.get('p1') and _fl_jw.get('p2')):
-                        raise RuntimeError(
-                            f"🔴 N-15[{_r_jw.get('暫編地號')}]：街廓 {_blk_jw} 缺 FRONT_LINE"
-                            f"——N-14 寬度不可量·**禁以 S(m)／MBR 短邊兜底**，停")
-                    # ── 🔒 E-7（KL 裁 2026-07-27）：**街角宗於 (Ⅲ) 落地前不得輸出寬度結論** ──
-                    #   K-2(Ⅲ)「量測用虛擬範圍」＝**實配**街角地第 1 宗之幾何**補回截角**
-                    #   （FRONT 與 SIDE 兩線延伸相交還原角點之四邊形）。
-                    #   而此處之 `cut_coords` 為**截角後**幾何 ⇒ 量出之寬度**非** N-14 所指之值。
-                    #   實測坐實：R3 之 `628-45(2)`（街角地·第1筆·右側）坐落 R3 右側**道路截角
-                    #   斜邊**上（街廓頂點 s=89.84,t=0 → s=93.35,t=3.478）⇒ 其最近頂點距 FRONT
-                    #   **0.7655m**。此**非上游錯誤**，正是截角所致 ⇒ **不得**以截角後幾何評斷。
-                    #   ⇒ **跳過量測、標 pending、不輸出合格與否**（E-7 明令）。
-                    #     俟 K-2 三物件分家（N-17）後接上 (Ⅲ) 再量。
-                    if str(_r_jw.get('街角地', '')).strip() == '是':
-                        _r_jw['_width_chamfer_pending'] = True
-                        _r_jw['實際寬度(m)'] = None      # **不輸出數字**（避免被下游當結論）
-                        continue
-                    _p1_jw = _fl_jw['p1']; _p2_jw = _fl_jw['p2']
-                    _dx_jw = _p2_jw[0] - _p1_jw[0]; _dy_jw = _p2_jw[1] - _p1_jw[1]
-                    _L_jw = (_dx_jw ** 2 + _dy_jw ** 2) ** 0.5
-                    _w_jw = parcel_min_width_n14(
-                        _cut_jw, (_dx_jw / _L_jw, _dy_jw / _L_jw), _p1_jw, _md_jw,
-                        _label=f"{_blk_jw}·{_r_jw.get('暫編地號')}")
-                    _r_jw['實際寬度(m)'] = round(_w_jw, 2)
-                    _legal_w = float(_min_width_by_block.get(_blk_jw, 0.0) or 0.0)
-                    if _legal_w > 0 and _w_jw < _legal_w:
-                        # ── 🆕 N-13（KL 裁 2026-07-26）：**廢止壓 G**·改**純旗標** ──────────
-                        #   ⛔ 舊碼：`G(㎡) = round(min(orig_G, min_area − 0.01), 2)`
-                        #      ＋ 真值存 `_G_before_width_violation` 供回溯。
-                        #   **KL 理由**：G 係地主依**重劃前面積與地價**計得之**應分配面積**；
-                        #   壓低帳面以逼合併 ＝ **無償轉入調配池**。
-                        #   實配短少應走**差額地價補償**，不得以改寫 G 達成。
-                        #   ⇒ **G 保持真值**；寬度不合格僅以 `_below_min_width` 旗標表示，
-                        #     由 `_need_merge`（面積不足 or 寬度不足）之**寬度分支**消費——
-                        #     該分支**不得依賴被壓過的 G**（本改動即除去該依賴）。
-                        _r_jw['_below_min_width'] = True
-                        _r_jw['_width_violation_note'] = (
-                            f"寬度 {_w_jw:.2f}m < 法定最小 {_legal_w:.2f}m"
-                        )
+                    _r_jw.update(evaluate_parcel_width_n14(
+                        _r_jw,
+                        (st.session_state.get('f3_cad_front_lines', {}) or {}).get(_blk_jw) or {},
+                        float(_min_depth_by_block.get(_blk_jw, 0.0) or 0.0),
+                        float(_min_width_by_block.get(_blk_jw, 0.0) or 0.0),
+                        _label=f"{_blk_jw}·{_r_jw.get('暫編地號')}"))
+                    if _r_jw.get('寬度判定') == WIDTH_VERDICT_BAD:
                         _width_violation_count += 1
+                    elif _r_jw.get('寬度判定') == WIDTH_VERDICT_PENDING:
+                        _width_pending_count += 1
                 if _width_violation_count > 0:
                     st.warning(
                         f"📏 **Patch B-2 寬度驗證**：共偵測到 **{_width_violation_count} 筆**"
                         f"暫編地號之實際寬度 < 法定最小寬度 → 已標記為「待合併」"
                         f"（觸發同原地號合併或跨街廓調配）"
+                    )
+                if _width_pending_count > 0:
+                    # 🔒 E-7：**顯性未決態必須看得見**（禁靜默）。
+                    st.error(
+                        f"⏸️ **寬度判定待判（截角）：{_width_pending_count} 筆街角宗**"
+                        f"——街角宗之 `cut_coords` 為**截角後**幾何，量出之值非 N-14 所指之量"
+                        f"（實測：R3 `628-45(2)` 距 FRONT 0.7655m、R4 `628-1(1)` −0.0148m，"
+                        f"皆截角所致）⇒ **本系統不輸出其寬度合格與否之結論**。"
+                        f"俟 K-2(Ⅲ)「量測用虛擬範圍」（補回截角）落地後再量。"
+                        f"⚠️ **待判 ≠ 合格**：下方合併表對該等筆之「是否達最小」欄"
+                        f"一律標示待判，不出 ✅。"
                     )
 
                 # 執行合併
@@ -18388,7 +18546,8 @@ def main():
                 if not _df_merge.empty:
                     _show_cols = [c for c in [
                         '暫編地號', '原地號', '所屬街廓', 'a 面積(㎡)',
-                        'G(㎡)', '合併後G(㎡)', '最小分配面積(㎡)', '是否達最小',
+                        'G(㎡)', '合併後G(㎡)', '最小分配面積(㎡)',
+                        '寬度判定', '是否達最小',
                         '合併來源', '合併至',
                     ] if c in _df_merge.columns]
                     _fmt = {c: '{:.2f}' for c in ('a 面積(㎡)', 'G(㎡)', '合併後G(㎡)',
