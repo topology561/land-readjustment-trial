@@ -5,6 +5,8 @@
 > `mina_by_blk`／`最小分配面積`／`達標`／`未達標`／`mina[`／`_mina4`／`min_area_by_block`／
 > `_min_area`／`min_area_to_apply`／`region_min`／`_valid_mins`／`corner_min_area`。
 > 已濾**行首**為 `#`／`·`／`*`／`|`／`⚠`／`⛔`／`🔴`／`"""` 者。
+> ⚠️ **本文之「窮盡」限於上列 16 個識別字**——該字集**漏了 `wf_f0_mina`**，
+> 更正見**檔末附錄**（合計應為 **282**）。本體維持 `e583075` 錨定**不動**（快照，非活文件）。
 
 > 🔒 **停機條件甲之判定**：**無任何無法歸類之消費點**（全部落入 A1/A2/B/C/D/E/F/G 七類）⇒ **不停機**。
 
@@ -326,3 +328,48 @@
 - `verify/wf_f4.py:1533` — `else "F.0全達標·無須併")`
 - `verify/wf_f4.py:1557` — `ch = ["零動作·達標留置"]`
 - `verify/wf_f4.py:1560` — `if exp == ("建地軌", "1"):                    # 梯1 另須實測群內宗全達標`
+
+
+---
+
+## 🔴 更正附錄（claude.ai 2026-07-30 覆核·CC 復現）
+
+### 一、識別字集漏 `wf_f0_mina`：278 → **282**
+
+本體之 16 字集**未含 `wf_f0_mina`**。以原 16 字集於 `e583075` 重跑，**278 完全複現**
+（⇒ 清單本體正確、可稽核）。補入 `wf_f0_mina` 後為 **282**，漏 4 點：
+
+| 落點（`e583075`） | 於 `de64885` 之狀態 | 歸類 |
+|---|---|---|
+| `verify/run_verification.py:383`（`def wf_f0_mina`） | **仍活** | **B 逐街廓達標判定** |
+| `verify/run_verification.py:568` | 已隨 M-5 區塊刪除 ⇒ 消滅 | — |
+| `verify/probes/probe_ruling_N_e1_touch.py:448`（餵 `merge_subparcels_by_parent`） | **仍活** | **B 逐街廓達標判定** |
+| `verify/probes/probe_ruling_K4_3_source.py:139` | 已封存至 `verify/archive/` ⇒ 死碼 | — |
+
+**⇒ 停機條件甲之判定不受影響**：2 個仍活落點**皆可歸 B 類**，**無不可歸類點**。
+
+### 二、CC 之復現（實測輸出）
+
+```
+新字集（17 字·補 wf_f0_mina）於 de64885 掃描合計 = 280
+wf_f0_mina 命中：
+   verify/archive/probe_ruling_K4_3_source.py:147  mina = rv.wf_f0_mina(ns, snap, cb_by)
+   verify/probes/probe_ruling_N_e1_touch.py:448  rv.wf_f0_mina(ns, snapshot, cb_by),
+   verify/run_verification.py:383  def wf_f0_mina(ns, snapshot, cb_by):
+```
+```
+  verify/run_verification.py: e583075=16 de64885=14 Δ=-2
+  de64885 現態 = 280；Δ(de64885−e583075) = -2；⇒ e583075 = 282
+```
+⇒ **`e583075 = 282` 復現無誤**；現態 280 之差 **全部**來自 `run_verification.py` 之 M-5 區塊刪除。
+
+### 三、連動註記
+
+本體 `:303` 引用之 `verify/wf_f0.py` 錯誤訊息原文（含「如 M-5 提前合併」）
+**已於 `de64885+` 更新**——改指向 K-6 §二 段三／七級調配 F.0·F.2，並註明 M-5 已封存。
+本體為 `e583075` 快照，**不隨之改**。
+
+### 四、教訓（已入失敗考古 #33）
+
+`wf_f0_mina` 是 `mina` 之**複合縮寫**；字集有 `_mina_by_block`／`mina_by_blk`／`mina[`
+**卻獨漏它** ⇒ **N0-17-c 型**：**縮寫使 regex 瞎掉**，而「窮盡」宣稱正建立在該 regex 上。
