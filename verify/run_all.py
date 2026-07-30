@@ -170,26 +170,8 @@ def main():
     if not _ok_k4:
         rc = 1
 
-    # ── 🆕 K-4-3（KL 裁 2026-07-27）：街角救援之**來源母體**六變體 ─────────────────────
-    #   兩處改動方向相反（刪同塊排除放大來源池／加 (c) 縮小）⇒ 淨效果不可預判 ⇒ 必須分開量。
-    #   逐 **①候選** 逐來源（含被擋掉者）＋ ②`_t2` 是否觸發 ＋ 同塊源是否**實際**被納入。
-    #   ⚠️ 同 F-2：走 `[1/3]` golden 段 ⇒ **不動 PASS/FAIL 計數**。
-    _probe_k43 = os.path.join(HERE, "probes", "probe_ruling_K4_3_source.py")
-    try:
-        _r43 = subprocess.run([sys.executable, _probe_k43],
-                              capture_output=True, text=True, encoding="utf-8", timeout=1800)
-        _ok_43 = (_r43.returncode == 0)
-    except Exception as _e_43:
-        _r43, _ok_43 = None, False
-        print(f"  🔴 K-4-3 來源母體閘 執行失敗：{_e_43}")
-    if _r43 is not None:
-        print(f"  {'✅' if _ok_43 else '🔴'} K-4-3 來源母體閘"
-              f"（六變體·逐①候選逐來源·A′ 載具自檢）rc={_r43.returncode}")
-        if not _ok_43:
-            for _ln in ((_r43.stdout or "") + (_r43.stderr or "")).strip().splitlines()[-14:]:
-                print("     " + _ln)
-    if not _ok_43:
-        rc = 1
+    # 🗄️ **K-4-3 來源母體閘已隨 M-5 封存移除**（K-6 §四·KL 裁 2026-07-30 作廢）
+    #   探針移至 `verify/archive/probe_ruling_K4_3_source.py`；禁再掛回。
     print()
 
     print("### [2/3] diff 引擎自檢（竄改必咬＋Gxxx 分流；證綠非虛）")
