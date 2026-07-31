@@ -9551,7 +9551,14 @@ def select_corner_lots_both_sides_v12(
     #   （前一批曾據「14.0 恆被走到」上呈 U-K8-5 上半——只追到「是實際路徑」就停、
     #     沒再追一步「這個值有沒有人用」。**該上呈已撤銷**。）
     # 法定最小寬（🆕 S1 §6 查表化·補丁六 §四）：走 get_min_lot_size（分區×正面路寬）逐塊查表值，
-    #   由 PK 呼叫端（app／selection_pipeline）以 f3_pk_legal_min_width 注入（單一真相源·app==engine）。
+    #   由 PK 呼叫端（app／selection_pipeline）以 f3_pk_legal_min_width 注入。
+    #   ⚠️ **「單一真相源·app==engine」之舊措辭已降級**（GB-9）：**查表函式**確為單一真相源
+    #     （兩路皆走 get_min_lot_size、已廢 v12 內硬編 3.5）；但**兩路之輸入取自不同來源**——
+    #     engine 之「正面路寬」溯源至**快照** blocks[*].正面.路寬_m
+    #     （`grep -n 'fw = float(blk\["正面"\]' verify/run_verification.py`）、
+    #     app 溯源至 **live `sb['rows']`**（`grep -n "_sb_row = sb_rows_by_label.get" app.py`），
+    #     且**全倉無閘比對二者** ⇒ 今日相符係二來源同案、非機器保證。
+    #     登記見 `grep -n "GB-9" docs/reports/W-G.4_泛用阻塞項登記表.md`。
     #   廢舊 _blk_param_B4.get('法定最小寬(m)', 3.5)（f3L_sb_rows_by_label 全程無人寫入→恆 3.5）。
     #   no-silent-fallback：缺值 loud raise，禁靜默 3.5（UC9898 住宅區×8/12m 恰同檔 3.50·巧合非常數·case_params:26）。
     _lmw_pk = _ss_B4.get('f3_pk_legal_min_width')
@@ -9585,7 +9592,8 @@ def select_corner_lots_both_sides_v12(
         # 🔴 深度**不可**讀 `f3_alloc_depth_by_label`——該鍵由 **Step-G** 鋪底，而 PK 跑在
         #   Step-G **之前**（`probe_corner_trueG` docstring 之 reviewer W-5：「PK 時段 session
         #   未鋪底·fallback 差 R6 6.05㎡」即同一坑）。改採**呼叫端注入**之 `f3_pk_alloc_depth`，
-        #   與 `f3_pk_legal_min_width` 同型（單一真相源·app==engine）。缺值 loud（見下）。
+        #   與 `f3_pk_legal_min_width` **同型**（同為呼叫端注入；⚠️ 該鍵之「app==engine」
+        #   宣稱已降級·見 GB-9，本鍵同受其限：兩路輸入來源不同且無看守）。缺值 loud（見下）。
         _depth_wb = _st_wb5.session_state.get('f3_pk_alloc_depth')
         _cls_blks_wb = _st_wb5.session_state.get('f3_classified_blocks', []) or []
         _blk_meta_wb = next(
