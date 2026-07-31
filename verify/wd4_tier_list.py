@@ -70,9 +70,19 @@ _LOCK_KINDS = ("查封", "假扣押", "假處分", "破產", "預告登記")
 
 
 def _mina_by_block(ns, snapshot, cb_by, build_blocks):
-    """MinA_i = round(分配深度_i × min_width_i, 2)＝正典 `f3_min_alloc_area_by_label` 同式
+    """MinA_i = round(分配深度_i × min_width_i, 2)＝**舊 per-block MinA**
+    （**角色已廢·待 K-6-A2 移除**）之同式；現行符號見
+    `grep -rn "f3_min_alloc_area_by_label" --include="*.py" .`。
+
+    ⚠️ **本 docstring 原稱該符號為「正典」——該本體論標籤已被 K-6 §零-4 推翻**：
+    `region_min` 之用途已收斂為單一（僅供 ½ 現金補償／增配門檻），
+    **逐街廓達標判準改為寬深雙檢**（K-6 §零-1）。**已裁定、K-6-A2 尚未實作**
+    ⇒ 本函式之算式與回傳值**現仍為碼面實際走的路徑**，故本批**只改字串、不動算術**。
+
     （WARNING-1 裁定 2026-07-08：辦法 §3「面積計算至小數點以下二位、第三位四捨五入」，
-    rounded 為法定慣例；R4=round(32.59×3.5,2)=114.07）。回傳 (mina dict, mina_qu)。"""
+    rounded 為法定慣例。⚠️ 該裁定當時所舉之例 `R4=round(32.59×3.5,2)=114.07` 係
+    **N-19′ 前之舊深度鏈**、已作廢；現值為 `round(33.10×3.5,2)=115.85`。）
+    回傳 (mina dict, mina_qu)。"""
     gm = ns["get_min_lot_size"]
     SB = snapshot["blocks"]
     mina = {}
