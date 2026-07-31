@@ -27,6 +27,16 @@ C-1/C-2 把 BASELINE 改成結構性 1:N 配對，但**決勝仍是「垂距最�
 
 ## 重跑
     python verify/fixture_baseline_candidates.py        # rc=0 綠／rc=1 紅
+
+## 🔗 三檔職能分工（K-8 段二 §八·免下一手誤以為新的取代舊的）
+
+| 檔 | 看守什麼 |
+|---|---|
+| `verify/fixture_baseline_candidates.py` | **候選分支邏輯**（哪些線進候選、C-5 三分支怎麼走、R1 共線 golden） |
+| `verify/probes/probe_ruling_K8_baseline_pairing.py` | **配對輸出**（集合斷言）＋ **N-19′ 全精度解析靶** |
+| `verify/fixture_block_depth_n19p.py` | **app 取值函式**（2dp 鏈／診斷欄 A・B／缺件 raise／`region_min`） |
+
+**三者互為補集、無一取代另一。**
 """
 import json
 import math

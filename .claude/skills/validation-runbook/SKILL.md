@@ -81,6 +81,11 @@ W-G.5 之 14 個 FAIL 被當作「既有紅」擱置了整整數批（E 系列�
 
 **現行判準**：
 
+0. **🔴 名目 diff 與狀態 diff 是兩件事，兩件都要做**（W-G.5 K-8 段二 補·失敗考古 #35）。
+   名目 diff 治「測項憑空消失／新增」；它**不治**「測項都在、只是全紅了」。
+   實證：K-8 段二之連帶量測中，**名目集合雙向 diff 完全為空**，卻有 **22 項 PASS→FAIL**
+   （130P/2F → 108P/24F·`verify/out/K8_seg2_cascade_ifsnapshot.log`）。
+   ⇒ 除下列 1–5 外，**另須逐名目比對 PASS/FAIL 狀態，並對每一個翻轉項給歸因**。
 1. 取**測項名目集合**（`✅ PASS` 與 `🔴 FAIL` 兩者之名目，非只 FAIL）。
 2. 算**雙向 diff**：**消失名目** ＋ **新增名目**。
 3. **逐項歸因**——消失與新增**各自**都要有理由，禁以「預期會變」一句帶過。
@@ -92,3 +97,30 @@ W-G.5 之 14 個 FAIL 被當作「既有紅」擱置了整整數批（E 系列�
 **併記**：**紅被別的紅遮住時，它連「既有」都不會被登記**——
 K-6-A1 解除 F.0 後才曝出 F.4 之 3.5m E2 不可行（既有·早已上呈待域裁）。
 ⇒ 長期紅集合應定期做**一次源頭歸因**，否則它會變成一塊誰都不看的地毯。
+
+## 🔒 golden 段（`run_all [1/3]`）須**另行清點**——名目 diff 看不見它
+
+**案由**（W-G.5 K-8 段二）：`run_all [1/3]` 之夾具與探針**刻意不進** `run_verification.results`
+（見各段註「不動 PASS/FAIL 計數」）⇒ 它們**不在測項名目集合裡**
+⇒ 前述「名目集合雙向 diff」與「PASS/FAIL 狀態 diff」**兩者都看不到它們**。
+新增或移除一支探針，132 名目可以逐字不變。
+
+**現行判準（每波必做）**：
+
+1. 清點 golden 段之**探針／夾具數與各自 rc**，逐支列出：
+   ```bash
+   grep -E "^  (✅|🔴) (末端夾具|E 系列|K-4|K-8|B-3|圖8|滑池槽|禁寫死)" verify/out/<tag>.log
+   ```
+2. **新增或移除任一支，必須在報告中明列**（名稱、看守什麼、rc）。
+3. 與前一波之清單做**雙向 diff**——與名目集合 diff 分開記，兩張表。
+
+**現況清單（K-8 段二·`1d759b5+`）**：B-3 欄集結構閘／圖8 golden／滑池槽 golden／
+禁寫死絕對路徑閘／末端夾具 ×7（`fixture_cad_binding_order`／`fixture_baseline_candidates`／
+`fixture_n14_min_width`／**`fixture_block_depth_n19p`（本波新增）**／`fixture_end_reserve`／
+`fixture_end_fallback`／`fixture_end_winner`）／E 系列實測快照閘／K-4 S 起算點閘／K-8 配對驗證閘。
+
+**⚠️ 職能重疊之澄清（免下一手誤以為新的取代舊的）**：
+`fixture_baseline_candidates`（C-5 候選三分支＋R1 共線 golden）、
+`probe_ruling_K8_baseline_pairing`（配對輸出＋N-19′ 全精度靶）、
+`fixture_block_depth_n19p`（app 取值函式之 2dp 鏈／診斷欄／缺件 raise／`region_min`）
+**三者互為補集、無一取代另一**；三檔 docstring 已互相 cross-reference。

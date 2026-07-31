@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """W-G.5 裁定 N 第二批 — **N-12′ 宗地深度／N-19 街廓平均深度／N-2′ 接觸段** 三合一量測（只量不改）。
 
+## 🔴 N-19 已由 **N-19′** 取代（裁定 K-8 §二·KL 裁 2026-07-31）
+
+**N-19（舊·本檔【B】原表述）**：軸＝**FRONT 法向**。
+**N-19′（現行正典）**：軸＝**垂直 BASELINE**。二者於 FRONT 與 BASELINE 不平行時**不同值**。
+現行取值實作＝`app._compute_block_depth_alloc`（`grep -n "def _compute_block_depth_alloc" app.py`），
+對照靶見 `probes/probe_ruling_K8_baseline_pairing.py` §3、夾具見 `verify/fixture_block_depth_n19p.py`。
+本檔【B】已改量 N-19′；**舊 N-19 之表述保留為考古**（勿刪·見【B】段內註）。
+
 ## 為何整支改寫（KL N-12′(d)）
 
 前版 `probe_ruling_N_p8._front_normal_depth_min` 量的是「**被街廓多邊形截斷之弦長**」
@@ -16,7 +24,8 @@ KL 裁定：宗地深度＝該宗與 FRONTLINE **接觸段**上每一點，沿 F
 | 量 | 式 | 出處 |
 |---|---|---|
 | 宗地深度（N-12′） | 接觸段上每點沿 `n_front` 至 **BASELINE 直線**之垂距 → **min** | KL N-12′ |
-| 街廓平均深度（N-19） | FRONTLINE **全段**每點之同一垂距 → **average** | KL N-19 |
+| 街廓平均深度（**N-19′**） | FRONTLINE 兩端至 BASELINE 無限直線之**垂直 BASELINE** 垂距 → **average** | K-8 §二 |
+| ~~街廓平均深度（N-19·舊）~~ | ~~FRONTLINE 全段每點沿 `n_front` 之垂距 → average~~ | **已由 N-19′ 取代·存查** |
 | 區內最小分配面積（N-16(b)） | 畸零地最小寬 × **深度最淺街廓**之街廓平均深度 | KL N-16(b) |
 
 ⚠️ N-12′ 取 **min**、N-19 取 **average**，**二者勿混**（KL 明令）。
@@ -205,8 +214,12 @@ def main():
 
     # ── N-19 街廓平均深度 ＋ N-16(b) 區內最小分配面積 ──
     L.append("")
-    L.append("【B】N-19 街廓平均深度（FRONT 全段垂距之平均·軸＝FRONT 法向）"
+    # 🔴 K-8 §二：軸由「FRONT 法向」改為「**垂直 BASELINE**」（N-19 → N-19′）。
+    #   🗄️ 考古（勿刪）：本段原表述為「軸＝FRONT 法向」＝**舊 N-19**；
+    #      二軸於 FRONT 與 BASELINE 不平行時不同值，本案六塊 ∠(FRONT,BASELINE) 非 0。
+    L.append("【B】**N-19′** 街廓平均深度（垂直 BASELINE·無限直線·兩端垂距平均·解析）"
              " ＋ N-16(b) 區內最小分配面積")
+    L.append("    （舊 N-19＝軸取 FRONT 法向·已由 K-8 §二 取代·表述存查）")
     L.append("-" * 116)
     L.append(f"  {'塊':5}{'平均深度':>12}{'最小深度':>12}{'最大深度':>12}"
              f"{'現行 街廓分配深度_m':>22}{'差':>10}{'min_width':>11}")
@@ -214,9 +227,17 @@ def main():
     for blk in _usable:          # 🆕 排除配對錯誤之塊（其垂距發散·無效）
 
         p1, p2, d_hat, n, bl_pt, bl_u, poly, Lfl = geo[blk]
-        pr = _profile(p1, d_hat, n, bl_pt, bl_u, 0.0, Lfl, 0.001)
-        ts = [t for _s, t in pr]
-        avg_by[blk] = sum(ts) / len(ts)
+        # 🔴 K-8 §二 N-19′：軸＝**垂直 BASELINE**（`bn`），且為**解析式·禁取樣**
+        #   （前緣線與 BASELINE 皆直線 ⇒ 垂距沿弦線性 ⇒ 平均 ＝ 兩端垂距之平均）。
+        # 🗄️ 考古（勿刪）：舊 N-19 為
+        #      `pr = _profile(p1, d_hat, n, bl_pt, bl_u, 0.0, Lfl, 0.001)` ＋ `sum(ts)/len(ts)`
+        #      ——沿 FRONT 以 0.001m **取樣**、軸取 `n`＝**FRONT 法向**。二軸不同值。
+        _bn = np.array([-bl_u[1], bl_u[0]])
+        _bp = np.asarray(bl_pt, float)[:2]
+        _t1 = abs(float(np.dot(np.asarray(p1, float)[:2] - _bp, _bn)))
+        _t2 = abs(float(np.dot(np.asarray(p2, float)[:2] - _bp, _bn)))
+        ts = [_t1, _t2]
+        avg_by[blk] = (_t1 + _t2) / 2.0
         road_w = float(snapshot["blocks"][blk]["正面"]["路寬_m"])
         mls = ns["get_min_lot_size"](cb_by[blk]["category"], road_w)
         mw_by[blk] = float(mls.get("min_width", 0) or 0)
@@ -239,8 +260,11 @@ def main():
              f"｜逐塊 min_width（可用塊）：{ {b: mw_by[b] for b in _usable} }")
     L.append(f"  ⇒ **N-16(b) 區內最小分配面積 ＝ {_mw_min:.2f} × {avg_by[_shallow]:.4f}"
              f" = {_new_minA:.4f} ㎡**（round2 = {round(_new_minA, 2)}）")
-    L.append(f"  對照現行正典 114.07（＝round(32.59×3.5,2)·舊式 min(各塊 深度×最小寬)）"
-             f"　⇒ 變動 {round(_new_minA, 2) - 114.07:+.2f}㎡（KL：屬預期）")
+    L.append(f"  對照現行引擎側 114.07（＝round(32.59×3.5,2)·**快照舊深度**·見夾具 T10 制度甲）"
+             f"　⇒ 變動 {round(_new_minA, 2) - 114.07:+.2f}㎡")
+    L.append("  ⚠️ 上式以**未捨入**深度相乘，非正典鏈。K-8 §二 正典＝`round(D_avg,2) × min_width`"
+             f"（辦法 §3 2dp）⇒ 本案 R4 `33.10×3.5 = 115.85` ＝ **region_min**；"
+             "以 app 真符號逐格對拍見 `verify/fixture_block_depth_n19p.py` T8/T9。")
     L.append("  ⚠️ 本值之 min_width 取全區最小；若 KL 意為「最淺街廓自身之 min_width」，"
              f"則為 {mw_by[_shallow]:.2f} × {avg_by[_shallow]:.4f} = "
              f"{mw_by[_shallow] * avg_by[_shallow]:.4f}㎡。UC9898 六塊 min_width 同為 3.5 "

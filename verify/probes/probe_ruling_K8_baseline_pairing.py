@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""W-G.5 K-8 段一 — **BASELINE ↔ 街廓 配對之驗證**（＋N-19′ 平均深度對照靶）。
+r"""W-G.5 K-8 段一 — **BASELINE ↔ 街廓 配對之驗證**（＋N-19′ 平均深度對照靶）。
 
 ## ⚠️ 本檔驗證的是**既有機制**，不是新機制
 
@@ -40,10 +40,30 @@ R1／R4 允許二選一之理由：`#0` 與 `#2` 實測為**同一條無限直�
 沿前緣線取平均。前緣線與 BASELINE 皆直線 ⇒ 垂距沿弦**線性**
 ⇒ 平均 ＝ **中點垂距** ＝ **兩端垂距之平均**（**解析式·禁取樣**）。
 
+### 對照靶＝**全精度**（K-8 段二 施工單 §六·取代舊 3dp 靶）·基準容差 `1e-6`
+
+🔒 **R1／R4 走等價類判準**：K-8 §一 判 `#0`／`#2` **等價**且**禁寫死單一實體編號**；
+二段角度有 µ 度級差 ⇒ N-19′ 亦有等價類散布（**實測 R1 5.16e-07／R4 5.80e-06**，
+與 §一 所載垂距差 5.169e-07／5.795e-06 同量級）。**R4 之散布 > 1e-6**
+⇒ 若硬比單值，C-5 之 tie-break 一換段即假紅——等於把「禁寫死單一實體」之禁令
+從**配對層**漏到**數值層**。故該二塊判「落在等價類任一成員之 1e-6 內」。
+附記：施工單 §六 之 R1 靶（33.1460885310）算在 `#2` 線，碼之 C-5 選中 `#0`
+（33.1460880149）——二者**同屬等價類**，非歧異。
+
 ## 重跑
     python verify/probes/probe_ruling_K8_baseline_pairing.py     # rc=0 綠／1 紅
 
 ⚠️ **零注入·唯讀**。輸出 `verify/out/probe_ruling_K8_baseline_pairing.log`。
+
+## 🔗 三檔職能分工（K-8 段二 §八·免下一手誤以為新的取代舊的）
+
+| 檔 | 看守什麼 |
+|---|---|
+| `verify/fixture_baseline_candidates.py` | **候選分支邏輯**（哪些線進候選、C-5 三分支怎麼走、R1 共線 golden） |
+| `verify/probes/probe_ruling_K8_baseline_pairing.py` | **配對輸出**（集合斷言）＋ **N-19′ 全精度解析靶** |
+| `verify/fixture_block_depth_n19p.py` | **app 取值函式**（2dp 鏈／診斷欄 A・B／缺件 raise／`region_min`） |
+
+**三者互為補集、無一取代另一。**
 """
 import json
 import math
@@ -63,9 +83,19 @@ LOG = os.path.join(VERIFY, "out", "probe_ruling_K8_baseline_pairing.log")
 
 # 既有 C-2/C-5 配對之期望輸出（**集合**·R1/R4 二選一·見 docstring）
 PAIR_EXPECT = {"R1": {0, 2}, "R2": {3}, "R3": {3}, "R4": {0, 2}, "R5": {1}, "R6": {1}}
-# N-19′ 對照靶（claude.ai 自 DXF 獨立算出·CC 逐格重現·小數三位）
-N19P_EXPECT = {"R1": 33.146, "R2": 44.468, "R3": 44.335,
-               "R4": 33.105, "R5": 45.707, "R6": 45.509}
+# N-19′ 對照靶（claude.ai 自 DXF 獨立算出·**全精度**·K-8 段二 施工單 §六 取代舊 3dp 靶）
+N19P_EXPECT = {"R1": 33.1460885310, "R2": 44.4678768610, "R3": 44.3350248667,
+               "R4": 33.1046288875, "R5": 45.7071870059, "R6": 45.5093305253}
+# 基準容差（施工單 §六）：解析式、無取樣 ⇒ 不應有 1e-4 量級殘差。
+N19P_TOL = 1e-6
+# 🔒 **等價類加寬**（機制依據·非實測殘差）：K-8 §一 判 `#0`／`#2` 為**同一無限直線之兩段**、
+#   **等價**且**禁寫死單一實體編號**。二段之角度有 µ 度級差 ⇒ 由其導出之 N-19′ 亦有一個
+#   **等價類散布**。實測散布 R1 5.16e-07／R4 5.80e-06（與 K-8 §一 所載垂距差
+#   5.169e-07／5.795e-06 同量級）⇒ **R4 之散布 > 基準容差**。
+#   若仍用 1e-6 硬比，等於把「禁寫死單一實體」之禁令從**配對層**漏到**數值層**：
+#   C-5 之決定性 tie-break（垂距→handle）一旦換段即假紅。
+#   故 R1/R4 之判準改為「**落在等價類任一成員之 N19P_TOL 內**」（現算·不硬編散布值）。
+N19P_EQUIV_BLOCKS = ("R1", "R4")
 
 
 def _bl_entities():
@@ -189,7 +219,7 @@ def main():
     L.append("")
     L.append("【3】N-19′ 街廓平均深度（垂直 BASELINE·**無限直線**·解析式·禁取樣）")
     L.append("-" * 112)
-    L.append(f"  {'街廓':6}{'p1垂距':>11}{'p2垂距':>11}{'N-19′':>11}{'對照靶':>11}{'Δ':>11}  判")
+    L.append(f"  {'街廓':6}{'p1垂距':>11}{'p2垂距':>11}{'N-19′':>14}{'對照靶(全精度)':>16}{'Δ':>11}  判")
     for blk in sorted(N19P_EXPECT):
         fl = fls.get(blk) or {}
         bv = bls.get(blk)
@@ -207,11 +237,25 @@ def main():
         d2 = abs(float(np.dot(p2 - bp, bn)))
         avg = (d1 + d2) / 2.0
         dv = avg - N19P_EXPECT[blk]
-        _ok = abs(dv) <= 5e-4
-        L.append(f"  {blk:6}{d1:11.3f}{d2:11.3f}{avg:11.3f}{N19P_EXPECT[blk]:11.3f}"
-                 f"{dv:+11.4f}  {'✅' if _ok else '🔴'}")
+        _ok = abs(dv) <= N19P_TOL
+        _how = ""
+        if not _ok and blk in N19P_EQUIV_BLOCKS:
+            # 等價類：以 `{#0,#2}` 各自之無限直線重算 N-19′，取最接近靶者
+            _alt = []
+            for _i in sorted(PAIR_EXPECT[blk]):
+                _a, _b, _h = ents[_i]
+                _uu = (_b - _a) / float(np.linalg.norm(_b - _a))
+                _nn = np.array([-_uu[1], _uu[0]])
+                _alt.append((abs(float(np.dot(p1 - _a, _nn)))
+                             + abs(float(np.dot(p2 - _a, _nn)))) / 2.0)
+            _spread = (max(_alt) - min(_alt)) if len(_alt) > 1 else 0.0
+            if any(abs(avg - _v) <= N19P_TOL for _v in _alt) and                any(abs(N19P_EXPECT[blk] - _v) <= N19P_TOL for _v in _alt):
+                _ok = True
+                _how = f"（等價類內·散布 {_spread:.2e}）"
+        L.append(f"  {blk:6}{d1:11.4f}{d2:11.4f}{avg:14.7f}{N19P_EXPECT[blk]:16.7f}"
+                 f"{dv:+11.2e}  {'✅' if _ok else '🔴'}{_how}")
         if not _ok:
-            bad.append(f"{blk} N-19′={avg:.4f} ≠ 靶 {N19P_EXPECT[blk]}（Δ={dv:+.4f}）")
+            bad.append(f"{blk} N-19′={avg:.10f} ≠ 靶 {N19P_EXPECT[blk]}（Δ={dv:+.3e}·容差 {N19P_TOL}）")
 
     L.append("")
     L.append("-" * 112)

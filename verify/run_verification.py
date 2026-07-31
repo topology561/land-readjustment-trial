@@ -752,7 +752,9 @@ def main():
         # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
         import copy as _cp
         _snap2 = _cp.deepcopy(snapshot)
-        _snap2["blocks"]["R4"]["街廓分配深度_m"] = 20.0   # 原 32.59；R4 仍為 min → 20×3.5=70
+        # 覆寫前之值＝**快照現值 32.59**；app 側 N-19′（K-8 §二）為 **33.10**、二路尚未收斂
+        #   （見 `verify/fixture_block_depth_n19p.py` T10 制度甲）。N-19′ 下 R4 仍為 min ⇒ 本測項邏輯不變。
+        _snap2["blocks"]["R4"]["街廓分配深度_m"] = 20.0   # R4 仍為 min → 20×3.5=70
         _bb4 = [b for b in cb_by.values()
                 if ns["F3_CATEGORY_BURDEN"].get(b.get("category", ""), "") == "可建築土地"]
         _, _mq2 = _w4._mina_by_block(ns, _snap2, cb_by, _bb4)

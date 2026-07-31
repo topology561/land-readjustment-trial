@@ -5747,44 +5747,106 @@ def alloc_normal_axis(alloc_dir):
 
 def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
                                front_pts=None, baseline_pts=None):
-    """W-C §5a：沿 ALLOC_LINE 量街廓代表深度 D_avg（廢 area/front_len 與 MBR）。
-    座標：ux,uy = alloc_dir（深度向）；nx,ny = (-uy,ux)（臨街向 n_alloc）。
-      to_wd(p) = (w = p·n_alloc 臨街位置, d = p·alloc 深度位置)。
-    方法 A（剖面差值，主用）：FRONT/BASELINE 各頂點投影為 (w,d)，於重疊 w 範圍取樣
-      depth(w)=|d_base(w)−d_front(w)|；D_avg=均值、D_min/D_max=極值（診斷）。
-    方法 B（面積/臨街跨幅，交叉驗證 / A 缺資料時 fallback）：
-      W_block = 街廓頂點 n_alloc 投影跨幅；D_avg_B = area / W_block。
-    回傳 dict 或 None（缺 alloc_dir/面積/頂點）。
-    """
-    if alloc_dir is None or not block_area or block_area <= 0 or not block_vertices:
-        return None
-    ux, uy = float(alloc_dir[0]), float(alloc_dir[1])
-    nrm = (ux * ux + uy * uy) ** 0.5
-    if nrm < 1e-9:
-        return None
-    ux, uy = ux / nrm, uy / nrm
-    nx, ny = -uy, ux
-    # 方法 B（面積 / 臨街跨幅）
-    proj_n = [p[0] * nx + p[1] * ny for p in block_vertices]
-    W_block = (max(proj_n) - min(proj_n)) if proj_n else 0.0
-    D_avg_B = (block_area / W_block) if W_block > 1e-6 else 0.0
+    """**N-19′ 街廓平均深度**（裁定 K-8 §二·KL 裁 2026-07-31·canonical）。
 
-    # 方法 A（剖面差值）
-    D_avg_A = D_min_A = D_max_A = None
-    def _wd(pts):
-        return [(p[0] * nx + p[1] * ny, p[0] * ux + p[1] * uy) for p in pts]
-    def _interp_d(seg, w):
-        s = sorted(seg, key=lambda q: q[0])
-        if w <= s[0][0]:
-            return s[0][1]
-        if w >= s[-1][0]:
+    定義：自前緣線上任一點作**垂直 BASELINE** 之直線，交 BASELINE 於一點；該兩點之距離
+    為此點之深度。沿前緣線取平均。BASELINE 取**無限直線**、**不受線段端點截斷**
+    （K-8 §一 不變式）。
+    實作：前緣線與 BASELINE 皆直線 ⇒ 垂距沿弦**線性** ⇒ 平均 ＝ 中點垂距
+    ＝ **兩端垂距之平均**。**解析式·禁取樣**。
+
+    座標：`bu` ＝ BASELINE 單位方向；`bn = (-bu_y, bu_x)` ＝「垂直 BASELINE」之量測軸。
+      `d(p) = |(p − b0)·bn|`；`D_avg = (d(p1)+d(p2))/2`。
+
+    ⚠️ **三個軸向不同·勿混**（K-8 段二 施工單 §一）：
+      · 方法 B ＝ 面積 ÷ **n_alloc** 跨幅（完全不碰 BASELINE）
+      · 方法 A ＝ 沿 **alloc_dir** 之剖面差值
+      · **N-19′ ＝ 垂直 BASELINE** ⇒ 與 A、B **皆不同**，不得把 A 當成 N-19′ 沿用。
+
+    🔒 **`round(D_avg, 2)` 保留**（KL 更正 2026-07-31）：深度於回傳當下即收 2dp，
+      法源＝市地重劃實施辦法 §3（長度記至二位小數）。故逐街廓乘積
+      ＝ `round(D_avg,2) × min_width`；本案 R4 ＝ `33.10 × 3.5 = 115.85` ⇒ `region_min = 115.85`。
+      （**不得**移除本 round 以求全精度乘積——那會得到 115.87，非法定記載鏈。）
+
+    **診斷欄（降為診斷·禁刪·施工單 §一）**：
+      · `D_avg_B` ＝ 方法 B 之值。
+      · `D_min`／`D_max` ＝ 方法 A（沿 alloc_dir 剖面差值）之取樣極值；A 不可算時
+        改回 N-19′ 兩端垂距之極值，並於 `note` 具名。
+      · `note` 續用既有告警語意，比較對象由「A vs B」改為「**N-19′ vs B**」——
+        差異大 ⇒「街廓恐畫歪或 BASELINE 異常」。
+
+    🗄️ **考古（K-8 §二 令保留·勿刪）**：W-C §5a-1 舊註載「方法 A 主用會被**合成 BASELINE
+      角度污染**——R2 曾算出 `D_avg=500`」，故當時把值改採方法 B。該風險已由
+      **K-8 段一之配對閘**（既有 C-1/C-2/C-3/C-5·`probe_ruling_K8_baseline_pairing.py`）
+      **＋ 無限直線不變式**消滅。方法 A 因此得以**留作診斷**。
+
+    **缺 FRONT_LINE／BASELINE ⇒ loud `RuntimeError`**（施工單 §一：禁 fallback 回方法 B）。
+    BASELINE 來源＝既有 C-2/C-5 配對之結果（`baseline_pts`），**不得自行重配**。
+    """
+    def _stop(_msg):
+        raise RuntimeError(
+            f"🔴 街廓分配深度（N-19′）不可量：{_msg}。"
+            f"N-19′ ＝ 前緣線兩端至 BASELINE 無限直線之垂距平均，"
+            f"須同時有 FRONT_LINE（p1 左／p2 右）與 BASELINE（屁股線）。"
+            f"請至 CAD 補畫／檢查該圖層後重新載入；禁以方法 B 或 area/front_len 代替。")
+
+    if not (front_pts and len(front_pts) >= 2):
+        _stop("缺 FRONT_LINE（或其端點不足二點）")
+    if not (baseline_pts and len(baseline_pts) >= 2):
+        _stop("缺 BASELINE（既有 C-2/C-5 配對未給出該街廓之屁股線）")
+    b0 = baseline_pts[0]; b1 = baseline_pts[-1]
+    bdx = float(b1[0]) - float(b0[0]); bdy = float(b1[1]) - float(b0[1])
+    blen = (bdx * bdx + bdy * bdy) ** 0.5
+    if blen < 1e-9:
+        _stop("BASELINE 退化為點（二端重合）⇒ 方向不可定義")
+    bnx, bny = -bdy / blen, bdx / blen    # 垂直 BASELINE 之量測軸
+    _b0x = float(b0[0]); _b0y = float(b0[1])
+    s1 = (float(front_pts[0][0]) - _b0x) * bnx + (float(front_pts[0][1]) - _b0y) * bny
+    s2 = (float(front_pts[1][0]) - _b0x) * bnx + (float(front_pts[1][1]) - _b0y) * bny
+    # 🔒 **解析捷徑之前提**：深度係**距離**（非負）。「兩端垂距之平均 ≡ 沿弦平均」
+    #   僅於前緣線**整條位於 BASELINE 同一側**時成立；若跨越（有號垂距異號），
+    #   `|d(t)|` 沿弦為 V 形、其均值 ≠ 兩端均值 ⇒ 本式**不適用**。
+    #   BASELINE 為該街廓屁股線、依作業規範不可能穿過前緣線 ⇒ 異號＝上游資料錯。
+    #   判準用**符號**、非閾值（不觸「禁以實測殘差定閘寬」）。
+    #   本案實測六塊皆同號、且 |垂距| ≥ 33m（無臨界）——見夾具 T4b。
+    if s1 * s2 < 0:
+        _stop("前緣線跨越 BASELINE（有號垂距異號）——BASELINE 應為該街廓屁股線、不得穿過前緣線")
+    d1, d2 = abs(s1), abs(s2)
+    D_avg = (d1 + d2) / 2.0
+
+    # ── 診斷 ①：方法 B（面積 ÷ n_alloc 跨幅）──────────────────────────────────────
+    D_avg_B = None
+    _nx = _ny = None
+    if alloc_dir is not None:
+        ux, uy = float(alloc_dir[0]), float(alloc_dir[1])
+        nrm = (ux * ux + uy * uy) ** 0.5
+        if nrm >= 1e-9:
+            ux, uy = ux / nrm, uy / nrm
+            _nx, _ny = -uy, ux
+            if block_area and block_area > 0 and block_vertices:
+                proj_n = [p[0] * _nx + p[1] * _ny for p in block_vertices]
+                W_block = (max(proj_n) - min(proj_n)) if proj_n else 0.0
+                if W_block > 1e-6:
+                    D_avg_B = block_area / W_block
+
+    # ── 診斷 ②：方法 A（沿 alloc_dir 剖面差值·取樣）⇒ D_min/D_max ───────────────────
+    #   **僅診斷**：N-19′ 之值為解析式、禁取樣；此處取樣只為保留「街廓畫歪」之偵測力。
+    D_min_A = D_max_A = None
+    if _nx is not None:
+        def _wd(pts):
+            return [(p[0] * _nx + p[1] * _ny, p[0] * ux + p[1] * uy) for p in pts]
+
+        def _interp_d(seg, w):
+            s = sorted(seg, key=lambda q: q[0])
+            if w <= s[0][0]:
+                return s[0][1]
+            if w >= s[-1][0]:
+                return s[-1][1]
+            for i in range(len(s) - 1):
+                w0, dd0 = s[i]; w1, dd1 = s[i + 1]
+                if w0 <= w <= w1 and (w1 - w0) > 1e-9:
+                    return dd0 + (dd1 - dd0) * (w - w0) / (w1 - w0)
             return s[-1][1]
-        for i in range(len(s) - 1):
-            w0, d0 = s[i]; w1, d1 = s[i + 1]
-            if w0 <= w <= w1 and (w1 - w0) > 1e-9:
-                return d0 + (d1 - d0) * (w - w0) / (w1 - w0)
-        return s[-1][1]
-    if front_pts and baseline_pts and len(front_pts) >= 2 and len(baseline_pts) >= 2:
         fw = _wd(front_pts); bw = _wd(baseline_pts)
         w_lo = max(min(p[0] for p in fw), min(p[0] for p in bw))
         w_hi = min(max(p[0] for p in fw), max(p[0] for p in bw))
@@ -5795,26 +5857,25 @@ def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
                 w = w_lo + (w_hi - w_lo) * i / N
                 depths.append(abs(_interp_d(bw, w) - _interp_d(fw, w)))
             if depths:
-                D_avg_A = sum(depths) / len(depths)
                 D_min_A = min(depths); D_max_A = max(depths)
 
-    # 🆕 W-C §5a-1（實測修正）：深度「值」一律取方法 B（area÷n_alloc 跨幅，不碰 BASELINE）；
-    #   方法 A（剖面差值）降為診斷（D_min/D_max + A/B 偏差），不參與值——A 主用會被合成
-    #   BASELINE 角度污染（R2 曾算出 D_avg=500）。
-    D_avg = D_avg_B
-    if D_avg_A is not None and D_avg_A > 1e-6:
-        method = 'B(值)/A(診斷)'
-        _div = max(D_avg_B, 1e-6)
-        note = ('A/B 接近' if abs(D_avg_A - D_avg_B) <= 0.15 * _div
-                else f'⚠️ A({D_avg_A:.2f}) vs B({D_avg_B:.2f}) 差異大，街廓恐畫歪或 BASELINE 異常（值採 B）')
+    if D_min_A is not None:
         D_min, D_max = D_min_A, D_max_A
+        _src = '方法A'
     else:
-        method = 'B(面積/臨街跨幅)'
-        note = ('缺 FRONT/BASELINE 資料 → 僅方法 B' if not (front_pts and baseline_pts)
-                else '方法 A 無重疊 w 範圍 → 僅方法 B')
-        D_min = D_max = D_avg_B
+        D_min, D_max = min(d1, d2), max(d1, d2)
+        _src = 'N-19′兩端'
+
+    if D_avg_B is None:
+        note = f'⚠️ 方法B 診斷不可算（缺 ALLOC_LINE／街廓面積／頂點）；D_min/D_max 源＝{_src}'
+    elif abs(D_avg_B - D_avg) <= 0.15 * max(D_avg, 1e-6):
+        note = f'N-19′ vs B 接近（B={D_avg_B:.2f}）；D_min/D_max 源＝{_src}'
+    else:
+        note = (f'⚠️ N-19′({D_avg:.2f}) vs B({D_avg_B:.2f}) 差異大，'
+                f'街廓恐畫歪或 BASELINE 異常（值一律採 N-19′）；D_min/D_max 源＝{_src}')
     return {'D_avg': round(D_avg, 2), 'D_min': round(D_min, 2), 'D_max': round(D_max, 2),
-            'D_avg_B': round(D_avg_B, 2), 'method': method, 'note': note}
+            'D_avg_B': (round(D_avg_B, 2) if D_avg_B is not None else None),
+            'method': 'N-19′(垂直BASELINE·無限直線·兩端垂距平均·解析)', 'note': note}
 
 
 def iterate_G_S(a: float, A: float, B: float, C: float,
@@ -10259,6 +10320,14 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
         "centerlines":          ss.get("f3_manual_road_centerlines", {}) or {},
     }
 
+    def _need_blk(_d, _lbl, _key, _what):
+        if _lbl not in _d:
+            raise RuntimeError(
+                f"🔴 七級調配接線：街廓 {_lbl} 於 `{_key}` 無{_what}——"
+                f"該街廓於 Step G 因缺 FRONT_LINE／BASELINE 被具名跳過（見畫面紅字），"
+                f"請補畫圖層後重跑；禁以 0 靜默代入。")
+        return _d[_lbl]
+
     # cb_by：list → {label: blk}
     cb_by = {b["label"]: b for b in _need("f3_classified_blocks")}
 
@@ -10279,8 +10348,12 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
                      "期望長度_m": float(r["左側長度(m)"]), "期望負擔面積_m2": float(r["左側面積(㎡)"])},
             "右側": {"路寬_m": float(r["右側路寬(m)"]), "負擔尺度_輸入": float(r["右側尺度"]),
                      "期望長度_m": float(r["右側長度(m)"]), "期望負擔面積_m2": float(r["右側面積(㎡)"])},
-            "街廓分配深度_m": float(depth_by.get(lbl, 0.0)),
-            "法定最小寬_m": float(mw_by.get(lbl, 0.0)),
+            # 🔒 K-8 段二：深度／最小寬缺件 **loud**（禁 `.get(lbl, 0.0)` 靜默 0）——
+            #   N-19′ 起，缺 FRONT_LINE／BASELINE 之街廓會被 Step-G 具名跳過、**不入** depth_by；
+            #   若此處靜默補 0，該街廓之 G 與 MinA 會以深度 0 一路算下去。
+            "街廓分配深度_m": float(_need_blk(depth_by, lbl, "f3_alloc_depth_by_label",
+                                              "街廓分配深度（N-19′）")),
+            "法定最小寬_m": float(_need_blk(mw_by, lbl, "f3_min_width_by_label", "法定最小寬")),
         }
     snap = {"財務接線_v3": snap_full["財務接線_v3"], "global": snap_full["global"], "blocks": blocks}
 
@@ -15749,8 +15822,14 @@ def main():
                             "ℹ️ **參數已修改 → 點擊下方按鈕重新執行街角地 PK，"
                             "再至 Step G 點擊「執行 G 值迭代計算」即可採用最新 PK 結果**"
                         )
-                    # 🆕 W-C §5a：街廓分配深度沿 ALLOC_LINE 量（方法 A 剖面差值），廢 area/front_len
-                    #   與「全域單值套全街廓」；改逐街廓 D_avg_i + 逐街廓選填覆寫（留空0=auto）。
+                    # 🆕 K-8 §二（KL 裁 2026-07-31）：街廓分配深度改 **N-19′**——前緣線兩端至
+                    #   BASELINE **無限直線**之垂距平均（解析式·禁取樣）。逐街廓 D_avg_i
+                    #   ＋ 逐街廓選填覆寫（留空0=auto）。
+                    #   深度依辦法 §3 記至 **2dp**（`round(D_avg, 2)` 保留·KL 更正 2026-07-31）。
+                    #   🗄️ 沿革（勿刪）：W-C §5a 曾用「沿 ALLOC_LINE 方法 A 剖面差值」為值，
+                    #      §5a-1 改採「方法 B：面積÷n_alloc 跨幅」為值；**二者皆由 N-19′ 取代其「值」
+                    #      之角色，但兩者一併留作診斷**（A→`D_min/D_max`、B→`D_avg_B`·施工單 §一 禁刪）。
+                    #      更早之 `area/front_len` 與「全域單值套全街廓」於 W-C §5a 即已廢除。
                     _build_blocks = [b for b in classified_blocks
                                      if F3_CATEGORY_BURDEN.get(b.get('category', ''), '') == '可建築土地']
                     import math as _math_dep
@@ -15761,8 +15840,7 @@ def main():
                     _mbl_dep = st.session_state.get('f3_manual_baseline', {}) or {}
                     for b in _build_blocks:
                         _lbl = b['label']
-                        _sb_d = sb_rows_by_label.get(_lbl, {})
-                        _fl_len_d = float(_sb_d.get('正面長度(m)', 0.0) or 0.0)
+                        # （`_sb_d`／`_fl_len_d` 隨 area/front_len fallback 一併刪·零殘留）
                         _area_d = float(b.get('area_m2', 0.0) or 0.0)
                         _ad_d = _adir_dep.get(_lbl)
                         _fpts = None
@@ -15773,8 +15851,13 @@ def main():
                         _mb = _mbl_dep.get(_lbl) or {}
                         if _mb.get('point') and _mb.get('angle_deg') is not None:
                             _bx, _by = _mb['point']; _ang = _math_dep.radians(float(_mb['angle_deg']))
-                            # 🆕 §5a-1：合成 BASELINE 裁到街廓 bbox 對角線（非 ±1000m），
-                            #   否則近 90° 的 BASELINE 會讓方法 A depth(w) 掃到 1000（R2 D_avg=500 之因）。
+                            # 合成 BASELINE 之二點。**對 N-19′ 之值無影響**——K-8 §一 不變式下
+                            #   `_compute_block_depth_alloc` 只取其**無限直線**。
+                            # 🗄️ 但半長 `_Lb` **仍須裁到街廓 bbox 對角線**（勿改回 ±1000m）：
+                            #   W-C §5a-1 舊註「近 90° 的 BASELINE 會讓方法 A depth(w) 掃到 1000
+                            #   （R2 D_avg=500 之因）」——方法 A **仍在**（降為 D_min/D_max 診斷·
+                            #   K-8 §二 施工單令禁刪），故該取樣敏感性對**診斷欄**依然成立。
+                            #   對**值**之污染風險則已由 K-8 段一配對閘＋無限直線不變式消滅。
                             _vb = b.get('vertices') or []
                             if _vb:
                                 _xs = [v[0] for v in _vb]; _ys = [v[1] for v in _vb]
@@ -15785,16 +15868,15 @@ def main():
                                      (_bx + _Lb * _math_dep.cos(_ang), _by + _Lb * _math_dep.sin(_ang))]
                         _dinfo = _compute_block_depth_alloc(b.get('vertices') or [], _area_d, _ad_d,
                                                          front_pts=_fpts, baseline_pts=_bpts)
-                        if _dinfo is None:
-                            # 缺 ALLOC_LINE → 退回 area/front_len（並於 §7/診斷標示）
-                            _dval = (_area_d / _fl_len_d) if _fl_len_d > 0 else 0.0
-                            _dinfo = {'D_avg': round(_dval, 2), 'D_min': round(_dval, 2),
-                                   'D_max': round(_dval, 2), 'D_avg_B': round(_dval, 2),
-                                   'method': '⚠️ 缺 ALLOC → area/front_len', 'note': '缺 f3_cad_alloc_dir'}
+                        # 🔒 缺件不再回 None——`_compute_block_depth_alloc` 直接 loud raise
+                        #   （施工單 §一：禁 fallback 回方法 B）。舊之「退回 area/front_len」
+                        #   分支已刪，**不留 except 攔截**（攔了就等於把 fallback 換個地方藏）。
                         _depth_info_by_blk[_lbl] = _dinfo
                     # 逐街廓選填覆寫（留空0=用 D_avg_i；移除舊「單值套全街廓」）
-                    with st.expander("📏 街廓分配深度（沿 ALLOC_LINE 自動量 D_avg；可逐街廓選填覆寫）", expanded=False):
-                        st.caption("留空(0)=自動沿 ALLOC_LINE 量之 D_avg；填值=覆寫該街廓。"
+                    with st.expander("📏 街廓分配深度（N-19′：前緣線兩端至 BASELINE 之垂距平均；"
+                                     "可逐街廓選填覆寫）", expanded=False):
+                        st.caption("留空(0)=自動以 N-19′ 量之 D_avg（解析式·BASELINE 取無限直線·"
+                                   "依辦法 §3 記至 2dp）；填值=覆寫該街廓。"
                                    "D_min/D_max 僅診斷（差很大→街廓畫歪）。")
                         for b in _build_blocks:
                             _lbl = b['label']; _dinfo = _depth_info_by_blk[_lbl]
@@ -16995,10 +17077,19 @@ def main():
                         sb_row = sb_rows_by_label.get(blk_label, {})
                         front_len = float(sb_row.get('正面長度(m)', 0.0) or 0.0)
                         l_front = float(sb_row.get('正街尺度', 0.0) or 0.0)
-                        # 🆕 W-C §5a：avg_depth 用沿 ALLOC 量之 D_avg（含逐街廓覆寫）；缺則退 area/front_len
-                        avg_depth_default = float(
-                            (st.session_state.get('f3_alloc_depth_by_label', {}) or {}).get(blk_label)
-                            or ((blk_area / front_len) if front_len > 0 else 0.0))
+                        # 🔒 K-8 §二：avg_depth ＝ N-19′ 之 D_avg（含逐街廓覆寫）·**缺值 loud**。
+                        #   舊之 `or ((blk_area / front_len) …)` 兜底**已刪**——(1) 它把「深度沒量到」
+                        #   換成一個**看起來正常**的數字，MinA／G 全部照吃；(2) harness 之孿生體
+                        #   `stepg_pipeline` 係**直讀快照深度、無任何 fallback**
+                        #   （`grep -n "f3_alloc_depth_by_label" verify/stepg_pipeline.py`），
+                        #   留著即 app 與 harness **無聲分岔**。
+                        _depth_map_g = st.session_state.get('f3_alloc_depth_by_label', {}) or {}
+                        if float(_depth_map_g.get(blk_label, 0.0) or 0.0) <= 0:
+                            st.error(f"街廓 {blk_label}：無街廓分配深度（N-19′ 未量到——"
+                                     f"通常因缺 FRONT_LINE／BASELINE，見上方紅字）"
+                                     f"→ 本街廓之 G 值計算跳過。請補畫該圖層後重跑。")
+                            continue
+                        avg_depth_default = float(_depth_map_g[blk_label])
 
                         # 街廓 d_hat / 角點：依首筆街角地的「街角側別」決定
                         first_corner_side = None
@@ -18224,7 +18315,8 @@ def main():
                         else:
                             st.caption("（無畸零地）")
                         # ⑤ 街廓深度 + 最小分配面積
-                        st.markdown("**⑤ 街廓深度（沿 ALLOC，方法A主用/B驗證）+ 最小分配面積（D_avg×min_width）**")
+                        st.markdown("**⑤ 街廓深度（N-19′：垂直 BASELINE 之兩端垂距平均；A/B 僅診斷）"
+                                    "+ 最小分配面積（round(D_avg,2)×min_width·辦法 §3）**")
                         _ma = st.session_state.get('f3_min_alloc_area_by_label', {}) or {}
                         _rows_d = []
                         for _lbl in sorted(_dep):
