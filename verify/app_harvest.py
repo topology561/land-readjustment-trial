@@ -149,7 +149,7 @@ if __name__ == "__main__":
         "parse_block_dxf", "parse_ua_cadastral_dxf", "_extract_cad_lines",
         "get_min_lot_size", "_estimate_G_for_qualification",
         "select_corner_lots_both_sides_v12", "_pk_one_side_v12",
-        "_build_corner_range_v2", "_make_chamfer_tri_wb",
+        "_build_corner_range_v3", "_make_chamfer_tri_wb",
         "_compute_per_end_cutoff_areas", "_rebuild_corners_topology",
         "_boundary_len_on_line", "rw_from_width",
     ]

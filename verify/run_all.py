@@ -107,6 +107,8 @@ def main():
                        ("fixture_n14_min_width.py", "🆕 N-14/N-15 宗地最小寬度·深度帶內取 min"),
                        ("fixture_block_depth_n19p.py",
                         "🆕 K-8 §二 N-19′ 街廓平均深度·app 真符號 vs 裁定靶(六塊+region_min)"),
+                       ("fixture_corner_range_k8.py",
+                        "🆕 K-8 §三〜§五 街角規定範圍新構造·構造/單調性自檢＋判別力反例"),
                        ("fixture_end_reserve.py", "P2-f 末端保留·窗位移(左右)"),
                        ("fixture_end_fallback.py", "§4 無勝者 fallback·守恆真檢(左右)"),
                        ("fixture_end_winner.py", "末端 gate 判別力·_unfront_area＋咬合反例")):

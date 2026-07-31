@@ -323,6 +323,10 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         ss['f3_pk_legal_min_width'] = float(
             ns["get_min_lot_size"](b.get('category', ''), float(_row.get('正面路寬(m)', 0.0) or 0.0))
             .get('min_width', 0.0) or 0.0)
+        # 🆕 K-8 §三：同型注入街廓分配深度（N-19′ 2dp）供街角規定範圍新構造。
+        #   PK 跑在 Step-G 之前 ⇒ session 尚無 `f3_alloc_depth_by_label`（reviewer W-5 同坑）。
+        #   源＝參數列之 `街廓分配深度(m)`（與 app 之 `_corner_rows_init` 同欄·app==engine）。
+        ss['f3_pk_alloc_depth'] = float(_row.get('街廓分配深度(m)', 0.0) or 0.0)
         _cad_fl_lstep = (ss.get('f3_cad_front_lines', {}) or {}).get(_lbl, {})
         _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
         _fl_p2_lstep = _cad_fl_lstep.get('p2') if _cad_fl_lstep else None

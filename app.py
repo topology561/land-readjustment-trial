@@ -7981,7 +7981,7 @@ def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, si
     依約束 1「禁假設 `d̂ ⊥ â`」，本函式**不走該退路**：缺值即 **loud raise**（no-silent-fallback）。
 
     ── 泛用（補丁九 §二·禁本案常數）────────────────────────────────────────────
-    `range_area`（逐案由 `_build_corner_range_v2` 算）／`allocation_dir`（逐塊自該塊 ALLOC）／
+    `range_area`（逐案由 `_build_corner_range_v3` 算）／`allocation_dir`（逐塊自該塊 ALLOC）／
     `side`（由該塊實際側街定）**皆為參數**——碼內**無**任何本案值（309.05／43.9／「R2左R3右」等）。
     """
     import numpy as np
@@ -8862,7 +8862,7 @@ HUALIEN_MIN_LOT_TABLE = {
 def get_min_lot_size(category: str, front_road_width_m: float) -> dict:
     """
     依街廓分類與正面路寬查詢最小分配寬度 / 深度 / 面積
-    （花蓮縣畸零地使用規則 §3 第 1 款 一般建築基地）
+    （花蓮縣畸零地使用規則 §3 **第一款** 一般建築基地）
 
     參數：
       category           街廓分類（F3_BLOCK_CATEGORIES 其中之一）
@@ -8870,6 +8870,16 @@ def get_min_lot_size(category: str, front_road_width_m: float) -> dict:
 
     回傳：{'min_width': m, 'min_depth': m, 'min_area': ㎡, 'table_key': 實際查表之分類}
          若非可建築土地（道路、溝渠、公設等），回傳 0/0/0
+
+    ── 🚩 泛化阻斷項（K-8 §三 commit B 登記·**本批只登記不改**）────────────────────
+    1. **僅實作第三條第一款**（一般建築基地）。規則第三條**第二款**「側面應留設騎樓之
+       建築基地」另有一表（住宅區·正面路寬 7–15m ⇒ 寬 **7.10**／深 **14.00**），
+       `HUALIEN_MIN_LOT_TABLE` **無此分支**。UC9898 用不到，但 **K-8 §四 之滑動終止判準
+       正是「退縮寬 ＋ 畸零地最小寬」** ⇒ **換一個有騎樓規定之案子，整個街角構造會
+       靜默套錯表**（寬度短少 3.6m）。⛔ 加分支前須先有「該街廓是否應留設騎樓」之資料源。
+    2. **`min_area` 係衍生值**＝`round(min_width × min_depth, 2)`，**非附表欄位**
+       （附表只有寬與深）。住宅區×路寬 7–15m ⇒ `3.50 × 14.00 = 49.00㎡`。
+       引用時勿當成法定面積門檻——法定面積門檻走 `MinA`（`round(D_avg,2) × min_width`）。
     """
     cat = (category or '').strip()
     w = float(front_road_width_m or 0.0)
@@ -9087,14 +9097,43 @@ def merge_subparcels_by_parent(g_rows: list, min_area_by_block: dict) -> dict:
 # ══ 🆕 N-17 三物件分家（KL 裁 ＋ claude.ai 2026-07-27）══════════════════════════════════
 #   同一個「平移切帶」幾何原語曾被**三種不同語意**共用，且以參數區分（`chamfer=None` 與否），
 #   讀碼者無從辨識呼叫端要的是哪一個 ⇒ 一改兩壞。本波**先分家**：
-#     · **(Ⅰ) 街角規定範圍**＝`_build_corner_range_v2`（退縮＋min_width 平移·**扣截角**）
+#     · **(Ⅰ) 街角規定範圍**＝`_build_corner_range_v3`（🆕 K-8 §三〜§五 新構造·見其 docstring）
 #       ——供 W-D.1.3 街角地 PK 資格判定（per-side）。
 #     · **(Ⅱ) 側街負擔範圍**＝`_build_burden_range`（W ＝ Rw 飽和寬·**不扣截角**）
-#       ——供 Rw 側街負擔。
+#       ——供 Rw 側街負擔。**K-8 §三 完全不動。**
 #     · **(Ⅲ) 量測用虛擬範圍**（實配街角宗**補回截角**）＝**本波不建**：
 #       建而不接 ＝ 死碼（`CLAUDE.md` 不留 stub）；其接線屬 E-7 (Ⅲ) 階段，
 #       且會改街角宗之寬度判定 ⇒ **改面積歸屬** ⇒ 須先過 KL。**列 backlog**。
-#   二者共用**同一幾何原語** `_shift_cut_block_range`（單一真相源·禁複製幾何）。
+#
+#   🔴 **舊註「二者共用同一幾何原語 `_shift_cut_block_range`（單一真相源）」已因 K-8 §三〜§五
+#      裁定失效**（KL 裁 2026-07-31）：(Ⅰ) 改為「最小寬度帶 ＋ ALLOC_LINE 解析定位」新構造，
+#      **不再**使用該原語；`_shift_cut_block_range` 自此**專供 (Ⅱ)**。
+#      舊 (Ⅰ) 構造（`_build_corner_range_v2`＝SIDE_LINE 中點沿 ALLOC 法向平移 退縮＋最小寬）
+#      **已整個刪除·不留 fallback**——KL 指其保證不了寬度：**錨在中點**，且**平移沿 ALLOC 法向、
+#      而寬度沿前緣線量**，兩者不是同一個量。函式名亦自 `_v2` 改為 `_v3`（血訓 #36：
+#      改機制時把舊機制的名字從註解與符號一併改掉，否則舊名會活得比舊碼久）。
+
+# 🔒 街角規定範圍**構造自檢**之 eps（K-8 §五·**禁硬編**·由 `_detect_dxf_quantum` 導出）
+#   下列三常數**鏡射** C-5（`parse_cad_precision_layers` 內之 `_EPS_LEGAL`／`_EPS_K`／
+#   `_EPS_LEGAL_CEIL`）之值，但**刻意不共用符號**：C-5 之 eps 係**配對閘**，其量測點距線段
+#   有長槓桿故乘 `L/ℓ` 放大；本處係**構造自檢**（回量同一組線所定義之寬度·無外插槓桿）
+#   ⇒ 放大倍率為 1。共用符號會使兩者的語意被誤認為同一件事。
+_CR_EPS_LEGAL = 1e-4        # 法定粒度 0.01m（辦法 §3 長度 2dp）之 1/100
+_CR_EPS_K = 4.0             # 兩線各兩端點捨入 ＋ 量測點捨入
+_CR_EPS_LEGAL_CEIL = 0.005  # 法定 2dp 末位之半·硬上限（封頂：吞掉之差不逾半個末位）
+
+
+def _corner_range_eps(dxf_quantum):
+    """自 DXF 實測量化步長 `q` 導出構造自檢之 eps（**禁硬編**·K-8 §五）。
+
+    `q` 之源＝`_detect_dxf_quantum`（`grep -n "def _detect_dxf_quantum" app.py`），
+    於 `parse_cad_precision_layers` 逐檔實測後存於 `baselines[lbl]['_match']['q_detected']`。
+    `q` 取不到（二進位 DXF／偵測失敗）⇒ **只用法定下限**（該函式 docstring 之既定承諾，
+    非靜默兜底）。
+    """
+    if not dxf_quantum:
+        return _CR_EPS_LEGAL
+    return max(_CR_EPS_LEGAL, min(_CR_EPS_K * float(dxf_quantum), _CR_EPS_LEGAL_CEIL))
 
 def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
                            alloc_dir, shift_distance, chamfer_tri=None, _who=''):
@@ -9161,23 +9200,192 @@ def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
     return target if not target.is_empty else None
 
 
-def _build_corner_range_v2(side_mid, block_vertices, block_centroid,
-                            alloc_dir, shift_distance, chamfer_tri=None):
-    """**(Ⅰ) 街角規定範圍** ＝ SIDE_LINE 中點 + 宗地分配線法向平移 `shift_distance`
-    → 切 BLOCK → **扣截角**。供 W-D.1.3 街角地 PK 資格判定（per-side）。
+def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
+                           side_line_pts, alloc_dir, block_depth, setback, min_width,
+                           chamfer_tri=None, dxf_quantum=None, _label='', _side=''):
+    """**(Ⅰ) 街角規定範圍**（🆕 K-8 §三〜§五 新構造·KL 裁 2026-07-31·canonical）。
 
-    ⚠️ 與 **(Ⅱ) 側街負擔範圍**（`_build_burden_range`）**同名不同量·禁互代**
-    （WARNING-C 裁定 2026-07-08）：本函式之 `shift_distance` ＝ 退縮 ＋ 畸零地最小寬，
-    且**扣**道路截角；(Ⅱ) 之 W ＝ Rw 飽和寬且**不扣**截角。
+    法源：花蓮縣畸零地使用規則 §4③④及末段、§3① 附表。
 
-    alloc_dir       宗地分配線方向單位向量 (ux, uy)
-    shift_distance  退縮 + 畸零地最小寬
-    chamfer_tri     道路截角三角形 shapely Polygon（可 None＝該側無截角）
-    回傳 shapely Polygon 或 None（該側確實無範圍）；**內部錯誤一律 loud raise**
+    ── §三 最小寬度帶（虛擬）────────────────────────────────────────────────────
+    前緣線沿 **BASELINE 法向**往 BASELINE 方向平移 `round(D_avg, 2)`，二線所夾之帶。
+    **純量測工具**：不截斷實體、不參與面積、不定義任何宗地邊界。
+    （立法理由：規則第四條之最小寬度與最小深度互相依賴，此帶為 KL 定義以打斷該循環。）
+
+    ── §四 ALLOC_LINE 定位 ─────────────────────────────────────────────────────
+    取平行 ALLOC_LINE 之直線，起始通過該街角之「前緣線 ∩ **截角前**側街境界線」交點，
+    往街廓內側平行滑動，直到**帶內**二側界間、**平行前緣線**之距離**最小值**
+    ＝ **退縮寬 ＋ 畸零地最小寬** 為止。
+    🔒 量測用之側界取**截角前**（§4 末段：角地應截角時，其寬度及深度係指截角前者）
+       ⇒ 本函式之 `side_line_pts` **必為 SIDE_LINE 實體**，**非**街廓多邊形邊界。
+
+    🔴 **解析求解·禁二分／禁取樣／禁迭代兜底**：二側界皆直線 ⇒ 平行前緣線之間距沿深度
+    **線性** ⇒ 最小值必落在帶之兩端之一（`d=0` 或 `d=round(D_avg,2)`）。又滑動只使該距離
+    **整體平移**（斜率與 `t` 無關）⇒ 一次除法即得 `t*`。（同 N-19′ 之解析捷徑；取樣正是方法 A 之病灶。）
+
+    ── §五 街角規定範圍與面積 ──────────────────────────────────────────────────
+    範圍 ＝ 前緣線、**截角後**側界、上開 ALLOC_LINE、**BASELINE** 所圍之多邊形；
+    **面積扣除截角三角形**。街角規定面積 ＝ **該多邊形之面積**。
+    手冊「寬 × 街廓分配深度 − 截角面積」為**示例近似式**，非定義。
+    ⇒ 實作上取「街廓多邊形 ∩ L(t*) 之街角側半平面」——街廓多邊形之邊界即
+      前緣線／截角後側界／BASELINE（屁股線），四者天然圍成同一多邊形。
+
+    ── 🗄️ 作廢（勿復原）────────────────────────────────────────────────────────
+    舊 `_build_corner_range_v2`（SIDE_LINE **中點**沿 ALLOC **法向**平移 退縮＋最小寬
+    → 切 BLOCK）**已刪**。KL 指其保證不了寬度：錨在中點，且平移沿 ALLOC 法向、
+    而寬度沿前緣線量，**兩者不是同一個量**。
+
+    參數
+      front_pts       FRONT_LINE 兩端 [(x,y),(x,y)]（p1＝左·p2＝右）
+      baseline_pts    BASELINE 兩點（取**無限直線**·K-8 §一 不變式）
+      side_line_pts   **SIDE_LINE 實體**兩端（＝截角前側界）
+      alloc_dir       宗地分配線方向 (ux,uy)
+      block_depth     `round(D_avg, 2)`（N-19′·2dp 法定鏈）
+      setback／min_width  退縮寬／畸零地最小寬（`get_min_lot_size` 查表·禁自建表）
+      chamfer_tri     道路截角三角形（可 None＝該側無截角）
+      dxf_quantum     `_detect_dxf_quantum` 之 `q`（自檢 eps 之源·禁硬編）
+    回傳 shapely Polygon；**任何不可構造之情形一律 loud raise**（§6 停機條件）。
     """
-    return _shift_cut_block_range(side_mid, block_vertices, block_centroid,
-                                  alloc_dir, shift_distance, chamfer_tri,
-                                  _who='_build_corner_range_v2(Ⅰ街角規定範圍)')
+    import math as _m3
+    from shapely.geometry import Polygon as _SP3, LineString as _LS3, Point as _PT3
+    from shapely.ops import split as _split3
+
+    _who = f"_build_corner_range_v3[{_label or '?'}·{_side or '?'}]"
+
+    def _stop(msg):
+        raise RuntimeError(f"🔴 {_who}：{msg}（K-8 §三〜§五·停機條件·⛔ 禁兜底）")
+
+    def _u(ax, ay):
+        n = _m3.hypot(ax, ay)
+        if n < 1e-12:
+            _stop("方向向量退化為零")
+        return ax / n, ay / n
+
+    if not (front_pts and len(front_pts) >= 2):
+        _stop("缺 FRONT_LINE")
+    if not (baseline_pts and len(baseline_pts) >= 2):
+        _stop("缺 BASELINE（K-8 §一 配對未給出該街廓屁股線）")
+    if not (side_line_pts and len(side_line_pts) >= 2):
+        _stop("取不到 SIDE_LINE 實體（§6-3 停機）")
+    if not alloc_dir:
+        _stop("缺 ALLOC_LINE 方向")
+    D = float(block_depth or 0.0)
+    if D <= 0:
+        _stop(f"街廓分配深度 {D} ≤ 0（N-19′ 未算出？）")
+    T = float(setback or 0.0) + float(min_width or 0.0)
+    if T <= 0:
+        _stop(f"退縮寬＋畸零地最小寬 ＝ {T} ≤ 0（min_width 查表失敗？·禁靜默 3.5）")
+
+    F1 = (float(front_pts[0][0]), float(front_pts[0][1]))
+    F2 = (float(front_pts[1][0]), float(front_pts[1][1]))
+    dx, dy = _u(F2[0] - F1[0], F2[1] - F1[1])              # d_hat：沿前緣線
+    B0 = (float(baseline_pts[0][0]), float(baseline_pts[0][1]))
+    B1 = (float(baseline_pts[-1][0]), float(baseline_pts[-1][1]))
+    bux, buy = _u(B1[0] - B0[0], B1[1] - B0[1])
+    bnx, bny = -buy, bux                                    # BASELINE 法向
+    if (B0[0] - F1[0]) * bnx + (B0[1] - F1[1]) * bny < 0:   # 定號：指向 BASELINE
+        bnx, bny = -bnx, -bny
+    S1 = (float(side_line_pts[0][0]), float(side_line_pts[0][1]))
+    S2 = (float(side_line_pts[1][0]), float(side_line_pts[1][1]))
+    sux, suy = _u(S2[0] - S1[0], S2[1] - S1[1])
+    snx, sny = -suy, sux                                    # 截角前側界之法向
+    aux, auy = _u(float(alloc_dir[0]), float(alloc_dir[1]))
+    anx, any_ = -auy, aux                                   # ALLOC 法向
+
+    den_s = dx * snx + dy * sny        # d_hat·s_n
+    if abs(den_s) < 1e-9:
+        _stop("前緣線與側街境界線平行 ⇒ 街角交點不存在")
+    den_a = dx * anx + dy * any_       # d_hat·a_n
+    if abs(den_a) < 1e-9:
+        _stop("ALLOC_LINE 平行於前緣線 ⇒「平行前緣線之距離」不可定義")
+
+    # Q0 ＝ 前緣線 ∩ 截角前側界（皆取無限直線）；t_q ＝ 其沿 d_hat 之座標
+    t_q = ((S1[0] - F1[0]) * snx + (S1[1] - F1[1]) * sny) / den_s
+    Q0 = (F1[0] + t_q * dx, F1[1] + t_q * dy)
+
+    def _s_side(d):
+        """深度 d 之線（前緣線沿 bn 平移 d）與**截角前側界**交點之 d_hat 座標。"""
+        return (((S1[0] - F1[0]) * snx + (S1[1] - F1[1]) * sny)
+                - d * (bnx * snx + bny * sny)) / den_s
+
+    def _s_alloc(d, t):
+        """同上，與 L(t)＝{p:(p−Q0)·a_n ＝ t} 之交點。"""
+        return (t + ((Q0[0] - F1[0]) * anx + (Q0[1] - F1[1]) * any_)
+                - d * (bnx * anx + bny * any_)) / den_a
+
+    # σ：街廓內側位於 d_hat 之正向或負向（左街角 +1、右街角 −1；由形心定號·不靠側別字串）
+    s_cen = ((float(block_centroid[0]) - F1[0]) * dx
+             + (float(block_centroid[1]) - F1[1]) * dy)
+    sigma = 1.0 if s_cen > t_q else -1.0
+
+    def _W(d, t):
+        """帶內深度 d 處、二側界間**平行前緣線**之距離（往街廓內為正）。"""
+        return sigma * (_s_alloc(d, t) - _s_side(d))
+
+    # 解析解：W 對 t 之斜率 k 與 d 無關 ⇒ min_d W(d,t) ＝ min_d W(d,0) + k·t
+    k = sigma / den_a
+    w_lo = min(_W(0.0, 0.0), _W(D, 0.0))
+    t_star = (T - w_lo) / k
+
+    # ── 自檢①：構造之**定義**——回量帶內最小寬 ＝ 退縮寬 ＋ 畸零地最小寬 ──────────
+    eps = _corner_range_eps(dxf_quantum)
+    w0, wD = _W(0.0, t_star), _W(D, t_star)
+    if abs(min(w0, wD) - T) > eps:
+        _stop(f"構造自檢不合：帶內最小寬 {min(w0, wD):.6f} ≠ 退縮＋最小寬 {T:.6f}"
+              f"（eps={eps:.6g}·由 q={dxf_quantum} 導出）")
+
+    # ── 自檢①′：以**獨立實作**覆算同一組寬度（shapely 線交點·非上方之閉式）──────────
+    #   ①單以閉式回代，只證「解方程沒解錯」；①′改用完全不同之求交路徑，才驗得出
+    #   `_s_side`／`_s_alloc` 之推導本身有無錯（fixture-provenance：期望值須來自獨立真相源）。
+    #   ⚠️ **不可**改以「範圍多邊形之弦長」覆算——§三 明定該帶為**純量測工具·不截斷實體**，
+    #      二側界取**無限直線**；街廓於該街角處未必深達 D，且前端弦另被截角削去
+    #      （實測 R4 左 弦@d=0 ＝1.36 vs 真寬 5.08）⇒ 以弦覆算會造出假紅。
+    _LBIG = 1.0e5
+    _Lt = _LS3([(Q0[0] + t_star * anx - aux * _LBIG, Q0[1] + t_star * any_ - auy * _LBIG),
+                (Q0[0] + t_star * anx + aux * _LBIG, Q0[1] + t_star * any_ + auy * _LBIG)])
+    _Sinf = _LS3([(S1[0] - sux * _LBIG, S1[1] - suy * _LBIG),
+                  (S1[0] + sux * _LBIG, S1[1] + suy * _LBIG)])
+    for _d_chk, _w_chk in ((0.0, w0), (D, wD)):
+        _P = (F1[0] + _d_chk * bnx, F1[1] + _d_chk * bny)
+        _dep = _LS3([(_P[0] - dx * _LBIG, _P[1] - dy * _LBIG),
+                     (_P[0] + dx * _LBIG, _P[1] + dy * _LBIG)])
+        _i1, _i2 = _dep.intersection(_Sinf), _dep.intersection(_Lt)
+        if _i1.is_empty or _i2.is_empty:
+            _stop(f"自檢①′：深度 {_d_chk:.2f} 之量測線與側界／ALLOC_LINE 無交點")
+        _w_ind = sigma * (((_i2.x - F1[0]) * dx + (_i2.y - F1[1]) * dy)
+                          - ((_i1.x - F1[0]) * dx + (_i1.y - F1[1]) * dy))
+        if abs(_w_ind - _w_chk) > eps:
+            _stop(f"自檢①′：深度 {_d_chk:.2f} 之寬度 獨立覆算 {_w_ind:.6f} "
+                  f"≠ 閉式 {_w_chk:.6f}（eps={eps:.6g}）——推導有誤")
+
+    blk = _SP3([(float(v[0]), float(v[1])) for v in block_vertices])
+    if not blk.is_valid:
+        blk = blk.buffer(0)
+    if blk.is_empty:
+        _stop("街廓多邊形為空")
+
+    # §五：以 L(t*) 切街廓，取街角側之片（街廓邊界＝前緣線／**截角後**側界／BASELINE）
+    _ext = 2.0 * (blk.bounds[2] - blk.bounds[0] + blk.bounds[3] - blk.bounds[1]) + 100.0
+    _Lp = (Q0[0] + t_star * anx, Q0[1] + t_star * any_)
+    cut = _LS3([(_Lp[0] - aux * _ext, _Lp[1] - auy * _ext),
+                (_Lp[0] + aux * _ext, _Lp[1] + auy * _ext)])
+    pieces = list(_split3(blk, cut).geoms)
+    if len(pieces) < 2:
+        _stop(f"L(t*) 未切到街廓（t*={t_star:.4f}）——滑動至街廓另一側仍達不到"
+              f"街角地最小寬度 {T:.2f}m（§6-1 停機·⛔ 禁兜底）")
+    # 街角側＝含側界之片：以側界於帶中央之點為錨（該點在街角側之邊界上）
+    _anchor = _PT3(F1[0] + 0.5 * D * bnx + _s_side(0.5 * D) * dx,
+                   F1[1] + 0.5 * D * bny + _s_side(0.5 * D) * dy)
+    rng = min(pieces, key=lambda g: g.distance(_anchor))
+    if rng.is_empty:
+        _stop("街角側之片為空")
+    if chamfer_tri is not None:
+        rng = rng.difference(chamfer_tri)      # §五：面積扣除截角三角形
+    if not rng.is_valid:
+        rng = rng.buffer(0)
+    if rng.is_empty or rng.area <= 0:
+        _stop("扣截角後範圍為空")
+    return rng
 
 
 def _build_burden_range(side_mid, block_vertices, block_centroid,
@@ -9337,7 +9545,7 @@ def select_corner_lots_both_sides_v12(
     #     · **寫入端斷**：唯一資料源 `f3L_sb_rows_by_label` **全倉無人寫入**
     #       （`grep -rn "f3L_sb_rows_by_label" app.py verify/*.py` ⇒ 只剩考古註解）。
     #     · **讀取端斷**：`_legal_depth_B4` 共 5 次出現、**全為賦值與條件、零讀取**，
-    #       亦從未當引數傳出。跨占實際用的是 `_build_corner_range_v2` 之輸出
+    #       亦從未當引數傳出。跨占實際用的是 `_build_corner_range_v3` 之輸出
     #       （`grep -n "_corner_poly_p1_B4 = " app.py`）——W-B §5 搬過去時即已架空本段。
     #   ⇒ 整段連同 `14.0` 為**死碼**，刪除**不影響任何結果、不改 PK 勝負**。
     #   （前一批曾據「14.0 恆被走到」上呈 U-K8-5 上半——只追到「是實際路徑」就停、
@@ -9355,15 +9563,30 @@ def select_corner_lots_both_sides_v12(
     if _legal_min_width_B4 <= 0:
         raise RuntimeError(
             f"🔴 f3_pk_legal_min_width={_legal_min_width_B4} ≤0（街廓 {_this_blk_B4}·非可建築?）·S1 §6 loud")
+    # 🆕 K-8 §三：街角規定範圍新構造需**街廓分配深度**（N-19′ 2dp）。同 `f3_pk_legal_min_width`，
+    #   由 PK 呼叫端（app／selection_pipeline）注入——PK 跑在 Step-G 之前，session 尚無
+    #   `f3_alloc_depth_by_label`。no-silent-fallback：缺值 loud raise，禁靜默 0／14.0 兜底。
+    _dep_pk = _ss_B4.get('f3_pk_alloc_depth')
+    if _dep_pk is None:
+        raise RuntimeError(
+            f"🔴 f3_pk_alloc_depth 未注入（街廓 {_this_blk_B4}）·K-8 §三：PK 呼叫端須先以"
+            f"該塊之 `街廓分配深度(m)`（N-19′ 2dp）設之·禁靜默兜底")
 
-    # 🚨 W-B §5：讀 session 資料，以模組級 _build_corner_range_v2 建街角規定範圍
+    # 🚨 W-B §5（🆕 K-8 §三〜§五 換構造）：讀 session 資料，以模組級 _build_corner_range_v3
+    #   建街角規定範圍。新構造另需 FRONT_LINE／BASELINE／街廓分配深度（N-19′ 2dp）。
     try:
         import streamlit as _st_wb5
         _slbs_wb = _st_wb5.session_state.get('f3_cad_side_lines_by_side', {}) or {}
         _adir_wb = _st_wb5.session_state.get('f3_cad_alloc_dir', {}) or {}
         _side_wb = _slbs_wb.get(_this_blk_B4, {})
         _alloc_wb = _adir_wb.get(_this_blk_B4)
-        _shift_wb = _setback_B4 + _legal_min_width_B4
+        _fl_wb = (_st_wb5.session_state.get('f3_cad_front_lines', {}) or {}).get(_this_blk_B4) or {}
+        _mb_wb = (_st_wb5.session_state.get('f3_manual_baseline', {}) or {}).get(_this_blk_B4) or {}
+        # 🔴 深度**不可**讀 `f3_alloc_depth_by_label`——該鍵由 **Step-G** 鋪底，而 PK 跑在
+        #   Step-G **之前**（`probe_corner_trueG` docstring 之 reviewer W-5：「PK 時段 session
+        #   未鋪底·fallback 差 R6 6.05㎡」即同一坑）。改採**呼叫端注入**之 `f3_pk_alloc_depth`，
+        #   與 `f3_pk_legal_min_width` 同型（單一真相源·app==engine）。缺值 loud（見下）。
+        _depth_wb = _st_wb5.session_state.get('f3_pk_alloc_depth')
         _cls_blks_wb = _st_wb5.session_state.get('f3_classified_blocks', []) or []
         _blk_meta_wb = next(
             (b for b in _cls_blks_wb if b.get('label') == _this_blk_B4), None
@@ -9374,20 +9597,29 @@ def select_corner_lots_both_sides_v12(
         _chamfer_right_wb = _make_chamfer_tri_wb(_blk_meta_wb, 'right') if _blk_meta_wb else None
     except Exception:
         _slbs_wb = {}; _adir_wb = {}; _side_wb = {}; _alloc_wb = None
+        _fl_wb = {}; _mb_wb = {}; _depth_wb = None
         _blk_verts_wb = []; _blk_cen_wb = (0.0, 0.0)
-        _shift_wb = _setback_B4 + _legal_min_width_B4
         _chamfer_left_wb = None; _chamfer_right_wb = None
+    _fpts_wb = ([_fl_wb['p1'], _fl_wb['p2']]
+                if (_fl_wb.get('p1') and _fl_wb.get('p2')) else None)
+    _bpts_wb = _baseline_pts_from_manual(_mb_wb, _blk_verts_wb)
+    _q_wb = ((_mb_wb.get('_match') or {}).get('q_detected'))
 
     _corner_range_left = None; _corner_range_right = None
     if _alloc_wb and len(_blk_verts_wb) >= 3:
-        if 'left' in _side_wb:
-            _corner_range_left = _build_corner_range_v2(
-                _side_wb['left']['mid'], _blk_verts_wb, _blk_cen_wb,
-                _alloc_wb, _shift_wb, _chamfer_left_wb)
-        if 'right' in _side_wb:
-            _corner_range_right = _build_corner_range_v2(
-                _side_wb['right']['mid'], _blk_verts_wb, _blk_cen_wb,
-                _alloc_wb, _shift_wb, _chamfer_right_wb)
+        for _which_wb, _cham_wb in (('left', _chamfer_left_wb), ('right', _chamfer_right_wb)):
+            if _which_wb not in _side_wb:
+                continue
+            _sd_wb = _side_wb[_which_wb]
+            _rng_wb = _build_corner_range_v3(
+                _blk_verts_wb, _blk_cen_wb, _fpts_wb, _bpts_wb,
+                [_sd_wb['p1'], _sd_wb['p2']], _alloc_wb, _depth_wb,
+                _setback_B4, _legal_min_width_B4, _cham_wb,
+                dxf_quantum=_q_wb, _label=_this_blk_B4, _side=_which_wb)
+            if _which_wb == 'left':
+                _corner_range_left = _rng_wb
+            else:
+                _corner_range_right = _rng_wb
     if _alloc_wb is None and _this_blk_B4:
         try:
             import streamlit as _st_warn_wb
@@ -10321,7 +10553,7 @@ _WF_NS_NAMES = [
     #   🆕 **N-17 分家後**：本名之語意已收斂為 **(Ⅰ) 街角規定範圍**（扣截角）；
     #      **(Ⅱ) 側街負擔範圍** 另有其名 `_build_burden_range`（不扣截角·W＝`RW_SATURATION_WIDTH_M`），
     #      由 `_place_pool_parcels` 自 app globals 直呼，**不經 ns**（故不列於此）。
-    "_build_corner_range_v2",
+    "_build_corner_range_v3",
     # 🆕 §4 P2-b（裁定B 兩階段落位）：階段2 池內落位之**單一真相源**。
     #   函式置 app module 級、stepg 經 ns 取用（同 `_oblique_s_max`／`_corner_buffer_S` 先例·**禁 fork**）。
     #   其 `solve_one`／`build_g_row`／`mark_zaling` 走 **callback**——三者於 stepg 與 app
@@ -16043,30 +16275,35 @@ def main():
                             _cutoff_right = float(_per_end['p2_end']['cutoff_area'])
                         else:
                             _cutoff_left, _cutoff_right = _split_cutoffs_by_side(b)
-                        # 幾何街角規定範圍面積（W-B _build_corner_range_v2，取代矩形近似）
+                        # 幾何街角規定範圍面積（🆕 K-8 §三〜§五 `_build_corner_range_v3`）
                         _adir_cr = st.session_state.get('f3_cad_alloc_dir', {}) or {}
                         _slbs_cr = st.session_state.get('f3_cad_side_lines_by_side', {}) or {}
                         _alloc_cr = _adir_cr.get(_lbl)
                         _side_cr = _slbs_cr.get(_lbl, {})
                         _blk_verts_cr = b.get('vertices') or []
                         _blk_cen_cr = b.get('centroid') or (0.0, 0.0)
-                        _shift_cr = _setback_default + _legal_w_disp
+                        _fl_cr = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(_lbl) or {}
+                        _mb_cr = (st.session_state.get('f3_manual_baseline', {}) or {}).get(_lbl) or {}
+                        _fpts_cr = ([_fl_cr['p1'], _fl_cr['p2']]
+                                    if (_fl_cr.get('p1') and _fl_cr.get('p2')) else None)
+                        _bpts_cr = _baseline_pts_from_manual(_mb_cr, _blk_verts_cr)
+                        _q_cr = ((_mb_cr.get('_match') or {}).get('q_detected'))
                         _left_min = None; _right_min = None
                         if _alloc_cr and len(_blk_verts_cr) >= 3:
-                            if has_left and 'left' in _side_cr:
-                                _chi_l = _make_chamfer_tri_wb(b, 'left')
-                                _rng_l = _build_corner_range_v2(
-                                    _side_cr['left']['mid'], _blk_verts_cr, _blk_cen_cr,
-                                    _alloc_cr, _shift_cr, _chi_l)
-                                _left_min = (round(float(_rng_l.area), 2)
-                                             if _rng_l is not None else None)
-                            if has_right and 'right' in _side_cr:
-                                _chi_r = _make_chamfer_tri_wb(b, 'right')
-                                _rng_r = _build_corner_range_v2(
-                                    _side_cr['right']['mid'], _blk_verts_cr, _blk_cen_cr,
-                                    _alloc_cr, _shift_cr, _chi_r)
-                                _right_min = (round(float(_rng_r.area), 2)
-                                              if _rng_r is not None else None)
+                            for _wh_cr, _has_cr in (('left', has_left), ('right', has_right)):
+                                if not (_has_cr and _wh_cr in _side_cr):
+                                    continue
+                                _sd_cr = _side_cr[_wh_cr]
+                                _rng_cr = _build_corner_range_v3(
+                                    _blk_verts_cr, _blk_cen_cr, _fpts_cr, _bpts_cr,
+                                    [_sd_cr['p1'], _sd_cr['p2']], _alloc_cr, _depth_use,
+                                    _setback_default, _legal_w_disp,
+                                    _make_chamfer_tri_wb(b, _wh_cr),
+                                    dxf_quantum=_q_cr, _label=_lbl, _side=_wh_cr)
+                                if _wh_cr == 'left':
+                                    _left_min = round(float(_rng_cr.area), 2)
+                                else:
+                                    _right_min = round(float(_rng_cr.area), 2)
                         # 🆕 W-C §2：負擔範圍 W=18m（shift=18、不扣截角；v3.1 §5）
                         _burden_l = _burden_r = None
                         if _alloc_cr and len(_blk_verts_cr) >= 3:
@@ -16171,6 +16408,10 @@ def main():
                                     (_blk_meta_for_side.get('category', '') if _blk_meta_for_side else ''),
                                     float(_row.get('正面路寬(m)', 0.0) or 0.0)
                                 ).get('min_width', 0.0) or 0.0)
+                            # 🆕 K-8 §三：同型注入街廓分配深度（N-19′ 2dp）供街角規定範圍新構造。
+                            #   源＝本塊參數列之 `街廓分配深度(m)`（Step-G 之 `_depth_use` 已 2dp）。
+                            st.session_state['f3_pk_alloc_depth'] = float(
+                                _row.get('街廓分配深度(m)', 0.0) or 0.0)
                             _cad_fl_lstep = (st.session_state.get(
                                 'f3_cad_front_lines', {}) or {}).get(_lbl, {})
                             _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
@@ -16542,7 +16783,7 @@ def main():
                                         "**選中**＝該端達標候選中總分最高者（位次 1 街角地）。\n\n"
                                         "🔎 **W-D.1.3-b（項三已改真交集）**："
                                         "『跨占分』＝ 0.4×(真交集 / 範圍面積)（值域 0–0.4；已刪 15m 框）；"
-                                        "『真交集』＝ parcel ∩ `_build_corner_range_v2`（**已用於評分**）、『範圍面積』＝同 range 多邊形面積（項三分母）；"
+                                        "『真交集』＝ parcel ∩ `_build_corner_range_v3`（**已用於評分**）、『範圍面積』＝同 range 多邊形面積（項三分母）；"
                                         "winner＝達標候選中真交集最大者（項一/項二仍常數 0.4/0.2，per-parcel 為 -c）；"
                                         "**交叉檢查（KL）：『範圍=門檻?』應逐塊全 ✅（項三分母＝G-gate 最小面積＝同顆法定 range 多邊形）、『項三比』應全 ≤1（無 clamp）；任一 🔴 → 停查**；"
                                         "『側街分』為 0 或 — 表示 `side_length` 未供（-c 逐筆化）。\n\n"

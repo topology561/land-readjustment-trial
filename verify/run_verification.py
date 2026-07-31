@@ -176,7 +176,7 @@ def build_pipeline(ns, fake_st, snapshot):
         gr["theoretical_corners"] = tcs
         gr["cutoff_total_area"] = round(sum(float(t.get("cutoff_area_m2", 0) or 0) for t in tcs), 4)
         b["cutoff_total_area_m2"] = gr["cutoff_total_area"]
-    # fake session_state（真函式 _make_chamfer_tri_wb / _build_corner_range_v2 讀）
+    # fake session_state（真函式 _make_chamfer_tri_wb / _build_corner_range_v3 讀）
     ss = fake_st.session_state
     ss["f3_cad_front_lines"] = flm
     ss["f3_cad_side_lines_by_side"] = slm
@@ -208,6 +208,7 @@ def build_param_table(ns, fake_st, cb_by, cad, snapshot, setback):
     slm = cad.get("side_lines_by_side", {}) or {}
     flm = cad.get("front_lines", {}) or {}
     alloc = cad.get("alloc_dir_by_block", {}) or {}
+    bls = cad.get("baselines", {}) or {}        # 🆕 K-8 §五：範圍之遠側邊界＋§三 帶之法向
     rows = []
     for lbl in CORNER_BLOCKS:
         b = cb_by[lbl]
@@ -223,13 +224,20 @@ def build_param_table(ns, fake_st, cb_by, cad, snapshot, setback):
         verts = b.get("vertices") or []
         cen = b.get("centroid") or (0.0, 0.0)
         side = slm.get(lbl) or {}
-        shift = setback + legal_w
+        # 🆕 K-8 §三〜§五：新構造之額外輸入（FRONT_LINE／BASELINE／深度／退縮／最小寬）
+        _fpts = ([fl["p1"], fl["p2"]] if (fl.get("p1") and fl.get("p2")) else None)
+        _mb = bls.get(lbl) or {}
+        _bpts = ns["_baseline_pts_from_manual"](_mb, verts)
+        _q = (_mb.get("_match") or {}).get("q_detected")
 
         def rng(which):
             if which not in side:
                 return None
             chi = ns["_make_chamfer_tri_wb"](b, which)
-            r = ns["_build_corner_range_v2"](side[which]["mid"], verts, cen, alloc.get(lbl), shift, chi)
+            r = ns["_build_corner_range_v3"](
+                verts, cen, _fpts, _bpts, [side[which]["p1"], side[which]["p2"]],
+                alloc.get(lbl), depth, setback, legal_w, chi,
+                dxf_quantum=_q, _label=lbl, _side=which)
             return round(float(r.area), 2) if r is not None else None
         rows.append({
             "街廓": lbl, "分類": b["category"],
@@ -596,12 +604,26 @@ def main():
         #   對照現重烤 baseline）
         _b1_by = {(r["街廓"], r["端"], r["候選地號"]): r
                   for r in _read_csv(os.path.join(BASELINES, f"W-D.1.2 診斷_退縮{tag}.csv"))}
-        _gest_diff = sum(
+        # 🆕 K-8 §三 commit B：候選集合本身可能變動（街角規定範圍改構造 ⇒ B-4 前置篩選
+        #   之交集集合變）。舊碼 `_b1_by[key]` 為**無防護查表**，遇新候選直接 KeyError
+        #   炸掉整支 harness（實測 `('R5','左','628-7(2)')`）。⛔ 不得改成 `.get()` 靜默略過
+        #   ——「沒比到」與「比了相同」在計數上不可區分（N0-17-b 顯示層變體）。
+        #   ⇒ **新增／消失之候選一律計入變動**，並分項具名。
+        _keys_now = {(r["街廓"], r["端"], r["候選地號"]) for r in diag}
+        _gest_new = sorted(_keys_now - set(_b1_by))
+        _gest_gone = sorted(set(_b1_by) - _keys_now)
+        _gest_chg = sum(
             1 for r in diag
-            if _norm(_b1_by[(r["街廓"], r["端"], r["候選地號"])]["G估(㎡)"]) != _norm(r["G估(㎡)"]))
+            if (r["街廓"], r["端"], r["候選地號"]) in _b1_by
+            and _norm(_b1_by[(r["街廓"], r["端"], r["候選地號"])]["G估(㎡)"]) != _norm(r["G估(㎡)"]))
+        _gest_diff = _gest_chg + len(_gest_new) + len(_gest_gone)
         _exp_gd = 0  # KL Y 波：baseline 隨新財務同步烤，G估欄變動歸零（重烤即證同源）
         results.append((f"率接線 G估 欄變動{tag} {_gest_diff} 格（期 {_exp_gd}·Y 波後 baseline 同源）", _gest_diff == _exp_gd,
-                        [] if _gest_diff == _exp_gd else [f"實得 {_gest_diff} 格"]))
+                        [] if _gest_diff == _exp_gd else
+                        [f"實得 {_gest_diff} 格＝值異動 {_gest_chg}＋新候選 {len(_gest_new)}"
+                         f"＋消失候選 {len(_gest_gone)}"]
+                        + [f"新候選 {k}" for k in _gest_new]
+                        + [f"消失候選 {k}" for k in _gest_gone]))
 
         ok_s, v_s = diff_rows(sel, os.path.join(BASELINES, f"第 1 宗街角地指配結果_退縮{tag}.csv"),
                               ["街廓"], f"指配{tag}")
