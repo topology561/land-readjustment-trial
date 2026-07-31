@@ -170,6 +170,28 @@ def main():
     if not _ok_k4:
         rc = 1
 
+    # ── 🆕 K-8 段一（KL 裁 2026-07-31）：BASELINE↔街廓 配對之**驗證** ＋ N-19′ 對照靶 ──
+    #   ⚠️ 驗證**既有** C-1/C-2/C-3/C-5 機制之正確性，**非新機制**——配對碼不動。
+    #   併看守 K-8 不變式（BASELINE 一律以**無限直線**參與量測）。
+    #   ⚠️ 同 F-2：走 `[1/3]` golden 段 ⇒ **不動 PASS/FAIL 計數**。
+    _probe_k8 = os.path.join(HERE, "probes", "probe_ruling_K8_baseline_pairing.py")
+    try:
+        _r8 = subprocess.run([sys.executable, _probe_k8],
+                             capture_output=True, text=True, encoding="utf-8", timeout=900)
+        _ok_k8 = (_r8.returncode == 0)
+    except Exception as _e_k8:
+        _r8, _ok_k8 = None, False
+        print(f"  🔴 K-8 配對驗證閘 執行失敗：{_e_k8}")
+    if _r8 is not None:
+        print(f"  {'✅' if _ok_k8 else '🔴'} K-8 配對驗證閘"
+              f"（既有 C-2/C-5 配對·集合斷言 R1/R4∈{{#0,#2}}·N-19′ 六塊對照靶）"
+              f"rc={_r8.returncode}")
+        if not _ok_k8:
+            for _ln in ((_r8.stdout or "") + (_r8.stderr or "")).strip().splitlines()[-14:]:
+                print("     " + _ln)
+    if not _ok_k8:
+        rc = 1
+
     # 🗄️ **K-4-3 來源母體閘已隨 M-5 封存移除**（K-6 §四·KL 裁 2026-07-30 作廢）
     #   探針移至 `verify/archive/probe_ruling_K4_3_source.py`；禁再掛回。
     print()
