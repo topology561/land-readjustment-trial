@@ -102,6 +102,35 @@ ROUTE_OUT = {"G009": "轉F.2(同歸戶R4有達標宗·級1相鄰街廓)",
 
 
 def _mina_by_block(ns, snap, cb_by):
+    """per-block MinA_i ＝ `round(D_avg_i, 2) × min_width_i`（**正典寫法**·K-8 §二-1）。
+
+    🔴 **本支為「土地後果」路徑**（孿生之 `wd4_tier_list._mina_by_block` 為**清單／回歸**路徑）：
+    本函式之輸出經 `wf_f4` 之 `mina = wf_f0._mina_by_block(...)`
+    （`grep -n "wf_f0._mina_by_block" verify/wf_f4.py`）成為 `mina[blk]`，
+    消費於 E1/E2 落位、增配與遞補之各判準（`grep -n "mina\\[" verify/wf_f4.py`）；
+    另經 `mina_qu = min(mina.values())`（`grep -n "mina_qu = min" verify/wf_f4.py`）
+    供 **½線補償**判定（`grep -n "mina_qu" verify/wf_f4.py`）。
+    亦為 `wf_f2`／`wf_f3`／`run_verification` 之同一來源
+    （`grep -rn "_mina_by_block" --include="*.py" .`）。
+    ⇒ **改本函式＝改面積歸屬**；孿生那支改了只動清單與回歸斷言。
+
+    ⚠️ **二口徑分明**（見本檔 `mina_qu` 註）：`mina[blk]`＝**配地可行性**（各街廓）；
+    `mina_qu`＝**½線補償**口徑（重劃區內標準）。**勿混。**
+
+    ⚠️ **round 位置與正典有落差**：碼面實作為 `round(D_avg_i × min_width_i, 2)`（先乘後捨），
+    正典 K-8 §二-1 為 `round(D_avg_i, 2) × min_width_i` 且「`round()` 只在輸出層」。
+    **等值前提＝乘積本身已 ≤2dp**，「深度已 2dp」**並不充分**（2dp 深度 ×3.5，
+    深度第二位小數為奇數時必生第三位）。本案六街廓**四個真分歧、各 0.005㎡**
+    （R1/R2/R5/R6），`mina_qu` 因 min 落在 R4（乘積恰 2dp）而兩形相同 ⇒ **今日零後果**，
+    惟係**案件相依之巧合**。已登記：泛用阻塞項登記表 **GB-7**
+    （`grep -n "GB-7" docs/reports/W-G.4_泛用阻塞項登記表.md`）；
+    **K-6-A2 拆除 per-block MinA 之達標角色時一併收**。
+
+    🗄️ 其**達標判定角色已由 K-6 §零-4 廢除**（改寬深雙檢·K-6 §零-1）——
+    **已裁定、K-6-A2 尚未實作**，故本函式現仍為碼面實際走的路徑。
+
+    回傳 `{label: MinA_i}`（僅可建築土地）。
+    """
     fcb = ns["F3_CATEGORY_BURDEN"]
     m = {}
     for b in cb_by.values():

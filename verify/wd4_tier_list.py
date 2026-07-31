@@ -74,9 +74,17 @@ def _mina_by_block(ns, snapshot, cb_by, build_blocks):
     深度以 2dp 記載後方進入乘積）＝**舊 per-block MinA**（**角色已廢·待 K-6-A2 移除**）；
     現行符號見 `grep -rn "f3_min_alloc_area_by_label" --include="*.py" .`。
 
-    ⚠️ **本函式碼面實作為 `round(D_avg_i × min_width_i, 2)`**（先乘後捨）——與正典寫法
-    **在深度已為 2dp 時等值**（快照與 `_compute_block_depth_alloc` 之回傳皆已 2dp）。
-    二寫法之等值前提即「深度已 2dp」；若日後有未捨入深度進入本式，二者**將不等**。
+    ⚠️ **本函式碼面實作為 `round(D_avg_i × min_width_i, 2)`**（先乘後捨）。
+    **等值前提＝乘積本身已 ≤2dp**；**「深度已 2dp」並不充分**——2dp 深度 × 3.5，
+    深度第二位小數為奇數時必生第三位（如 `33.15×3.5 = 116.025`）。
+    **本案六街廓有四個真分歧、各 0.005㎡**（實測 w=3.5·現行注入深度）：
+
+      R1 `116.025`／`116.02`　R2 `155.645`／`155.64`
+      R5 `159.985`／`159.99`　R6 `159.285`／`159.28`　（左＝正典·右＝碼面）
+      R3 `155.19`／`155.19`　 R4 `115.85`／`115.85`　 ← 僅此二塊等值
+
+    `mina_qu` 因 **min 落在 R4**（其乘積恰為 2dp）而兩形相同，**故今日零後果**；
+    此係**案件相依之巧合、非結構保證**（見泛用阻塞項登記表 GB-7）。
 
     ⚠️ **本 docstring 原稱該符號為「正典」——該本體論標籤已被 K-6 §零-4 推翻**：
     `region_min` 之用途已收斂為單一（僅供 ½ 現金補償／增配門檻），
@@ -415,7 +423,11 @@ def main():
         _write(os.path.join(OUTDIR, f"W-D.4_四梯分級清單_退縮{tag}.csv"), d["groups"])
         _write(os.path.join(OUTDIR, f"W-D.4_碎片遞補對照_退縮{tag}.csv"), d["frag"])
         _write(os.path.join(OUTDIR, f"W-D.4_跨占分配線_退縮{tag}.csv"), d["recomp"])
-        # 斷言：MinA_區/½線（價格無關＝depth×min_width；未 round，容差<0.01，WARNING-B）
+        # 斷言：MinA_區/½線（價格無關＝depth×min_width）。
+        #   ⚠️ 本行比的是 `_mina_by_block` **已 round 之回傳值**、`==` **無容差**；
+        #   WARNING-B 所述之「未-round 原始乘積＋abs<0.01」式實作於
+        #   `verify/fixture_block_depth_n19p.py`（`grep -n "WARNING-B" verify/fixture_block_depth_n19p.py`
+        #   ·全倉唯一）。**兩者口徑不同、非同一件事**（舊註解逕標 WARNING-B 係誤植）。
         ok_m = (d["mina_qu"] == MINA_QU_EXPECT) and (d["half_disp"] == HALF_EXPECT)
         # 旗標全消費（群組語意）＋ v3 旗標數錨（隨價變、非硬編 22）
         consumed = sum(int(g["含旗標宗數"]) for g in d["groups"])
