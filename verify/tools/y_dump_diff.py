@@ -282,8 +282,7 @@ def main():
     if not os.path.isdir(Y_OUT):
         raise SystemExit(f"🔴 {Y_OUT} 不存在（KL live dump 未 copy 到位）")
     # harness 一次 bootstrap
-    with open(rv.SNAPSHOT, encoding="utf-8") as f:
-        snap = json.load(f)
+    snap = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     ns, fake_st = harvest()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snap)
     build_ownership(ns, fake_st, rv.ANON_XLSX)

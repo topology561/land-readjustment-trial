@@ -234,7 +234,7 @@ def main():
 
     # ── golden：UC9898 之 R1（BL#1／BL#3 共線·實證方位差 0.0005°、互垂距 0.0000）──
     try:
-        snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+        snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
         cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
         _mR1 = ((cad.get("baselines") or {}).get("R1") or {}).get("_match") or {}
         _gn = _mR1.get("equivalent_n")

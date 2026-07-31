@@ -5885,6 +5885,66 @@ def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
             'method': 'N-19′(垂直BASELINE·無限直線·兩端垂距平均·解析)', 'note': note}
 
 
+def _baseline_pts_from_manual(mb, block_vertices):
+    """由 `f3_manual_baseline` 之 `{'point','angle_deg'}` 合成 BASELINE 之二端點。
+
+    **對 N-19′ 之值無影響**——K-8 §一 不變式下 `_compute_block_depth_alloc` 只取其**無限直線**。
+    🗄️ 但半長 `_Lb` **仍須裁到街廓 bbox 對角線**（勿改回 ±1000m）：W-C §5a-1 舊註
+      「近 90° 的 BASELINE 會讓方法 A depth(w) 掃到 1000（R2 D_avg=500 之因）」——方法 A
+      **仍在**（降為 D_min/D_max 診斷·K-8 §二 施工單令禁刪），故該取樣敏感性對**診斷欄**依然成立。
+
+    回傳 `[(x1,y1), (x2,y2)]`；`mb` 缺 `point`／`angle_deg` ⇒ 回 `None`
+    （由 `_compute_block_depth_alloc` 之缺件 loud raise 統一處置·此處不自行報錯、不兜底）。
+    """
+    import math as _math_bl
+    _mb = mb or {}
+    if not _mb.get('point') or _mb.get('angle_deg') is None:
+        return None
+    _bx, _by = _mb['point']
+    _ang = _math_bl.radians(float(_mb['angle_deg']))
+    _vb = block_vertices or []
+    if _vb:
+        _xs = [v[0] for v in _vb]; _ys = [v[1] for v in _vb]
+        _Lb = (((max(_xs) - min(_xs)) ** 2 + (max(_ys) - min(_ys)) ** 2) ** 0.5) or 200.0
+    else:
+        _Lb = 200.0
+    return [(_bx - _Lb * _math_bl.cos(_ang), _by - _Lb * _math_bl.sin(_ang)),
+            (_bx + _Lb * _math_bl.cos(_ang), _by + _Lb * _math_bl.sin(_ang))]
+
+
+def n19p_depth_info_by_label(build_blocks, alloc_dir_by, front_lines_by, manual_baseline_by):
+    """**N-19′ 逐街廓平均深度之單一入口**（K-8 §三 commit A·app 與 harness 同源）。
+
+    案由：深度原有**兩條互不相通的路徑**——app-live 走本鏈、harness/baseline 直讀快照
+    `case_params_UC9898.json` 之 `街廓分配深度_m`。KL 裁 2026-07-31：**只把街廓平均深度
+    這一個數字**提前改成「兩路皆當場自 CAD 現算 N-19′」，其餘快照維持 U-K8-1＝乙。
+    ⇒ 本函式自 app Step-G 之內聯迴圈**原樣抽出**（零算式變更），使 `verify/` 側得以呼叫
+    **同一份碼**——🔴 禁在 `verify/` 側另寫一套深度算法。
+
+    build_blocks        可建築街廓 dict 清單（需 `label`／`vertices`／`area_m2`）
+    alloc_dir_by        `{label: (ux,uy)}`（`f3_cad_alloc_dir`／`cad['alloc_dir_by_block']`）
+    front_lines_by      `{label: {'p1','p2'}}`（`f3_cad_front_lines`／`cad['front_lines']`）
+    manual_baseline_by  `{label: {'point','angle_deg'}}`（`f3_manual_baseline`／`cad['baselines']`）
+    回傳 `{label: _compute_block_depth_alloc(...) 之 dict}`（`D_avg` 已 `round(...,2)`）。
+    **缺 FRONT_LINE／BASELINE ⇒ loud RuntimeError**（禁 fallback 回方法 B·禁 except 攔截）。
+    """
+    _adir = alloc_dir_by or {}
+    _fl = front_lines_by or {}
+    _mbl = manual_baseline_by or {}
+    _out = {}
+    for b in (build_blocks or []):
+        _lbl = b['label']
+        _flb = _fl.get(_lbl) or {}
+        _fpts = ([_flb['p1'], _flb['p2']]
+                 if (_flb.get('p1') and _flb.get('p2')) else None)
+        _out[_lbl] = _compute_block_depth_alloc(
+            b.get('vertices') or [], float(b.get('area_m2', 0.0) or 0.0),
+            _adir.get(_lbl),
+            front_pts=_fpts,
+            baseline_pts=_baseline_pts_from_manual(_mbl.get(_lbl), b.get('vertices')))
+    return _out
+
+
 def iterate_G_S(a: float, A: float, B: float, C: float,
                 l_front: float, l_side: float,
                 F: float, W: float, avg_depth: float,
@@ -15838,46 +15898,18 @@ def main():
                     #      更早之 `area/front_len` 與「全域單值套全街廓」於 W-C §5a 即已廢除。
                     _build_blocks = [b for b in classified_blocks
                                      if F3_CATEGORY_BURDEN.get(b.get('category', ''), '') == '可建築土地']
-                    import math as _math_dep
-                    _depth_info_by_blk = {}; _depth_use_by_blk = {}; _min_alloc_area_by_blk = {}
+                    _depth_use_by_blk = {}; _min_alloc_area_by_blk = {}
                     _min_width_by_blk = {}
-                    _adir_dep = st.session_state.get('f3_cad_alloc_dir', {}) or {}
-                    _fl_dep = st.session_state.get('f3_cad_front_lines', {}) or {}
-                    _mbl_dep = st.session_state.get('f3_manual_baseline', {}) or {}
-                    for b in _build_blocks:
-                        _lbl = b['label']
-                        # （`_sb_d`／`_fl_len_d` 隨 area/front_len fallback 一併刪·零殘留）
-                        _area_d = float(b.get('area_m2', 0.0) or 0.0)
-                        _ad_d = _adir_dep.get(_lbl)
-                        _fpts = None
-                        _flb = _fl_dep.get(_lbl) or {}
-                        if _flb.get('p1') and _flb.get('p2'):
-                            _fpts = [_flb['p1'], _flb['p2']]
-                        _bpts = None
-                        _mb = _mbl_dep.get(_lbl) or {}
-                        if _mb.get('point') and _mb.get('angle_deg') is not None:
-                            _bx, _by = _mb['point']; _ang = _math_dep.radians(float(_mb['angle_deg']))
-                            # 合成 BASELINE 之二點。**對 N-19′ 之值無影響**——K-8 §一 不變式下
-                            #   `_compute_block_depth_alloc` 只取其**無限直線**。
-                            # 🗄️ 但半長 `_Lb` **仍須裁到街廓 bbox 對角線**（勿改回 ±1000m）：
-                            #   W-C §5a-1 舊註「近 90° 的 BASELINE 會讓方法 A depth(w) 掃到 1000
-                            #   （R2 D_avg=500 之因）」——方法 A **仍在**（降為 D_min/D_max 診斷·
-                            #   K-8 §二 施工單令禁刪），故該取樣敏感性對**診斷欄**依然成立。
-                            #   對**值**之污染風險則已由 K-8 段一配對閘＋無限直線不變式消滅。
-                            _vb = b.get('vertices') or []
-                            if _vb:
-                                _xs = [v[0] for v in _vb]; _ys = [v[1] for v in _vb]
-                                _Lb = (((max(_xs) - min(_xs)) ** 2 + (max(_ys) - min(_ys)) ** 2) ** 0.5) or 200.0
-                            else:
-                                _Lb = 200.0
-                            _bpts = [(_bx - _Lb * _math_dep.cos(_ang), _by - _Lb * _math_dep.sin(_ang)),
-                                     (_bx + _Lb * _math_dep.cos(_ang), _by + _Lb * _math_dep.sin(_ang))]
-                        _dinfo = _compute_block_depth_alloc(b.get('vertices') or [], _area_d, _ad_d,
-                                                         front_pts=_fpts, baseline_pts=_bpts)
-                        # 🔒 缺件不再回 None——`_compute_block_depth_alloc` 直接 loud raise
-                        #   （施工單 §一：禁 fallback 回方法 B）。舊之「退回 area/front_len」
-                        #   分支已刪，**不留 except 攔截**（攔了就等於把 fallback 換個地方藏）。
-                        _depth_info_by_blk[_lbl] = _dinfo
+                    # 🆕 K-8 §三 commit A：本段內聯迴圈已抽為 module 級 `n19p_depth_info_by_label`
+                    #   （`grep -n "def n19p_depth_info_by_label" app.py`）·**零算式變更**，
+                    #   目的＝令 harness（`run_verification.n19p_depth_by_block`）呼叫**同一份碼**、
+                    #   兩路深度同源。缺件仍由 `_compute_block_depth_alloc` loud raise
+                    #   （施工單 §一：禁 fallback 回方法 B）·**此處不留 except 攔截**。
+                    _depth_info_by_blk = n19p_depth_info_by_label(
+                        _build_blocks,
+                        st.session_state.get('f3_cad_alloc_dir', {}) or {},
+                        st.session_state.get('f3_cad_front_lines', {}) or {},
+                        st.session_state.get('f3_manual_baseline', {}) or {})
                     # 逐街廓選填覆寫（留空0=用 D_avg_i；移除舊「單值套全街廓」）
                     with st.expander("📏 街廓分配深度（N-19′：前緣線兩端至 BASELINE 之垂距平均；"
                                      "可逐街廓選填覆寫）", expanded=False):

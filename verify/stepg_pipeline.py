@@ -8,7 +8,10 @@ headless 重現 app.py 步驟 G（宗地分配 G 值迭代＋W-D.2 §3 滑池槽
 
 **參數裝配鐵則（KL 四條件①）**：路況負擔尺度一律消費快照 `blocks.*.負擔尺度_輸入`
 （front/side_new＝輸入>0；calc_* 算出之尺度與輸入逐格斷言相等，破＝RuntimeError），
-**不得吃 SS_ROAD 預設**。街廓深度＝快照 `街廓分配深度_m`。
+**不得吃 SS_ROAD 預設**。
+街廓深度＝快照 `街廓分配深度_m`，惟該欄自 **K-8 §三 commit A** 起由
+`run_verification.load_snapshot()` 於**記憶體內以現算 N-19′ 覆寫**（檔案零修改·U-K8-1＝乙
+之其餘部分照舊）；本檔另以 `assert_depth_same_source` 逐塊看守兩路同源。
 
 **🆕 v3 財務接線（KL 裁定 2026-07-09；廢 `StepG_v2_中間態`／`財務接線_全區_步驟F`／Tab4／Tab5）**：
 全區財務一律消費快照 `財務接線_v3`。A/B/C 三者皆由**獨立於斷言錨的輸入現算**（禁反填）：
@@ -191,6 +194,37 @@ def _compute_v3_finance(ns, snapshot, cb, cad):
     }
 
 
+def assert_depth_same_source(depth_from_snapshot):
+    """🆕 **A-4 同源閘**（K-8 §三 commit A·KL 裁 2026-07-31）——不等 ⇒ loud raise。
+
+    比的是**兩條插線**，不是同一條算式跑兩次：
+      · 左：`f3_alloc_depth_by_label` ——由**快照**餵出之 session 鍵（app-live 同名鍵之孿生）
+      · 右：`run_verification.n19p_depth_by_block()` ——當場自 CAD **現算**之 N-19′
+    ⇒ 咬得到「有人拿**未注入**之原始快照跑 pipeline」與「日後兩路分家」；
+       若改成「現算 vs 剛注入的現算」即成套套邏輯（`fixture-provenance` 禁令），故不那樣寫。
+
+    🔒 **閘寬有機制依據、非實測殘差**：取 `0.005` ＝ 2dp 記載鏈之無差別半寬
+      （辦法 §3 長度記至二位小數）。**禁改用 `1e-6`**——K-8 §一 判 BASELINE `#0`/`#2`
+      為等價類、禁寫死單一實體，而 R4 之 N-19′ 等價類散布**實測 5.80e-06 > 1e-6**；
+      硬比單值會把「禁寫死單一實體」之禁令從配對層漏到數值層。
+    """
+    import run_verification as _rv_ds        # 函式內 import：run_verification 於模組頂已 import 本檔
+    _now = _rv_ds.n19p_depth_by_block()
+    _TOL_2DP_HALF = 0.005
+    if set(depth_from_snapshot) != set(_now):
+        raise RuntimeError(
+            f"🔴 A-4 同源閘：街廓母體不等——快照側 {sorted(depth_from_snapshot)} vs "
+            f"現算 {sorted(_now)}（K-8 §三 commit A）")
+    _bad = {k: (depth_from_snapshot[k], _now[k]) for k in _now
+            if abs(float(depth_from_snapshot[k]) - float(_now[k])) > _TOL_2DP_HALF}
+    if _bad:
+        raise RuntimeError(
+            f"🔴 A-4 同源閘：深度兩路不同源（閘寬 {_TOL_2DP_HALF}＝2dp 記載鏈半寬）"
+            f"｛街廓: (快照側, 現算)｝＝{_bad}。"
+            f"⛔ 深度是 MinA／G／街角面積／PK 勝負之共同上游，不得無聲分岔；"
+            f"若係以原始快照呼叫，請改走 `run_verification.load_snapshot()`（K-8 §三 A-2）")
+
+
 def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                winners_state, forced_map, setback):
     """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。"""
@@ -228,6 +262,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     ss["f3L_setback_default"] = setback
     ss["f3_alloc_depth_by_label"] = {b["label"]: float(SB[b["label"]]["街廓分配深度_m"])
                                      for b in _build_blocks}
+    # 🆕 K-8 §三 A-4 同源閘（KL 裁 2026-07-31·commit A）
+    assert_depth_same_source(ss["f3_alloc_depth_by_label"])
     # backlog②（WARNING-2）：min_width 逐塊吃**真實 category**（廢硬編「住宅區」）。
     ss["f3_min_width_by_label"] = {
         b["label"]: float(ns["get_min_lot_size"](
@@ -236,7 +272,14 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     ss["f3_corner_winners"] = winners_state
     ss["f3L_forced_offset"] = forced_map
     ss["f3L_corner_min_table"] = param_rows
-    ss["f3_manual_baseline"] = {}
+    # 🆕 K-8 §三 A-1：BASELINE 接線（舊態＝空 dict ⇒ harness 側算不出 N-19′、
+    #   且 K-8 §三〜§五 之街角規定範圍以 BASELINE 為遠側邊界）。缺件 loud，禁空 dict。
+    _bls_sg = cad.get("baselines")
+    if not _bls_sg:
+        raise RuntimeError(
+            "🔴 run_step_g：`cad['baselines']` 為空——BASELINE 圖層未解析或配對全失敗。"
+            "⛔ 禁以空 dict 兜底（K-8 §三 A-1·no-silent-fallback）")
+    ss["f3_manual_baseline"] = _bls_sg
     ss.setdefault("f3_g_iter_params", {})
     _params_for_g = dict(ss.get("f3_g_iter_params", {}))
     rows_by_lbl = {r["街廓"]: r for r in param_rows}

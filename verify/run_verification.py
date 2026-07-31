@@ -62,9 +62,13 @@ def _cat_for(lbl):
     return "未分類"
 
 
-def build_pipeline(ns, fake_st, snapshot):
-    """階段 1-4：真函式重建 classified_blocks（含 geom_restore.theoretical_corners）＋ cad lines，
-    並填入 fake session_state（下游真函式讀）。回傳 (cb_by_label, cad_layers)。"""
+def _build_cb_cad(ns):
+    """DXF → (classified_blocks, cad_layers) 之**共用前段**（不吃快照）。
+
+    自 `build_pipeline` 原樣抽出，供 `n19p_depth_by_block` 共用——後者須在**載入快照之前**
+    取得幾何（快照深度即由它覆寫），若各自重建即成第二份街廓建構碼（#20 禁複本）。
+    回傳**新物件**（不快取），避免兩處共用同一 dict 被下游 post-pass 交叉污染。
+    """
     with open(V6DXF, "rb") as f:
         raw = f.read()
     bd = ns["parse_block_dxf"](raw)
@@ -81,6 +85,83 @@ def build_pipeline(ns, fake_st, snapshot):
     doc = ns["_read_dxf_any_encoding"](raw)
     cad = ns["parse_cad_precision_layers"](doc, cb, dxf_bytes=raw)
     cb = ns["_annotate_block_corner_flags"](cb, cad.get("side_lengths_by_side", {}) or {})
+    return cb, cad
+
+
+_N19P_DEPTH_CACHE = None
+
+
+def n19p_depth_by_block():
+    """🆕 K-8 §三 A-2：**現算** N-19′ 逐街廓平均深度（`{label: round(D_avg,2)}`）。
+
+    KL 裁 2026-07-31：只把**街廓平均深度**這一個數字提前改成「app 與 harness 兩路皆當場
+    自 CAD 現算」；其餘快照維持 **U-K8-1＝乙**（留到 K-8 全案完成後一次換）。
+    理由：K-8 §三〜§五 之後街角規定面積**開始依賴 D_avg**（現構造不依賴），不同源則
+    「八街角新舊面積對照表」會是用舊深度算的——既非舊世界亦非新世界，等於沒驗。
+
+    🔴 **唯一算法源＝`app.n19p_depth_info_by_label`**（內呼 `_compute_block_depth_alloc`）。
+       禁在 `verify/` 側另寫深度算法——用自己的判準去驗別人的機制＝換了一個量測系統。
+    🔒 `round(D_avg, 2)` 之 2dp 法定鏈由 app 側保留（辦法 §3）；此處不再二次捨入。
+    process 內快取一次（`harvest()` 亦有快取，故重複呼叫僅一次 DXF 解析）。
+    """
+    global _N19P_DEPTH_CACHE
+    if _N19P_DEPTH_CACHE is None:
+        ns, _fs = harvest()
+        cb, cad = _build_cb_cad(ns)
+        fcb = ns.get("F3_CATEGORY_BURDEN", {})
+        build_blocks = [b for b in cb
+                        if fcb.get(b.get("category", ""), "") == "可建築土地"]
+        info = ns["n19p_depth_info_by_label"](
+            build_blocks,
+            cad.get("alloc_dir_by_block", {}) or {},
+            cad.get("front_lines", {}) or {},
+            cad.get("baselines", {}) or {})
+        _N19P_DEPTH_CACHE = {lbl: float(v["D_avg"]) for lbl, v in info.items()}
+    return dict(_N19P_DEPTH_CACHE)
+
+
+def load_snapshot_raw():
+    """快照**檔案原值**（零注入）。
+
+    ⚠️ **僅供制度看守與「新舊對照」探針**（`fixture_block_depth_n19p` T10／
+    `probe_ruling_N_depth`／`probe_ruling_N_p8`）——那些格的全部價值就是「拿現算的值
+    去比檔案裡凍結的值」，注入後兩邊會變成同一個數、看守靜默失效（施工單 §2.1
+    對 `R4=20.0` 反例之同型告誡）。**生產路徑一律用 `load_snapshot()`。**
+    """
+    with open(SNAPSHOT, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_snapshot():
+    """快照 ＋ **執行期注入現算 N-19′ 深度**（K-8 §三 commit A·生產路徑唯一入口）。
+
+    `verify/case_params_UC9898.json` **檔案一個字元都不動**（A-3；U-K8-1＝乙 之其餘部分照舊）；
+    注入只發生在**記憶體內的 dict**，故 `wf_f0~f4`／`wd4_tier_list`／`stepg_pipeline`／
+    `selection_pipeline` 等**全部下游**（皆以參數收 snapshot）自動同源，無須逐處改寫。
+
+    ⚠️ 本函式**不自帶同源斷言**——在此比「現算 vs 剛剛注入的現算」是套套邏輯（fixture-provenance
+    之禁令）。真正的 A-4 閘在 `stepg_pipeline.assert_depth_same_source`：它比的是
+    **`f3_alloc_depth_by_label`（快照餵出之 session 鍵·app-live 之孿生）vs 現算**，
+    故能咬到「有人拿未注入之原始快照跑 pipeline」與「日後兩路分家」。
+    """
+    snap = load_snapshot_raw()
+    depth = n19p_depth_by_block()
+    blocks = snap.get("blocks") or {}
+    # 母體須逐格對上：快照 `blocks` ＝ 六可建築街廓，現算亦然。任一側多出即母體不一致
+    #   ⇒ loud（禁靜默略過；「有幾個沒注入到」正是最會被漏看的一種紅）。
+    if set(blocks) != set(depth):
+        raise RuntimeError(
+            f"🔴 load_snapshot：母體不一致——快照 blocks {sorted(blocks)} vs "
+            f"現算 N-19′ {sorted(depth)}（K-8 §三 A-2·禁靜默略過）")
+    for lbl in sorted(depth):
+        blocks[lbl]["街廓分配深度_m"] = depth[lbl]
+    return snap
+
+
+def build_pipeline(ns, fake_st, snapshot):
+    """階段 1-4：真函式重建 classified_blocks（含 geom_restore.theoretical_corners）＋ cad lines，
+    並填入 fake session_state（下游真函式讀）。回傳 (cb_by_label, cad_layers)。"""
+    cb, cad = _build_cb_cad(ns)
     flm = cad.get("front_lines", {}) or {}
     slm = cad.get("side_lines_by_side", {}) or {}
     # 截角拓樸定錨 post-pass（單一真相源；-a 切換之 production 路徑）
@@ -101,6 +182,16 @@ def build_pipeline(ns, fake_st, snapshot):
     ss["f3_cad_side_lines_by_side"] = slm
     ss["f3_cad_alloc_dir"] = cad.get("alloc_dir_by_block", {}) or {}
     ss["f3_classified_blocks"] = cb
+    # 🆕 K-8 §三 A-1：BASELINE 接線（`cad['baselines']`＝`{label:{'point','angle_deg',...}}`）。
+    #   舊態＝`stepg_pipeline` 鋪空 dict、fake session 根本無此鍵 ⇒ harness 側算不出 N-19′。
+    #   **缺件 loud raise**（禁空 dict、禁靜默、禁 `or {}` 兜底·no-silent-fallback）。
+    _bls = cad.get("baselines")
+    if not _bls:
+        raise RuntimeError(
+            "🔴 build_pipeline：`cad['baselines']` 為空——BASELINE 圖層未解析或配對全失敗。"
+            "N-19′ 街廓平均深度（K-8 §二）以 BASELINE 為量測軸，缺之即不可量；"
+            "⛔ 禁以空 dict／方法 B 兜底（K-8 §三 A-1·no-silent-fallback）")
+    ss["f3_manual_baseline"] = _bls
     # 🆕 微波：重劃總負擔率 **現算**（v3 快照輸入＋DXF 面積導出；廢 global.重劃總負擔率 寫死值）。
     #    消費者＝_estimate_G_for_qualification（街角 PK 之 G估）＋ iterate_G_S 迭代初值。
     _rate, _rate_bd = compute_total_burden_rate(ns, cb, snapshot)
@@ -388,7 +479,7 @@ def wf_f0_mina(ns, snapshot, cb_by):
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
-    snapshot = json.load(open(SNAPSHOT, encoding="utf-8"))
+    snapshot = load_snapshot()          # 🆕 K-8 §三 A-2：含現算 N-19′ 深度注入（檔案零修改）
     ns, fake_st = harvest()
     cb_by, cad = build_pipeline(ns, fake_st, snapshot)
 
@@ -758,8 +849,11 @@ def main():
         # reverse-test（規格 §5.3：MinA_區 由參數推導·非寫死）：改 R4 分配深度→MinA_區 隨動
         import copy as _cp
         _snap2 = _cp.deepcopy(snapshot)
-        # 覆寫前之值＝**快照現值 32.59**；app 側 N-19′（K-8 §二）為 **33.10**、二路尚未收斂
-        #   （見 `verify/fixture_block_depth_n19p.py` T10 制度甲）。N-19′ 下 R4 仍為 min ⇒ 本測項邏輯不變。
+        # 🆕 K-8 §三 commit A 後：`snapshot` 已含**現算 N-19′**，故覆寫前之值＝**33.10**
+        #   （非舊快照 32.59；二路已收斂）。本注入係在 `load_snapshot()` **之後**覆寫記憶體 dict，
+        #   ⇒ 反例測資**仍然有效**（施工單 §2.1 之告誡＝「改現算會使注入失效」，
+        #     惟其成立前提為「在 `_mina_by_block` 內部改現算」；本批採**快照層注入**故不觸此雷）。
+        #   N-19′ 下 R4（33.10×3.5=115.85）仍為 min ⇒ 本測項邏輯不變。
         _snap2["blocks"]["R4"]["街廓分配深度_m"] = 20.0   # R4 仍為 min → 20×3.5=70
         _bb4 = [b for b in cb_by.values()
                 if ns["F3_CATEGORY_BURDEN"].get(b.get("category", ""), "") == "可建築土地"]

@@ -409,7 +409,7 @@ def main():
     L.append("【E 系列實測快照】E-1′ min t／E-2′ max t／E-8a 凸性Δ／E-7 街角待判（兩情境·逐宗）")
     L.append("=" * 112)
 
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     _SNAP_CACHE.update(snapshot)
     ns, fake_st = harvest()
     width_fn = ns.get("parcel_min_width_n14")

@@ -48,16 +48,25 @@ r"""K-8 §二 夾具 — **N-19′ 街廓平均深度**（KL 裁 2026-07-31·施
         `wd4_tier_list._half_display` 實跑**，非算術推導） |
 | T10 | 兩路深度之制度看守（見下） |
 
-## T10：兩路深度之**制度看守**
+## T10：**檔案層**制度看守（🆕 K-8 §三 commit A 後語意已變·勿照舊讀）
 
-深度有**兩條互不相通的路徑**：app-live 走本函式；harness／baseline 走快照
-`case_params_UC9898.json` 之 `街廓分配深度_m`（`stepg_pipeline` 種子 → `wf_f0~f4`）。
-K-8 段二只換了前者 ⇒ 二路分岔。故以本格把「目前處於哪個制度」變成機檢：
+深度原有**兩條互不相通的路徑**：app-live 走本函式；harness／baseline 直讀快照
+`case_params_UC9898.json` 之 `街廓分配深度_m`。K-8 段二只換了前者 ⇒ 二路分岔。
 
-- **制度甲＝已知分岔態**（快照仍為凍結舊值）
-- **制度乙＝收斂態**（快照已換 N-19′ 之 2dp 值）——**必須**與 v3 baseline 重烤、
+**🆕 K-8 §三 commit A（KL 裁 2026-07-31）已使兩路同源**——`run_verification.load_snapshot()`
+於**記憶體內**把該欄覆寫為現算 N-19′，故**執行期**已無分岔；但**檔案本體仍為凍結舊值**
+（U-K8-1＝乙：快照留到 K-8 全案完成後一次換）。
+
+⇒ 本格看守之對象自此**明確為「檔案」**（故讀 `rv.load_snapshot_raw()`、**不可**用
+`load_snapshot()`——注入後兩邊同值，看守會靜默失效、永遠報綠）。三態：
+
+- **制度甲＝檔案仍為凍結舊值**（commit A 後之**正常態**：執行期同源、檔案未換）
+- **制度乙＝檔案已換 N-19′ 之 2dp 值**——**必須**與 v3 baseline 重烤、
   `wd4_tier_list.MINA_QU_EXPECT`／`HALF_EXPECT`、`run_verification` 名目字串**同批**完成。
 - **其餘任何值 ⇒ 紅**。
+
+⚠️ 併看守**執行期同源**（commit A 之真正標的）者為
+`stepg_pipeline.assert_depth_same_source`（loud raise·非本夾具）。
 
 ## 重跑
     python verify/fixture_block_depth_n19p.py        # rc=0 綠／rc=1 紅
@@ -229,7 +238,7 @@ def main():
     out.append("")
     out.append("【T8】V6.dxf 六街廓 vs 施工單 §六 靶（app 真符號·2dp 鏈）")
     out.append("-" * 104)
-    snap = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snap = rv.load_snapshot_raw()   # 🔒 T10 制度看守須讀**檔案原值**：注入後兩邊同值＝看守靜默失效
     cb_by, cad = rv.build_pipeline(ns, _fs, snap)
     fls = cad.get("front_lines") or {}
     bls = cad.get("baselines") or {}
@@ -285,28 +294,31 @@ def main():
 
     # ── T10 兩路深度之制度看守 ──────────────────────────────────────────────────
     out.append("")
-    out.append("【T10】app-live 深度 vs 快照深度：制度看守")
+    out.append("【T10】現算 N-19′ vs **快照檔案原值**：檔案層制度看守"
+               "（🆕 commit A 後執行期已同源·本格只看檔案）")
     out.append("-" * 104)
     _snap_d = {k: float(snap["blocks"][k]["街廓分配深度_m"]) for k in SNAP_REGIME_A}
     _is_a = all(abs(_snap_d[k] - v) < 5e-9 for k, v in SNAP_REGIME_A.items())
     _is_b = all(abs(_snap_d[k] - v) < 5e-9 for k, v in SNAP_REGIME_B.items())
-    out.append(f"  {'街廓':6}{'app N-19′(2dp)':>16}{'快照':>10}{'Δ':>10}")
+    out.append(f"  {'街廓':6}{'app N-19′(2dp)':>16}{'快照檔案':>10}{'Δ':>10}")
     for k in sorted(_snap_d):
         out.append(f"  {k:6}{DEPTH_2DP_TARGET[k]:16.2f}{_snap_d[k]:10.2f}"
                    f"{DEPTH_2DP_TARGET[k] - _snap_d[k]:+10.2f}")
     if _is_a:
-        out.append("  ⇒ **制度甲：已知分岔態**（K-8 段二施工後·快照未換）　✅")
-        out.append("     此制度下 harness／baseline 全走**舊深度**；引擎側 MinA_區 仍 114.07。")
-        out.append("     🚩 app-live 與 harness **不同源** ⇒ KL 實跑 UC9898 與 G.3 雙路同源"
-                   "**於換快照＋重烤前不成立**（見 W-G.5_K8-段二 報告 §五）。")
+        out.append("  ⇒ **制度甲：檔案仍為凍結舊值**（＝K-8 §三 commit A 後之正常態）　✅")
+        out.append("     **執行期已同源**：`run_verification.load_snapshot()` 於記憶體內"
+                   "以現算 N-19′ 覆寫該欄（檔案零修改·U-K8-1＝乙），"
+                   "逐塊同源由 `stepg_pipeline.assert_depth_same_source` loud 看守。")
+        out.append("     ⇒ 引擎側 MinA_區 自 commit A 起為 **115.85**（非 114.07）。")
+        out.append("     🚩 尚未做者＝**換檔＋重烤 v3 baseline**（U-K8-1＝乙·K-8 全案完成後一次換）。")
     elif _is_b:
-        out.append("  ⇒ **制度乙：收斂態**（快照已換 N-19′ 2dp）　✅")
+        out.append("  ⇒ **制度乙：檔案已換 N-19′ 2dp**　✅")
         out.append("     此制度**必須**同批完成：v3 baseline 重烤 ＋ "
                    "`wd4_tier_list.MINA_QU_EXPECT` 114.07→115.85 ＋ `HALF_EXPECT` 57.04→57.93 ＋ "
                    "`run_verification` 之 `_ok_der` 與其測項名目字串。")
     else:
         ok = False
-        out.append("  ⇒ 🔴 **兩制度皆不符**——快照深度被改成第三組值。")
+        out.append("  ⇒ 🔴 **兩制度皆不符**——快照**檔案**深度被改成第三組值。")
         out.append(f"     實得   {_snap_d}")
         out.append(f"     制度甲 {SNAP_REGIME_A}")
         out.append(f"     制度乙 {SNAP_REGIME_B}")

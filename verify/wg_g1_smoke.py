@@ -44,7 +44,7 @@ def _reconstruct_sb_rows(ns, cad, snapshot):
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     ns, fake_st = harvest()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     setback, tag = 0.0, "0m"

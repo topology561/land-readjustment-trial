@@ -106,7 +106,7 @@ def _seed_ctx(ns, fake_st, cb_by, cad, snapshot, temp, build, tag, setback):
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     ns, fake_st = harvest()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     build_ownership(ns, fake_st, rv.ANON_XLSX)

@@ -71,7 +71,7 @@ def main():
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     L = []
     bad = []
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     ns, fake_st = harvest()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     fls = cad.get("front_lines") or {}

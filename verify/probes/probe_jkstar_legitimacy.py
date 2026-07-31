@@ -42,7 +42,7 @@ def main():
     if os.environ.get("WV_JKSTAR") != "1":
         print("🔴 須 WV_JKSTAR=1 明示啟用。")
         return 2
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     L = []
     L.append("=" * 92)
     L.append("[P-0c 證據③] k* 合法性：J(k*)≥J(naive) 雙情境（引擎停機② by construction）")

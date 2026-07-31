@@ -91,7 +91,7 @@ def main():
     if not callable(fn):
         print("🔴 harvest 未取得 parse_cad_precision_layers")
         return 1
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     # classified_blocks 之單一真相源＝`run_verification.build_pipeline`（禁自行複刻分類）
     cb_by, _cad0 = rv.build_pipeline(ns, fake_st, snapshot)
     classified = list(cb_by.values())

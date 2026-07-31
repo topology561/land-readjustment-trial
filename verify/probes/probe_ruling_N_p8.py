@@ -94,7 +94,7 @@ def main():
         print("🔴 本探針須 WV_RULING_N_P8=1 明示啟用。")
         return 2
     os.makedirs(os.path.dirname(OUT_LOG), exist_ok=True)
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（下游 run_step_g 之 A-4 閘要求）
     L = []
 
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):

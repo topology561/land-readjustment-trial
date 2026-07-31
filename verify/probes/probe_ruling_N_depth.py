@@ -108,7 +108,10 @@ def main():
         print("🔴 本探針須 WV_RULING_N_DEPTH=1 明示啟用。")
         return 2
     os.makedirs(os.path.dirname(OUT_LOG), exist_ok=True)
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    # 🆕 K-8 §三 A-2：改吃**現算** N-19′。本檔【B】之「現行」欄自此比的是
+    #   「本探針之獨立 numpy 實作」vs「app `_compute_block_depth_alloc`」——**兩份獨立實作**、
+    #   非套套邏輯；差應 ≤ 0.005（app 側 2dp 記載鏈之捨入）。
+    snapshot = rv.load_snapshot()
     ns, fake_st = harvest()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     bls = cad.get("baselines") or {}

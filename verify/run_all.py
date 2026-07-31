@@ -126,6 +126,10 @@ def main():
         #   案由：快照留到 K-8 全案完成後一次換 ⇒ 引擎側深度已是 N-19′、harness 仍吃舊值。
         #   `130 PASS / 2 FAIL` ＋ 名目雙向 diff 為 0 **證明的是「舊輸入下什麼都沒變」**，
         #   不是「段二正確」。該誤讀必須由機器擋住，不能靠讀報告。**不判紅**（脫鉤係 KL 授權）。
+        #   🆕 **K-8 §三 commit A 後：執行期深度脫鉤已解除**（`load_snapshot()` 記憶體注入
+        #     ＋ `stepg_pipeline.assert_depth_same_source` loud 閘）⇒ 本清單自此顯示
+        #     「制度甲＝檔案仍凍結、執行期已同源」。**殘餘脫鉤項＝檔案本體與 v3 baseline
+        #     尚未重烤**（U-K8-1＝乙），故本清單**續留**、續不判紅。
         if _fx == "fixture_block_depth_n19p.py" and _r is not None:
             _t10 = []
             _on = False

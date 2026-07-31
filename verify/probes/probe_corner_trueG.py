@@ -274,7 +274,7 @@ def main():
               "\n   例：WV_CORNER_TRUEG=1 python verify/probes/probe_corner_trueG.py")
         return 2
     os.makedirs(os.path.dirname(OUT_LOG), exist_ok=True)
-    snapshot = json.load(open(rv.SNAPSHOT, encoding="utf-8"))
+    snapshot = rv.load_snapshot()   # 🆕 K-8 §三 A-2：現算 N-19′ 深度注入（檔案零修改）
     L = []
     summary = {}
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
