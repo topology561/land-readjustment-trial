@@ -16819,8 +16819,11 @@ def main():
                                         use_container_width=True, hide_index=True
                                     )
                                     st.caption(
-                                        "驗收基準：R5 左側 ≈ **146.50㎡**（退縮 0m，"
-                                        "V6.dxf ALLOC_LINE + SIDE_LINE 五邊形∩BLOCK−截角）"
+                                        "構造：K-8 §三〜§五（最小寬度帶 ＋ ALLOC_LINE 解析定位 "
+                                        "＋ 前緣線／截角後側界／ALLOC_LINE／BASELINE 圍成、扣截角）。"
+                                        "帶內最小寬恆等於「退縮寬 ＋ 畸零地最小寬」。"
+                                        "🗄️ V6.dxf 預埋圖層 `R5左側街角地最小面積`（146.50㎡）"
+                                        "係**舊構造**繪製，依 K-8 §五-2 已退場，不再作為驗收基準。"
                                     )
                             # 🆕 W-D.1.3-d（§7.4 圖9）：抵費地情形驗收（additive 診斷、純讀既有指配結果）
                             _offset_diag_rows = []

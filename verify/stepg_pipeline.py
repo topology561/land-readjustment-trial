@@ -200,8 +200,18 @@ def assert_depth_same_source(depth_from_snapshot):
     比的是**兩條插線**，不是同一條算式跑兩次：
       · 左：`f3_alloc_depth_by_label` ——由**快照**餵出之 session 鍵（app-live 同名鍵之孿生）
       · 右：`run_verification.n19p_depth_by_block()` ——當場自 CAD **現算**之 N-19′
-    ⇒ 咬得到「有人拿**未注入**之原始快照跑 pipeline」與「日後兩路分家」；
-       若改成「現算 vs 剛注入的現算」即成套套邏輯（`fixture-provenance` 禁令），故不那樣寫。
+    若改成「現算 vs 剛注入的現算」即成套套邏輯（`fixture-provenance` 禁令），故不那樣寫。
+
+    ── 🔒 **誠實標籤：本閘現為「恆真閘」**（claude.ai 獨立複驗·commit C 標註）─────────
+    複驗結果（窮盡·錨 `65ffd17`）：`run_step_g` 之 **19 個呼叫端**，其 `snapshot` **全部**
+    來自 `rv.load_snapshot()`（已注入）；**無任何生產路徑餵 `load_snapshot_raw()`**。
+    母體檢查亦然——`n19p_depth_by_block()` 與 `_build_blocks` 用**同一個**
+    `F3_CATEGORY_BURDEN` 過濾，集合恆等。
+    ⇒ **本閘在所有現行呼叫點恆真**，與 K-4-4 之 `s_max_left`／`front_p2` 閘同族
+      （本專案第三次出現此形態）。**其價值在「凍結未來呼叫點」，不在「現在咬到了什麼」。**
+    ⚠️ 人工餵原始快照之反例測試，證明的是「**若**有人這樣寫會被咬」，
+       **不是**「現在有人這樣寫」——回報時不得以之充作判別力證據。
+    🗄️ 泛化波觀察項：**恆真閘家族**（A4 registry／K-4-4／本閘）宜統一標註體例。
 
     🔒 **閘寬有機制依據、非實測殘差**：取 `0.005` ＝ 2dp 記載鏈之無差別半寬
       （辦法 §3 長度記至二位小數）。**禁改用 `1e-6`**——K-8 §一 判 BASELINE `#0`/`#2`
