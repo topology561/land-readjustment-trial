@@ -9271,31 +9271,17 @@ def select_corner_lots_both_sides_v12(
         raise RuntimeError(
             f"🔴 f3L_setback_default 未設（街廓 {_this_blk_B4}）·補丁六 §四 no-silent-fallback：禁靜默 3.5 兜底")
     _setback_B4 = float(_setback_raw)
-    # 🚨 Patch E-1.8：corner_polygon 深度＝「街廓分配深度」（非法定最小深度）。
-    #
-    # 🔴🔴 **K-8 前置 C 停機上呈（U-K8-5）——本段之 `14.0` 不是兜底，是實際路徑。**
-    #   施工單 §前置C 令「缺值 ⇒ loud raise」，其前提為「14.0 係休眠安全網」。**實測不成立**：
-    #     · `f3L_sb_rows_by_label` **全倉無人寫入**（唯一提及處＝`verify/selection_pipeline.py:293`
-    #       之註解「app 全程無人寫入」）⇒ `_blk_param_B4` 恆為 `{}` ⇒ 首源恆 0。
-    #     · `_candidates` 之鍵集（15 鍵·B-3 結構閘）**不含** `平均深度(m)`／`街廓分配深度(m)`
-    #       （`python -c "import run_all; run_all._candidates_append_keys('app.py')"`）⇒ 次源亦恆 0。
-    #     ⇒ **每一趟、每一塊都落到 `14.0`**（＝住宅區×路寬 7–15m 之法定最小深度）。
-    #   ⇒ 逕改 raise ＝ app 與 harness 之 PK 路徑**每次必炸**；而改讀真來源
-    #     （`f3_alloc_depth_by_label`／`f3L_corner_min_table`）會使 corner_polygon 深度由
-    #     14.0 變為 33.15〜45.71，**直接改動跨占街角面積 → 三指數 → PK 勝負**
-    #     ——該 delta 屬 **K-8 §三 本體**之範圍（街角規定範圍新構造），不得在前置批夾帶。
-    #   ⇒ **本批不改行為**，僅具名登記；修法與 delta 量測隨本體同批。
-    _sb_rows_B4 = _ss_B4.get('f3L_sb_rows_by_label', {}) or {}
-    _blk_param_B4 = _sb_rows_B4.get(_this_blk_B4, {})
-    _legal_depth_B4 = float(_blk_param_B4.get('街廓分配深度(m)', 0.0) or 0.0)
-    if _legal_depth_B4 <= 0 and candidates:
-        _legal_depth_B4 = float(
-            candidates[0].get('平均深度(m)', 0)
-            or candidates[0].get('街廓分配深度(m)', 0)
-            or 14.0
-        )
-    if _legal_depth_B4 <= 0:
-        _legal_depth_B4 = 14.0
+    # 🗄️ **Patch E-1.8 已刪（K-8 前置 E·KL 更正 2026-07-31）——它從未生效。**
+    #   舊碼於此算 `_sb_rows_B4` → `_blk_param_B4` → `_legal_depth_B4`（缺值兜底 `14.0`），
+    #   宣稱「corner_polygon 深度改用街廓分配深度」。實測**兩頭皆斷**：
+    #     · **寫入端斷**：唯一資料源 `f3L_sb_rows_by_label` **全倉無人寫入**
+    #       （`grep -rn "f3L_sb_rows_by_label" app.py verify/*.py` ⇒ 只剩考古註解）。
+    #     · **讀取端斷**：`_legal_depth_B4` 共 5 次出現、**全為賦值與條件、零讀取**，
+    #       亦從未當引數傳出。跨占實際用的是 `_build_corner_range_v2` 之輸出
+    #       （`grep -n "_corner_poly_p1_B4 = " app.py`）——W-B §5 搬過去時即已架空本段。
+    #   ⇒ 整段連同 `14.0` 為**死碼**，刪除**不影響任何結果、不改 PK 勝負**。
+    #   （前一批曾據「14.0 恆被走到」上呈 U-K8-5 上半——只追到「是實際路徑」就停、
+    #     沒再追一步「這個值有沒有人用」。**該上呈已撤銷**。）
     # 法定最小寬（🆕 S1 §6 查表化·補丁六 §四）：走 get_min_lot_size（分區×正面路寬）逐塊查表值，
     #   由 PK 呼叫端（app／selection_pipeline）以 f3_pk_legal_min_width 注入（單一真相源·app==engine）。
     #   廢舊 _blk_param_B4.get('法定最小寬(m)', 3.5)（f3L_sb_rows_by_label 全程無人寫入→恆 3.5）。
@@ -18784,12 +18770,16 @@ def main():
                     _fw = float(_sb_row.get('正面路寬(m)', 0.0) or 0.0)
                     _info = get_min_lot_size(_cat, _fw)
                     # 🚨 Patch E-1 §6：min_area 改用「Ri 實際分配深度」（非法定固定 14m）
-                    # 🔴 **K-8 前置 C 停機上呈（U-K8-5·同上）**：此處之 `else: _info['min_area']`
-                    #   亦**非休眠兜底**——`sb_rows_by_label` 源＝`f3_sb_rows`（臨街負擔列），
-                    #   其欄位**不含** `街廓分配深度(m)`（該欄產於 `_corner_rows_init`
-                    #   → `f3L_corner_min_table`，係**另一張表**）⇒ 恆走 else 支。
-                    #   逕改 raise ＝ 每次必炸；改讀真來源會改動 `_min_area_by_block`
-                    #   ⇒ 屬 K-8 §三 本體範圍。**本批不改行為**，僅具名登記。
+                    # 🗄️ **Patch E-1 §6 未生效·已登記（K-8 前置 F）**：本段恆走 `else` 支。
+                    #   成因：`sb_rows_by_label` 源＝`f3_sb_rows`（臨街負擔列），其欄位**不含**
+                    #   `街廓分配深度(m)`——該欄產於 `_corner_rows_init` → `f3L_corner_min_table`，
+                    #   係**另一張表**。故 `_min_area_by_block[lbl]` 恆 ＝ `get_min_lot_size` 之
+                    #   `min_area`（**衍生值**＝`round(min_width × min_depth, 2)`，非畸零地附表欄位；
+                    #   住宅區×路寬 7–15m ⇒ `3.50 × 14.00 = 49.00㎡`）。
+                    #   **唯一活消費端**＝`merge_subparcels_by_parent(g_rows, min_area_by_block)`
+                    #   （`grep -n "def merge_subparcels_by_parent" app.py`）——而該述詞正是
+                    #   **K-6 §五待置換之「同原地號合併」**；`f3_min_area_by_block` 無下游。
+                    #   ⇒ **本項由 K-6 §五之置換一併處理，K-8 段三不動。**
                     _alloc_depth_w1 = float(_sb_row.get('街廓分配深度(m)', 0.0) or 0.0)
                     if _alloc_depth_w1 > 0 and _info['min_width'] > 0:
                         _cutoff_w1 = (_safe_num_e1(_sb_row.get('【左】截角(㎡)'))
