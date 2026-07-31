@@ -94,8 +94,16 @@ GSA_EXPECT = {
 # 合併後不達標之標旗轉出（KL (A) 追認）
 ROUTE_OUT = {"G009": "轉F.2(同歸戶R4有達標宗·級1相鄰街廓)",
              "G014": "轉F.4(逃生門·2×G≥MinA_區·7-5≥½增配)"}
-# MinA_區（重劃區內最小分配面積標準）正典＝`wd4_tier_list._mina_by_block()` 之
-#   `min(mina.values())`（mina[lbl]=round(街廓分配深度×min_width, 2)）。
+# MinA_區（重劃區內最小分配面積標準）之**施加路徑**＝本檔之 `_mina_by_block()`
+#   （`grep -n "def _mina_by_block" verify/wf_f0.py`）→ `wf_f4` 取 `min(mina.values())`
+#   （`grep -n "mina_qu = min" verify/wf_f4.py`）→ ½線補償。
+#   🔴 **舊註曾寫「正典＝`wd4_tier_list._mina_by_block()`」——不成立·已更正**：
+#     · `wf_f4` **全檔零呼叫** `wd4_tier_list`（`grep -n "wd4_tier_list" verify/wf_f4.py` ⇒ 0 命中）；
+#     · `run_verification` 明寫「單一真相源＝`wf_f0._mina_by_block`」
+#       （`grep -n "單一真相源" verify/run_verification.py`）；
+#     · 兩支**簽章不同、不可互代**：本支收 3 參數回 `dict`；`wd4` 收 4 參數回 `(dict, min)` 2-tuple
+#       （`grep -n "def _mina_by_block" verify/wf_f0.py verify/wd4_tier_list.py`）。
+#     ⇒ `wd4` 那支係**清單／回歸**路徑；**本支才是土地後果路徑**。
 #   本檔原有之區標準字面常數為**孤兒**（僅定義、零讀取、全倉無 import）已刪，避免日後被誤引
 #   為權威（失敗考古 #26 型）。本檔一切比較用 `mina[blk]`＝**配地可行性**口徑（`grep -n "mina\[" verify/wf_f0.py`），
 #   與 ½線補償之 **MinA_區** 口徑係二事、勿混（見 plan v3 §9.2 🔒 二口徑註記）。

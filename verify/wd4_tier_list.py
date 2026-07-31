@@ -117,7 +117,8 @@ def _mina_by_block(ns, snapshot, cb_by, build_blocks):
         lbl = b["label"]
         depth = float(SB[lbl]["街廓分配深度_m"])
         mw = float(gm(b["category"], float(SB[lbl]["正面"]["路寬_m"]))["min_width"])
-        mina[lbl] = round(depth * mw, 2)   # 正典 rounded
+        mina[lbl] = round(depth * mw, 2)   # ⚠️ 先乘後捨·**非**正典寫法（正典 K-8 §二-1 為
+        #                                    round(D,2)×w 且「round() 只在輸出層」）⇒ 見 GB-7
     return mina, min(mina.values())
 
 

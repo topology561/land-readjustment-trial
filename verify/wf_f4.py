@@ -328,7 +328,10 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
         post_price = {l: float(v["單價_元每m2"]) for l, v in
                       snap["財務接線_v3"]["後街廓_面積單價"].items()}
         mina = wf_f0._mina_by_block(ns, snap, cb_by)
-        # MinA_區（重劃區內最小分配面積標準）＝推導正典，取代舊字面常數（修正一·claude.ai 2026-07-23）。
+        # MinA_區（重劃區內最小分配面積標準）＝**推導式**（取代舊字面常數·修正一·claude.ai 2026-07-23）。
+        #   ⚠️ 舊註寫「推導**正典**」——`mina` 之逐塊值走 `round(D×w, 2)`（先乘後捨），
+        #      與正典 K-8 §二-1 之 `round(D,2)×w`「round() 只在輸出層」**有落差**（見 GB-7）；
+        #      故此處只宣稱「由參數推導、非字面常數」，**不宣稱其為正典寫法**。
         #   ⚠️ 必須用上行之【真 snap】版 mina；禁用下方 :305 deepcopy 之 snapE 重算
         #      （snapE 注入合成 zone 鍵，會污染 MinA_區）。
         #   🔒 二口徑分明：mina[blk]＝**配地可行性**（各街廓·E1/E2 落位用·勿混）；

@@ -480,7 +480,15 @@ def self_check_diff_engine():
 
 
 def wf_f0_mina(ns, snapshot, cb_by):
-    """MinA per-block（單一真相源＝`wf_f0._mina_by_block`·避第三份抄寫#20）。"""
+    """MinA per-block（**引擎路徑之**單一真相源＝`wf_f0._mina_by_block`·避第三份抄寫#20）。
+
+    ⚠️ 「單一真相源」**限引擎路徑**（`wf_f0`／`wf_f2`／`wf_f3`／`wf_f4` 與本 harness 皆呼叫該支）。
+    全倉另有**孿生第二實作** `wd4_tier_list._mina_by_block`（清單／回歸路徑），
+    **簽章不同、不可互代**（3 參數回 dict vs 4 參數回 2-tuple）；
+    二者公式相同但**無任何閘看守其一致性** ⇒ 已登記 **GB-8**
+    （`grep -n "GB-8" docs/reports/W-G.4_泛用阻塞項登記表.md`）。
+    `grep -rn "_mina_by_block" --include="*.py" .`
+    """
     import wf_f0
     return wf_f0._mina_by_block(ns, snapshot, cb_by)
 
@@ -819,14 +827,20 @@ def main():
                                   os.path.join(V3RUN, f"W-D.4_跨占分配線_退縮{tag}.csv"),
                                   ["情境", "暫編地號"], f"W-D.4跨占{tag}")
             results.append((f"W-D.4 跨占分配線{tag}", ok_x, v_x))
-        # 推導斷言（WARNING-1 裁定：正典 rounded 全等＋½線顯示 Decimal 釘刀口）
+        # 推導斷言（WARNING-1 裁定：rounded 全等＋½線顯示 Decimal 釘刀口）
+        #   ⚠️ 舊註稱該 rounded 形為「正典」——**不成立**：`_mina_by_block` 走 `round(D×w, 2)`
+        #      （先乘後捨），正典 K-8 §二-1 為 `round(D,2)×w`＋「round() 只在輸出層」（見 GB-7）。
         _d0 = _w4res["0m"]
-        # 🔒 **K-8 前置 A 併記（波末遷移項）**：本錨為**寫死值**，且**綁舊快照**。
-        #   引擎側（app N-19′）已是 `115.85 / 57.93`；harness 仍讀舊快照 ⇒ 本閘在換快照前**恆綠**。
-        #   ⚠️ 綠燈**不代表段二正確**——它證明的是「舊輸入下什麼都沒變」。脫鉤現況每趟由
-        #   `run_all [1/3]` 之「引擎↔快照 脫鉤清單」顯示（K-8 前置 A）。
+        # 🔒 **K-8 前置 A 併記（波末遷移項）**：本錨為**寫死值**，且**綁舊快照檔**。
+        # 🔴 **舊註稱「本閘在換快照前恆綠」——自 K-8 段三 commit A 起已不成立·已更正**：
+        #   `load_snapshot()` 於**記憶體內**注入現算 N-19′（檔案零修改）⇒ 本閘**現為紅**
+        #   （實測 `MinA_區=115.85 ½顯示=57.93`；見 `verify/out/K8_seg3_C.log` 之
+        #   「W-D.4 MinA_區==114.07」列）。該紅係**已歸因、待波末重烤消化**之登記紅。
+        #   ⚠️ 併記舊訓不變：綠燈**不代表段二正確**——它只證明「舊輸入下什麼都沒變」。
         #   **本批不改其值**（改了就是假紅）；K-8 全案換快照時**同批**更新為 115.85 / 57.93，
-        #   連同 `wd4_tier_list.MINA_QU_EXPECT`／`HALF_EXPECT` 與**下一行之測項名目字串**。
+        #   連同 `wd4_tier_list.MINA_QU_EXPECT`／`HALF_EXPECT` 與**下一行之測項名目字串**
+        #   （該名目字串含「正典rounded」四字·同屬誤標，**因已登記於波末遷移項故本批不動**
+        #   ——改之即動名目集合、與登記衝突）。
         _ok_der = (_d0["mina_qu"] == 114.07 and _d0["half_disp"] == 57.04)
         results.append(("W-D.4 MinA_區==114.07(正典rounded)·½顯示==57.04(Decimal非round)", _ok_der,
                         [] if _ok_der else [f"MinA_區={_d0['mina_qu']} ½顯示={_d0['half_disp']}"]))
