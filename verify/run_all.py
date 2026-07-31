@@ -122,6 +122,27 @@ def main():
             if not _ok_fx:
                 for _ln in ((_r.stdout or "") + (_r.stderr or "")).strip().splitlines()[-10:]:
                     print("     " + _ln)
+        # ── 🆕 K-8 前置 A（KL 裁 U-K8-1 ＝ 乙）：**引擎 ↔ 快照 脫鉤清單·每趟必顯**──
+        #   案由：快照留到 K-8 全案完成後一次換 ⇒ 引擎側深度已是 N-19′、harness 仍吃舊值。
+        #   `130 PASS / 2 FAIL` ＋ 名目雙向 diff 為 0 **證明的是「舊輸入下什麼都沒變」**，
+        #   不是「段二正確」。該誤讀必須由機器擋住，不能靠讀報告。**不判紅**（脫鉤係 KL 授權）。
+        if _fx == "fixture_block_depth_n19p.py" and _r is not None:
+            _t10 = []
+            _on = False
+            for _ln in (_r.stdout or "").splitlines():
+                if "【T10】" in _ln:
+                    _on = True
+                if _on:
+                    # ⚠️ T10 標題後緊接一條分隔線 ⇒ 須跨過它；只在**已收到表身**後才收段
+                    #   （初版於首條分隔線即 break，導致清單只印出標題一行）
+                    if _ln.startswith("---") and len(_t10) > 2:
+                        break
+                    _t10.append(_ln)
+            print("     ┌─ 引擎↔快照 脫鉤清單（K-8 前置 A·不判紅）"
+                  + "─" * 30)
+            for _ln in _t10 or ["     （T10 段未取得——夾具輸出格式已變？）"]:
+                print("     │ " + _ln.rstrip())
+            print("     └" + "─" * 68)
         if not _ok_fx:
             rc = 1
 
@@ -176,6 +197,25 @@ def main():
     #   ⚠️ 驗證**既有** C-1/C-2/C-3/C-5 機制之正確性，**非新機制**——配對碼不動。
     #   併看守 K-8 不變式（BASELINE 一律以**無限直線**參與量測）。
     #   ⚠️ 同 F-2：走 `[1/3]` golden 段 ⇒ **不動 PASS/FAIL 計數**。
+    # ── 🆕 K-8 前置 B：SIDE_LINE↔街廓／側別 配對之**驗證**（既有 C-6·非新機制）──
+    #   ⚠️ 施工單原稱此處為「貪婪式 1:1」——係 Phase 11 陳舊註解；C-6 已改結構判準。
+    _probe_sl = os.path.join(HERE, "probes", "probe_ruling_K8_sideline_pairing.py")
+    try:
+        _rsl = subprocess.run([sys.executable, _probe_sl],
+                              capture_output=True, text=True, encoding="utf-8", timeout=900)
+        _ok_sl = (_rsl.returncode == 0)
+    except Exception as _e_sl:
+        _rsl, _ok_sl = None, False
+        print(f"  🔴 K-8 SIDE_LINE 配對驗證閘 執行失敗：{_e_sl}")
+    if _rsl is not None:
+        print(f"  {'✅' if _ok_sl else '🔴'} K-8 SIDE_LINE 配對驗證閘"
+              f"（8 實體／8 街角側／勝差>1.0m 無共用／app 輸出逐格對拍）rc={_rsl.returncode}")
+        if not _ok_sl:
+            for _ln in ((_rsl.stdout or "") + (_rsl.stderr or "")).strip().splitlines()[-14:]:
+                print("     " + _ln)
+    if not _ok_sl:
+        rc = 1
+
     _probe_k8 = os.path.join(HERE, "probes", "probe_ruling_K8_baseline_pairing.py")
     try:
         _r8 = subprocess.run([sys.executable, _probe_k8],

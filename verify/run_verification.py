@@ -708,6 +708,12 @@ def main():
             results.append((f"W-D.4 跨占分配線{tag}", ok_x, v_x))
         # 推導斷言（WARNING-1 裁定：正典 rounded 全等＋½線顯示 Decimal 釘刀口）
         _d0 = _w4res["0m"]
+        # 🔒 **K-8 前置 A 併記（波末遷移項）**：本錨為**寫死值**，且**綁舊快照**。
+        #   引擎側（app N-19′）已是 `115.85 / 57.93`；harness 仍讀舊快照 ⇒ 本閘在換快照前**恆綠**。
+        #   ⚠️ 綠燈**不代表段二正確**——它證明的是「舊輸入下什麼都沒變」。脫鉤現況每趟由
+        #   `run_all [1/3]` 之「引擎↔快照 脫鉤清單」顯示（K-8 前置 A）。
+        #   **本批不改其值**（改了就是假紅）；K-8 全案換快照時**同批**更新為 115.85 / 57.93，
+        #   連同 `wd4_tier_list.MINA_QU_EXPECT`／`HALF_EXPECT` 與**下一行之測項名目字串**。
         _ok_der = (_d0["mina_qu"] == 114.07 and _d0["half_disp"] == 57.04)
         results.append(("W-D.4 MinA_區==114.07(正典rounded)·½顯示==57.04(Decimal非round)", _ok_der,
                         [] if _ok_der else [f"MinA_區={_d0['mina_qu']} ½顯示={_d0['half_disp']}"]))

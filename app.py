@@ -1278,8 +1278,15 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
     except Exception:
         return result
 
-    # 🆕 Phase 11 Hotfix：先收集所有 SIDE_LINE，後用「貪婪式 1:1 配對 +
-    # 街角地校正」批次處理（避免共用邊界 SIDE_LINE 只綁第一個 block 的問題）
+    # 先收集所有 SIDE_LINE，於迴圈後**第二階段**批次綁定。
+    # 🔴 **現行機制＝C-6 結構判準**（KL 裁 2026-07-26）：街廓歸屬由 `_best_block()`
+    #   ＝`_line_block_overlap()`（共線＋投影重疊長）取最大者、同分按塊名之決定性排序、
+    #   勝差 ≤ `_BIND_MARGIN_M` 入 `_ambig`（禁靜默選）；側別由既鎖之 FRONT_LINE
+    #   p1=左／p2=右 端點距離導出，逾 `_TOL_SL` 亦入 `_ambig`。**與 BASELINE 之 C-1~C-5 同族。**
+    # 🗄️ 考古（勿刪·K-8 前置 B 令改寫）：本行原註為「Phase 11 Hotfix：貪婪式 1:1 配對 ＋
+    #   街角地校正」——該敘述自 C-6 起即已過期，卻**未隨碼更新**，於 K-8 段三 施工單
+    #   被讀成「現行仍是貪婪法」而誤列泛化待辦。**陳舊註解會變成下一個人的錯誤前提。**
+    #   驗證見 `verify/probes/probe_ruling_K8_sideline_pairing.py`（已掛 run_all）。
     _side_line_buffer = []   # list of {'pts','length','mid'}
 
     # 可建築土地類別（依 F3_CATEGORY_BURDEN 反查）
@@ -9264,7 +9271,20 @@ def select_corner_lots_both_sides_v12(
         raise RuntimeError(
             f"🔴 f3L_setback_default 未設（街廓 {_this_blk_B4}）·補丁六 §四 no-silent-fallback：禁靜默 3.5 兜底")
     _setback_B4 = float(_setback_raw)
-    # 🚨 Patch E-1.8：corner_polygon 深度改用「街廓分配深度」（非法定最小深度 14m）·非本波 §6 標的（深度域·保留現行）
+    # 🚨 Patch E-1.8：corner_polygon 深度＝「街廓分配深度」（非法定最小深度）。
+    #
+    # 🔴🔴 **K-8 前置 C 停機上呈（U-K8-5）——本段之 `14.0` 不是兜底，是實際路徑。**
+    #   施工單 §前置C 令「缺值 ⇒ loud raise」，其前提為「14.0 係休眠安全網」。**實測不成立**：
+    #     · `f3L_sb_rows_by_label` **全倉無人寫入**（唯一提及處＝`verify/selection_pipeline.py:293`
+    #       之註解「app 全程無人寫入」）⇒ `_blk_param_B4` 恆為 `{}` ⇒ 首源恆 0。
+    #     · `_candidates` 之鍵集（15 鍵·B-3 結構閘）**不含** `平均深度(m)`／`街廓分配深度(m)`
+    #       （`python -c "import run_all; run_all._candidates_append_keys('app.py')"`）⇒ 次源亦恆 0。
+    #     ⇒ **每一趟、每一塊都落到 `14.0`**（＝住宅區×路寬 7–15m 之法定最小深度）。
+    #   ⇒ 逕改 raise ＝ app 與 harness 之 PK 路徑**每次必炸**；而改讀真來源
+    #     （`f3_alloc_depth_by_label`／`f3L_corner_min_table`）會使 corner_polygon 深度由
+    #     14.0 變為 33.15〜45.71，**直接改動跨占街角面積 → 三指數 → PK 勝負**
+    #     ——該 delta 屬 **K-8 §三 本體**之範圍（街角規定範圍新構造），不得在前置批夾帶。
+    #   ⇒ **本批不改行為**，僅具名登記；修法與 delta 量測隨本體同批。
     _sb_rows_B4 = _ss_B4.get('f3L_sb_rows_by_label', {}) or {}
     _blk_param_B4 = _sb_rows_B4.get(_this_blk_B4, {})
     _legal_depth_B4 = float(_blk_param_B4.get('街廓分配深度(m)', 0.0) or 0.0)
@@ -18764,6 +18784,12 @@ def main():
                     _fw = float(_sb_row.get('正面路寬(m)', 0.0) or 0.0)
                     _info = get_min_lot_size(_cat, _fw)
                     # 🚨 Patch E-1 §6：min_area 改用「Ri 實際分配深度」（非法定固定 14m）
+                    # 🔴 **K-8 前置 C 停機上呈（U-K8-5·同上）**：此處之 `else: _info['min_area']`
+                    #   亦**非休眠兜底**——`sb_rows_by_label` 源＝`f3_sb_rows`（臨街負擔列），
+                    #   其欄位**不含** `街廓分配深度(m)`（該欄產於 `_corner_rows_init`
+                    #   → `f3L_corner_min_table`，係**另一張表**）⇒ 恆走 else 支。
+                    #   逕改 raise ＝ 每次必炸；改讀真來源會改動 `_min_area_by_block`
+                    #   ⇒ 屬 K-8 §三 本體範圍。**本批不改行為**，僅具名登記。
                     _alloc_depth_w1 = float(_sb_row.get('街廓分配深度(m)', 0.0) or 0.0)
                     if _alloc_depth_w1 > 0 and _info['min_width'] > 0:
                         _cutoff_w1 = (_safe_num_e1(_sb_row.get('【左】截角(㎡)'))
@@ -18771,7 +18797,7 @@ def main():
                         _min_area_by_block[_lbl] = round(
                             max(_info['min_width'] * _alloc_depth_w1 - _cutoff_w1, 0.0), 2)
                     else:
-                        _min_area_by_block[_lbl] = _info['min_area']  # fallback 法定值
+                        _min_area_by_block[_lbl] = _info['min_area']  # 恆走此支（見上）
                     if _info['min_area'] > 0:
                         _min_info_rows.append({
                             '街廓': _lbl, '分類': _cat, '正面路寬(m)': round(_fw, 2),
