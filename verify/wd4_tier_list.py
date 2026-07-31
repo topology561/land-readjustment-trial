@@ -50,7 +50,7 @@ from stepg_pipeline import run_step_g                 # noqa: E402
 import wd3_fragment_geom as wd3                        # noqa: E402（碎片三分類單一真相源）
 
 OUTDIR = os.path.join(HERE, "out")
-MINA_QU_EXPECT = 114.07   # R4 round(32.59×3.5,2)=114.07（正典 rounded，WARNING-1 裁定；全等斷言）
+MINA_QU_EXPECT = 114.07   # R4 round(32.59×3.5,2)=114.07（舊深度鏈·波末遷移項（登記於 K-6 裁定檔）；全等斷言）
 HALF_EXPECT = 57.04       # ½線顯示：Decimal ROUND_HALF_UP(114.07/2=57.035)=57.04（禁 float round=57.03）
 # 🆕 v3：畸零旗標數（宗地寬度<法定最小寬）。v2=22 → v3=31（+9，無消失）：配地寬隨真值地價
 #   縮約 24%、跌破 min_width 3.5m，屬合法隨價變（歸因見 baselines/v3/PROVENANCE_v3.md 註⑤）。
@@ -70,9 +70,13 @@ _LOCK_KINDS = ("查封", "假扣押", "假處分", "破產", "預告登記")
 
 
 def _mina_by_block(ns, snapshot, cb_by, build_blocks):
-    """MinA_i = round(分配深度_i × min_width_i, 2)＝**舊 per-block MinA**
-    （**角色已廢·待 K-6-A2 移除**）之同式；現行符號見
-    `grep -rn "f3_min_alloc_area_by_label" --include="*.py" .`。
+    """MinA_i ＝ `round(D_avg_i, 2) × min_width_i`（**正典寫法**·K-8 §二-1：
+    深度以 2dp 記載後方進入乘積）＝**舊 per-block MinA**（**角色已廢·待 K-6-A2 移除**）；
+    現行符號見 `grep -rn "f3_min_alloc_area_by_label" --include="*.py" .`。
+
+    ⚠️ **本函式碼面實作為 `round(D_avg_i × min_width_i, 2)`**（先乘後捨）——與正典寫法
+    **在深度已為 2dp 時等值**（快照與 `_compute_block_depth_alloc` 之回傳皆已 2dp）。
+    二寫法之等值前提即「深度已 2dp」；若日後有未捨入深度進入本式，二者**將不等**。
 
     ⚠️ **本 docstring 原稱該符號為「正典」——該本體論標籤已被 K-6 §零-4 推翻**：
     `region_min` 之用途已收斂為單一（僅供 ½ 現金補償／增配門檻），
@@ -80,8 +84,23 @@ def _mina_by_block(ns, snapshot, cb_by, build_blocks):
     ⇒ 本函式之算式與回傳值**現仍為碼面實際走的路徑**，故本批**只改字串、不動算術**。
 
     （WARNING-1 裁定 2026-07-08：辦法 §3「面積計算至小數點以下二位、第三位四捨五入」，
-    rounded 為法定慣例。⚠️ 該裁定當時所舉之例 `R4=round(32.59×3.5,2)=114.07` 係
-    **N-19′ 前之舊深度鏈**、已作廢；現值為 `round(33.10×3.5,2)=115.85`。）
+    rounded 為法定慣例。）
+
+    🗄️ **`R4` 之值：現值 vs N-19′ 後應為**（**二者定義以波末遷移項登記為準**·
+    `grep -n "波末遷移項登記" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+
+      · **N-19′ 後應為** `round(33.10 × 3.5, 2) = 115.85`（**波末批換快照後方生效**）
+      · **常數 `MINA_QU_EXPECT` 之現值仍為** `round(32.59 × 3.5, 2) = 114.07`
+        ——該常數即登記表所列之待遷移落點，**本批不動**（改了就是假紅）
+
+    🔴 **但本函式之「實際回傳值」已非 114.07**：自 K-8 段三 commit A（深度兩路同源）起，
+      `run_verification.load_snapshot()` 於**記憶體內**把 `街廓分配深度_m` 覆寫為現算 N-19′
+      ⇒ **生產路徑實測 `mina_qu = 115.85`／`half = 57.93`**；僅
+      `load_snapshot_raw()`（制度看守專用）之路徑仍得 `114.07`／`57.04`。
+      ⇒ **`MINA_QU_EXPECT` 之全等斷言現為紅**，係已歸因、待波末重烤消化之登記紅
+      （見 `docs/reports/W-G.5_K8-段三_commitC_重錨解封.md` §2.2 之源A 22 紅）。
+      **勿把「常數之現值」誤讀為「本函式之回傳現值」——二者自 commit A 起已分離。**
+
     回傳 (mina dict, mina_qu)。"""
     gm = ns["get_min_lot_size"]
     SB = snapshot["blocks"]
