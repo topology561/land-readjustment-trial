@@ -126,7 +126,14 @@ COLS = ["情境", "街廓", "側別", "街角第1宗",
         "k=∂w/∂d", "m=-∂D/∂t", "c=∂w/∂t", "K-9-7分支",
         "寬度_截角前_新帶深(m)", "寬度_截角後_新帶深(m)",
         "寬度_截角前_舊帶深14(m)", "寬度_截角後_舊帶深14(m)",
-        "範圍⊆宗", "範圍−宗 溢出(㎡)", "截角接合", "頂點最小距(m)", "局部框最小距(m)"]
+        "範圍⊆宗", "範圍−宗 溢出(㎡)", "截角接合", "頂點最小距(m)", "局部框最小距(m)",
+        # 🆕 K-9-8 第三代量測
+        "K98_P", "K98_P落點", "K98_內縮量(m)", "K98_PQ長(m)", "K98_平行殘差",
+        "K98_最小深度(m)", "K98_最小寬度(m)", "K98_虛擬塊面積(㎡)", "K98_虛擬−宗(㎡)",
+        "K98_其中在街廓外(㎡)", "K98_其中在截角三角形內(㎡)", "K98_截角三角形面積(㎡)",
+        "UK93_溢出(㎡)", "UK93_其中在截角三角形內(㎡)", "UK93_佔截角比", "UK93_落截角內比例",
+        "UK93_在街廓內(㎡)", "UK93_在街廓外(㎡)", "UK93_位置s範圍", "UK93_位置t範圍",
+        "UK93_形心st", "UK93_截角△s範圍"]
 
 _END_OF = {"left": "p1_end", "right": "p2_end"}
 _FORCED_OF = {"left": "left_forced_offset", "right": "right_forced_offset"}
@@ -225,6 +232,93 @@ def _alloc_tau(poly, au, ref):
     if best is None:
         return None
     return float(np.dot(best - ref, an))
+
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# K-9-8 虛擬量測塊（KL 裁 2026-08-02·canonical 見正典 `grep -n "^### K-9-8"`）
+# ══════════════════════════════════════════════════════════════════════════
+#  (1) L_in ＝ 該宗**往街廓內部那一側**之 ALLOC_LINE
+#  (2) P   ＝ L_in ∩ **BLOCK 邊界**（可能落在截角邊，也可能落在與 FRONT 重疊之段）
+#  (3) 自 P 作**平行 FRONT_LINE** 之線段，往街角方向延伸，**止於該宗靠街角側之境界線**
+#      （街角第 1 宗 → SIDE_LINE）
+#  (4) 虛擬塊 ＝ 該延伸線段、該宗二側境界線、BASELINE 所圍之多邊形
+#  (5) **深度自該延伸線段起算**（⇒ `parcel_min_width_n14` 之 `front_pt` 取 P）
+#  (6) P 落在與 FRONT 重疊段時，PQ 與 FRONT 重疊 ⇒ **退化**為自 FRONT 起算之原式
+#  ⛔ **禁與街廓多邊形取交集**（取交集即把還原部分裁掉、等於沒還原）
+#  ⛔ 虛擬塊**僅供量測**；其面積**禁進入任何面積帳**
+
+
+def _line_x(P0, u0, P1, u1, who):
+    """兩條**無限直線**之交點（P0+t·u0 與 P1+r·u1）。平行 ⇒ loud raise。"""
+    den = u0[0] * (-u1[1]) - u0[1] * (-u1[0])
+    if abs(den) < 1e-12:
+        _fail(f"{who}：兩線平行、交點不存在")
+    rhs = np.asarray(P1, float)[:2] - np.asarray(P0, float)[:2]
+    t = (rhs[0] * (-u1[1]) - rhs[1] * (-u1[0])) / den
+    return np.asarray(P0, float)[:2] + t * np.asarray(u0, float)[:2]
+
+
+def _interior_alloc_edge(cc, au, d, p1, corner_s, who):
+    """該宗**往街廓內部那一側**之 ALLOC 邊（＝平行 ALLOC 之邊中，s 離街角最遠者）。
+
+    ⚠️ 須濾掉**零長邊**（實測 R6 右有一條 L=0.00 之退化邊）。
+    """
+    best = None
+    ring = [np.asarray(c, float)[:2] for c in cc]
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        v = b - a
+        L = float(np.linalg.norm(v))
+        if L < 1e-6:                      # 零長邊 ⇒ 濾除（非靜默：見 docstring）
+            continue
+        if abs(abs(float(np.dot(v / L, au))) - 1.0) >= 1e-6:
+            continue
+        mid = (a + b) / 2.0
+        s_mid = float(np.dot(mid - p1, d))
+        if best is None or abs(s_mid - corner_s) > abs(best[0] - corner_s):
+            best = (s_mid, a, b, L)
+    if best is None:
+        _fail(f"{who}：取不到平行 ALLOC 之側界邊")
+    return best
+
+
+def _k98_virtual_block(cc, blk_poly, p1, d, n, au, side_pts, base_pts,
+                       corner_s, who):
+    """建 K-9-8 虛擬量測塊。回 dict（**不與街廓取交集**）。"""
+    A = _interior_alloc_edge(cc, au, d, p1, corner_s, who)
+    s_in, ea, eb = A[0], A[1], A[2]
+    # L_in ＝ 過該邊之無限直線（方向 au）
+    # P ＝ L_in ∩ BLOCK 邊界：取**最靠前緣**（t 最大）之交點
+    big = 1.0e5
+    L_in = LineString([tuple(ea - au * big), tuple(ea + au * big)])
+    inter = L_in.intersection(blk_poly.exterior)
+    cand = []
+    if inter.is_empty:
+        _fail(f"{who}：L_in 與 BLOCK 邊界無交點")
+    for g in (inter.geoms if hasattr(inter, "geoms") else [inter]):
+        for c in (list(g.coords) if g.geom_type != "Point" else [g.coords[0]]):
+            cand.append(np.asarray(c, float)[:2])
+    P = max(cand, key=lambda q: float(np.dot(q - p1, n)))
+    t_P = float(np.dot(P - p1, n))
+    # P 落在截角邊，抑或落在與 FRONT 重疊之段？（K-9-7 新增之一層分支）
+    on_front = abs(t_P) <= EPS_TOUCH
+    # Q ＝ 過 P 之平行 FRONT 直線 ∩ SIDE_LINE（無限直線）
+    su = _unit(np.asarray(side_pts[1], float)[:2] - np.asarray(side_pts[0], float)[:2])
+    Q = _line_x(P, d, np.asarray(side_pts[0], float)[:2], su, who + "·PQ∩SIDE")
+    # R ＝ L_in ∩ BASELINE； S ＝ SIDE_LINE ∩ BASELINE（皆無限直線）
+    bu = _unit(np.asarray(base_pts[-1], float)[:2] - np.asarray(base_pts[0], float)[:2])
+    B0 = np.asarray(base_pts[0], float)[:2]
+    R = _line_x(P, au, B0, bu, who + "·L_in∩BASELINE")
+    S = _line_x(np.asarray(side_pts[0], float)[:2], su, B0, bu, who + "·SIDE∩BASELINE")
+    vb = Polygon([tuple(Q), tuple(P), tuple(R), tuple(S)])
+    if not vb.is_valid:
+        vb = vb.buffer(0)
+    if vb.is_empty or vb.geom_type != "Polygon":
+        _fail(f"{who}：虛擬塊非單一 Polygon（{vb.geom_type}）")
+    return {"P": P, "Q": Q, "R": R, "S": S, "poly": vb, "t_P": t_P,
+            "on_front": on_front, "s_in": s_in,
+            "para_res": abs(abs(float(np.dot(_unit(Q - P), d))) - 1.0),
+            "PQ_len": float(np.linalg.norm(Q - P))}
 
 
 def main():
@@ -445,6 +539,15 @@ def main():
             tri = ns["_make_chamfer_tri_wb"](cb_by[blk], side)
 
             # (D) 以新帶深重量寬度；舊帶深 14.00 併列以顯落差
+            def _w2(coords, dh, fp, md, lab):
+                """走 `parcel_min_width_n14`（唯一寬度原語）·front_pt 可指定（K-9-8 (5)）。"""
+                if md is None or md <= 0:
+                    return "—"
+                try:
+                    return f"{float(width_fn(coords, dh, fp, md, _label=lab)):.4f}"
+                except RuntimeError as e:
+                    return "raise:" + str(e).split("：", 1)[-1].splitlines()[0][:40]
+
             def _w(coords, md, lab):
                 if md is None or md <= 0:
                     return "—"
@@ -496,9 +599,87 @@ def main():
                 rec.update({"截角接合": f"{kind}（{inter.geom_type}）",
                             "頂點最小距(m)": f"{vmin:.3e}",
                             "局部框最小距(m)": f"{vmin_l:.3e}"})
+            # ── 🆕 K-9-8 虛擬量測塊（第三代量測·**只量不判**）────────────────
+            _who = f"{tag}·{blk}/{side}·{pid}"
+            _blkpoly = Polygon([(float(v[0]), float(v[1]))
+                                for v in cb_by[blk]["vertices"]])
+            if not _blkpoly.is_valid:
+                _blkpoly = _blkpoly.buffer(0)
+            _sl = sides_by[blk][side]
+            _su = _unit(np.asarray(_sl["p2"], float)[:2]
+                        - np.asarray(_sl["p1"], float)[:2])
+            _sn = np.array([-_su[1], _su[0]], float)
+            _corner_s = float(np.dot(np.asarray(_sl["p1"], float)[:2] - p1, _sn)
+                              / np.dot(d, _sn))
+            _vb = _k98_virtual_block(cc, _blkpoly, p1, d, n, au,
+                                     [_sl["p1"], _sl["p2"]], bp, _corner_s, _who)
+            # (A)(B) P／PQ 之讀數
+            rec["K98_P"] = f"({_vb['P'][0]:.4f}, {_vb['P'][1]:.4f})"
+            rec["K98_P落點"] = ("FRONT 重疊段（**退化**）" if _vb["on_front"]
+                              else f"截角邊（t_P={_vb['t_P']:+.6f}m）")
+            rec["K98_內縮量(m)"] = f"{-_vb['t_P']:+.6f}"
+            rec["K98_PQ長(m)"] = f"{_vb['PQ_len']:.4f}"
+            rec["K98_平行殘差"] = f"{_vb['para_res']:.3e}"
+            # (D) 依 K-9-8 重量：深度自 PQ 起算 ⇒ front_pt 取 P
+            _vbc = list(_vb["poly"].exterior.coords)
+            _dep_k98, _dep_note = _own_min_depth(_vb["poly"], _vb["P"], d, n,
+                                                 B0, bu, "虛擬塊")
+            rec["K98_最小深度(m)"] = ("—" if _dep_k98 is None else f"{_dep_k98:.4f}")
+            rec["K98_最小寬度(m)"] = _w2(_vbc, tuple(d), tuple(_vb["P"]),
+                                      _dep_k98, f"{_who}·K98")
+            # (C) 虛擬塊 − 實際宗地：差集面積與其是否落在截角區內
+            _diff = _vb["poly"].difference(par)
+            rec["K98_虛擬塊面積(㎡)"] = f"{_vb['poly'].area:.4f}"
+            rec["K98_虛擬−宗(㎡)"] = f"{_diff.area:.6f}"
+            _outside = _diff.difference(_blkpoly)          # 落在街廓之外者
+            rec["K98_其中在街廓外(㎡)"] = f"{_outside.area:.6f}"
+            if tri is not None:
+                _in_tri = _diff.intersection(tri)
+                rec["K98_其中在截角三角形內(㎡)"] = f"{_in_tri.area:.6f}"
+                rec["K98_截角三角形面積(㎡)"] = f"{tri.area:.6f}"
+            else:
+                rec["K98_其中在截角三角形內(㎡)"] = "—"
+                rec["K98_截角三角形面積(㎡)"] = "—"
+            # U-K9-3 專項：前版之「範圍−宗」溢出多邊形是否落在截角區內
+            if tri is not None and over.area > EPS_AREA:
+                _ov_in = over.intersection(tri).area
+                rec["UK93_溢出(㎡)"] = f"{over.area:.6f}"
+                rec["UK93_其中在截角三角形內(㎡)"] = f"{_ov_in:.6f}"
+                rec["UK93_佔截角比"] = f"{100.0 * over.area / tri.area:.1f}%"
+                rec["UK93_落截角內比例"] = (f"{100.0 * _ov_in / over.area:.2f}%"
+                                      if over.area > 0 else "—")
+                # 🔎 溢出多邊形之**所在位置**（純量測·不解釋）：
+                #    在街廓內／外、其 (s,t) 局部框範圍與形心
+                _ov_in_blk = over.intersection(_blkpoly).area
+                _ov_out_blk = over.difference(_blkpoly).area
+                _ovc = [(float(np.dot(np.asarray(v[:2], float) - p1, d)),
+                         float(np.dot(np.asarray(v[:2], float) - p1, n)))
+                        for v in over.exterior.coords] if over.geom_type == "Polygon"                     else [(float(np.dot(np.asarray(v[:2], float) - p1, d)),
+                           float(np.dot(np.asarray(v[:2], float) - p1, n)))
+                          for g in over.geoms for v in g.exterior.coords]
+                _cen = over.centroid
+                rec["UK93_在街廓內(㎡)"] = f"{_ov_in_blk:.6f}"
+                rec["UK93_在街廓外(㎡)"] = f"{_ov_out_blk:.6f}"
+                rec["UK93_位置s範圍"] = (f"[{min(x for x, _ in _ovc):.3f},"
+                                     f"{max(x for x, _ in _ovc):.3f}]")
+                rec["UK93_位置t範圍"] = (f"[{min(t for _, t in _ovc):.3f},"
+                                     f"{max(t for _, t in _ovc):.3f}]")
+                rec["UK93_形心st"] = (
+                    f"({float(np.dot(np.asarray(_cen.coords[0], float)[:2] - p1, d)):.3f},"
+                    f"{float(np.dot(np.asarray(_cen.coords[0], float)[:2] - p1, n)):.3f})")
+                rec["UK93_截角△s範圍"] = (
+                    f"[{min(float(np.dot(np.asarray(v[:2], float) - p1, d)) for v in tri.exterior.coords):.3f},"
+                    f"{max(float(np.dot(np.asarray(v[:2], float) - p1, d)) for v in tri.exterior.coords):.3f}]")
+            else:
+                for _k in ("UK93_溢出(㎡)", "UK93_其中在截角三角形內(㎡)",
+                           "UK93_佔截角比", "UK93_落截角內比例",
+                           "UK93_在街廓內(㎡)", "UK93_在街廓外(㎡)", "UK93_位置s範圍",
+                           "UK93_位置t範圍", "UK93_形心st", "UK93_截角△s範圍"):
+                    rec[_k] = "—"
             rec["街角第1宗"] = str(pid)
             rec["_rng_note"] = rng_note
             rec["_par_note"] = par_note or ""
+            rec["_k98_note"] = _dep_note
             rows.append(rec)
 
     # ══ 列印 ════════════════════════════════════════════════════════════
@@ -515,6 +696,87 @@ def main():
                      f"{r['附表最小深(m)']:>8}{r['寬度_截角前_新帶深(m)']:>10}"
                      f"{r['寬度_截角後_新帶深(m)']:>10}{r['寬度_截角前_舊帶深14(m)']:>10}"
                      f"{r['寬度_截角後_舊帶深14(m)']:>10}")
+
+    # ══ 🆕 K-9-8 第三代量測 ═══════════════════════════════════════════════
+    L.append("")
+    L.append("【K-9-8-A/B】P 之落點（K-9-7 新增分支）與延伸線段 PQ")
+    L.append("-" * 120)
+    L.append("  P ＝ L_in（該宗往街廓內側之 ALLOC_LINE）∩ BLOCK 邊界；")
+    L.append("  PQ ＝ 自 P 平行 FRONT、往街角延伸至 SIDE_LINE。深度自 PQ 起算（K-9-8 (5)）。")
+    L.append(f"  {'情境':6}{'街廓側':11}{'街角第1宗':>15}{'內縮量(m)':>12}"
+             f"{'PQ長(m)':>10}{'平行殘差':>11}  P 落點")
+    for r in rows:
+        if r.get("K98_P落點", "—") == "—":
+            continue
+        L.append(f"  {r['情境']:6}{r['街廓'] + '/' + r['側別']:11}{r['街角第1宗']:>15}"
+                 f"{r['K98_內縮量(m)']:>12}{r['K98_PQ長(m)']:>10}"
+                 f"{r['K98_平行殘差']:>11}  {r['K98_P落點']}")
+
+    L.append("")
+    L.append("【K-9-8-C】虛擬塊 − 實際宗地：差集落在哪裡（**禁與街廓取交集**·故差集本應外溢）")
+    L.append("-" * 120)
+    L.append(f"  {'情境':6}{'街廓側':11}{'虛擬塊(㎡)':>12}{'虛擬−宗(㎡)':>13}"
+             f"{'其中在街廓外':>13}{'其中在截角△內':>14}{'截角△(㎡)':>11}")
+    for r in rows:
+        if r.get("K98_P落點", "—") == "—":
+            continue
+        L.append(f"  {r['情境']:6}{r['街廓'] + '/' + r['側別']:11}"
+                 f"{r['K98_虛擬塊面積(㎡)']:>12}{r['K98_虛擬−宗(㎡)']:>13}"
+                 f"{r['K98_其中在街廓外(㎡)']:>13}"
+                 f"{r['K98_其中在截角三角形內(㎡)']:>14}"
+                 f"{r['K98_截角三角形面積(㎡)']:>11}")
+
+    L.append("")
+    L.append("【K-9-8-C·U-K9-3 專項】前版「範圍−宗」溢出多邊形**是否確實落在截角區內**")
+    L.append("-" * 120)
+    L.append("  若是 ⇒ 『包含關係不成立』非缺陷（虛擬塊本應含還原角）⇒ **U-K9-3 可撤回**。")
+    L.append("  若否 ⇒ **停機上呈**（本探針不自行解釋）。")
+    L.append(f"  {'情境':6}{'街廓側':11}{'溢出(㎡)':>11}{'其中在截角△內':>14}"
+             f"{'落截角內比例':>13}{'溢出佔截角△':>13}")
+    _uk93_bad = []
+    for r in rows:
+        if r.get("UK93_溢出(㎡)", "—") == "—":
+            continue
+        L.append(f"  {r['情境']:6}{r['街廓'] + '/' + r['側別']:11}"
+                 f"{r['UK93_溢出(㎡)']:>11}{r['UK93_其中在截角三角形內(㎡)']:>14}"
+                 f"{r['UK93_落截角內比例']:>13}{r['UK93_佔截角比']:>13}")
+        try:
+            if float(str(r["UK93_落截角內比例"]).rstrip("%")) < 99.99:
+                _uk93_bad.append(f"{r['情境']} {r['街廓']}/{r['側別']}")
+        except ValueError:
+            _uk93_bad.append(f"{r['情境']} {r['街廓']}/{r['側別']}（比例無法解析）")
+    L.append("")
+    L.append("  🔎 溢出多邊形之**所在位置**（純量測·本探針不解釋）：")
+    L.append(f"     {'情境':6}{'街廓側':11}{'在街廓內':>11}{'在街廓外':>11}"
+             f"{'溢出 s 範圍':>18}{'截角△ s 範圍':>18}{'形心(s,t)':>20}")
+    for r in rows:
+        if r.get("UK93_溢出(㎡)", "—") == "—":
+            continue
+        L.append(f"     {r['情境']:6}{r['街廓'] + '/' + r['側別']:11}"
+                 f"{r['UK93_在街廓內(㎡)']:>11}{r['UK93_在街廓外(㎡)']:>11}"
+                 f"{r['UK93_位置s範圍']:>18}{r['UK93_截角△s範圍']:>18}"
+                 f"{r['UK93_形心st']:>20}")
+    if _uk93_bad:
+        L.append(f"  🔴 **有溢出未完全落在截角三角形內**：{_uk93_bad}"
+                 f" ⇒ **停機上呈**（本探針不代解釋·裁量在 KL）")
+    else:
+        L.append("  ✅ **全部溢出皆完全落在截角三角形內**（≥99.99%）"
+                 " ⇒ 支持『U-K9-3 係方法產物、非缺陷』之判讀（**裁量仍在 KL**）")
+
+    L.append("")
+    L.append("【K-9-8-D】三代量測併列（最小深度／最小寬度）")
+    L.append("-" * 120)
+    L.append("  一代＝帶深誤用附表 14.00（已作廢）；二代＝自身最小深度＋`cut_coords`（已作廢）；")
+    L.append("  **三代＝K-9-8 虛擬還原塊＋深度自 PQ 起算**。")
+    L.append(f"  {'情境':6}{'街廓側':11}{'街角第1宗':>15}"
+             f"{'深:二代':>10}{'深:三代':>10}{'寬:一代14':>11}{'寬:二代':>10}{'寬:三代':>10}")
+    for r in rows:
+        if r.get("K98_P落點", "—") == "—":
+            continue
+        L.append(f"  {r['情境']:6}{r['街廓'] + '/' + r['側別']:11}{r['街角第1宗']:>15}"
+                 f"{r['宗最小深度(m)']:>10}{r['K98_最小深度(m)']:>10}"
+                 f"{r['寬度_截角後_舊帶深14(m)']:>11}{r['寬度_截角後_新帶深(m)']:>10}"
+                 f"{r['K98_最小寬度(m)']:>10}")
 
     L.append("")
     L.append("【E】包含關係查核：`街角規定範圍 ⊆ 街角第 1 宗`？")
@@ -653,7 +915,7 @@ def main():
         f.write(txt + "\n")
     with open(CSV, "w", encoding="utf-8-sig", newline="") as f:
         # `_rng_note`／`_par_note` 係列印用私有欄 ⇒ CSV 只出 COLS（非吞錯）
-        w = csv.DictWriter(f, fieldnames=COLS, extrasaction="ignore")
+        w = csv.DictWriter(f, fieldnames=COLS, extrasaction="ignore", restval="—")
         w.writeheader()
         w.writerows(rows)
     print(f"\n→ {os.path.relpath(LOG, REPO)}\n→ {os.path.relpath(CSV, REPO)}")
