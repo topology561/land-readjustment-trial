@@ -224,6 +224,29 @@ def main():
         P(f"  {tag}：貼線頂點 **{len(hits)} 個**／最大偏差 **{mx:.9f} m**"
           f"{'' if _worst is None else f'  @ ({_worst[0]:.6f}, {_worst[1]:.6f})'}")
 
+    # ── (5b) 各街廓多邊形本身 vs FRONT_LINE（**真正之「圖面落差」**）──────
+    P()
+    P("【5b】**各街廓多邊形本身** vs FRONT_LINE（逐街廓·前緣側 max t）")
+    P("-" * 108)
+    P("  🔴 此為**真正之圖面落差**判準——與『街角規定範圍之前緣偏移』**不同量、勿互代**：")
+    P("     後者係該**範圍多邊形自身**之前緣側極值；退縮 0m 時該範圍可能整個落在")
+    P("     **截角區內**，其極值遂落在截角邊上（與圖面是否畫準無關）。")
+    for tag, ee in (("舊", eo), ("新", en)):
+        fl = geoms(ee, "FRONT_LINE", "LINE")
+        rows_ = []
+        for g in geoms(ee, "BLOCK", "POLYLINE"):
+            best = None
+            for v in g:
+                for s, t in fl:
+                    dd, u = perp(v, s, t)
+                    if dd <= EPS_ON and -0.001 <= u <= 1.001:
+                        if best is None or dd > best:
+                            best = dd
+            if best is not None:
+                rows_.append(best)
+        P(f"  {tag}：12 個街廓多邊形中 {len(rows_)} 個貼 FRONT_LINE；"
+          f"其最大偏差 ＝ **{max(rows_, default=0.0):.9f} m**")
+
     # ── (6) FRONT_LINE 端點 ↔ SIDE_LINE 端點 ───────────────────────────
     P()
     P(f"【6】FRONT_LINE 端點 ↔ SIDE_LINE 端點（**只看 <{EPS_NEAR}m 之相鄰組合**）")

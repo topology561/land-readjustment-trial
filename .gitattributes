@@ -1,0 +1,20 @@
+# ── 文字型二進位資產：凍結逐 byte、禁行尾正規化（K-8 段六·GB-17）────────────
+#
+# 案由：本倉 `core.autocrlf=true`，且原無 `.gitattributes` ⇒ git 以啟發法判定
+#   `.dxf` 為文字檔，入庫時做 CRLF→LF 正規化。實測 `data/V6_1.dxf`：
+#   來源 88,405 bytes（CR 12,324）→ 入庫 blob 76,081 bytes（CR 0）
+#   ⇒ **來源檔校驗碼 ≠ 入庫產物校驗碼**，PROVENANCE 記載之 md5 因而失準。
+#   （`data/V6.dxf` 因入庫時機不同而未被正規化，blob 仍為 CRLF ⇒ 兩檔待遇不一致，
+#     此不一致本身即隱患。）
+#
+# 選 `-text` 而非 `binary`（**本批明示之選定**）：
+#   · `-text`  ＝ 僅關閉行尾正規化（working tree ↔ blob 逐 byte 一致）。**恰好對症。**
+#   · `binary` ＝ git 內建巨集，等同 `-diff -merge -text`
+#              ⇒ 另外關閉「文字 diff」與「文字 merge」。
+#   本倉之 DXF 係**受審查之資產**：`git diff` 能逐行指出「只有 3 個端點座標變動」，
+#   具診斷價值（段六即賴之）；而 `-merge` 會改變衝突解析行為，
+#   係**逾越本次所需之副作用**。⇒ 取最小且對症者。
+*.dxf -text
+
+# 同族之文字型資產（其校驗碼亦須對 blob 計算·見 GB-17 泛化波全倉掃描）
+*.dwg -text
