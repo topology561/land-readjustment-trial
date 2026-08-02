@@ -57,7 +57,13 @@
 - rc **恆為 0**；唯缺件／取不到資料時 loud raise（no-silent-fallback）。
 
 ## 重跑
-    python verify/probes/probe_ruling_K9_corner_width.py
+
+    python verify/probes/probe_ruling_K9_corner_width.py                    # 預設 data/V6.dxf
+    python verify/probes/probe_ruling_K9_corner_width.py --dxf data/V6_1.dxf  # 平行對照
+
+⛔ **預設值不得改**——`--dxf`／`WV_K9_DXF` 僅供**平行對照**，且只在本探針行程內
+就地覆寫 `rv.V6DXF`；`run_verification.V6DXF` 之定義與其餘 ~20 個消費者**一律未動**。
+非預設路徑之輸出**另存檔名**（`..._V6_1.log/.csv`），**不覆寫預設輪之輸出**。
 """
 import csv
 import os
@@ -76,8 +82,36 @@ from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
 
 OUTDIR = os.path.join(VERIFY, "out")
-LOG = os.path.join(OUTDIR, "probe_ruling_K9_corner_width.log")
-CSV = os.path.join(OUTDIR, "probe_ruling_K9_corner_width.csv")
+
+# ── DXF 路徑之參數化（**預設一律不變**·段六）────────────────────────────────
+#   ⛔ **生產路徑不動**：`run_verification.V6DXF` 之定義、`app.py`、以及其餘
+#      ~20 個消費者**一律未改**，預設仍讀 `data/V6.dxf`。
+#   本旗標**僅供本探針之平行對照**（V6 vs V6_1），且**只在本探針行程內**生效：
+#   取得路徑後就地覆寫 `rv.V6DXF`，使下游 harness 呼叫（`build_pipeline`／
+#   `build_build_parcels`）讀到同一檔——**不寫回任何檔案、不影響他行程**。
+#   用法：`--dxf <path>` 或 `WV_K9_DXF=<path>`；**未給即為預設 V6.dxf**。
+def _resolve_dxf():
+    _p = None
+    if "--dxf" in sys.argv:
+        _i = sys.argv.index("--dxf")
+        if _i + 1 >= len(sys.argv):
+            raise RuntimeError("🔴 --dxf 未帶路徑（no-silent-fallback）")
+        _p = sys.argv[_i + 1]
+    _p = _p or os.environ.get("WV_K9_DXF") or None
+    if _p is None:
+        return rv.V6DXF, ""                      # ← 預設：**不變**
+    _p = os.path.abspath(_p)
+    if not os.path.exists(_p):
+        raise RuntimeError(f"🔴 --dxf 指定之檔不存在：{_p}（no-silent-fallback）")
+    _tag = "_" + os.path.splitext(os.path.basename(_p))[0]
+    return _p, ("" if os.path.abspath(_p) == os.path.abspath(rv.V6DXF) else _tag)
+
+
+DXF_PATH, _SFX = _resolve_dxf()
+rv.V6DXF = DXF_PATH          # 行程內覆寫（見上·預設時此行為 no-op）
+
+LOG = os.path.join(OUTDIR, f"probe_ruling_K9_corner_width{_SFX}.log")
+CSV = os.path.join(OUTDIR, f"probe_ruling_K9_corner_width{_SFX}.csv")
 
 # 法定粒度（實施辦法 §3 長度 2dp·KL 域裁已鎖）——同 probe_ruling_N_e1_touch.EPS_TOUCH
 EPS_TOUCH = 0.01
@@ -100,6 +134,15 @@ _FORCED_OF = {"left": "left_forced_offset", "right": "right_forced_offset"}
 
 def _fail(msg):
     raise RuntimeError(f"🔴 probe_ruling_K9_corner_width：{msg}（no-silent-fallback）")
+
+
+def _md5(path):
+    import hashlib
+    h = hashlib.md5()
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
 
 
 def _unit(v):
@@ -195,6 +238,9 @@ def main():
     L.append("【K-9-6／K-9-7 街角幾何實測】**只量不判·不設門檻·不出合格/不合格**")
     L.append("🔴 **前版數字已全部作廢**（帶深誤用畸零地附表之 14.00·正典 K-9-6）"
              "——本檔為改寫版，勿引前版任何寬度數字。")
+    L.append(f"DXF ＝ {os.path.relpath(DXF_PATH, REPO)}"
+             f"{'（預設·生產路徑）' if not _SFX else '（**平行對照**·非生產路徑）'}"
+             f"   md5 ＝ {_md5(DXF_PATH)}")
     L.append("=" * 120)
 
     ns, fake_st = harvest()
@@ -568,7 +614,8 @@ def main():
             L.append(f"  ④ 🔴 **原始 DXF BLOCK 圖層取不到任何頂點**"
                      f"（略過之實體：{_skipped[:5]}）——溯源未完成，不臆測")
         else:
-            L.append(f"  ④ **原始 `data/V6.dxf` BLOCK 圖層**距該頂點最近之點 ＝ "
+            L.append(f"  ④ **原始 `{os.path.relpath(DXF_PATH, REPO)}` BLOCK 圖層**"
+                     f"距該頂點最近之點 ＝ "
                      f"({_best[1][0]:.6f}, {_best[1][1]:.6f})，"
                      f"距離 **{_best[0]:.3e} m**（entity handle {_hit}）")
             L.append(f"  ⇒ **結論：{'CAD 圖面既有' if _best[0] < 1e-6 else '非 CAD 直出·須續追'}**"
