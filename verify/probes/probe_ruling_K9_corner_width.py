@@ -1167,6 +1167,74 @@ def main():
                  f"／(c)深<最小 {'**是**' if _fc else '否'}"
                  f"  ⇒ 命中任一：{'**是**' if (_fa or _fb or _fc) else '**否**'}")
 
+    # ══ 段十一：PK 門檻最小面積 之三路對照（**只列數字·不判定何者為真值**）═══
+    L.append("")
+    L.append("=" * 120)
+    L.append("【段十一】PK 門檻用之「街角最小面積」三路對照（六街廓 × 兩情境）")
+    L.append("=" * 120)
+    L.append("  三路：① **凍結 baseline CSV** `verify/baselines/第 1 宗街角地指配結果_退縮*.csv`")
+    L.append("        ② **live 參數表** `run_verification.build_param_table` 之"
+             "`【左/右】街角最小面積(㎡)`")
+    L.append("           （＝ round(_build_corner_range_v3(...).area, 2)"
+             "·查法：grep -n _build_corner_range_v3 verify/run_verification.py）")
+    L.append("        ③ **live PK 輸出** `selection_pipeline` 之 `【左/右】最小面積(㎡)`")
+    L.append("  併列該側**截角三角形面積**作參照。**本表不判定何者為真值。**")
+    import csv as _csv11
+    def _base11(tag):
+        _d = {}
+        _fp = os.path.join(VERIFY, "baselines",
+                           f"第 1 宗街角地指配結果_退縮{tag}.csv")
+        try:
+            with open(_fp, encoding="utf-8-sig") as _f:
+                for _r in _csv11.DictReader(_f):
+                    _d[str(_r["街廓"])] = (_r.get("【左】最小面積(㎡)"),
+                                          _r.get("【右】最小面積(㎡)"))
+        except Exception as _e11:
+            L.append(f"  ⚠️ 讀 baseline 失敗：{type(_e11).__name__}: {_e11}")
+        return _d
+    L.append("")
+    L.append(f"  {'情境':6}{'街廓':5}{'側':>6}{'①baseline':>12}{'②live參數表':>13}"
+             f"{'③live PK':>11}{'②−①':>11}{'③−②':>9}{'截角△(㎡)':>11}")
+    for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
+        _params11 = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
+        _pby11 = {str(p11["街廓"]): p11 for p11 in _params11}
+        _d11, _sel11, _o11, _ws11, _fm11 = run_corner_pk(
+            ns, fake_st, list(cb_by.values()), cad, _params11,
+            temp_parcels, build_parcels, setback, snapshot=snapshot)
+        _pk11 = {str(r11["街廓"]): r11 for r11 in _sel11}
+        _B11 = _base11(tag)
+        for lbl11 in rv.CORNER_BLOCKS:
+            for _sd11, _kp11, _kk11, _i11 in (
+                    ("left", "【左】街角最小面積(㎡)", "【左】最小面積(㎡)", 0),
+                    ("right", "【右】街角最小面積(㎡)", "【右】最小面積(㎡)", 1)):
+                if _sd11 not in (sides_by.get(lbl11) or {}):
+                    continue
+                _v1 = (_B11.get(lbl11) or ("—", "—"))[_i11]
+                _v2 = _pby11[lbl11].get(_kp11)
+                _v3 = (_pk11.get(lbl11) or {}).get(_kk11)
+                _tri11 = ns["_make_chamfer_tri_wb"](cb_by[lbl11], _sd11)
+                _ta11 = f"{_tri11.area:.4f}" if _tri11 is not None else "—"
+                try:
+                    _d21 = f"{float(_v2) - float(_v1):+.4f}"
+                except (TypeError, ValueError):
+                    _d21 = "—"
+                try:
+                    _d32 = f"{float(_v3) - float(_v2):+.4f}"
+                except (TypeError, ValueError):
+                    _d32 = "—"
+                L.append(f"  {tag:6}{lbl11:5}{_sd11:>6}{str(_v1):>12}{str(_v2):>13}"
+                         f"{str(_v3):>11}{_d21:>11}{_d32:>9}{_ta11:>11}")
+    L.append("")
+    L.append("  【chamfer_tri 傳入實況】四個呼叫點逐一實查"
+             "（查法：grep -rn _build_corner_range_v3 --include=*.py .）：")
+    L.append("    · verify/run_verification.py:237  ← chi = ns['_make_chamfer_tri_wb'](b, which)")
+    L.append("    · app.py:9656                     ← _cham_wb"
+             "（＝ _make_chamfer_tri_wb(_blk_meta_wb, side)·app.py:9638-9639）")
+    L.append("    · app.py:16339                    ← _make_chamfer_tri_wb(b, _wh_cr)")
+    L.append("    · 本探針 _build_range             ← ns['_make_chamfer_tri_wb'](b, side)")
+    L.append("    ⇒ **四路皆傳入截角三角形、無一走 chamfer_tri=None 之預設**"
+             "（app.py:9239 之 None 僅為簽名預設值、無呼叫點採用）。")
+
     L.append("")
     L.append("【E】包含關係查核：`街角規定範圍 ⊆ 街角第 1 宗`？")
     L.append("-" * 120)
