@@ -1029,6 +1029,144 @@ def main():
             L.append(f"     {_blk9:6}{_sg9:>14.4f}{_sog:>12.4f}{_soa:>14.4f}"
                      f"{_ba:>12.4f}{_sg9 + _soa - _ba:>+26.6f}")
 
+    # ══ 段十：3.5m R1/right 之四項量測（**只量不判·不提假說**）═══════════
+    #   碎片判準之原語一律取自 `verify/wd3_fragment_geom`（含其自帶 PERP_TOL=0.10）
+    #   ——**不自寫、不自訂容差**。
+    import wd3_fragment_geom as _wd3                                  # noqa: E402
+    _B10 = "R1"
+    L.append("")
+    L.append("=" * 120)
+    L.append("【段十】`3.5m R1/right` 未結項之四項量測（**只量不判·不提假說·不下結論**）")
+    L.append("=" * 120)
+
+    # ── (1) R1 右側自街角往內之落位占用序 ────────────────────────────────
+    L.append("")
+    L.append("【段十-1】R1 **右側自街角往內**之逐帶占用（0m／3.5m 併列）")
+    L.append("-" * 120)
+    _p1b, _db, _nb, _B0b, _bub, _aub, _bpb = _axes(_B10)
+    _flb = front_lines[_B10]
+    _Lfront = float(np.linalg.norm(np.asarray(_flb["p2"], float)[:2]
+                                   - np.asarray(_flb["p1"], float)[:2]))
+    L.append(f"  FRONT_LINE 全長 {_Lfront:.4f}m；**右街角 s ≈ {_Lfront:.4f}**"
+             f" ⇒ 由 s 大而小即「自街角往內」。")
+    for tag in ("0m", "3.5m"):
+        _rs10 = [r for r in _ROWS_BY_TAG.get(tag, [])
+                 if str(r.get("所屬街廓", "")) == _B10]
+        _items = []
+        for r in _rs10:
+            _cc10 = r.get("cut_coords") or []
+            if len(_cc10) < 3:
+                continue
+            _pg10 = Polygon([(float(x[0]), float(x[1])) for x in _cc10])
+            if not _pg10.is_valid:
+                _pg10 = _pg10.buffer(0)
+            _sv10 = [float(np.dot(np.asarray(v[:2], float) - _p1b, _db))
+                     for v in _pg10.exterior.coords]
+            _items.append((max(_sv10), min(_sv10), str(r.get("暫編地號")),
+                           str(r.get("推進側別")), _pg10.area,
+                           float(r.get("G(㎡)", 0) or 0)))
+        _items.sort(key=lambda x: -x[0])
+        L.append("")
+        L.append(f"  ── [{tag}]  {'序':>3}{'暫編地號':>16}{'推進側別':>10}"
+                 f"{'s 區間':>24}{'幾何面積(㎡)':>14}{'G(㎡)':>11}")
+        for _i10, _it in enumerate(_items, 1):
+            L.append(f"      {_i10:>3}{_it[2]:>16}{_it[3]:>10}"
+                     f"{f'[{_it[1]:.4f}, {_it[0]:.4f}]':>24}"
+                     f"{_it[4]:>14.4f}{_it[5]:>11.2f}")
+
+    # ── (2) 628(5) 與 街角規定範圍（右）之對稱差 ─────────────────────────
+    L.append("")
+    L.append("【段十-2】`628(5)` vs **街角規定範圍（右）**：逐頂點 ＋ 對稱差")
+    L.append("-" * 120)
+    for K in _OVER_KEEP:
+        if not (K["blk"] == _B10 and K["side"] == "right"):
+            continue
+        L.append("")
+        L.append(f"  ── [{K['tag']}] {K['pid']}")
+        for _nm10, _pg in (("街角規定範圍（右）", K["rng"]), (f"宗 {K['pid']}", K["par"])):
+            L.append(f"     {_nm10}（area={_pg.area:.6f}㎡）之頂點 (s,t)：")
+            for _vi, _v in enumerate(list(_pg.exterior.coords)[:-1]):
+                _sv, _tv2 = _stloc(_v, K["p1"], K["d"], K["n"])
+                L.append(f"        v{_vi}: ({_sv:11.4f},{_tv2:11.4f})"
+                         f"   大地 ({_v[0]:.6f},{_v[1]:.6f})")
+        for _nm10, _diff10 in (("範圍 − 宗", K["rng"].difference(K["par"])),
+                               ("宗 − 範圍", K["par"].difference(K["rng"]))):
+            _pp = [g for g in _parts_of(_diff10) if not g.is_empty]
+            L.append(f"     **{_nm10}**：總面積 {_diff10.area:.6f}㎡·片數 {len(_pp)}")
+            for _pi10, _g10 in enumerate(_pp):
+                if len(_g10.exterior.coords) < 4:
+                    L.append(f"        片{_pi10}: area={_g10.area:.9f}（退化片）")
+                    continue
+                _svs = [_stloc(v, K["p1"], K["d"], K["n"])[0]
+                        for v in _g10.exterior.coords]
+                _flag10 = "  🔎 零面積碎片" if _g10.area <= EPS_AREA else ""
+                L.append(f"        片{_pi10}: area={_g10.area:.6f}㎡"
+                         f"  s 區間 [{min(_svs):.4f}, {max(_svs):.4f}]{_flag10}")
+
+    # ── (3) 628-34(3) 之完整幾何 ＋ wd3 (a)(b)(c) ────────────────────────
+    L.append("")
+    L.append("【段十-3】`628-34(3)` 之完整幾何 ＋ 是否命中 wd3 (a)(b)(c) 碎片判準")
+    L.append("-" * 120)
+    L.append(f"  原語與容差一律取自 `verify/wd3_fragment_geom`"
+             f"（`PERP_TOL={_wd3.PERP_TOL}`·**非本檔自訂**）。")
+    _mlx = ns["get_min_lot_size"](cb_by[_B10]["category"],
+                                  float(snapshot["blocks"][_B10]["正面"]["路寬_m"]))
+    _minw10, _mind10 = float(_mlx["min_width"]), float(_mlx["min_depth"])
+    _adir10 = np.asarray(alloc_by[_B10], float)[:2]
+    _adir10 = _adir10 / float(np.linalg.norm(_adir10))
+    _fseg10 = _wd3._seg_line(_flb)
+    _slm10 = sides_by.get(_B10) or {}
+    _ssegL = _wd3._seg_line(_slm10.get("left") or {})
+    _ssegR = _wd3._seg_line(_slm10.get("right") or {})
+    for tag in ("0m", "3.5m"):
+        _tgt = None
+        for r in _ROWS_BY_TAG.get(tag, []):
+            if (str(r.get("所屬街廓", "")) == _B10
+                    and str(r.get("暫編地號", "")) == "628-34(3)"):
+                _tgt = r
+        if _tgt is None:
+            L.append(f"  [{tag}] 查無 `628-34(3)`（本情境不存在該暫編地號）")
+            continue
+        _cc10 = _tgt.get("cut_coords") or []
+        _pg10 = Polygon([(float(x[0]), float(x[1])) for x in _cc10])
+        if not _pg10.is_valid:
+            _pg10 = _pg10.buffer(0)
+        _cs10 = list(_pg10.exterior.coords)
+        _pjd = [c[0] * _adir10[0] + c[1] * _adir10[1] for c in _cs10]
+        _pjw = [c[0] * (-_adir10[1]) + c[1] * _adir10[0] for c in _cs10]
+        _depth10 = max(_pjd) - min(_pjd)
+        _width10 = max(_pjw) - min(_pjw)
+        _svs10 = [float(np.dot(np.asarray(v[:2], float) - _p1b, _db)) for v in _cs10]
+        _Lf = _LsL = _LsR = 0.0
+        for _i in range(len(_cs10) - 1):
+            _a, _b = _cs10[_i], _cs10[_i + 1]
+            _el = float(np.linalg.norm(np.asarray(_b, float)[:2]
+                                       - np.asarray(_a, float)[:2]))
+            if _el < 1e-6:
+                continue
+            if _wd3._edge_on_segment(_a, _b, _fseg10):
+                _Lf += _el
+            elif _wd3._edge_on_segment(_a, _b, _ssegL):
+                _LsL += _el
+            elif _wd3._edge_on_segment(_a, _b, _ssegR):
+                _LsR += _el
+        _fa = (_Lf < 0.5)
+        _fb = (_width10 < _minw10)
+        _fc = (_depth10 < _mind10)
+        L.append("")
+        L.append(f"  ── [{tag}] `628-34(3)`  推進側別＝{_tgt.get('推進側別')}"
+                 f"  G＝{float(_tgt.get('G(㎡)', 0) or 0):.2f}㎡")
+        L.append(f"     幾何面積 {_pg10.area:.6f}㎡"
+                 f"  s 區間 [{min(_svs10):.4f}, {max(_svs10):.4f}]"
+                 f"（沿街 s_rel≈{(_pg10.centroid.distance(_fseg10.interpolate(0)) * 0 + _fseg10.project(_pg10.centroid) / _fseg10.length):.4f}）")
+        L.append(f"     寬⊥ALLOC {_width10:.4f}m（法定最小寬 {_minw10:.2f}）"
+                 f"  深∥ALLOC {_depth10:.4f}m（法定最小深 {_mind10:.2f}）")
+        L.append(f"     臨正街長 {_Lf:.4f}m ／ 臨左側街 {_LsL:.4f}m ／ 臨右側街 {_LsR:.4f}m")
+        L.append(f"     wd3 判準：(a)S=0 {'**是**' if _fa else '否'}"
+                 f"／(b)寬<最小 {'**是**' if _fb else '否'}"
+                 f"／(c)深<最小 {'**是**' if _fc else '否'}"
+                 f"  ⇒ 命中任一：{'**是**' if (_fa or _fb or _fc) else '**否**'}")
+
     L.append("")
     L.append("【E】包含關係查核：`街角規定範圍 ⊆ 街角第 1 宗`？")
     L.append("-" * 120)
