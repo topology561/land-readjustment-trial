@@ -1,66 +1,60 @@
 # -*- coding: utf-8 -*-
-"""K-9-5 街角第 1 宗**寬度實量**（**截角前**）— **只量不改·只量不判**。
+"""K-9-6／K-9-7 街角幾何實測 — **只量不判·不設門檻·不出合格/不合格**。
 
-## 本探針之定位（**先讀**）
+## 🔴 前版數字已全部作廢（帶深定義錯誤·K-9-6）
 
-**K-9-5**（KL 裁 2026-08-01·正典
-`grep -n "^## K-9 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
-街角第 1 宗**寬度要實量**，門檻 ＝ **退縮寬 ＋ 畸零地最小寬**；其餘各宗 ＝ 畸零地最小寬。
-此係 K-7（寬深豁免）**撤銷**後之新判準。
+**本檔前版**（commit `b061b00`）以**畸零地附表之最小深度 `14.00`** 為量測帶深，
+量出八街角之「截角前寬度」並逕與門檻比較。
 
-K-9-5 是段四唯一有**實質土地風險**者——退縮 3.5m 情境下街角門檻由 `3.50` 升為 **`7.00`**，
-而八個街角地**從未被量過寬度**。
+**該帶深定義錯誤** ⇒ **前版所有寬度數字、以及據之而生之「翻盤／貼線」結論，全部作廢**。
+（前版之 `verify/out/probe_ruling_K9_corner_width.{log,csv}` 已由本版覆寫；
+凡他處引用前版數字者，皆已同批標作廢。）
 
-⇒ **本探針先只量不判，把數字給 KL 看；KL 確認後才由 K-6-A2 上閘。**
+**法規原文**（花蓮縣畸零地使用規則 §4·逐字）：
 
-- ⛔ **不掛 `run_all` 之判定鏈**（只量不判 ⇒ **無 PASS/FAIL 貢獻**）。
-  `grep -n "probe" verify/run_all.py` ⇒ 本檔**不在其中**（掛回前須先上呈）。
-- ⛔ **不改 `app.py` 任何一行**；量測一律走**倉內既有原語與其自帶容差**。
-- 本探針之 rc **恆為 0**（量測結果不設 rc）；**唯缺件／取不到資料時 loud raise**
-  （no-silent-fallback）。
+> 最小深度係指臨接之道路境界線至該基地後側境界線垂直距離之最小值。
+> 最小寬度係指最小深度範圍內基地二側境界線間與道路境界線平行距離之最小值。
+> 但道路境界線為曲線者，以該曲線與基地兩側境界線交點之連線視為道路境界線。
 
-## 量測所用之既有原語（**禁自寫幾何算法·禁自訂容差**）
+⇒ **「最小深度」是逐宗（逐範圍）量出來的量**（本案 33〜46m）；
+附表之 `14.00` 是**可建築門檻**。**兩者嚴禁互代**（正典 K-9-6·失敗考古 #36 之形狀）。
 
-| 用途 | 原語 | 查法 |
-|---|---|---|
-| 宗地最小寬度（N-14） | `app.parcel_min_width_n14` | `grep -n "def parcel_min_width_n14" app.py` |
-| 截角三角形（per side） | `app._make_chamfer_tri_wb` | `grep -n "def _make_chamfer_tri_wb" app.py` |
-| 畸零地最小寬（法定附表） | `app.get_min_lot_size(分區, 正面路寬)['min_width']` | `grep -n "def get_min_lot_size" app.py` |
-| 街角 winner（per side） | `winners_state[blk]['p1_end'/'p2_end']` | `verify/selection_pipeline.py::run_corner_pk` |
-| 強制留設抵費地 | `forced_map[blk]['left_forced_offset'/'right_forced_offset']` | 同上 |
+## 本檔量什麼（A〜G·**皆只量不判**）
 
-`parcel_min_width_n14` 自帶之三道 loud raise（臨接 FRONT／E-2′ 深度／E-8a 凸性）
-**照其設計語意生效**——本探針**不吞**，逐格記入「量測結果」欄。
+| 項 | 內容 |
+|---|---|
+| (A) | 逐街角**範圍**與逐街角**宗**之**自身最小深度**（K-9-6 定義·線性 ⇒ 只取兩端·**禁取樣**） |
+| (B) | 寬度沿深度之斜率 `k`／深度沿 `t` 之斜率 `m`／寬度沿 `t` 之斜率 `c` |
+| (C) | 八街角各落在 **K-9-7** 之哪一分支（①②③） |
+| (D) | 以 (A) 之帶深重量最小寬度（**截角前／截角後**各一·兩情境全列） |
+| (E) | **包含關係**：`街角規定範圍 ⊆ 街角第 1 宗` 是否成立·不成立差在哪 |
+| (F) | 截角接合實距（頂點↔頂點 min ＋ 交集型態）＋**局部框重測**（E-10 同族） |
+| (G) | `628-1(1)` 之 `−1.4826e-2m` 溯源：CAD 圖面既有？抑或程式產生？ |
 
-## 🔴 截角前幾何（§4 末段·**本探針之核心風險點**）
+⚠️ **符號注意**：本檔沿用**正典 K-9-7 之記號**——
+`k` ＝ ∂w/∂d（寬度對深度）、`c` ＝ ∂w/∂t（寬度對 ALLOC 位移）。
+而 `app._build_corner_range_v3` 內之區域變數 `k = sigma / den_a` 係**本檔之 `c`**
+（`grep -n "k = sigma / den_a" app.py`）。**二者同名異義·勿混**（見 GB-14）。
 
-正典 §4 末段：「角地應截角時，其**寬度及深度係指截角前**之寬度及深度」
-（`grep -n "截角前" docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+## 量測方法（**不自寫幾何算法**）
 
-現行 `cut_coords` 係**截角後** ⇒ **直接餵會量到偏小的寬度、造成假不合格**。
-故本探針之截角前幾何 ＝ `Polygon(cut_coords) ∪ _make_chamfer_tri_wb(blk, side)`。
+- **斜率 (B) 一律以「擾動 app 自身函式之輸入、觀測其輸出」取得**
+  ——`_build_corner_range_v3` 為**純函式**，且 W 對 `t`、`d` 皆仿射
+  ⇒ 有限差分為**精確**（非數值近似）、且**以 app 為 oracle**，非另寫一份算式。
+  線性性另以**兩組不同擾動量**互證（自由自檢·見 log【B】列之 `線性`）。
+- **深度 (A)** 直接照 K-9-6 之定義式：臨街段兩端點至 **BASELINE 無限直線**之垂距取 min。
+  線性 ⇒ **只取兩端·禁取樣**（K-8 §二 同一線性性質）。
+- **寬度 (D)** 一律走 `app.parcel_min_width_n14`（唯一寬度原語），只換其 `min_depth` 引數。
+- `EPS_TOUCH = 0.01` ＝ **法定粒度**（實施辦法 §3 長度 2dp·KL 域裁已鎖），
+  與姊妹探針 `probe_ruling_N_e1_touch.py` 同源同值（`grep -n "EPS_TOUCH = " verify/probes/probe_ruling_N_e1_touch.py`）
+  ——**非本檔自訂之容差**。
 
-**倉內既有事實**（K-8 §五 實作附記）：`SIDE_LINE ＝ 截角前側界；街廓邊界 ＝ 截角後側界`；
-街廓多邊形本身即截角後（街廓 ∩ 截角三角形 ＝ 0.0000㎡）⇒ 上開聯集**恆不重疊**。
+## 紀律
 
-⚠️ **本探針實測發現：該聯集之接合型態有兩類**（見「接合」欄，逐格列明）：
-
-- **邊接合**（`宗 ∩ 截角三角形` ＝ `LineString`·本案實測 ~5.0m）
-  ⇒ 聯集為**單一 Polygon** ⇒ 截角前幾何**良定義**、可量。
-- **點接合**（該交集 ＝ `Point`）⇒ 聯集為 **MultiPolygon** ⇒ 該宗**並未以邊臨接截角**
-  ⇒ **截角前幾何在現行構造下不良定義** ⇒ 本探針**不代裁、不兜底**，
-  該格之截角前寬度記 `—`，另記其**截角後**寬度供 KL 參照。
-
-⛔ **禁以 `buffer(±ε)` 合攏點接合**：實測其**非單調**
-（R4 右：`±1e-6/±1e-5` 合成 Polygon，而 `±1e-4/±1e-3` 又散回 MultiPolygon）
-⇒ 該手法係**換了一把尺**、非更嚴謹。**已上呈 KL 待裁**（見報告 §「上呈」）。
-
-## 輸出
-
-- log：`verify/out/probe_ruling_K9_corner_width.log`
-- CSV：`verify/out/probe_ruling_K9_corner_width.csv`（**只寫 `out/`·不進 `baselines/`**）
-
-兩情境（0m／3.5m）× **八街角全列**（無 winner 之側亦列，並記其成因）。
+- ⛔ **未改 `app.py` 任何一行**。
+- ⛔ **不掛 `run_all` 判定鏈**（`grep -n "probe" verify/run_all.py` ⇒ 本檔不在其中）。
+- ⛔ **不代裁 U-K9-1／U-K9-2**——前提已換（帶深定義更正），兩題暫緩；本檔只出數字不出結論。
+- rc **恆為 0**；唯缺件／取不到資料時 loud raise（no-silent-fallback）。
 
 ## 重跑
     python verify/probes/probe_ruling_K9_corner_width.py
@@ -75,7 +69,7 @@ REPO = os.path.dirname(VERIFY)
 sys.path.insert(0, VERIFY)
 
 import numpy as np                                                  # noqa: E402
-from shapely.geometry import Polygon                                # noqa: E402
+from shapely.geometry import LineString, Polygon                    # noqa: E402
 from app_harvest import harvest                                     # noqa: E402
 import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
@@ -85,9 +79,20 @@ OUTDIR = os.path.join(VERIFY, "out")
 LOG = os.path.join(OUTDIR, "probe_ruling_K9_corner_width.log")
 CSV = os.path.join(OUTDIR, "probe_ruling_K9_corner_width.csv")
 
-COLS = ["情境", "街廓", "側別", "退縮(m)", "畸零地最小寬(m)", "門檻(m)",
-        "街角第1宗", "接合", "寬度_截角前(m)", "寬度_截角後(m)",
-        "差(截角前−門檻)", "若上閘會如何"]
+# 法定粒度（實施辦法 §3 長度 2dp·KL 域裁已鎖）——同 probe_ruling_N_e1_touch.EPS_TOUCH
+EPS_TOUCH = 0.01
+# 面積之法定粒度（實施辦法 §3 第三位四捨五入）——同 app 之 E-8a 凸性閘寬
+#   （`grep -n "面積之法定粒度" app.py`）。**非本檔自訂**；用於區辨
+#   「真溢出」與「shapely 差集之浮點噪訊」（後者實測 ~1e-15㎡）。
+EPS_AREA = 0.01
+_LBIG = 1.0e5           # 無限直線之代理長度（同 app._build_corner_range_v3 之 _LBIG 口徑）
+
+COLS = ["情境", "街廓", "側別", "街角第1宗",
+        "範圍最小深度(m)", "宗最小深度(m)", "附表最小深(m)",
+        "k=∂w/∂d", "m=-∂D/∂t", "c=∂w/∂t", "K-9-7分支",
+        "寬度_截角前_新帶深(m)", "寬度_截角後_新帶深(m)",
+        "寬度_截角前_舊帶深14(m)", "寬度_截角後_舊帶深14(m)",
+        "範圍⊆宗", "範圍−宗 溢出(㎡)", "截角接合", "頂點最小距(m)", "局部框最小距(m)"]
 
 _END_OF = {"left": "p1_end", "right": "p2_end"}
 _FORCED_OF = {"left": "left_forced_offset", "right": "right_forced_offset"}
@@ -97,39 +102,84 @@ def _fail(msg):
     raise RuntimeError(f"🔴 probe_ruling_K9_corner_width：{msg}（no-silent-fallback）")
 
 
-def _front_axis(front_lines, blk):
-    """FRONT 之單位方向 d̂ 與起點 p1（`parcel_min_width_n14` 之量測軸·同 E 系列口徑）。"""
-    fl = (front_lines or {}).get(blk) or {}
-    if not (fl.get("p1") and fl.get("p2")):
-        _fail(f"{blk} 缺 FRONT_LINE —— N-14 之量測軸不可定義")
-    p1 = np.asarray(fl["p1"], float)[:2]
-    p2 = np.asarray(fl["p2"], float)[:2]
-    L = float(np.linalg.norm(p2 - p1))
-    if L <= 0:
-        _fail(f"{blk} FRONT_LINE 長度 0")
-    return (p2 - p1) / L, p1
+def _unit(v):
+    n = float(np.linalg.norm(v))
+    if n < 1e-12:
+        _fail("方向向量退化為零")
+    return v / n
 
 
-def _measure_width(width_fn, coords, d, p1, md, label):
-    """走 `parcel_min_width_n14`（**唯一寬度原語**）。其 loud raise 不吞、轉為文字記錄。"""
-    try:
-        return f"{float(width_fn(coords, tuple(d), tuple(p1), md, _label=label)):.4f}", ""
-    except RuntimeError as e:
-        return "—", "🔴raise:" + str(e).split("：", 1)[-1].splitlines()[0][:60]
+def _inf_line(pt, u):
+    return LineString([tuple(pt - u * _LBIG), tuple(pt + u * _LBIG)])
 
 
-def _join_kind(parcel_poly, tri):
-    """宗與截角三角形之接合型態 ⇒ 決定截角前幾何是否良定義。**不做任何合攏**。"""
-    if tri is None:
-        return "無截角", None, "該側無截角三角形（`_make_chamfer_tri_wb` 回 None）"
-    inter = parcel_poly.intersection(tri)
-    u = parcel_poly.union(tri)
-    if u.geom_type == "Polygon":
-        return ("邊接合", u,
-                f"宗∩截角＝{inter.geom_type}·長 {getattr(inter, 'length', 0.0):.4f}m")
-    return ("點接合", None,
-            f"宗∩截角＝{inter.geom_type}（非邊）⇒ 聯集為 {u.geom_type}"
-            f"·截角前幾何**不良定義**")
+def _perp_dist_to_baseline(P, B0, bu):
+    """點至 BASELINE **無限直線**之垂距（K-8 §一：BASELINE 恆為無限直線）。"""
+    bn = np.array([-bu[1], bu[0]], float)
+    return abs(float(np.dot(np.asarray(P, float)[:2] - B0, bn)))
+
+
+def _front_seg_ends(poly, p1, d, n):
+    """多邊形之**臨街段**（road-side chain）兩端點。
+
+    🔴 **不可**以「|t| ≤ EPS_TOUCH」定義之——實測**街廓多邊形之前緣側邊界並不落在
+    FRONT_LINE 上**（R1 左偏 **0.1662m**、R3 右偏 **0.0599m** 且**不平行**、
+    R4 右偏 **+0.014826m**；見 log【前緣偏移】表與 GB-15）。以絕對 `t≈0` 篩選會
+    整段漏掉，那是**把圖面偏移誤判為「無臨街段」**。
+
+    改以**多邊形自身之前緣側極值**為錨：取 `t ≥ t_max − EPS_TOUCH` 之頂點鏈，
+    再取其沿 `d` 之兩極值。不足 2 點（前緣邊不平行 FRONT）⇒ 退為 `t` 最大之兩點，
+    並回報 `note` 明示之（**不靜默**）。
+
+    回 (P_lo, P_hi, 段長, note)。
+    """
+    pts = [np.asarray(v[:2], float) for v in poly.exterior.coords]
+    if len(pts) < 3:
+        return None, None, 0.0, "頂點不足"
+    tv = [float(np.dot(P - p1, n)) for P in pts]
+    t_max = max(tv)
+    on = [P for P, t in zip(pts, tv) if t >= t_max - EPS_TOUCH]
+    note = f"前緣偏移 {t_max:+.6f}m"
+    if len(on) < 2:
+        order = sorted(range(len(pts)), key=lambda i: -tv[i])[:2]
+        on = [pts[i] for i in order]
+        note += "·⚠️ 前緣邊不平行 FRONT（退為 t 最大之兩點）"
+    s = [float(np.dot(P - p1, d)) for P in on]
+    return (on[int(np.argmin(s))], on[int(np.argmax(s))],
+            max(s) - min(s), note)
+
+
+def _own_min_depth(poly, p1, d, n, B0, bu, who):
+    """K-9-6 之**自身最小深度**：臨街段各點至 BASELINE 垂距之 min。
+
+    垂距沿臨街段**線性** ⇒ 最小值必落於兩端之一 ⇒ **只取兩端·禁取樣**。
+    """
+    A, B, L, note = _front_seg_ends(poly, p1, d, n)
+    if A is None:
+        return None, f"{who}：取不到臨街段（{note}）"
+    dA = _perp_dist_to_baseline(A, B0, bu)
+    dB = _perp_dist_to_baseline(B, B0, bu)
+    return min(dA, dB), f"兩端 {dA:.4f}／{dB:.4f}·臨街段長 {L:.4f}m·{note}"
+
+
+def _alloc_tau(poly, au, ref):
+    """多邊形之 ALLOC 邊沿 ALLOC 法向之**有號位移**（相對固定參考點 ref）。
+
+    只用於**差分**（Δτ ＝ Δt）⇒ 參考點之選擇不影響結果，故不需重建 Q0。
+    """
+    an = np.array([-au[1], au[0]], float)
+    best, blen = None, -1.0
+    cs = list(poly.exterior.coords)
+    for P, Q in zip(cs[:-1], cs[1:]):
+        v = np.asarray(Q, float)[:2] - np.asarray(P, float)[:2]
+        n = float(np.linalg.norm(v))
+        if n < 1e-9:
+            continue
+        if abs(abs(float(np.dot(v / n, au))) - 1.0) < 1e-6 and n > blen:
+            best, blen = np.asarray(P, float)[:2], n
+    if best is None:
+        return None
+    return float(np.dot(best - ref, an))
 
 
 def main():
@@ -140,10 +190,12 @@ def main():
             pass
     os.makedirs(OUTDIR, exist_ok=True)
     L, rows = [], []
-    L.append("=" * 118)
-    L.append("【K-9-5 街角第 1 宗寬度實量（截角前）】**只量不判**——KL 過目材料，"
-             "上閘屬 K-6-A2")
-    L.append("=" * 118)
+    by_pid_all = {}      # (情境, 街廓, 暫編地號) → g_row（供 F-2／G 之溯源）
+    L.append("=" * 120)
+    L.append("【K-9-6／K-9-7 街角幾何實測】**只量不判·不設門檻·不出合格/不合格**")
+    L.append("🔴 **前版數字已全部作廢**（帶深誤用畸零地附表之 14.00·正典 K-9-6）"
+             "——本檔為改寫版，勿引前版任何寬度數字。")
+    L.append("=" * 120)
 
     ns, fake_st = harvest()
     width_fn = ns.get("parcel_min_width_n14")
@@ -153,6 +205,8 @@ def main():
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     front_lines = cad.get("front_lines") or {}
     sides_by = cad.get("side_lines_by_side", {}) or {}
+    bl_by = cad.get("baselines", {}) or {}
+    alloc_by = cad.get("alloc_dir_by_block", {}) or {}
     corners = [(lbl, w) for lbl in rv.CORNER_BLOCKS for w in ("left", "right")
                if w in (sides_by.get(lbl) or {})]
     if not corners:
@@ -166,149 +220,385 @@ def main():
     temp_parcels, build_parcels, _ = rv.build_build_parcels(
         ns, fake_st, v6_raw, list(cb_by.values()), snapshot)
 
+    def _axes(blk):
+        fl = (front_lines or {}).get(blk) or {}
+        if not (fl.get("p1") and fl.get("p2")):
+            _fail(f"{blk} 缺 FRONT_LINE")
+        p1 = np.asarray(fl["p1"], float)[:2]
+        d = _unit(np.asarray(fl["p2"], float)[:2] - p1)
+        n = np.array([-d[1], d[0]], float)
+        mb = bl_by.get(blk) or {}
+        bp = ns["_baseline_pts_from_manual"](mb, cb_by[blk]["vertices"])
+        if not (bp and len(bp) >= 2):
+            _fail(f"{blk} 缺 BASELINE")
+        B0 = np.asarray(bp[0], float)[:2]
+        bu = _unit(np.asarray(bp[-1], float)[:2] - B0)
+        au = _unit(np.asarray(alloc_by[blk], float)[:2])
+        return p1, d, n, B0, bu, au, bp
+
+    def _build_range(blk, side, setback, **over):
+        """呼叫 app 之受測函式（**唯一街角範圍原語**）。擾動用 `over`。"""
+        b = cb_by[blk]
+        mb = bl_by[blk]
+        fl = front_lines[blk]
+        sd = sides_by[blk][side]
+        mw = float(ns["get_min_lot_size"](
+            b["category"], float(snapshot["blocks"][blk]["正面"]["路寬_m"]))["min_width"])
+        kw = dict(block_vertices=b["vertices"], block_centroid=b["centroid"],
+                  front_pts=[fl["p1"], fl["p2"]],
+                  baseline_pts=ns["_baseline_pts_from_manual"](mb, b["vertices"]),
+                  side_line_pts=[sd["p1"], sd["p2"]],
+                  alloc_dir=alloc_by[blk],
+                  block_depth=float(snapshot["blocks"][blk]["街廓分配深度_m"]),
+                  setback=setback, min_width=mw,
+                  chamfer_tri=ns["_make_chamfer_tri_wb"](b, side),
+                  dxf_quantum=(mb.get("_match") or {}).get("q_detected"),
+                  _label=blk, _side=side)
+        kw.update(over)
+        return ns["_build_corner_range_v3"](**kw), mw, kw["block_depth"]
+
+    # ══ (B)(C) 斜率與分支：以擾動 app 自身函式取得（純函式＋仿射 ⇒ 差分為精確）══
+    L.append("")
+    L.append("【B】【C】斜率與 K-9-7 分支（**以擾動 app 函式輸入取得·非另寫算式**）")
+    L.append("-" * 120)
+    L.append(f"  {'街廓側':11}{'c=∂w/∂t':>11}{'c線性':>7}{'k=∂w/∂d':>11}"
+             f"{'m=-∂D/∂t':>11}{'m線性':>7}{'分支':>7}  說明")
+    slope = {}
+    for blk, side in corners:
+        p1, d, n, B0, bu, au, bp = _axes(blk)
+        ref = p1
+        # c：擾動 min_width（δ 與 2δ 互證線性·仿射 ⇒ 應逐位相等）
+        r0, mw0, D0 = _build_range(blk, side, 0.0)
+        t0 = _alloc_tau(r0, au, ref)
+        cs = []
+        for dlt in (0.5, 1.0):
+            rr, _, _ = _build_range(blk, side, 0.0, min_width=mw0 + dlt)
+            tt = _alloc_tau(rr, au, ref)
+            if t0 is None or tt is None:
+                _fail(f"{blk}/{side} 取不到範圍多邊形之 ALLOC 邊")
+            cs.append(dlt / (tt - t0))
+        c_lin = abs(cs[0] - cs[1]) <= 1e-9 * max(1.0, abs(cs[0]))
+        c = cs[0]
+        # k：擾動 block_depth。Δτ==0 ⇒ min 在 d=0 ⇒ k ≥ 0；否則 k = −c·Δτ/ΔD
+        dD = 1.0
+        rD, _, _ = _build_range(blk, side, 0.0, block_depth=D0 + dD)
+        tD = _alloc_tau(rD, au, ref)
+        dtau = tD - t0
+        if abs(dtau) <= 1e-12:
+            k, kmsg = 0.0, "k ≥ 0（帶深不影響 t* ⇒ 寬度 min 恆在 d=0）"
+        else:
+            k = -c * dtau / dD
+            kmsg = f"k < 0（帶深影響 t*·Δτ/ΔD={dtau / dD:+.6f}）"
+        # m ＝ −∂D/∂t：**直接量範圍自身之最小深度 D(t)**（K-9-6 定義），三點差分。
+        #   ⛔ **不走「dD/ds × ds/dt」之連鎖律**——實測其於 R1 左／R3 右 得出
+        #      |ds/dt| ≈ 6.8／7.0，而由構造 |ds/dt| ＝ |1/den_a| ＝ |c| ≈ 1.00
+        #      ⇒ 該路徑於「臨街段鏈跳段」時失效（街廓前緣邊界為折線）。
+        #   改以三點量 D(t) 並**互證線性**：非線性即代表臨街段鏈跳段，據實報 `🔴 非線性`。
+        Dts = []
+        for dlt in (0.0, 0.5, 1.0):
+            rr = r0 if dlt == 0.0 else _build_range(
+                blk, side, 0.0, min_width=mw0 + dlt)[0]
+            _dv, _ = _own_min_depth(rr, p1, d, n, B0, bu, "範圍")
+            if _dv is None:
+                _fail(f"{blk}/{side} 範圍取不到自身最小深度（δ={dlt}）")
+            Dts.append(_dv)
+        dt_1 = 0.5 / c
+        m1 = -(Dts[1] - Dts[0]) / dt_1
+        m2 = -(Dts[2] - Dts[1]) / dt_1
+        m_lin = abs(m1 - m2) <= 1e-6 * max(1.0, abs(m1))
+        m = m1
+        branch = ("①（k ≥ 0·深度不影響）" if k >= 0
+                  else ("②（k<0·D 常數）" if abs(m) <= 1e-9
+                        else "③（k<0·D 隨 t 變）"))
+        if not m_lin:
+            branch += "⚠️非線性"
+        # 前緣偏移：範圍多邊形之前緣側極值 t（＝街廓多邊形前緣邊界 vs FRONT_LINE 之落差）
+        _tv_r = [float(np.dot(np.asarray(v[:2], float) - p1, n))
+                 for v in r0.exterior.coords]
+        _t_front = max(_tv_r, key=abs) if False else _tv_r[int(np.argmax(_tv_r))]
+        _has_par = any(
+            abs(abs(float(np.dot(_unit(np.asarray(Q, float)[:2]
+                                       - np.asarray(P, float)[:2]), d))) - 1.0) < 1e-6
+            for P, Q in zip(list(r0.exterior.coords)[:-1], list(r0.exterior.coords)[1:])
+            if float(np.linalg.norm(np.asarray(Q, float)[:2]
+                                    - np.asarray(P, float)[:2])) > 1e-9)
+        slope[(blk, side)] = dict(c=c, k=k, m=m, branch=branch,
+                                  c_lin=c_lin, m_lin=m_lin, kmsg=kmsg,
+                                  Dts=Dts, m2=m2,
+                                  t_front=_t_front, has_par=_has_par)
+        L.append(f"  {blk + '/' + side:11}{c:>11.6f}{'✅' if c_lin else '🔴':>7}"
+                 f"{k:>11.6f}{m:>11.6f}{'✅' if m_lin else '🔴':>7}"
+                 f"{branch.split('（')[0]:>7}  {kmsg}"
+                 f"·D(t) 三點 {Dts[0]:.4f}/{Dts[1]:.4f}/{Dts[2]:.4f}"
+                 f"·m2={m2:+.6f}")
+
+    # ══ 前緣偏移（**新發現·GB-15 之實料**）═════════════════════════════════
+    L.append("")
+    L.append("【前緣偏移】街廓多邊形之前緣側邊界 vs FRONT_LINE（**非零即圖面落差**）")
+    L.append("-" * 120)
+    L.append("  正典 K-8 §五 稱範圍由「**前緣線**…所圍」，實作取「街廓多邊形 ∩ 半平面」")
+    L.append("  ⇒ 其前緣側邊界實為**街廓多邊形之邊界**、非 FRONT_LINE。二者落差如下：")
+    L.append(f"  {'街廓側':11}{'前緣偏移(m)':>14}{'有平行FRONT之邊':>18}")
+    for blk, side in corners:
+        sl = slope[(blk, side)]
+        L.append(f"  {blk + '/' + side:11}{sl['t_front']:>+14.6f}"
+                 f"{('✅ 有' if sl['has_par'] else '🔴 無（不平行）'):>18}")
+
+    # ══ 逐情境 × 逐街角 ═══════════════════════════════════════════════════
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
-        _md_by, _mw_par = {}, {}
-        for p in params:
-            _md_by[str(p["街廓"])] = float(p.get("法定最小深(m)", 0) or 0)
-            _mw_par[str(p["街廓"])] = float(p.get("法定最小寬(m)", 0) or 0)
-        if not all(v > 0 for v in _md_by.values()):
-            _fail(f"[{tag}] 法定最小深缺／≤0：{_md_by}")
-        _d, _sel, _off, winners_state, forced_map = run_corner_pk(
+        _md_tbl = {str(p["街廓"]): float(p.get("法定最小深(m)", 0) or 0) for p in params}
+        _d2, _sel, _off, winners_state, forced_map = run_corner_pk(
             ns, fake_st, list(cb_by.values()), cad, params,
             temp_parcels, build_parcels, setback, snapshot=snapshot)
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                         params, build_parcels, winners_state, forced_map, setback)
-        by_pid = {}
-        for r in sg["g_rows"]:
-            by_pid[(str(r.get("所屬街廓", "")), str(r.get("暫編地號", "")))] = r
+        for _r0 in sg["g_rows"]:
+            by_pid_all[(tag, str(_r0.get("所屬街廓", "")),
+                        str(_r0.get("暫編地號", "")))] = _r0
+        by_pid = {(str(r.get("所屬街廓", "")), str(r.get("暫編地號", ""))): r
+                  for r in sg["g_rows"]}
 
         for blk, side in corners:
-            b = cb_by[blk]
-            # 畸零地最小寬＝法定附表（S1 §6 查表化之正典路徑）
-            mw = float(ns["get_min_lot_size"](
-                b["category"],
-                float(snapshot["blocks"][blk]["正面"]["路寬_m"]))["min_width"])
-            # 免費一致性看守：與參數表之「法定最小寬(m)」須同值（二者本應同源）
-            if abs(mw - _mw_par.get(blk, -1.0)) > 0:
-                _fail(f"[{tag}] {blk} 畸零地最小寬兩來源分歧："
-                      f"get_min_lot_size={mw} vs 參數表={_mw_par.get(blk)}"
-                      f"——量測基準不唯一，停")
-            thr = setback + mw
+            p1, d, n, B0, bu, au, bp = _axes(blk)
+            sl = slope[(blk, side)]
+            rng, mw, _D0 = _build_range(blk, side, setback)
+            rng_depth, rng_note = _own_min_depth(rng, p1, d, n, B0, bu, "範圍")
             rec = {"情境": tag, "街廓": blk, "側別": side,
-                   "退縮(m)": f"{setback:.2f}", "畸零地最小寬(m)": f"{mw:.2f}",
-                   "門檻(m)": f"{thr:.2f}"}
+                   "附表最小深(m)": f"{_md_tbl[blk]:.2f}",
+                   "範圍最小深度(m)": ("—" if rng_depth is None else f"{rng_depth:.4f}"),
+                   "k=∂w/∂d": f"{sl['k']:.6f}", "m=-∂D/∂t": f"{sl['m']:.6f}",
+                   "c=∂w/∂t": f"{sl['c']:.6f}", "K-9-7分支": sl["branch"]}
             pid = (winners_state.get(blk) or {}).get(_END_OF[side])
             if not pid:
                 _why = ("強制留設抵費地"
                         if (forced_map.get(blk) or {}).get(_FORCED_OF[side])
                         else "無街角 winner")
-                rec.update({"街角第1宗": f"—（{_why}）", "接合": "—",
-                            "寬度_截角前(m)": "—", "寬度_截角後(m)": "—",
-                            "差(截角前−門檻)": "—",
-                            "若上閘會如何": f"—（該情境無街角第 1 宗·{_why}）",
-                            "_w_pre": "—", "_w_post": "—", "_exc": ""})
+                rec.update({"街角第1宗": f"—（{_why}）", "宗最小深度(m)": "—",
+                            "寬度_截角前_新帶深(m)": "—", "寬度_截角後_新帶深(m)": "—",
+                            "寬度_截角前_舊帶深14(m)": "—", "寬度_截角後_舊帶深14(m)": "—",
+                            "範圍⊆宗": "—", "範圍−宗 溢出(㎡)": "—",
+                            "截角接合": "—", "頂點最小距(m)": "—", "局部框最小距(m)": "—"})
                 rows.append(rec)
                 continue
             r = by_pid.get((blk, str(pid)))
             if r is None:
-                _fail(f"[{tag}] {blk}/{side} winner {pid} 不在 g_rows —— 上游不一致")
+                _fail(f"[{tag}] {blk}/{side} winner {pid} 不在 g_rows")
             cc = r.get("cut_coords") or []
             if len(cc) < 3:
                 _fail(f"[{tag}] {blk}/{side} {pid} cut_coords 不足（{len(cc)} 點）")
-            poly = Polygon([(float(c[0]), float(c[1])) for c in cc])
-            tri = ns["_make_chamfer_tri_wb"](b, side)
-            kind, pre_poly, note = _join_kind(poly, tri)
-            d, p1 = _front_axis(front_lines, blk)
-            md = _md_by[blk]
-            w_post, e_post = _measure_width(
-                width_fn, cc, d, p1, md, f"{blk}·{pid}·截角後")
-            if pre_poly is not None:
-                w_pre, e_pre = _measure_width(
-                    width_fn, list(pre_poly.exterior.coords), d, p1, md,
-                    f"{blk}·{pid}·截角前")
+            par = Polygon([(float(x[0]), float(x[1])) for x in cc])
+            par_depth, par_note = _own_min_depth(par, p1, d, n, B0, bu, "宗")
+            tri = ns["_make_chamfer_tri_wb"](cb_by[blk], side)
+
+            # (D) 以新帶深重量寬度；舊帶深 14.00 併列以顯落差
+            def _w(coords, md, lab):
+                if md is None or md <= 0:
+                    return "—"
+                try:
+                    return f"{float(width_fn(coords, tuple(d), tuple(p1), md, _label=lab)):.4f}"
+                except RuntimeError as e:
+                    return "raise:" + str(e).split("：", 1)[-1].splitlines()[0][:34]
+
+            pre = None
+            if tri is not None and par.union(tri).geom_type == "Polygon":
+                pre = list(par.union(tri).exterior.coords)
+            _newmd = par_depth
+            rec["宗最小深度(m)"] = ("—" if par_depth is None else f"{par_depth:.4f}")
+            rec["寬度_截角後_新帶深(m)"] = _w(cc, _newmd, f"{blk}·{pid}·後·新")
+            rec["寬度_截角後_舊帶深14(m)"] = _w(cc, _md_tbl[blk], f"{blk}·{pid}·後·舊")
+            rec["寬度_截角前_新帶深(m)"] = (_w(pre, _newmd, f"{blk}·{pid}·前·新")
+                                     if pre else "—（非邊接合）")
+            rec["寬度_截角前_舊帶深14(m)"] = (_w(pre, _md_tbl[blk], f"{blk}·{pid}·前·舊")
+                                       if pre else "—（非邊接合）")
+
+            # (E) 包含關係
+            over = rng.difference(par)
+            _oa = float(over.area)
+            if _oa <= EPS_AREA:
+                rec["範圍⊆宗"] = ("✅ 成立" if _oa == 0.0
+                                else f"✅ 成立（噪訊 {_oa:.2e}㎡ ≤ 法定粒度）")
             else:
-                w_pre, e_pre = "—", ""
-            if w_pre != "—":
-                _diff = float(w_pre) - thr
-                _dtxt = f"{_diff:+.4f}"
-                _verd = ("合格（K-9-5 上閘後仍過）" if _diff >= 0
-                         else "🔴 **不合格**（K-9-5 上閘後翻盤）")
-            elif kind == "點接合":
-                _dtxt = "—"
-                _verd = "⏸ 截角前幾何不良定義 ⇒ **待 KL 裁**（本探針不代裁）"
+                rec["範圍⊆宗"] = "🔴 不成立"
+            rec["範圍−宗 溢出(㎡)"] = f"{_oa:.6f}"
+
+            # (F) 截角接合：交集型態 ＋ 頂點↔頂點最小距 ＋ 局部框重測
+            if tri is None:
+                rec.update({"截角接合": "無截角", "頂點最小距(m)": "—",
+                            "局部框最小距(m)": "—"})
             else:
-                _dtxt = "—"
-                _verd = f"⏸ 無法量測：{e_pre or e_post or note}"
-            rec.update({"街角第1宗": str(pid), "接合": f"{kind}（{note}）",
-                        "寬度_截角前(m)": w_pre + (f" {e_pre}" if e_pre else ""),
-                        "寬度_截角後(m)": w_post + (f" {e_post}" if e_post else ""),
-                        "差(截角前−門檻)": _dtxt, "若上閘會如何": _verd,
-                        # 列印用：數字欄不摻例外文字（例外另立診斷區）
-                        "_w_pre": w_pre, "_w_post": w_post,
-                        "_exc": "／".join(x for x in (e_pre, e_post) if x)})
+                inter = par.intersection(tri)
+                kind = ("邊接合" if inter.geom_type in ("LineString", "MultiLineString")
+                        else ("點接合" if inter.geom_type == "Point" else inter.geom_type))
+                pv = [np.asarray(v[:2], float) for v in par.exterior.coords]
+                tv = [np.asarray(v[:2], float) for v in tri.exterior.coords]
+                vmin = min(float(np.linalg.norm(a - b)) for a in pv for b in tv)
+                # 局部框（E-10 同族）：以 FRONT p1 為原點、(d,n) 為軸之剛體變換後重測
+                def _loc(P):
+                    q = P - p1
+                    return np.array([float(np.dot(q, d)), float(np.dot(q, n))])
+                pl = [_loc(a) for a in pv]
+                tl = [_loc(b) for b in tv]
+                vmin_l = min(float(np.linalg.norm(a - b)) for a in pl for b in tl)
+                rec.update({"截角接合": f"{kind}（{inter.geom_type}）",
+                            "頂點最小距(m)": f"{vmin:.3e}",
+                            "局部框最小距(m)": f"{vmin_l:.3e}"})
+            rec["街角第1宗"] = str(pid)
+            rec["_rng_note"] = rng_note
+            rec["_par_note"] = par_note or ""
             rows.append(rec)
 
-    # ── 列印 ────────────────────────────────────────────────────────────────
+    # ══ 列印 ════════════════════════════════════════════════════════════
     for tag in ("0m", "3.5m"):
         L.append("")
-        L.append(f"【{tag}】門檻 ＝ 退縮 ＋ 畸零地最小寬")
-        L.append("-" * 118)
-        L.append(f"  {'街廓':5}{'側':>6}{'退縮':>7}{'最小寬':>8}{'門檻':>8}"
-                 f"{'街角第1宗':>16}{'接合':>8}{'截角前寬':>11}{'截角後寬':>11}"
-                 f"{'差':>11}  若上閘會如何")
+        L.append(f"【A】【D】[{tag}] 自身最小深度 與 據之重量之最小寬度"
+                 f"（**舊帶深 14.00 併列以顯落差**）")
+        L.append("-" * 120)
+        L.append(f"  {'街廓':5}{'側':>6}{'街角第1宗':>15}{'範圍深':>9}{'宗深':>9}"
+                 f"{'附表深':>8}{'前·新':>10}{'後·新':>10}{'前·舊14':>10}{'後·舊14':>10}")
         for r in [x for x in rows if x["情境"] == tag]:
-            L.append(f"  {r['街廓']:5}{r['側別']:>6}{r['退縮(m)']:>7}"
-                     f"{r['畸零地最小寬(m)']:>8}{r['門檻(m)']:>8}"
-                     f"{r['街角第1宗']:>16}{r['接合'].split('（')[0]:>8}"
-                     f"{r['_w_pre']:>11}{r['_w_post']:>11}"
-                     f"{r['差(截角前−門檻)']:>11}  {r['若上閘會如何']}")
+            L.append(f"  {r['街廓']:5}{r['側別']:>6}{r['街角第1宗']:>15}"
+                     f"{r['範圍最小深度(m)']:>9}{r['宗最小深度(m)']:>9}"
+                     f"{r['附表最小深(m)']:>8}{r['寬度_截角前_新帶深(m)']:>10}"
+                     f"{r['寬度_截角後_新帶深(m)']:>10}{r['寬度_截角前_舊帶深14(m)']:>10}"
+                     f"{r['寬度_截角後_舊帶深14(m)']:>10}")
 
-    # ── 接合診斷（點接合＝上呈項之實料）───────────────────────────────────────
     L.append("")
-    L.append("【接合診斷】截角前幾何是否良定義（**點接合者不代裁·上呈 KL**）")
-    L.append("-" * 118)
+    L.append("【E】包含關係查核：`街角規定範圍 ⊆ 街角第 1 宗`？")
+    L.append("-" * 120)
+    L.append("  （KL 推論：兩者皆為「街廓 ∩ 平行 ALLOC 半平面」⇒ G ≥ 範圍面積 應蘊含包含關係）")
     for r in rows:
-        if r["接合"] == "—":
+        if r["範圍⊆宗"] == "—":
             continue
-        L.append(f"  {r['情境']:5}{r['街廓']:4}{r['側別']:>6}  {r['接合']}")
+        L.append(f"  {r['情境']:5}{r['街廓']:4}{r['側別']:>6} {r['街角第1宗']:>14}  "
+                 f"{r['範圍⊆宗']}·範圍−宗 溢出 {r['範圍−宗 溢出(㎡)']}㎡")
 
-    # ── 量測例外（`parcel_min_width_n14` 之 loud raise·**不吞·逐格列明**）──────
-    _exc = [r for r in rows if r.get("_exc")]
     L.append("")
-    L.append("【量測例外】`parcel_min_width_n14` 之 loud raise（其設計語意·本探針不吞）")
-    L.append("-" * 118)
-    if not _exc:
-        L.append("  （無）")
-    for r in _exc:
-        L.append(f"  {r['情境']:5}{r['街廓']:4}{r['側別']:>6} {r['街角第1宗']}：{r['_exc']}")
+    L.append("【F】截角接合實距（頂點↔頂點 min）＋ **局部框重測**（E-10 同族）")
+    L.append("-" * 120)
+    L.append("  ⚠️ KL 圖示：R1 左 連得起來、R4 右 連不起來。前版兩者皆判「點接合」。")
+    for r in rows:
+        if r["截角接合"] == "—":
+            continue
+        L.append(f"  {r['情境']:5}{r['街廓']:4}{r['側別']:>6} {r['街角第1宗']:>14}  "
+                 f"{r['截角接合']:28} 絕對框 {r['頂點最小距(m)']:>11}"
+                 f"  局部框 {r['局部框最小距(m)']:>11}")
 
-    _pt = [r for r in rows if r["接合"].startswith("點接合")]
-    _bad = [r for r in rows if r["若上閘會如何"].startswith("🔴")]
+    # ── (F)-2 點接合者之接觸組態（KL 圖示對拍用）────────────────────────────
     L.append("")
-    L.append("-" * 118)
-    L.append(f"【彙總】列數 {len(rows)}（{len(rv.CORNER_BLOCKS)} 街廓／"
-             f"{len(corners)} 街角側 × 2 情境）")
-    L.append(f"  · 可量測（邊接合）        ：{sum(1 for r in rows if r['接合'].startswith('邊接合'))} 格")
-    L.append(f"  · **點接合·截角前不良定義**：{len(_pt)} 格 ⇒ **上呈 KL**")
-    L.append(f"  · 無街角第 1 宗（含強制抵費地）：{sum(1 for r in rows if r['接合'] == '—')} 格")
-    L.append(f"  · **K-9-5 上閘後會翻盤（不合格）**：{len(_bad)} 格")
-    for r in _bad:
-        L.append(f"      🔴 {r['情境']} {r['街廓']}/{r['側別']} {r['街角第1宗']}："
-                 f"截角前寬 {r['寬度_截角前(m)']} < 門檻 {r['門檻(m)']}"
-                 f"（差 {r['差(截角前−門檻)']}）")
+    L.append("【F-2】**點接合**者之接觸組態（局部框 (s,t)·s 沿 FRONT／t 為 FRONT 法向）")
+    L.append("-" * 120)
+    L.append("  假說「R1 左係次微米級座標不合之假點接合」⇒ 由上表 **絕對框／局部框皆 0.000e+00**")
+    L.append("  （＝**頂點完全重合**、非近似）**否證**。以下列出接觸點與兩多邊形之局部座標。")
+    _seen = set()
+    for r in rows:
+        if not str(r.get("截角接合", "")).startswith("點接合"):
+            continue
+        key = (r["街廓"], r["側別"], r["街角第1宗"])
+        if key in _seen:
+            continue
+        _seen.add(key)
+        blk, side, pid = key
+        p1, d, n, B0, bu, au, bp = _axes(blk)
+        rr = by_pid_all[(r["情境"], blk, pid)]
+        par = Polygon([(float(x[0]), float(x[1])) for x in rr.get("cut_coords")])
+        tri = ns["_make_chamfer_tri_wb"](cb_by[blk], side)
+        inter = par.intersection(tri)
+        cp = np.asarray(inter.coords[0], float)[:2] if inter.geom_type == "Point" else None
+
+        def _loc2(P):
+            q = np.asarray(P, float)[:2] - p1
+            return (float(np.dot(q, d)), float(np.dot(q, n)))
+        L.append(f"  {blk}/{side} {pid}（情境 {r['情境']}）"
+                 f"  接觸點 (s,t)＝{'—' if cp is None else _loc2(cp)}")
+        L.append(f"      截角三角形頂點 (s,t)："
+                 f"{[tuple(round(v, 4) for v in _loc2(v2)) for v2 in list(tri.exterior.coords)[:-1]]}")
+        _pv = [(_loc2(v)) for v in list(par.exterior.coords)[:-1]]
+        _pv.sort(key=lambda st: -st[1])
+        L.append(f"      宗之最靠前緣三頂點 (s,t)："
+                 f"{[tuple(round(x, 4) for x in v) for v in _pv[:3]]}")
+
+    # ── (G) −1.4826e-2 溯源 ────────────────────────────────────────────────
     L.append("")
-    L.append("RESULT: 只量不判（**無 PASS/FAIL 貢獻·rc 恆 0**）——判準上閘屬 K-6-A2，"
-             "前置＝本表經 KL 過目")
-    L.append("=" * 118)
+    L.append("【G】`628-1(1)` 之 `−1.4826e-2m` 溯源：CAD 圖面既有？抑或程式產生？")
+    L.append("-" * 120)
+    _gb = "R4"
+    p1, d, n, B0, bu, au, bp = _axes(_gb)
+    _bv = [np.asarray(v[:2], float) for v in cb_by[_gb]["vertices"]]
+    _bt = [float(np.dot(P - p1, n)) for P in _bv]
+    _i = int(np.argmax(_bt))
+    L.append(f"  ① **街廓 {_gb} 多邊形**（`cb_by['{_gb}']['vertices']`·W-A.3 方案B **直讀**"
+             f" DXF BLOCK 閉合多邊形）")
+    L.append(f"     其 t 最大之頂點 ＝ ({_bv[_i][0]:.6f}, {_bv[_i][1]:.6f})，"
+             f"t ＝ **{_bt[_i]:+.6f}m**")
+    _rr = by_pid_all.get(("0m", _gb, "628-1(1)"))
+    if _rr is not None:
+        _pv2 = [np.asarray(v[:2], float) for v in _rr.get("cut_coords")]
+        _pt2 = [float(np.dot(P - p1, n)) for P in _pv2]
+        _j = int(np.argmax(_pt2))
+        _dist = float(np.linalg.norm(_pv2[_j] - _bv[_i]))
+        L.append(f"  ② **宗 `628-1(1)` 之 cut_coords** t 最大之頂點 ＝ "
+                 f"({_pv2[_j][0]:.6f}, {_pv2[_j][1]:.6f})，t ＝ **{_pt2[_j]:+.6f}m**")
+        L.append(f"  ③ **①②兩頂點之距離 ＝ {_dist:.3e} m**"
+                 f"{'（＝同一點）' if _dist < 1e-9 else '（不同點·須續追）'}")
+    # ④ 回到原始 DXF：BLOCK 圖層是否本來就有該點
+    try:
+        import ezdxf as _ez
+        _doc = _ez.readfile(rv.V6DXF, encoding="cp950")
+        _hit, _best, _skipped = None, None, []
+        for _e in _doc.modelspace():
+            if _e.dxf.layer != "BLOCK":
+                continue
+            # BLOCK 圖層實為舊式 `POLYLINE`（`.vertices`），非 `LWPOLYLINE`（`.get_points()`）
+            #   ⇒ 兩式皆試；**皆不通即記錄**，不靜默跳過。
+            _pts = []
+            if _e.dxftype() == "POLYLINE":
+                _pts = [(float(_v.dxf.location[0]), float(_v.dxf.location[1]))
+                        for _v in _e.vertices]
+            elif hasattr(_e, "get_points"):
+                _pts = [(float(x[0]), float(x[1])) for x in _e.get_points()]
+            if not _pts:
+                _skipped.append(f"{_e.dxftype()}#{_e.dxf.handle}")
+                continue
+            for _q in _pts:
+                _dd = float(np.linalg.norm(np.asarray(_q) - _bv[_i]))
+                if _best is None or _dd < _best[0]:
+                    _best, _hit = (_dd, _q), _e.dxf.handle
+        if _best is None:
+            L.append(f"  ④ 🔴 **原始 DXF BLOCK 圖層取不到任何頂點**"
+                     f"（略過之實體：{_skipped[:5]}）——溯源未完成，不臆測")
+        else:
+            L.append(f"  ④ **原始 `data/V6.dxf` BLOCK 圖層**距該頂點最近之點 ＝ "
+                     f"({_best[1][0]:.6f}, {_best[1][1]:.6f})，"
+                     f"距離 **{_best[0]:.3e} m**（entity handle {_hit}）")
+            L.append(f"  ⇒ **結論：{'CAD 圖面既有' if _best[0] < 1e-6 else '非 CAD 直出·須續追'}**"
+                     f"——該偏移**非程式產生**，係 BLOCK 圖層之頂點本身即位於 FRONT_LINE "
+                     f"外側 {_bt[_i]:+.6f}m。")
+    except Exception as _e_g:
+        L.append(f"  ④ 原始 DXF 覆核未完成：{type(_e_g).__name__}: {_e_g}")
+
+    L.append("")
+    L.append("【診斷】各多邊形之臨街段兩端垂距（(A) 之原始讀數·線性 ⇒ 只取兩端）")
+    L.append("-" * 120)
+    for r in rows:
+        if "_rng_note" not in r:
+            continue
+        L.append(f"  {r['情境']:5}{r['街廓']:4}{r['側別']:>6}  範圍：{r['_rng_note']}")
+        if r["_par_note"]:
+            L.append(f"  {'':5}{'':4}{'':>6}  宗　：{r['_par_note']}")
+
+    L.append("")
+    L.append("-" * 120)
+    L.append("RESULT: 只量不判（**無 PASS/FAIL 貢獻·rc 恆 0**）。"
+             "本檔不代裁 U-K9-1／U-K9-2（前提已換·兩題暫緩）。")
+    L.append("=" * 120)
 
     txt = "\n".join(L)
     print(txt)
     with open(LOG, "w", encoding="utf-8") as f:
         f.write(txt + "\n")
     with open(CSV, "w", encoding="utf-8-sig", newline="") as f:
-        # `_w_pre`／`_w_post`／`_exc` 係**列印用**私有欄（數字欄不摻例外文字）
-        # ⇒ CSV 只出 `COLS`。`extrasaction="ignore"` 為此而設、非吞錯。
+        # `_rng_note`／`_par_note` 係列印用私有欄 ⇒ CSV 只出 COLS（非吞錯）
         w = csv.DictWriter(f, fieldnames=COLS, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)

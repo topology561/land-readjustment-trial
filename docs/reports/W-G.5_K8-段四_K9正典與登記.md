@@ -179,6 +179,19 @@ $ grep -c "街角·K-4 面積門檻蘊含（N-14 不適用）" verify/baselines/
 
 ## 五、probe（4.4）：`verify/probes/probe_ruling_K9_corner_width.py`
 
+> # 🔴 本節（§五 全節）之寬度數字已於**段五作廢**（2026-08-02）
+>
+> 本節之量測以**畸零地附表之最小深度 `14.00`** 為 `parcel_min_width_n14` 之量測帶深。
+> **該帶深定義錯誤**——依 **K-9-6**（KL 裁 2026-08-01·法規原文），量測帶深應為
+> **該宗／該範圍自身之最小深度**（本案 33〜46m），`14.00` 係**可建築門檻**、非量測量。
+>
+> ⇒ **§五-a 表之全部寬度數字、以及「1 格翻盤／1 格貼線」之結論，一律作廢、不得引用。**
+> 本報告**其餘各節（正典、`CLAUDE.md`、註解、§四-1 之 baseline 綁定更正、GB-10/11）不受影響**。
+>
+> 改寫後之實測 ⇒ `verify/out/probe_ruling_K9_corner_width.log`、
+> 正典 **K-9-7-c**、報告 `docs/reports/W-G.5_K8-段五_K9-6_K9-7正典與登記.md`。
+> **本節逐字保留供追溯（失敗考古），勿刪。**
+
 **只量不判·rc 恆 0·不掛 `run_all` 判定鏈**（`grep -n "probe" verify/run_all.py` ⇒ 本檔不在其中）。
 **未改 `app.py` 任何一行**；量測全走倉內既有原語與其自帶容差
 （`parcel_min_width_n14`／`_make_chamfer_tri_wb`／`get_min_lot_size`），
