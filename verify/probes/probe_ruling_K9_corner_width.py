@@ -321,6 +321,55 @@ def _k98_virtual_block(cc, blk_poly, p1, d, n, au, side_pts, base_pts,
             "PQ_len": float(np.linalg.norm(Q - P))}
 
 
+
+# ══════════════════════════════════════════════════════════════════════════
+# 段八：溢出多邊形之【分片診斷】與【逐邊來源歸屬】（只量不判·不提假說）
+# ══════════════════════════════════════════════════════════════════════════
+#  🔴 前版之位置診斷有**自相矛盾**：跨片取 `min/max` 得出之 s 範圍，
+#     與只由「有面積之片」導出之面積／形心**不可能同時正確**。
+#     成因（本批查明）：`difference()` 之結果含**零面積碎片**與**零寬尖刺**
+#     ⇒ 範圍被污染。**修正：逐片報，並將零面積片單獨列出。**
+
+
+def _parts_of(g):
+    """幾何拆片（Polygon → [g]；MultiPolygon → 各片）。空／退化片一併保留、標明。"""
+    if g.is_empty:
+        return []
+    return list(g.geoms) if g.geom_type.startswith("Multi") else [g]
+
+
+def _stloc(P, p1, d, n):
+    q = np.asarray(P, float)[:2] - p1
+    return (float(np.dot(q, d)), float(np.dot(q, n)))
+
+
+def _perp_to_seg_line(P, A, B):
+    """點至通過 A、B 之**無限直線**之垂距。A≈B ⇒ 回 inf（退化候選不採信）。"""
+    A = np.asarray(A, float)[:2]
+    B = np.asarray(B, float)[:2]
+    v = B - A
+    L = float(np.linalg.norm(v))
+    if L < 1e-9:
+        return float("inf")
+    u = v / L
+    w = np.asarray(P, float)[:2] - A
+    return abs(float(w[0] * u[1] - w[1] * u[0]))
+
+
+def _attribute_edge(E0, E1, cands, tol):
+    """把一條邊歸屬到候選線：**兩端點對該線之垂距皆 ≤ tol** 方算命中。
+
+    回 [(名稱, 最大垂距), …]（可多重命中·全列），依垂距升序。
+    """
+    hit = []
+    for name, (A, B) in cands:
+        dmax = max(_perp_to_seg_line(E0, A, B), _perp_to_seg_line(E1, A, B))
+        if dmax <= tol:
+            hit.append((name, dmax))
+    hit.sort(key=lambda x: x[1])
+    return hit
+
+
 def main():
     for _st in (sys.stdout, sys.stderr):
         try:
@@ -329,6 +378,7 @@ def main():
             pass
     os.makedirs(OUTDIR, exist_ok=True)
     L, rows = [], []
+    _OVER_KEEP = []      # 段八：溢出幾何與候選線材料
     by_pid_all = {}      # (情境, 街廓, 暫編地號) → g_row（供 F-2／G 之溯源）
     L.append("=" * 120)
     L.append("【K-9-6／K-9-7 街角幾何實測】**只量不判·不設門檻·不出合格/不合格**")
@@ -640,6 +690,14 @@ def main():
             else:
                 rec["K98_其中在截角三角形內(㎡)"] = "—"
                 rec["K98_截角三角形面積(㎡)"] = "—"
+            # 段八：留存溢出幾何與該格之候選線材料（供逐邊歸屬）
+            if over.area > EPS_AREA or _parts_of(over):
+                _OVER_KEEP.append({
+                    "tag": tag, "blk": blk, "side": side, "pid": str(pid),
+                    "over": over, "p1": p1, "d": d, "n": n, "au": au,
+                    "rng": rng, "par": par, "tri": tri, "blkpoly": _blkpoly,
+                    "sl": (_sl["p1"], _sl["p2"]), "vb": _vb, "bp": bp,
+                    "cc": cc})
             # U-K9-3 專項：前版之「範圍−宗」溢出多邊形是否落在截角區內
             if tri is not None and over.area > EPS_AREA:
                 _ov_in = over.intersection(tri).area
@@ -652,11 +710,16 @@ def main():
                 #    在街廓內／外、其 (s,t) 局部框範圍與形心
                 _ov_in_blk = over.intersection(_blkpoly).area
                 _ov_out_blk = over.difference(_blkpoly).area
+                # 🔴 段八修正：**只取有面積之片**（> 法定面積粒度）。
+                #    前版跨**所有**片取 min/max（含零面積碎片與零寬尖刺）
+                #    ⇒ s 範圍與面積／形心自相矛盾。逐片讀數見【段八-1】。
                 _ovc = [(float(np.dot(np.asarray(v[:2], float) - p1, d)),
                          float(np.dot(np.asarray(v[:2], float) - p1, n)))
-                        for v in over.exterior.coords] if over.geom_type == "Polygon"                     else [(float(np.dot(np.asarray(v[:2], float) - p1, d)),
-                           float(np.dot(np.asarray(v[:2], float) - p1, n)))
-                          for g in over.geoms for v in g.exterior.coords]
+                        for g in _parts_of(over)
+                        if (not g.is_empty) and g.area > EPS_AREA
+                        for v in g.exterior.coords]
+                if not _ovc:
+                    _ovc = [(float("nan"), float("nan"))]
                 _cen = over.centroid
                 rec["UK93_在街廓內(㎡)"] = f"{_ov_in_blk:.6f}"
                 rec["UK93_在街廓外(㎡)"] = f"{_ov_out_blk:.6f}"
@@ -746,7 +809,11 @@ def main():
         except ValueError:
             _uk93_bad.append(f"{r['情境']} {r['街廓']}/{r['側別']}（比例無法解析）")
     L.append("")
-    L.append("  🔎 溢出多邊形之**所在位置**（純量測·本探針不解釋）：")
+    L.append("  🔎 溢出多邊形之**所在位置**（純量測·本探針不解釋）")
+    L.append("     ⚠️ **本表之 s／t 範圍只取「有面積之片」**（> 法定面積粒度 "
+             f"{EPS_AREA}㎡）；")
+    L.append("     前版跨**所有**片取 min/max（含零面積碎片）⇒ 與面積／形心自相矛盾。"
+             "逐片讀數見【段八-1】。")
     L.append(f"     {'情境':6}{'街廓側':11}{'在街廓內':>11}{'在街廓外':>11}"
              f"{'溢出 s 範圍':>18}{'截角△ s 範圍':>18}{'形心(s,t)':>20}")
     for r in rows:
@@ -777,6 +844,121 @@ def main():
                  f"{r['宗最小深度(m)']:>10}{r['K98_最小深度(m)']:>10}"
                  f"{r['寬度_截角後_舊帶深14(m)']:>11}{r['寬度_截角後_新帶深(m)']:>10}"
                  f"{r['K98_最小寬度(m)']:>10}")
+
+    # ══ 段八 (1)：溢出多邊形之【分片診斷】（修前版之自相矛盾）═════════════
+    L.append("")
+    L.append("【段八-1】溢出多邊形之**分片**診斷（**修正前版跨片取 min/max 之自相矛盾**）")
+    L.append("-" * 120)
+    L.append("  🔴 前版把「所有片之頂點」一起取 min/max 當作 s 範圍，卻用「有面積之片」報面積與")
+    L.append("     形心 ⇒ 兩者不可能同時正確。**本表逐片報；零面積片單獨列出。**")
+    L.append(f"  {'情境':6}{'街廓側':11}{'片#':>4}{'面積(㎡)':>14}{'頂點':>5}"
+             f"{'s 範圍':>22}{'t 範圍':>22}{'形心(s,t)':>22}")
+    for K in _OVER_KEEP:
+        _ps = _parts_of(K["over"])
+        if not _ps:
+            L.append(f"  {K['tag']:6}{K['blk'] + '/' + K['side']:11}"
+                     f"  （溢出為空幾何·area={K['over'].area:.9f}）")
+            continue
+        for _i, _g in enumerate(_ps):
+            if _g.is_empty or len(_g.exterior.coords) < 4:
+                L.append(f"  {K['tag']:6}{K['blk'] + '/' + K['side']:11}{_i:>4}"
+                         f"{_g.area:>14.9f}{'—':>5}   （空／退化片·無有效外環）")
+                continue
+            _v = [_stloc(v, K["p1"], K["d"], K["n"]) for v in _g.exterior.coords]
+            _c = _stloc(_g.centroid.coords[0], K["p1"], K["d"], K["n"])
+            _flag = "  🔎 **零面積碎片**" if _g.area <= EPS_AREA else ""
+            L.append(f"  {K['tag']:6}{K['blk'] + '/' + K['side']:11}{_i:>4}"
+                     f"{_g.area:>14.9f}{len(_v) - 1:>5}"
+                     f"{f'[{min(x for x, _ in _v):.4f},{max(x for x, _ in _v):.4f}]':>22}"
+                     f"{f'[{min(t for _, t in _v):.4f},{max(t for _, t in _v):.4f}]':>22}"
+                     f"{f'({_c[0]:.4f},{_c[1]:.4f})':>22}{_flag}")
+
+    # ══ 段八 (2)：逐邊來源歸屬 ═══════════════════════════════════════════
+    L.append("")
+    L.append("【段八-2】溢出多邊形之**逐邊來源歸屬**（決定性偵察·**不提假說**）")
+    L.append("-" * 120)
+    L.append(f"  歸屬判準：邊之**兩端點**對候選線之垂距**皆 ≤ {EPS_TOUCH}m**"
+             f"（＝法定粒度·倉內既有容差·非本檔自訂）。")
+    L.append("  候選線逐條列舉（**BASELINE／ALLOC_LINE／街廓邊 皆逐條、不合併**）。")
+    L.append("  ⛔ **歸屬不到任何候選線之邊 → 標「來源不明」**。")
+    try:
+        import ezdxf as _ez8
+        _doc8 = _ez8.readfile(DXF_PATH, encoding="cp950")
+        _raw = {}
+        for _e in _doc8.modelspace():
+            if _e.dxftype() != "LINE":
+                continue
+            _raw.setdefault(_e.dxf.layer, []).append(
+                ((float(_e.dxf.start[0]), float(_e.dxf.start[1])),
+                 (float(_e.dxf.end[0]), float(_e.dxf.end[1]))))
+    except Exception as _e8:
+        _raw = {}
+        L.append(f"  ⚠️ 原始 DXF 線層讀取失敗：{type(_e8).__name__}: {_e8}")
+
+    _unknown_all = []
+    for K in _OVER_KEEP:
+        _ps = [g for g in _parts_of(K["over"])
+               if (not g.is_empty) and len(g.exterior.coords) >= 4]
+        if not _ps:
+            continue
+        # ── 候選線清單（逐條編號）──
+        cands = []
+        cands.append(("SIDE_LINE[本側]", (K["sl"][0], K["sl"][1])))
+        for _lay in ("SIDE_LINE", "FRONT_LINE", "BASELINE", "ALLOC_LINE", "CENTERLINE"):
+            for _i, _ln in enumerate(_raw.get(_lay, [])):
+                cands.append((f"{_lay}#{_i}", _ln))
+        if K["tri"] is not None:
+            _tc = list(K["tri"].exterior.coords)
+            for _i in range(len(_tc) - 1):
+                cands.append((f"截角邊#{_i}", (_tc[_i], _tc[_i + 1])))
+        _bv = list(K["blkpoly"].exterior.coords)
+        for _i in range(len(_bv) - 1):
+            cands.append((f"街廓邊#{_i}", (_bv[_i], _bv[_i + 1])))
+        _pc = list(K["par"].exterior.coords)
+        for _i in range(len(_pc) - 1):
+            cands.append((f"宗邊#{_i}", (_pc[_i], _pc[_i + 1])))
+        _rc = list(K["rng"].exterior.coords)
+        for _i in range(len(_rc) - 1):
+            cands.append((f"街角範圍邊#{_i}", (_rc[_i], _rc[_i + 1])))
+        cands.append(("K-9-8 之 PQ", (K["vb"]["P"], K["vb"]["Q"])))
+        cands.append(("K-9-8 之 L_in(P→R)", (K["vb"]["P"], K["vb"]["R"])))
+
+        L.append("")
+        L.append(f"  ── [{K['tag']}] {K['blk']}/{K['side']} {K['pid']}"
+                 f"（候選線 {len(cands)} 條）")
+        for _pi, _g in enumerate(_ps):
+            _ring = list(_g.exterior.coords)
+            L.append(f"     片{_pi}（area={_g.area:.9f}㎡）之頂點與逐邊：")
+            for _k in range(len(_ring) - 1):
+                _A, _B = _ring[_k], _ring[_k + 1]
+                _sa, _sb = _stloc(_A, K["p1"], K["d"], K["n"]), _stloc(_B, K["p1"], K["d"], K["n"])
+                _len = float(np.linalg.norm(np.asarray(_B, float)[:2]
+                                            - np.asarray(_A, float)[:2]))
+                _hit = _attribute_edge(_A, _B, cands, EPS_TOUCH)
+                # 有面積之片係決定性證據 ⇒ **列全部命中、不截斷**；零面積碎片才截斷
+                _full = _g.area > EPS_AREA
+                _show = _hit if _full else _hit[:4]
+                _htxt = ("🔴 **來源不明**" if not _hit
+                         else "／".join(f"{h[0]}(δ={h[1]:.2e})" for h in _show)
+                              + ("" if _full or len(_hit) <= 4
+                                 else f" …共 {len(_hit)} 條"))
+                L.append(f"       邊{_k}: (s,t) ({_sa[0]:9.4f},{_sa[1]:9.4f})"
+                         f" → ({_sb[0]:9.4f},{_sb[1]:9.4f})  長 {_len:8.4f}m")
+                L.append(f"              大地 ({_A[0]:.6f},{_A[1]:.6f})"
+                         f" → ({_B[0]:.6f},{_B[1]:.6f})")
+                L.append(f"              歸屬：{_htxt}")
+                if not _hit:
+                    _unknown_all.append(
+                        f"[{K['tag']}] {K['blk']}/{K['side']} 片{_pi} 邊{_k}"
+                        f" (s,t)({_sa[0]:.4f},{_sa[1]:.4f})→({_sb[0]:.4f},{_sb[1]:.4f})"
+                        f" 長 {_len:.4f}m")
+    L.append("")
+    if _unknown_all:
+        L.append(f"  🔴 **來源不明之邊 {len(_unknown_all)} 條**（**答案所在**·本檔不提假說）：")
+        for _u in _unknown_all:
+            L.append(f"     · {_u}")
+    else:
+        L.append("  ✅ **全部邊皆歸屬到候選線**（無「來源不明」者）")
 
     L.append("")
     L.append("【E】包含關係查核：`街角規定範圍 ⊆ 街角第 1 宗`？")
