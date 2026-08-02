@@ -379,6 +379,7 @@ def main():
     os.makedirs(OUTDIR, exist_ok=True)
     L, rows = [], []
     _OVER_KEEP = []      # 段八：溢出幾何與候選線材料
+    _ROWS_BY_TAG = {}    # 段九：逐情境之全 g_rows
     by_pid_all = {}      # (情境, 街廓, 暫編地號) → g_row（供 F-2／G 之溯源）
     L.append("=" * 120)
     L.append("【K-9-6／K-9-7 街角幾何實測】**只量不判·不設門檻·不出合格/不合格**")
@@ -553,6 +554,7 @@ def main():
         for _r0 in sg["g_rows"]:
             by_pid_all[(tag, str(_r0.get("所屬街廓", "")),
                         str(_r0.get("暫編地號", "")))] = _r0
+        _ROWS_BY_TAG[tag] = list(sg["g_rows"])          # 段九 (1)(2) 之母體
         by_pid = {(str(r.get("所屬街廓", "")), str(r.get("暫編地號", ""))): r
                   for r in sg["g_rows"]}
 
@@ -959,6 +961,73 @@ def main():
             L.append(f"     · {_u}")
     else:
         L.append("  ✅ **全部邊皆歸屬到候選線**（無「來源不明」者）")
+
+    # ══ 段九 (1)：溢出楔形與同街廓各宗／抵費地之交集 ═══════════════════════
+    L.append("")
+    L.append("【段九-1】溢出楔形 vs 同街廓**每一宗**／抵費地各片／街廓多邊形之交集")
+    L.append("-" * 120)
+    L.append("  ⚠️ **本項只出數字**——不下「是碎屑／不是碎屑」之結論。")
+    for K in _OVER_KEEP:
+        _real = [g for g in _parts_of(K["over"])
+                 if (not g.is_empty) and g.area > EPS_AREA]
+        if not _real:
+            continue
+        for _pi, _ov in enumerate(_real):
+            L.append("")
+            L.append(f"  ── [{K['tag']}] {K['blk']}/{K['side']} 片{_pi}"
+                     f"（溢出 {_ov.area:.6f}㎡）")
+            L.append(f"     {'對象':22}{'交集(㎡)':>14}{'佔溢出':>10}")
+            _acc = 0.0
+            for _r9 in _ROWS_BY_TAG.get(K["tag"], []):
+                if str(_r9.get("所屬街廓", "")) != K["blk"]:
+                    continue
+                _cc9 = _r9.get("cut_coords") or []
+                if len(_cc9) < 3:
+                    L.append(f"     {str(_r9.get('暫編地號')):22}"
+                             f"{'—':>14}{'（cut_coords<3 點）':>10}")
+                    continue
+                _pg = Polygon([(float(x[0]), float(x[1])) for x in _cc9])
+                if not _pg.is_valid:
+                    _pg = _pg.buffer(0)
+                _ia = float(_ov.intersection(_pg).area)
+                _acc += _ia
+                _nm = (f"{_r9.get('暫編地號')}"
+                       f"[{_r9.get('推進側別')}]")
+                L.append(f"     {_nm:22}{_ia:>14.6f}"
+                         f"{100.0 * _ia / _ov.area:>9.2f}%")
+            _bk = float(_ov.intersection(K["blkpoly"]).area)
+            L.append(f"     {'街廓多邊形':22}{_bk:>14.6f}"
+                     f"{100.0 * _bk / _ov.area:>9.2f}%（**不計入加總**·母體重疊）")
+            L.append(f"     {'── 各宗＋抵費地 加總':22}{_acc:>14.6f}"
+                     f"{100.0 * _acc / _ov.area:>9.2f}%")
+            L.append(f"     {'── 殘量（溢出 − 加總）':22}"
+                     f"{_ov.area - _acc:>14.6f}"
+                     f"{100.0 * (_ov.area - _acc) / _ov.area:>9.2f}%")
+
+    # ══ 段九 (2)：面積守恆對帳（逐街廓·R1 與 R2〜R6 併列）════════════════
+    L.append("")
+    L.append("【段九-2】面積守恆對帳：ΣG ＋ 抵費地 vs 街廓面積（**只出數字·不判定**）")
+    L.append("-" * 120)
+    L.append("  對照組：R2〜R6 之溢出為 0（段八-1）。")
+    for tag in ("0m", "3.5m"):
+        L.append("")
+        L.append(f"  ── [{tag}]")
+        L.append(f"     {'街廓':6}{'ΣG(業主宗)':>14}{'Σ抵費地G':>12}"
+                 f"{'Σ抵費地幾何':>14}{'街廓面積':>12}{'殘差(ΣG+抵費地幾何−街廓)':>26}")
+        for _blk9 in rv.CORNER_BLOCKS:
+            _rs = [r for r in _ROWS_BY_TAG.get(tag, [])
+                   if str(r.get("所屬街廓", "")) == _blk9]
+            if not _rs:
+                continue
+            _own = [r for r in _rs if str(r.get("推進側別", "")) != "抵費地"]
+            _off = [r for r in _rs if str(r.get("推進側別", "")) == "抵費地"]
+            _sg9 = sum(float(r.get("G(㎡)", 0) or 0) for r in _own)
+            _sog = sum(float(r.get("G(㎡)", 0) or 0) for r in _off)
+            _soa = sum(float(r.get("幾何面積(㎡)", 0) or 0) for r in _off)
+            _ba = float(Polygon([(float(v[0]), float(v[1]))
+                                 for v in cb_by[_blk9]["vertices"]]).area)
+            L.append(f"     {_blk9:6}{_sg9:>14.4f}{_sog:>12.4f}{_soa:>14.4f}"
+                     f"{_ba:>12.4f}{_sg9 + _soa - _ba:>+26.6f}")
 
     L.append("")
     L.append("【E】包含關係查核：`街角規定範圍 ⊆ 街角第 1 宗`？")
