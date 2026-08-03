@@ -1,0 +1,34 @@
+====================================================================================================
+【補正 F-2】Step G 停機後舊成果不得殘留（自 app.py 抽出真敘述並執行）
+====================================================================================================
+
+自 app.py 抽出之【失效區塊】敘述：
+    st.session_state.pop('f3_G_values', None)
+    st.session_state.pop('f3_G_trace', None)
+    st.session_state['f3_g_needs_rerun'] = True
+自 app.py 抽出之【成功區塊】敘述：
+    st.session_state['f3_G_values'] = g_rows
+    st.session_state['f3_G_trace'] = detail_trace
+    st.session_state.pop('f3_g_needs_rerun', None)
+
+【驗證 1】成功路徑不變（Step G 正常跑完）
+    閘：未 raise ✅
+    f3_G_values 存在                                       → True                        （期 True）  OK
+    f3_G_values 已是新成果（非舊）                                → [{'暫編地號': '新成果'}]           （期 [{'暫編地號': '新成果'}]）  OK
+    f3_g_needs_rerun 不存在                                 → False                       （期 False）  OK
+
+【驗證 2】失敗路徑清乾淨（K-9-4 閘 raise）
+    閘：raise ✅
+    訊息：🔴 K-9-4 BASELINE 臨接閘未過：【未配到屁股線】1 宗——R1 之 628-37(1)（差 0.500m）。其上分配之土地**無法成為合法建築基地** ⇒ 請檢討本街廓之分配、或檢查該街廓所指定之屁股線位置是否正確。（容差 0
+    f3_G_values 不存在（舊成果已清）                               → False                       （期 False）  OK
+    f3_G_trace 不存在（舊成果已清）                                → False                       （期 False）  OK
+    f3_g_needs_rerun 為 True                              → True                        （期 True）  OK
+
+【驗證 3】紅線反向對照：同一次失敗後，上游輸入仍在
+    f3_corner_winners 仍在                                 → {'R1': {'winner': '上游輸入·不得被清'}}（期 {'R1': {'winner': '上游輸入·不得被清'}}）  OK
+    f3L_corner_winners 仍在                                → {'R1': {'winner': '上游輸入·不得被清'}}（期 {'R1': {'winner': '上游輸入·不得被清'}}）  OK
+    ⇒ 證明未照抄 _f3L_invalidate_g_cache 之鍵名清單（該清單會連上游輸入一起 pop）
+
+====================================================================================================
+總結：✅ 三項驗證全過
+====================================================================================================

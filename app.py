@@ -17623,6 +17623,31 @@ def main():
                         st.info("🔄 偵測到街角地變動，自動重算 G 值…")
                     g_rows = []
                     detail_trace = {}
+                    # 🆕 K-6-A2 補正 F-2：**進入重算之當下即作廢前一輪成果**（家族修）
+                    #   案由：Step G 之兩個產物寫在**最末**（`grep -n "st.session_state\['f3_G_values'\] = " app.py`）
+                    #   ⇒ 中途 raise 時二者**不被覆寫、也不被清除**，而成果區與下載鈕
+                    #   （`grep -n "if st.session_state.get('f3_G_values'):" app.py`）照樣渲染**舊值**
+                    #   ⇒ 可能交付一份**與現行屁股線設定不符**之分配成果表
+                    #   ——而這正是 **K-9-4 閘**（`grep -n "k94_assert_baseline_touch(_k94_touch)" app.py`）
+                    #   最想防之情境。既有失效路徑 `_f3L_invalidate_g_cache`
+                    #   （`grep -n "def _f3L_invalidate_g_cache" app.py`）只綁街角退縮／分配深度
+                    #   二 widget 之 `on_change`，**改屁股線指派不會觸發**。
+                    #   ⇒ 本處為**家族修**：一次覆蓋 Step G 內**所有**（現有與日後）之 raise。
+                    #
+                    #   🔒 **只清「產物」二鍵，⛔ 禁照抄 `_f3L_invalidate_g_cache` 之鍵名清單**：
+                    #     該函式另 pop `f3_corner_winners`／`f3L_corner_winners`，但**那兩把是
+                    #     Step G 之上游輸入、非其產物**（步驟 L 寫於
+                    #     `grep -n "st.session_state\['f3_corner_winners'\] = " app.py`，
+                    #     Step G 讀於 `grep -n "_step_l_winners = " app.py`）
+                    #     ⇒ 在此 pop 之即**當場毀掉 Step G 自己的輸入**。
+                    #   🔒 已逐一確認：`f3_G_values`／`f3_G_trace` 於本重算區間內**只被寫、不被讀**。
+                    #   ⚠️ `f3_g_needs_rerun`（橫幅旗標）與 `f3_g_needs_recalc`（自動重算觸發·
+                    #     已於上方 `pop` 消費）**是兩把不同的鍵**；本處**只碰前者**
+                    #     ——碰後者會造成「失敗後自動重跑、再失敗」之迴圈。
+                    #   狀態機閉合：成功時末端寫回二產物並清 `f3_g_needs_rerun`。
+                    st.session_state.pop('f3_G_values', None)
+                    st.session_state.pop('f3_G_trace', None)
+                    st.session_state['f3_g_needs_rerun'] = True
                     _params_for_g = dict(st.session_state.get(_param_key, _new_params))
 
                     # 🆕 V13 修正 #2：若 Step L 已執行 → 用其 winner 覆寫 _params_for_g
