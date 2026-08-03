@@ -6021,7 +6021,10 @@ def k92_block_depth_check(build_blocks, depth_info_by_label, front_road_width_by
 
     **分工**（K-9-3／K-9-6-c）：街廓層通過 ⇒ **宗地層一律不量深度**（含街角第 1 宗）；
     K-9-6 不重複管附表深度之合規。⇒ **本函式不判宗地、不回傳宗地級結果。**
-    ⚠️ 封閉性之前提（每宗自前緣線配至 BASELINE）由 **K-9-4** 之停機閘守衛（**尚未實作**）。
+    ✅ 封閉性之前提（每宗自前緣線配至 BASELINE）由 **K-9-4** 之停機閘守衛——**已實作**
+      （K-6-A2 段二-1(c)）：量測 `grep -n "def k94_baseline_touch_by_parcel" app.py`、
+      上閘 `grep -n "def k94_assert_baseline_touch" app.py`、
+      落點 `grep -n "K-9-4 BASELINE 臨接閘（KL 裁 2026-08-03" app.py`。
 
     **警示、非停機**（正典用「警示」二字）：本函式只回傳 `warn` 旗標，**呈現層自行決定**；
     ⛔ 但缺件**不是**警示、是 **loud raise**（見下）。
@@ -6159,6 +6162,121 @@ def k94_baseline_touch_by_parcel(parcels, baseline_pts_by_label):
             'eps': _EPS_TOUCH_FRONT,
         })
     return _out
+
+
+# 🔒 **無地宗之推進側別**（K-6-A2 段二-1(c)）——此二類**依構造即無幾何**
+#   （`cut_coords: None`·`grep -n "'推進側別': '💰 現金補償'" app.py`／
+#    `grep -n "'推進側別': '🟠 孤立公設地'" app.py`），其法定敘明為
+#   「無法調配至其他街廓，建議領錢及申請合併分配」⇒ **未受配土地、非「分配宗地」**
+#   ⇒ **不屬 K-9-4 之母體**（K-9-4 問「配到的宗有沒有配到屁股線」，未受配者無此問題）。
+#   ⚠️ **本常數係字面複製**，若上游改字串即會失準 ⇒ `k94_partition_land_rows` 內附
+#     **雙向自檢**（有地者須有幾何、無地者須無幾何），字串漂移會被該自檢咬出、不致靜默。
+K94_NO_LAND_SIDES = ('💰 現金補償', '🟠 孤立公設地')
+
+
+def k94_partition_land_rows(g_rows):
+    """把 `g_rows` 切成「**受配土地之宗**」與「**無地宗**」（K-9-4 母體之界定）。
+
+    **為何需要本函式**：K-9-4 之判準是「**每宗必須配到 BASELINE**」，其主詞為**受配土地之宗**。
+    `g_rows` 另含 `💰 現金補償`／`🟠 孤立公設地` 二類——依構造 `cut_coords` 為 `None`
+    （**未受配土地**）⇒ 若逕行納入母體，閘會對「依法本就不配地者」報「未配到屁股線」，
+    **屬假停機**。
+
+    🔒 **以「推進側別」正面分類，⛔ 不以 `cut_coords is None` 反面篩**——
+      後者會把**真正的幾何缺失**（上游 bug）一併靜默吸收成「無地宗」，
+      正是 no-silent-fallback 所禁。
+
+    🔒 **雙向自檢（字串漂移之守衛）**：分完後驗
+      ① 受配土地之宗**皆須有幾何**；② 無地宗**皆須無幾何**。
+      任一違反 ⇒ **loud raise**——因為那表示 `K94_NO_LAND_SIDES` 之字面已與上游脫鉤，
+      或幾何產出有誤。**二者都不該靜默略過。**
+
+    回傳 `(land_rows, no_land_rows)`。
+    """
+    _land, _no = [], []
+    for _r in (g_rows or []):
+        (_no if str(_r.get('推進側別', '')) in K94_NO_LAND_SIDES else _land).append(_r)
+    _bad_land = [str(_r.get('暫編地號', '')) for _r in _land
+                 if not (_r.get('cut_coords') or [])]
+    _bad_no = [str(_r.get('暫編地號', '')) for _r in _no
+               if (_r.get('cut_coords') or [])]
+    if _bad_land:
+        raise RuntimeError(
+            f"🔴 K-9-4 母體界定：下列宗之推進側別非「無地宗」、卻無幾何（`cut_coords` 空）"
+            f"⇒ {_bad_land[:12]}。"
+            f"⛔ 禁靜默略過——此非「不配地」，係**幾何未產出**，屬上游錯誤。"
+            f"（若係新增之無地類別，請同批更新 `K94_NO_LAND_SIDES`："
+            f"`grep -n \"^K94_NO_LAND_SIDES = \" app.py`）")
+    if _bad_no:
+        raise RuntimeError(
+            f"🔴 K-9-4 母體界定：下列宗之推進側別為「無地宗」、卻有幾何 ⇒ {_bad_no[:12]}。"
+            f"⛔ 「現金補償／孤立公設地」依法未受配土地、不應有分配幾何 ⇒ 上游有誤。")
+    return _land, _no
+
+
+def k94_assert_baseline_touch(touch_rows):
+    """**K-9-4 上閘**（KL 裁 2026-08-03·K-6-A2 段二-1(c)）——違反即**停機報錯**。
+
+    正典逐字：**每宗必須配到 BASELINE**；未達即**停機報錯**。
+    **不支援同一街廓前後配兩排**（`grep -n "^| \\*\\*K-9-4\\*\\*" docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+
+    **雙向咬**——二者皆停機，但**成因與補救不同**，故訊息分立：
+
+    | 情形 | 判準 | 意義 |
+    |---|---|---|
+    | **未配到** | `not touch`（`gap > _EPS_TOUCH_FRONT`） | 宗地後緣**構不到**屁股線 |
+    | **跨過** | `crosses` | 宗地**穿過**屁股線 ⇒ 該處恐欲配兩排而街廓未切開 |
+
+    🔒 **KL 裁 2026-08-03（正典 K-9-4-1）**：
+      · 圖層**一律由使用者於 CAD 繪妥後匯入**；程式**不需要亦不應**設計畫設 BASELINE 之功能。
+      · 欲配兩排 ⇒ **在該街廓內再畫一條 BASELINE**，使大街廓成為兩個小街廓；
+        **分配後每宗之屁股線一律須臨接 BASELINE**。
+      · **一條 BASELINE 得由二街廓共用**（背對背），
+        且**得兼任鄰街廓末端塊第 1 筆宗地之起始境界線（非 SIDELINE）**。
+      ⇒ 故「跨過」之補救是**改圖**（切街廓），**不是**放寬容差。
+
+    🔒 容差沿用 `_EPS_TOUCH_FRONT`（`grep -n "^_EPS_TOUCH_FRONT = " app.py`）
+      ——判準已由 `k94_baseline_touch_by_parcel` 算妥（`touch`／`crosses` 欄），
+      **本函式不重算、不另立第二把尺**。
+
+    touch_rows  `k94_baseline_touch_by_parcel(...)` 之回傳
+    回傳 `None`（無違例）；有違例 ⇒ `RuntimeError`。
+    """
+    _cross = [_r for _r in (touch_rows or []) if _r['crosses']]
+    # 「跨過」者依定義已越過屁股線 ⇒ 其 `gap` 亦必 > 容差 ⇒ **同時**落入 `not touch`。
+    #   🔴 **故 `_miss` 必須扣除 `_cross`**（K-6-A2 段二-1(c) §四 之 (ii) 案實測發現）：
+    #     否則同一宗會被兩個判準重複計入，且**先報之訊息會蓋掉後者**——
+    #     對「跨過」之宗報「你沒配到屁股線」係**誤導**（它不是構不到，是走過頭了），
+    #     且會**吞掉「街廓需先切成兩個小街廓」這個唯一可行之補救**。
+    _cross_ids = {(_r['label'], _r['pid']) for _r in _cross}
+    _miss = [_r for _r in (touch_rows or [])
+             if (not _r['touch']) and (_r['label'], _r['pid']) not in _cross_ids]
+    if not (_cross or _miss):
+        return None
+    # 二者可**併存**（不同宗各自違反）⇒ **一次把兩段都報出**，不得只報先遇到的那一段。
+    _seg = []
+    if _cross:
+        _d = "；".join(
+            f"{_r['label']} 之 {_r['pid']}"
+            f"（前後各出 {abs(_r['off_max']):.3f}／{abs(_r['off_min']):.3f}m）"
+            for _r in _cross[:10])
+        _seg.append(
+            f"【跨過屁股線】{len(_cross)} 宗——{_d}"
+            f"{'…（僅列前 10 宗）' if len(_cross) > 10 else ''}。"
+            f"**若此處要配兩排，街廓需先切成兩個小街廓**"
+            f"（於該街廓內再畫一條 BASELINE，使程式知道此處有兩排可分配空間）；"
+            f"否則請確認本街廓所指定之屁股線是否正確。"
+            f"⛔ 本系統**不支援同一街廓前後配兩排**。")
+    if _miss:
+        _d = "；".join(
+            f"{_r['label']} 之 {_r['pid']}（差 {_r['gap']:.3f}m）" for _r in _miss[:10])
+        _seg.append(
+            f"【未配到屁股線】{len(_miss)} 宗——{_d}"
+            f"{'…（僅列前 10 宗）' if len(_miss) > 10 else ''}。"
+            f"其上分配之土地**無法成為合法建築基地** ⇒ "
+            f"請檢討本街廓之分配、或檢查該街廓所指定之屁股線位置是否正確。"
+            f"（容差 {_EPS_TOUCH_FRONT}m）")
+    raise RuntimeError("🔴 K-9-4 BASELINE 臨接閘未過：" + "　".join(_seg))
 
 
 def iterate_G_S(a: float, A: float, B: float, C: float,
@@ -18609,6 +18727,36 @@ def main():
                     except Exception:
                         pass
 
+
+                    # 🆕 K-9-4 BASELINE 臨接閘（KL 裁 2026-08-03·**K-6-A2 段二-1(c)**·**停機閘**）
+                    #   正典：`grep -n "^| \*\*K-9-4\*\*" docs/rulings/K-6_街角地分配程序與可分配判準.md`
+                    #   量測源＝`k94_baseline_touch_by_parcel`（只量不判·段二-1(a) 落地·本批未改其一字）
+                    #   上閘＝`k94_assert_baseline_touch`（雙向咬：未配到／跨過·`grep -n "def k94_assert_baseline_touch" app.py`）
+                    #
+                    #   🔴 **落點與施工單所載不同·以倉內實況為準（施工單 §六-5）**：
+                    #   施工單 §二 令「比照段一 K-9-2 之呼叫點附近；**開始配地之前**」，
+                    #   但 K-9-4 之主詞是**分配宗地**——`cut_coords` 最早產生於本 Step G
+                    #   （`grep -n "'cut_coords': _res.get('cut_coords'" app.py`），
+                    #   於 K-9-2 落點（`grep -n "_k92_rows = k92_block_depth_check" app.py`）**尚無任何宗地**
+                    #   ⇒ 該處無從評估。故置於**配地成果落定之當下**（`f3_G_values` 寫入前），
+                    #   ＝ K-9-4 **可被評估之最早時點**。
+                    #   ✅ 仍守段二-0 一-8 之戒：本處**不在任何 `st.expander` 之內**（已以 `ast` 確證）。
+                    _k94_land_rows, _k94_no_land = k94_partition_land_rows(g_rows)
+                    _k94_blk_verts = {_b['label']: (_b.get('vertices') or [])
+                                      for _b in classified_blocks}
+                    _k94_mbl = st.session_state.get('f3_manual_baseline', {}) or {}
+                    _k94_bl_by = {
+                        _lbl: _baseline_pts_from_manual(_k94_mbl.get(_lbl), _vts)
+                        for _lbl, _vts in _k94_blk_verts.items()}
+                    _k94_touch = k94_baseline_touch_by_parcel(
+                        [{'label': str(_r.get('所屬街廓', '')),
+                          'pid': str(_r.get('暫編地號', '')),
+                          'coords': _r.get('cut_coords') or []}
+                         for _r in _k94_land_rows],
+                        _k94_bl_by)
+                    st.session_state['f3_k94_baseline_touch'] = _k94_touch
+                    # ⛔ 停機閘：違反即 raise（未配到／跨過各自具名）。**不 try、不吞。**
+                    k94_assert_baseline_touch(_k94_touch)
 
                     st.session_state['f3_G_values'] = g_rows
                     st.session_state['f3_G_trace'] = detail_trace
