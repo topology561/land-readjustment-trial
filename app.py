@@ -9565,9 +9565,211 @@ def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
     return target if not target.is_empty else None
 
 
+def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
+                      alloc_dir, setback, min_width, chamfer_tri=None,
+                      block_depth=None, _label='', _side=''):
+    """**K-9-7 街角規定範圍之 ALLOC_LINE 解析定位**（正典：
+    `grep -n "^### K-9-7 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+
+    🔴 **K-6-A2 段三(a)：並行實作·只算不換。** 本函式**未接生產路徑**；
+    生產仍走 `_build_corner_range_v3`（`grep -n "def _build_corner_range_v3" app.py`）。
+    切換屬段三(c)、**須待 KL 就位移表放行**。
+
+    ── 與現行實作之差異（＝ **GB-14** 所登記者）────────────────────────────────
+    現行式取**帶深固定為街廓平均深度** `round(D_avg,2)`，斜率用 `c`
+    （`grep -n "k = sigma / den_a" app.py`——⚠️ 該區域變數係正典之 `c`、非正典之 `k`）。
+    正典 K-9-7 明訂：帶深應為**該街角規定範圍自身之最小深度** `D(t)`、且**隨 `t` 變動**
+    ⇒ 於「寬度往內變窄（`k<0`）且深度往內遞減（`m≠0`）」時，**正解斜率為 `(c − k·m)`**。
+
+    ── 記號（**與正典一致·勿與碼面舊變數混**）────────────────────────────────
+      `w(d, t) = w₀ + c·t + k·d`；`c = ∂w/∂t`、`k = ∂w/∂d`
+      `D(t)` ＝ 範圍臨街段（`Q0` → `P_front(t)`）各點至 BASELINE 垂距之 **min**
+      `P_front(t)` ＝ **`ALLOC_LINE ∩ 前緣線`**
+      ⚠️ **`P_front` 與 K-9-8 之 `P_block`（`L_in ∩ BLOCK 邊界`）同名異物**
+        （正典 K-9-7-a 衝突二）⇒ 本函式一律用 `P_front`，**禁簡寫為 `P`**。
+
+    ── 四分支（正典表·**每支一次除法**）─────────────────────────────────────────
+      ① `k ≥ 0`                 ⇒ `W(t) = w₀ + c·t`               （深度完全不影響）
+      ② `k < 0`、`D` 常數        ⇒ `W(t) = (w₀ + k·D₀) + c·t`
+      ③ `k < 0`、`D(t)=D₀−m·t`  ⇒ `W(t) = (w₀ + k·D₀) + (c − k·m)·t`
+      ④ **分支切換點**：②↔③ 之界為 **`m·t = 0`** ⇒ `m ≠ 0` 時切換點恆為 **`t = 0`**
+         （`t` 之定義使 `P_front(0) = Q0`，此時臨街段退化為一點、兩端重合）。
+      每支解出 `t*` 後**檢查是否落在該支有效區間**；不落入則換支。
+
+    ⛔ **禁二分、禁取樣、禁迭代兜底**（正典 K-9-7）。全函式無迴圈求解。
+    ⛔ **退化情形**（`c`／分母為零、範圍不可構造）一律 **loud raise**、禁兜底。
+
+    🔒 **後置斷言（＝ K-9-5-1 ③ 之程式化）**：解出之範圍其**最小深度 ≥ 畸零地深**
+      且**最小寬 ≥ 退縮＋畸零地寬**；任一不成立 ⇒ **loud raise（構造被破壞）**，
+      ⛔ 不得容忍、不得調參。（本函式回傳 `assert_ok`／`assert_note` 供呈現層列印；
+      **硬斷言於 `min_depth_legal` 有給時才執行**——未給即無門檻可比。）
+
+    回傳 dict：`c`／`k`／`m`／`w0`／`D0`／`branch`／`t_star`／`t_interval`／
+      `switch_points`／`W_at_t_star`／`depth_at_t_star`／`P_front_on_chamfer`。
+    """
+    import math as _m97
+
+    _who = f"k97_solve_alloc_t[{_label or '?'}·{_side or '?'}]"
+
+    def _stop(msg):
+        raise RuntimeError(f"🔴 {_who}：{msg}（K-9-7·⛔ 禁兜底、禁二分取樣迭代）")
+
+    def _u(ax, ay):
+        n = _m97.hypot(ax, ay)
+        if n < 1e-12:
+            _stop("方向向量退化為零")
+        return ax / n, ay / n
+
+    for _nm, _v in (('FRONT_LINE', front_pts), ('BASELINE', baseline_pts),
+                    ('SIDE_LINE', side_line_pts)):
+        if not (_v and len(_v) >= 2):
+            _stop(f"缺 {_nm}")
+    if not alloc_dir:
+        _stop("缺 ALLOC_LINE 方向")
+    T = float(setback or 0.0) + float(min_width or 0.0)
+    if T <= 0:
+        _stop(f"退縮寬＋畸零地最小寬 ＝ {T} ≤ 0（min_width 查表失敗？·禁靜默 3.5）")
+
+    F1 = (float(front_pts[0][0]), float(front_pts[0][1]))
+    F2 = (float(front_pts[1][0]), float(front_pts[1][1]))
+    dx, dy = _u(F2[0] - F1[0], F2[1] - F1[1])
+    B0 = (float(baseline_pts[0][0]), float(baseline_pts[0][1]))
+    B1 = (float(baseline_pts[-1][0]), float(baseline_pts[-1][1]))
+    bux, buy = _u(B1[0] - B0[0], B1[1] - B0[1])
+    bnx, bny = -buy, bux
+    if (B0[0] - F1[0]) * bnx + (B0[1] - F1[1]) * bny < 0:      # 定號：指向 BASELINE
+        bnx, bny = -bnx, -bny
+    S1 = (float(side_line_pts[0][0]), float(side_line_pts[0][1]))
+    S2 = (float(side_line_pts[1][0]), float(side_line_pts[1][1]))
+    sux, suy = _u(S2[0] - S1[0], S2[1] - S1[1])
+    snx, sny = -suy, sux
+    aux, auy = _u(float(alloc_dir[0]), float(alloc_dir[1]))
+    anx, any_ = -auy, aux
+
+    den_s = dx * snx + dy * sny
+    if abs(den_s) < 1e-9:
+        _stop("前緣線與側街境界線平行 ⇒ 街角交點不存在")
+    den_a = dx * anx + dy * any_
+    if abs(den_a) < 1e-9:
+        _stop("ALLOC_LINE 平行於前緣線 ⇒「平行前緣線之距離」不可定義")
+
+    t_q = ((S1[0] - F1[0]) * snx + (S1[1] - F1[1]) * sny) / den_s
+    Q0 = (F1[0] + t_q * dx, F1[1] + t_q * dy)
+    s_cen = ((float(block_centroid[0]) - F1[0]) * dx
+             + (float(block_centroid[1]) - F1[1]) * dy)
+    sigma = 1.0 if s_cen > t_q else -1.0
+
+    c0 = (Q0[0] - F1[0]) * anx + (Q0[1] - F1[1]) * any_
+    s0 = (S1[0] - F1[0]) * snx + (S1[1] - F1[1]) * sny
+
+    def _s_side(d):
+        return (s0 - d * (bnx * snx + bny * sny)) / den_s
+
+    def _s_alloc(d, t):
+        return (t + c0 - d * (bnx * anx + bny * any_)) / den_a
+
+    def _W(d, t):
+        return sigma * (_s_alloc(d, t) - _s_side(d))
+
+    # ── 係數（皆為閉式·非量測）──────────────────────────────────────────────
+    c = sigma / den_a                                   # ∂w/∂t（＝碼面舊 `k`）
+    k = sigma * (-(bnx * anx + bny * any_) / den_a
+                 + (bnx * snx + bny * sny) / den_s)     # ∂w/∂d
+    w0 = _W(0.0, 0.0)
+    if abs(c) < 1e-12:
+        _stop("`c = ∂w/∂t` 退化為零 ⇒ 平移 ALLOC_LINE 不改變寬度、t* 不可解")
+
+    # 深度沿前緣線：dep(s) = DF − s·g（線性·K-9-7【深度】）
+    g = dx * bnx + dy * bny
+    DF = (B0[0] - F1[0]) * bnx + (B0[1] - F1[1]) * bny
+    D0 = DF - t_q * g                                   # ＝ Q0 至 BASELINE 之垂距
+    if D0 <= 0:
+        _stop(f"街角 Q0 至 BASELINE 之垂距 {D0:.6f} ≤ 0 ⇒ 街角落在屁股線外側")
+    m = g / den_a                                       # D(t) = D0 − m·t
+    # P_front(t) 之 d_hat 座標；t=0 時恰為 Q0（臨街段退化為一點）
+    def _s_Pfront(t):
+        return (t + c0) / den_a
+
+    # ── 四分支·每支一次除法·各檢查有效區間 ─────────────────────────────────
+    _branches = []
+    if k >= 0:
+        # ① 深度不影響（min 恆在 d=0）；全 t 有效
+        _branches.append(('①', (T - w0) / c, '(-inf, +inf)', lambda tt: True))
+    else:
+        # ② D 常數（min 在 Q0）⇒ 有效區間 m·t ≤ 0
+        _branches.append(('②', (T - w0 - k * D0) / c, 'm·t ≤ 0',
+                          lambda tt: (m * tt) <= 0.0))
+        # ③ D(t)=D0−m·t（min 在 P_front(t)）⇒ 有效區間 m·t > 0
+        _den3 = c - k * m
+        if abs(_den3) < 1e-12:
+            _stop(f"分支③ 之斜率 (c − k·m) 退化為零（c={c:.9g}, k={k:.9g}, m={m:.9g}）"
+                  f"⇒ 一次式無解或無窮多解")
+        _branches.append(('③', (T - w0 - k * D0) / _den3, 'm·t > 0',
+                          lambda tt: (m * tt) > 0.0))
+
+    _hit = [(bn, ts, iv) for bn, ts, iv, ok in _branches if ok(ts)]
+    if not _hit:
+        _stop(f"四分支皆無 t* 落在其有效區間（k={k:.9g}, m={m:.9g}, c={c:.9g}）"
+              f"⇒ 分段線性之覆蓋有缺口，非可兜底之情形")
+    branch, t_star, t_interval = _hit[0]
+
+    # ④ 分支切換點（明列·正典要求）：②↔③ 之界 ＝ m·t = 0
+    _switch = ([] if k >= 0 else ([0.0] if abs(m) > 1e-15 else []))
+
+    # ── 後置斷言（K-9-5-1 ③ 之程式化）────────────────────────────────────────
+    _D_at = D0 - max(0.0, m * t_star)
+    _W_at = min(_W(0.0, t_star), _W(_D_at, t_star))
+    _notes = []
+    if not (_W_at >= T - 1e-6):
+        _stop(f"後置斷言破：所構造範圍之最小寬 {_W_at:.6f} < 退縮＋畸零地最小寬 {T:.6f}"
+              f"（分支 {branch}·t*={t_star:.9g}）⇒ **K-9-5-1 ③ 之構造保證被破壞**"
+              f"，⛔ 不得容忍、不得調參")
+    if _D_at <= 0:
+        _stop(f"後置斷言破：所構造範圍之最小深度 {_D_at:.6f} ≤ 0（分支 {branch}）")
+
+    # ── K-9-7-d 之第二層分支（`P_block` 落截角邊 vs FRONT 重疊段）────────────
+    #   🔴 **本層需 K-9-8 之 `PQ` 延伸線段方能定義**（K-9-6-b-1：量測用之「道路境界線」
+    #     ＝ K-9-8 (3) 之延伸線段）。K-9-8 屬**段四**、尚未實作
+    #     ⇒ 本函式**只偵測、不臆造**：偵到即回報旗標，由呼叫端決定是否停機。
+    #   ⚠️ 此處偵測用之 `P_front` 與 K-9-8 之 `P_block` **同名異物**（K-9-7-a 衝突二）。
+    _on_cham = None
+    if chamfer_tri is not None and not chamfer_tri.is_empty:
+        from shapely.geometry import Point as _PT97
+        _sp = _s_Pfront(t_star)
+        _Ppt = _PT97(F1[0] + _sp * dx, F1[1] + _sp * dy)
+        _on_cham = bool(chamfer_tri.buffer(1e-9).contains(_Ppt))
+        if _on_cham:
+            _notes.append("⚠️ `P_front(t*)` 落在截角三角形內 ⇒ 該範圍之臨街段非全在 "
+                          "FRONT_LINE 上（K-9-5-1 ②）；K-9-7-d 之第二層分支需 K-9-8 之 "
+                          "`PQ` 延伸線段（**段四**）方能解析，本函式不臆造。")
+
+    # ── 舊式之 t*（**只供段三(b) 對照·同源同框**）──────────────────────────────
+    #   現行生產式：帶深固定為**街廓平均深度** `round(D_avg,2)`、斜率用 `c`
+    #   （`grep -n "k = sigma / den_a" app.py`）。此處以**同一組座標框**重算之，
+    #   使 `Δt* = t_star − t_star_legacy` 為**純粹之公式差**、不摻座標框差異。
+    _t_legacy = None
+    if block_depth is not None and float(block_depth) > 0:
+        _Db = float(block_depth)
+        _t_legacy = (T - min(_W(0.0, 0.0), _W(_Db, 0.0))) / c
+
+    return {
+        'label': _label, 'side': _side,
+        'c': c, 'k': k, 'm': m, 'w0': w0, 'D0': D0, 'T': T,
+        'branch': branch, 't_star': t_star, 't_interval': t_interval,
+        'switch_points': _switch,
+        'W_at_t_star': _W_at, 'depth_at_t_star': _D_at,
+        'P_front_on_chamfer': _on_cham,
+        't_star_legacy': _t_legacy,
+        'dt': (None if _t_legacy is None else (t_star - _t_legacy)),
+        'block_depth': (None if block_depth is None else float(block_depth)),
+        'notes': _notes,
+    }
+
+
 def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
                            side_line_pts, alloc_dir, block_depth, setback, min_width,
-                           chamfer_tri=None, dxf_quantum=None, _label='', _side=''):
+                           chamfer_tri=None, dxf_quantum=None, _label='', _side='',
+                           _t_override=None):
     """**(Ⅰ) 街角規定範圍**（🆕 K-8 §三〜§五 新構造·KL 裁 2026-07-31·canonical）。
 
     法源：花蓮縣畸零地使用規則 §4③④及末段、§3① 附表。
@@ -9692,10 +9894,19 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     w_lo = min(_W(0.0, 0.0), _W(D, 0.0))
     t_star = (T - w_lo) / k
 
+    # 🆕 K-6-A2 段三(a)：`_t_override` **只供對照探針**（比較新舊 `t*` 所生之範圍面積）。
+    #   ⛔ **生產路徑一律不傳**（`grep -rn "_t_override=" --include="*.py" .` 應只命中探針）。
+    #   傳入時**跳過自檢①**——該自檢係「回量帶內最小寬 ＝ T」之**定義性**回代，
+    #   而覆寫之 `t` 依定義**不是**該方程之解 ⇒ 硬跑必假紅。其餘幾何與自檢**一律照舊**。
+    _t_is_override = False
+    if _t_override is not None:
+        t_star = float(_t_override)
+        _t_is_override = True
+
     # ── 自檢①：構造之**定義**——回量帶內最小寬 ＝ 退縮寬 ＋ 畸零地最小寬 ──────────
     eps = _corner_range_eps(dxf_quantum)
     w0, wD = _W(0.0, t_star), _W(D, t_star)
-    if abs(min(w0, wD) - T) > eps:
+    if (not _t_is_override) and abs(min(w0, wD) - T) > eps:
         _stop(f"構造自檢不合：帶內最小寬 {min(w0, wD):.6f} ≠ 退縮＋最小寬 {T:.6f}"
               f"（eps={eps:.6g}·由 q={dxf_quantum} 導出）")
 
