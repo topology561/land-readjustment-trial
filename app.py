@@ -5779,6 +5779,20 @@ def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
       ＝ `round(D_avg,2) × min_width`；本案 R4 ＝ `33.10 × 3.5 = 115.85` ⇒ `region_min = 115.85`。
       （**不得**移除本 round 以求全精度乘積——那會得到 115.87，非法定記載鏈。）
 
+    **🆕 K-9-2 剖面欄（`d_front_p1`／`d_front_p2`／`D_k92_min`·全精度·未 round）**：
+      前緣線 p1（左）／p2（右）兩端至 BASELINE **無限直線**之垂距本身（＝ `d1`／`d2`），
+      及其 **min**。K-9-2 判準＝「前緣線上**任一點** ≤ 畸零地最小深度即警示」；
+      垂距沿弦**線性** ⇒ **min 必落於兩端之一** ⇒ 取 `min(d1, d2)`。**解析式·禁取樣、禁掃描。**
+      （消費端＝`k92_block_depth_check`：`grep -n "def k92_block_depth_check" app.py`）
+      ⚠️ **`D_k92_min` ≠ `D_min`**（**同名不同量·嚴禁互代**·比照 K-9-6-a 之戒）：
+        · `D_min` ＝ **方法 A 診斷**（沿 `alloc_dir` 剖面差值·**取樣**）之極小值；
+          僅於方法 A 不可算時才退為 `min(d1,d2)`（見 `_src`／`note`）⇒ **軸與來源皆可能不同**。
+        · `D_k92_min` ＝ **恆為** N-19′ 軸（垂直 BASELINE）之兩端垂距最小值、**恆不取樣**。
+        ⇒ **K-9-2 一律取 `D_k92_min`，不得改讀 `D_min`。**
+      🔒 **本三欄不 round**：門檻比較用**未 round 之原值**、`round()` 只在輸出層
+        （K-8 §二-1 WARNING-B 體例）。`D_avg` 之 `round(...,2)` 係其**進入乘積**之法定記載鏈
+        （辦法 §3），與本欄之**門檻比較**用途不同，**勿互代**。
+
     **診斷欄（降為診斷·禁刪·施工單 §一）**：
       · `D_avg_B` ＝ 方法 B 之值。
       · `D_min`／`D_max` ＝ 方法 A（沿 alloc_dir 剖面差值）之取樣極值；A 不可算時
@@ -5886,6 +5900,8 @@ def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
                 f'街廓恐畫歪或 BASELINE 異常（值一律採 N-19′）；D_min/D_max 源＝{_src}')
     return {'D_avg': round(D_avg, 2), 'D_min': round(D_min, 2), 'D_max': round(D_max, 2),
             'D_avg_B': (round(D_avg_B, 2) if D_avg_B is not None else None),
+            # 🆕 K-9-2 剖面欄（全精度·未 round·勿與 D_min 互代——見上 docstring）
+            'd_front_p1': d1, 'd_front_p2': d2, 'D_k92_min': min(d1, d2),
             'method': 'N-19′(垂直BASELINE·無限直線·兩端垂距平均·解析)', 'note': note}
 
 
@@ -5947,6 +5963,91 @@ def n19p_depth_info_by_label(build_blocks, alloc_dir_by, front_lines_by, manual_
             front_pts=_fpts,
             baseline_pts=_baseline_pts_from_manual(_mbl.get(_lbl), b.get('vertices')))
     return _out
+
+
+def k92_block_depth_check(build_blocks, depth_info_by_label, front_road_width_by_label):
+    """**K-9-2 街廓層剖面深度警示**（KL 裁 2026-08-01·canonical：
+    `grep -n "^## K-9 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+
+    **判準（正典逐字）**：前緣線上每一點沿 **BASELINE 法向**至 BASELINE 之垂距，
+    **任一點 ≤ 畸零地最小深度即警示**（**等於也警示**，因係逐點比較而非平均）。
+
+    **解析**：前緣線與 BASELINE 皆直線 ⇒ 垂距沿弦**線性** ⇒ 最小值必落於前緣線**兩端之一**
+    ⇒ 逕取 `_compute_block_depth_alloc` 之 `D_k92_min`。⛔ **禁取樣、禁掃描、禁迭代兜底。**
+    （與 `D_avg` 之「平均＝兩端平均」同一線性性質——**同一組數字、一個取平均一個取最小**。）
+
+    🔴 **兩個「最小深度」同名不同量·嚴禁互代**（K-9-6-a）：
+      · **量測值** ＝ 本函式之 `D_k92_min`（該街廓剖面之最小深度·本案 33〜47m）
+      · **門檻值** ＝ 畸零地**附表** `get_min_lot_size(分區, 正面路寬)['min_depth']`（本案 14.00）
+      ⇒ 此處係附表門檻之**正確**用途（K-9-6：附表值＝**可建築門檻**）；
+        與 **GB-13** 所述「附表值被誤用為**量測帶深**」係**兩回事**、勿混。
+
+    **分工**（K-9-3／K-9-6-c）：街廓層通過 ⇒ **宗地層一律不量深度**（含街角第 1 宗）；
+    K-9-6 不重複管附表深度之合規。⇒ **本函式不判宗地、不回傳宗地級結果。**
+    ⚠️ 封閉性之前提（每宗自前緣線配至 BASELINE）由 **K-9-4** 之停機閘守衛（**尚未實作**）。
+
+    **警示、非停機**（正典用「警示」二字）：本函式只回傳 `warn` 旗標，**呈現層自行決定**；
+    ⛔ 但缺件**不是**警示、是 **loud raise**（見下）。
+
+    build_blocks               可建築街廓 dict 清單（需 `label`／`category`）
+    depth_info_by_label        `n19p_depth_info_by_label(...)` 之回傳（**唯一深度算法源**）
+    front_road_width_by_label  `{label: 正面路寬(m)}`
+                               （app＝`sb['rows']`：`grep -n "sb_rows_by_label = {" app.py`；
+                                harness＝`run_verification.build_param_table` 之 `正面路寬(m)`）
+    回傳 逐街廓 dict 之 list，欄位：
+      `label`／`category`／`front_road_width_m`／`d_front_p1`／`d_front_p2`／
+      `D_k92_min`（量測值·全精度）／`min_depth_table`（附表門檻）／`margin`（餘裕＝量測−門檻）／
+      `warn`（`D_k92_min <= min_depth_table` ⇒ True）
+
+    🔒 **比較用未 round 之原值**、`round()` 只在輸出層（K-8 §二-1 WARNING-B 體例）。
+
+    **缺件一律 loud `RuntimeError`**（施工單 §3.4：禁靜默、**不得跳過該街廓**）：
+      缺深度資訊／缺 `D_k92_min`／缺正面路寬（≤0）／附表查無深度（≤0）。
+    ⚠️ 缺 **FRONT_LINE／BASELINE** 於**上游** `_compute_block_depth_alloc` 即已 loud raise，
+      本函式不重複攔截、**不留 except**。
+    """
+    _dinfo = depth_info_by_label or {}
+    _fwb = front_road_width_by_label or {}
+    _rows = []
+    for b in (build_blocks or []):
+        _lbl = b['label']
+        _cat = b.get('category', '') or ''
+        _di = _dinfo.get(_lbl)
+        if not _di:
+            raise RuntimeError(
+                f"🔴 K-9-2 街廓層深度檢查：街廓 {_lbl} 無 N-19′ 深度資訊"
+                f"（`n19p_depth_info_by_label` 之母體不含此街廓）。"
+                f"⛔ 禁跳過該街廓——K-9-2 係全街廓逐格檢查。")
+        _pmin = _di.get('D_k92_min')
+        if _pmin is None:
+            raise RuntimeError(
+                f"🔴 K-9-2 街廓層深度檢查：街廓 {_lbl} 之深度資訊缺 `D_k92_min`"
+                f"（＝前緣線兩端垂距之 min）。來源應為 `_compute_block_depth_alloc`；"
+                f"⛔ 禁改讀 `D_min`（方法 A 取樣診斷·同名不同量·K-9-6-a）。")
+        _fw = float(_fwb.get(_lbl, 0.0) or 0.0)
+        if _fw <= 0:
+            raise RuntimeError(
+                f"🔴 K-9-2 街廓層深度檢查：街廓 {_lbl} 之**正面路寬**缺值（{_fw}）。"
+                f"畸零地附表係以「分區 × 正面路寬」查得最小深度，缺路寬 ⇒ 門檻不可定；"
+                f"⛔ 禁以附表最窄一列（路寬 ≤7m）兜底充數（no-silent-fallback）。"
+                f"請先於臨街負擔步驟填入該街廓正面路寬。")
+        _md = float(get_min_lot_size(_cat, _fw).get('min_depth', 0.0) or 0.0)
+        if _md <= 0:
+            raise RuntimeError(
+                f"🔴 K-9-2 街廓層深度檢查：街廓 {_lbl}（分區「{_cat}」·正面路寬 {_fw:g}m）"
+                f"於畸零地附表查無最小深度（得 {_md}）。"
+                f"⛔ 禁以任何常數兜底——門檻無法源即不得比較。"
+                f"請檢查該街廓分區是否為可建築土地、或補 `HUALIEN_MIN_LOT_TABLE` 之對應列。")
+        _pmin = float(_pmin)
+        _rows.append({
+            'label': _lbl, 'category': _cat, 'front_road_width_m': _fw,
+            'd_front_p1': float(_di['d_front_p1']), 'd_front_p2': float(_di['d_front_p2']),
+            'D_k92_min': _pmin, 'min_depth_table': _md,
+            'margin': _pmin - _md,
+            # 🔒 「等於也警示」⇒ 用 `<=`，**禁**寫成 `<`
+            'warn': (_pmin <= _md),
+        })
+    return _rows
 
 
 def iterate_G_S(a: float, A: float, B: float, C: float,
@@ -16210,6 +16311,39 @@ def main():
                     st.session_state['f3_alloc_depth_by_label'] = _depth_use_by_blk
                     st.session_state['f3_min_alloc_area_by_label'] = _min_alloc_area_by_blk
                     st.session_state['f3_min_width_by_label'] = _min_width_by_blk
+                    # 🆕 K-9-2 街廓層剖面深度警示（KL 裁 2026-08-01·**K-6-A2 段一**）
+                    #   正典：`grep -n "^## K-9 " docs/rulings/K-6_街角地分配程序與可分配判準.md`
+                    #   算法源＝module 級 `k92_block_depth_check`
+                    #   （`grep -n "def k92_block_depth_check" app.py`）——抽為 module 級之由同
+                    #   `n19p_depth_info_by_label`：令 harness 得呼叫**同一份碼**、禁在 verify/ 另寫一套。
+                    #   落點：**BASELINE 設定完成後、開始配地之前**（BASELINE 逐街廓設定，
+                    #   故不得置於 DXF 匯入當下）；體例與位置比照下方 §7-0a 前置地基檢查。
+                    #   ⚠️ K-9-3：街廓層過 ⇒ 宗地層一律不量深度（宗地層屬 K-6-A2 後續段·此處不判宗地）。
+                    _k92_rows = k92_block_depth_check(
+                        _build_blocks, _depth_info_by_blk,
+                        {_b['label']: float(sb_rows_by_label.get(_b['label'], {})
+                                            .get('正面路寬(m)', 0.0) or 0.0)
+                         for _b in _build_blocks})
+                    st.session_state['f3_k92_block_depth'] = _k92_rows
+                    _k92_bad = [_r for _r in _k92_rows if _r['warn']]
+                    for _r in _k92_bad:
+                        st.warning(
+                            f"⚠️ **K-9-2 街廓層深度警示：{_r['label']}** — 該街廓最淺剖面深度 "
+                            f"{_r['D_k92_min']:.3f}m ≤ 畸零地最小深度 {_r['min_depth_table']:.2f}m"
+                            f"（分區「{_r['category']}」·正面路寬 {_r['front_road_width_m']:g}m；"
+                            f"前緣線兩端垂距 {_r['d_front_p1']:.3f} / {_r['d_front_p2']:.3f}m）。"
+                            f"**該街廓自前緣線至屁股線之進深不足法定可建築深度**，其上分配之土地"
+                            f"無法成為合法建築基地 ⇒ 請重新檢討本街廓之劃設。"
+                        )
+                    if _k92_rows and not _k92_bad:
+                        _k92_min_row = min(_k92_rows, key=lambda r: r['margin'])
+                        st.caption(
+                            f"✅ K-9-2 街廓層深度檢查 PASS：{len(_k92_rows)} 街廓剖面最小深度"
+                            f"皆 > 畸零地最小深度；最緊者 {_k92_min_row['label']} "
+                            f"{_k92_min_row['D_k92_min']:.3f}m vs "
+                            f"{_k92_min_row['min_depth_table']:.2f}m（餘裕 "
+                            f"{_k92_min_row['margin']:+.2f}m）"
+                        )
                     # 🆕 W-C §5 / 7-0a 前置地基檢查：region_min vs 重劃區總面積×C%（v3.1 §7-0a）
                     #   region_min = min(各可建築街廓 D_avg_i×min_width_i)（非街角範圍面積）。
                     _valid_mins = [v for v in _min_alloc_area_by_blk.values() if v is not None and v > 0]
