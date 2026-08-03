@@ -44,6 +44,14 @@ KL 是都市計畫領域專家、非程式設計師。**工作分支：`wip/s1-e
 - **🔒 自評 gate 綠不可替代獨立復現**：自跑 gate 綠（如 G.3 自跑 45/45）是**最不可自我採信**之聲明
   （＝「把綠當過」重演）；獨立復現 reviewer（如 G.3 之 reviewer E 逐格對拍）**未綠不得前進**——
   該類驗證之**全部價值即獨立復現**。
+- **🔒 `main()` 內之敘述，`run_all` 不得單獨作為驗收依據（KL 立 2026-08-03·K-6-A2 段三 F-2）**：
+  **凡新增或修改落在 `main()` 內之可執行敘述，`run_all` 之名目集合結果不得單獨作為驗收依據，
+  必須另附合成案。**
+  **理由**：`harvest()` 以 AST 跳過 UI、harness 走 `verify/stepg_pipeline.run_step_g`，
+  **`main()` 內之敘述從不被 `run_all` 執行**。
+  **已兩度坐實**：**GB-24** 之 K-9-4 閘（`grep -n "k94_assert_baseline_touch(_k94_touch)" app.py`）、
+  **GB-25** 之 F-2 狀態機（`grep -n "K-6-A2 補正 F-2" app.py`）。
+  ⇒ 該類批次之「`run_all` 零進零出」**只證明「未波及其他名目」**，**不證明該敘述本身正確**。
 - **🔒 W-G 收官判準（KL 2026-07-13 修正·三條件齊備才報收官）**：**W-G 收官＝
   ① G.3 三重確立（app-path==重烤 baseline byte-perfect·已成 `335f5f3`）
   ＋② GIS 區段點選 bug 修畢（CC 責）＋③ KL localhost 實跑七級調配從頭至 E 世代終態成立（KL 驗收）**。
