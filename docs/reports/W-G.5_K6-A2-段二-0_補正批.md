@@ -169,8 +169,8 @@ pandas.testing.assert_frame_equal(..., check_dtype=False, check_exact=True) ⇒ 
 
 ## 一-6 KL 裁定入正典：正面路寬未填 ⇒ **停機要求補填**
 
-**(a) 正典新增** `K-9-5-1`（🔧 **K-6-A2 段三已改編為 `K-9-5-1′`**——KL 段三裁定占用 `K-9-5-1` 號；內容一字未改）
-（`grep -n "^### 🔒 K-9-5-1′ " docs/rulings/K-6_街角地分配程序與可分配判準.md`），逐字載明：
+**(a) 正典新增** `K-9-5-1`
+（`grep -n "^### 🔒 K-9-5-1 " docs/rulings/K-6_街角地分配程序與可分配判準.md`），逐字載明：
 
 - 碼面成因：`w = float(front_road_width_m or 0.0)` ＋ `if w <= upper: return`
   ⇒ `w=0` 恆中附表第一列；住宅區落 `(3.00, 12.00)`。

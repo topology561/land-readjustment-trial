@@ -9599,7 +9599,7 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
     ⛔ **禁二分、禁取樣、禁迭代兜底**（正典 K-9-7）。全函式無迴圈求解。
     ⛔ **退化情形**（`c`／分母為零、範圍不可構造）一律 **loud raise**、禁兜底。
 
-    🔒 **後置斷言（＝ K-9-5-1 ③ 之程式化）**：解出之範圍其**最小深度 ≥ 畸零地深**
+    🔒 **後置斷言（＝ K-9-5-2 ③ 之程式化）**：解出之範圍其**最小深度 ≥ 畸零地深**
       且**最小寬 ≥ 退縮＋畸零地寬**；任一不成立 ⇒ **loud raise（構造被破壞）**，
       ⛔ 不得容忍、不得調參。（本函式回傳 `assert_ok`／`assert_note` 供呈現層列印；
       **硬斷言於 `min_depth_legal` 有給時才執行**——未給即無門檻可比。）
@@ -9716,13 +9716,13 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
     # ④ 分支切換點（明列·正典要求）：②↔③ 之界 ＝ m·t = 0
     _switch = ([] if k >= 0 else ([0.0] if abs(m) > 1e-15 else []))
 
-    # ── 後置斷言（K-9-5-1 ③ 之程式化）────────────────────────────────────────
+    # ── 後置斷言（K-9-5-2 ③ 之程式化）────────────────────────────────────────
     _D_at = D0 - max(0.0, m * t_star)
     _W_at = min(_W(0.0, t_star), _W(_D_at, t_star))
     _notes = []
     if not (_W_at >= T - 1e-6):
         _stop(f"後置斷言破：所構造範圍之最小寬 {_W_at:.6f} < 退縮＋畸零地最小寬 {T:.6f}"
-              f"（分支 {branch}·t*={t_star:.9g}）⇒ **K-9-5-1 ③ 之構造保證被破壞**"
+              f"（分支 {branch}·t*={t_star:.9g}）⇒ **K-9-5-2 ③ 之構造保證被破壞**"
               f"，⛔ 不得容忍、不得調參")
     if _D_at <= 0:
         _stop(f"後置斷言破：所構造範圍之最小深度 {_D_at:.6f} ≤ 0（分支 {branch}）")
@@ -9740,7 +9740,7 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
         _on_cham = bool(chamfer_tri.buffer(1e-9).contains(_Ppt))
         if _on_cham:
             _notes.append("⚠️ `P_front(t*)` 落在截角三角形內 ⇒ 該範圍之臨街段非全在 "
-                          "FRONT_LINE 上（K-9-5-1 ②）；K-9-7-d 之第二層分支需 K-9-8 之 "
+                          "FRONT_LINE 上（K-9-5-2 ②）；K-9-7-d 之第二層分支需 K-9-8 之 "
                           "`PQ` 延伸線段（**段四**）方能解析，本函式不臆造。")
 
     # ── 舊式之 t*（**只供段三(b) 對照·同源同框**）──────────────────────────────
