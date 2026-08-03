@@ -5756,6 +5756,44 @@ def alloc_normal_axis(alloc_dir):
     return np.array([-uy / n, ux / n])
 
 
+# 🔒 **臨接容差（單一常數·禁另立第二把尺）**——K-6-A2 段二-1(a) 由
+#   `parcel_min_width_n14` 之函式內區域變數**提升為 module 級**（**零行為**：值仍為 `0.01`）。
+#   提升之由：**K-9-4 之 BASELINE 臨接量測需用同一把尺**；若於新函式另寫 `0.01`
+#   即成「另立常數」（施工單 §二(a) 明禁）⇒ 提升為共用常數方為「沿用」。
+#   ⚠️ **名稱之歷史包袱**：名為 `_EPS_TOUCH_FRONT`，實為**臨接容差**，
+#     **前端（FRONT）與後端（BASELINE）共用**。名實不符之風險同 GB-21，
+#     **本批不改名**（改名須自成可獨立回退之 commit·列波末批）。
+_EPS_TOUCH_FRONT = 0.01
+
+
+def _baseline_normal_axis(baseline_pts):
+    """**BASELINE 法向量測軸**（`(b0, bn)`）——N-19′／K-9-4 **共用之單一定義**。
+
+    `bn = (-bdy, bdx) / |b|`；某點之**帶號偏移** ＝ `(p − b0) · bn`。
+    BASELINE 取**無限直線**（K-8 §一 不變式）⇒ 只用其方向與過點，**不受線段端點截斷**。
+
+    🔒 **提取之由（K-6-A2 段二-1(a)）**：本式原內聯於 `_compute_block_depth_alloc`；
+      K-9-4 需**同一軸**方能與 N-19′ 之 `d_front_p1`／`d_front_p2` 對得上。
+      內聯第二份 ＝ **GB-8 之形狀**（多份實作、無一致性看守）⇒ 改為提取共用。
+      **本次提取為零行為**（算式逐字相同）。
+
+    ⚠️ **另有一份不同號規之 BASELINE 法向**：`_build_corner_range_v3` 之
+      `bnx, bny = -buy, bux` ＋「定號：指向 BASELINE」翻號
+      （`grep -n "定號：指向 BASELINE" app.py`）。**號規不同、不可互代**；
+      本批**不動之**（其號規係街角範圍構造所需）⇒ 登記見 **GB-22**。
+
+    回傳 `(b0x, b0y, bnx, bny)`；BASELINE 退化為點 ⇒ 回 `None`（由呼叫端 loud）。
+    """
+    if not (baseline_pts and len(baseline_pts) >= 2):
+        return None
+    _b0 = baseline_pts[0]; _b1 = baseline_pts[-1]
+    _bdx = float(_b1[0]) - float(_b0[0]); _bdy = float(_b1[1]) - float(_b0[1])
+    _blen = (_bdx * _bdx + _bdy * _bdy) ** 0.5
+    if _blen < 1e-9:
+        return None
+    return (float(_b0[0]), float(_b0[1]), -_bdy / _blen, _bdx / _blen)
+
+
 def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
                                front_pts=None, baseline_pts=None):
     """**N-19′ 街廓平均深度**（裁定 K-8 §二·KL 裁 2026-07-31·canonical）。
@@ -5819,13 +5857,12 @@ def _compute_block_depth_alloc(block_vertices, block_area, alloc_dir,
         _stop("缺 FRONT_LINE（或其端點不足二點）")
     if not (baseline_pts and len(baseline_pts) >= 2):
         _stop("缺 BASELINE（既有 C-2/C-5 配對未給出該街廓之屁股線）")
-    b0 = baseline_pts[0]; b1 = baseline_pts[-1]
-    bdx = float(b1[0]) - float(b0[0]); bdy = float(b1[1]) - float(b0[1])
-    blen = (bdx * bdx + bdy * bdy) ** 0.5
-    if blen < 1e-9:
+    # 🔒 量測軸改走共用之 `_baseline_normal_axis`（K-6-A2 段二-1(a)·**零行為**·算式逐字相同）
+    #   ——令 K-9-4 之 BASELINE 臨接量測與本式**同軸**，避免第二份實作（GB-8 之形狀）。
+    _ax = _baseline_normal_axis(baseline_pts)
+    if _ax is None:
         _stop("BASELINE 退化為點（二端重合）⇒ 方向不可定義")
-    bnx, bny = -bdy / blen, bdx / blen    # 垂直 BASELINE 之量測軸
-    _b0x = float(b0[0]); _b0y = float(b0[1])
+    _b0x, _b0y, bnx, bny = _ax
     s1 = (float(front_pts[0][0]) - _b0x) * bnx + (float(front_pts[0][1]) - _b0y) * bny
     s2 = (float(front_pts[1][0]) - _b0x) * bnx + (float(front_pts[1][1]) - _b0y) * bny
     # 🔒 **解析捷徑之前提**：深度係**距離**（非負）。「兩端垂距之平均 ≡ 沿弦平均」
@@ -6048,6 +6085,80 @@ def k92_block_depth_check(build_blocks, depth_info_by_label, front_road_width_by
             'warn': (_pmin <= _md),
         })
     return _rows
+
+
+def k94_baseline_touch_by_parcel(parcels, baseline_pts_by_label):
+    """**K-9-4 BASELINE 臨接量測**（正典：`grep -n "K-9-4" docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+
+    正典逐字：**每宗必須配到 BASELINE**；未達即**停機報錯**。**不支援同一街廓前後配兩排。**
+
+    🔴 **本函式只量不判**（K-6-A2 段二-1(a)）——回傳逐宗量測，
+    **不 raise、不擋、不作為閘**。上閘屬段二-1(c)、**須待 KL 放行**。
+    （缺件仍 loud raise——「缺件」與「違例」是兩回事：前者無從量測，後者是量出來的結果。）
+
+    **量法**：逐宗**每一頂點**沿 **BASELINE 法向**之**帶號偏移** `(p − b0)·bn`
+    （軸＝`_baseline_normal_axis`，**與 N-19′ 同一軸**），取其極值。
+    ⛔ **禁取樣、禁掃描、禁迭代**——多邊形頂點有限，逐頂點即窮盡。
+
+    **`gap` ＝ min(|帶號偏移|)** ＝ 該宗最接近 BASELINE 之頂點到 BASELINE 之距離。
+    宗地位於 BASELINE 同側時，`gap` 即「離屁股線還差多少」；`gap ≤ 容差` ⇒ **已配到**。
+    **`far` ＝ max(|帶號偏移|)** ＝ 該宗最遠頂點（≈ 該處街廓深度）。
+    **`crosses`** ＝ 該宗**實質**橫跨 BASELINE 兩側（`off_min < −容差` **且** `off_max > +容差`）
+    ⇒ 該宗**穿過**屁股線——依作業規範不可能 ⇒ 屬**上游異常**，本函式**照實回報、不代判**。
+    🔴 **判準用「實質」而非「跨號」之由（K-6-A2 段二-1(a) 實測所迫）**：
+      凡**正確配到 BASELINE** 之宗，其後緣頂點恰落在 BASELINE 上 ⇒ 帶號偏移為 `±1e-6` 量級
+      之浮點噪訊 ⇒ **單純比較符號（`min<0<max`）會對『配得最準的宗』誤報**。
+      本案實測：68 宗中 **33 宗**符合裸跨號，而其「較小側」之最大量級僅 **9.322e-06 m**
+      （＝0.009mm·遠小於容差 `0.01m`）⇒ **全屬噪訊、無一為真跨越**。
+      ⇒ 故以**同一把尺（`_EPS_TOUCH_FRONT`）**界定「實質」，**不另立容差**。
+
+    🔒 **容差＝ `_EPS_TOUCH_FRONT`**（`grep -n "^_EPS_TOUCH_FRONT = " app.py`）
+      ——與 `parcel_min_width_n14` 之**前端**臨接判定**共用同一把尺**。
+      ⛔ 禁自訂容差、禁另立常數（施工單 §二(a)）。
+
+    parcels                 逐宗 dict 之 list，需 `label`（所屬街廓）／`pid`（暫編地號）／
+                            `coords`（宗地多邊形頂點序列·**幾何來源由呼叫端決定並聲明**）
+    baseline_pts_by_label   `{label: [(x1,y1),(x2,y2)]}`（`_baseline_pts_from_manual` 之產物）
+    回傳 逐宗 dict 之 list，欄位：
+      `label`／`pid`／`n_vertices`／`off_min`／`off_max`（帶號）／
+      `gap`（＝min|偏移|）／`far`（＝max|偏移|）／`crosses`／`touch`（`gap <= 容差`）／`eps`
+
+    **缺件一律 loud `RuntimeError`**（禁靜默、**不得跳過任何一宗**·施工單 §二(a)）：
+      缺該街廓之 BASELINE／BASELINE 退化為點／宗地頂點不足三點。
+    """
+    _bl = baseline_pts_by_label or {}
+    _out = []
+    for _p in (parcels or []):
+        _lbl = _p['label']; _pid = _p['pid']
+        _coords = _p.get('coords') or []
+        if len(_coords) < 3:
+            raise RuntimeError(
+                f"🔴 K-9-4 BASELINE 臨接量測：{_lbl}/{_pid} 之宗地頂點僅 {len(_coords)} 點"
+                f"（< 3）⇒ 非多邊形、不可量。⛔ 禁跳過該宗——K-9-4 係全宗逐格檢查。")
+        _ax = _baseline_normal_axis(_bl.get(_lbl))
+        if _ax is None:
+            raise RuntimeError(
+                f"🔴 K-9-4 BASELINE 臨接量測：街廓 {_lbl} 缺 BASELINE（或其退化為點）"
+                f"⇒ 屁股線不可定義、臨接無從量。"
+                f"請至 CAD 補畫／檢查 BASELINE 圖層；⛔ 禁以街廓邊界代替屁股線。")
+        _b0x, _b0y, _bnx, _bny = _ax
+        _offs = [(float(_q[0]) - _b0x) * _bnx + (float(_q[1]) - _b0y) * _bny
+                 for _q in _coords]
+        _omin = min(_offs); _omax = max(_offs)
+        _abs = [abs(_o) for _o in _offs]
+        _gap = min(_abs); _far = max(_abs)
+        _out.append({
+            'label': _lbl, 'pid': _pid, 'n_vertices': len(_coords),
+            'off_min': _omin, 'off_max': _omax,
+            'gap': _gap, 'far': _far,
+            # 🔒 **實質**跨越（非裸跨號）——理由見 docstring：裸跨號會對「配得最準的宗」誤報
+            'crosses': (_omin < -_EPS_TOUCH_FRONT and _omax > _EPS_TOUCH_FRONT),
+            # 🔒 「配到」＝最近頂點落在臨接容差內。**只量不判**：本旗標供呈現／上呈用，
+            #    段二-1(a) **不據以 raise**（上閘屬 (c)、須 KL 放行）。
+            'touch': (_gap <= _EPS_TOUCH_FRONT),
+            'eps': _EPS_TOUCH_FRONT,
+        })
+    return _out
 
 
 def iterate_G_S(a: float, A: float, B: float, C: float,
@@ -6302,7 +6413,8 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label=''):
     #        · 無勝者 ⇒ `R_end` 整區轉 `{blk}-抵費地末` ＝ **池片**。
     #      ⇒ **僅池片可為「純未臨正街」；業主宗恆含臨正街構件** ⇒ 前提句成立，
     #        **不需**改為「以 ALLOC 方向追跡 FRONTLINE」之判準。（claude.ai 指示：註解結案。）
-    _EPS_TOUCH_FRONT = 0.01
+    # 🔒 容差已提升為 module 級共用常數（K-6-A2 段二-1(a)·**零行為**·值仍 0.01）
+    #   ——`grep -n "^_EPS_TOUCH_FRONT = " app.py`；K-9-4 之 BASELINE 臨接量測共用同一把尺。
     if abs(min(_tv)) > _EPS_TOUCH_FRONT:
         raise RuntimeError(
             f"🔴 parcel_min_width_n14[{_label}]：本宗未臨接正面路街線"
