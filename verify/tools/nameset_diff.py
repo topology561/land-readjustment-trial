@@ -36,6 +36,15 @@ REPO = os.path.dirname(os.path.dirname(HERE))       # verify/tools/ → verify/ 
 
 VERDICT = re.compile(r"^\s*(✅ PASS|🔴 FAIL)\s+(.*?)\s*$")
 
+# 🔴 **第二族：夾具／golden**（K-6-A2 段四(c)-1 補·本器初版之盲區）
+#   `run_all` 對夾具／golden 之報告格式為 `  ✅ <名目>…rc=0` ／ `  🔴 <名目>…rc=1`
+#   ——**沒有 `PASS`／`FAIL` 字樣** ⇒ 初版之 `VERDICT` 完全掃不到，
+#   而 `run_all.py:110` 明明把 `fixture_corner_range_k8.py` 等 8 支夾具掛在裡面。
+#   ⚠️ **本器初版曾據此回報「零進零出零翻轉」，而該次實際上有一支夾具 rc 0→1**
+#   ——閘看不見它本該守的東西。實測該族於靶檔共 **12 行**（縮排 2·含 `rc=`）。
+#   判準：縮排 ≤ 2 ∧ 含 `rc=`（夾具內部之逐項明細縮排 ≥ 4 且不含 `rc=` ⇒ 自然排除）。
+FIXTURE = re.compile(r"^\s{0,2}(✅|🔴)\s+(.*?)\s*rc=(\d+)\s*$")
+
 
 def normalize(name):
     """剝除與機器相關之雜訊，使兩機之同一名目化為同一字串。"""
@@ -47,18 +56,32 @@ def normalize(name):
 
 
 def load(path):
-    """回 {正規化名目: 'PASS'|'FAIL'}。"""
-    out = {}
+    """回 `(名目族, 夾具族)`；兩族皆為 `{正規化名目: 'PASS'|'FAIL'}`。
+
+    🔴 **兩族須分開比**：`run_all` 對二者之報告格式不同（見 `FIXTURE` 之註）。
+    只比第一族會**看不見夾具翻轉**——本器初版即如此，並因而誤報過一次「零進零出」。
+    """
+    names, fixtures = {}, {}
     with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
-            m = VERDICT.match(line.rstrip("\n"))
+            line = line.rstrip("\n")
+            m = VERDICT.match(line)
             if m:
-                out[normalize(m.group(2))] = "PASS" if "PASS" in m.group(1) else "FAIL"
-    if not out:
+                names[normalize(m.group(2))] = "PASS" if "PASS" in m.group(1) else "FAIL"
+                continue
+            m = FIXTURE.match(line)
+            if m:
+                fixtures[normalize(m.group(2))] = "PASS" if m.group(3) == "0" else "FAIL"
+    if not names and not fixtures:
         raise RuntimeError(
-            f"🔴 {path}：掃不到任何 `✅ PASS`／`🔴 FAIL` 判定行。"
+            f"🔴 {path}：掃不到任何判定行（`✅ PASS`／`🔴 FAIL`，或夾具之 `✅ …rc=N`）。"
             f"該檔是 `run_all` 之輸出嗎？（no-silent-fallback：不靜默回空集合）")
-    return out
+    if not fixtures:
+        raise RuntimeError(
+            f"🔴 {path}：掃到 {len(names)} 個名目，但**夾具族為空**。"
+            f"`run_all.py` 明載掛有 8 支 fixture（`grep -n 'fixture_corner_range_k8.py' verify/run_all.py`）"
+            f"⇒ 掃不到即表示格式已變、本器已瞎，⛔ 不得當『沒有夾具』繼續（no-silent-fallback）。")
+    return names, fixtures
 
 
 def rel(p):
@@ -77,31 +100,41 @@ def main(argv):
     if len(argv) != 3:
         print(__doc__)
         return 2
-    tgt, cur = load(argv[1]), load(argv[2])
+    tgt_n, tgt_f = load(argv[1])
+    cur_n, cur_f = load(argv[2])
 
     def tally(d):
         return sum(v == "PASS" for v in d.values()), sum(v == "FAIL" for v in d.values())
 
-    tp, tf = tally(tgt)
-    cp, cf = tally(cur)
+    def section(title, tgt, cur):
+        tp, tf = tally(tgt)
+        cp, cf = tally(cur)
+        print("=" * 100)
+        print(f"【{title}】")
+        print(f"  靶   {len(tgt):>4} 項  PASS={tp}  FAIL={tf}")
+        print(f"  本次 {len(cur):>4} 項  PASS={cp}  FAIL={cf}")
+        gone = sorted(set(tgt) - set(cur))
+        came = sorted(set(cur) - set(tgt))
+        flip = sorted(n for n in (set(tgt) & set(cur)) if tgt[n] != cur[n])
+        print(f"  ── 出（靶有·本次無）{len(gone)} ──")
+        for n in gone:
+            print(f"    - [{tgt[n]}] {n}")
+        print(f"  ── 進（本次有·靶無）{len(came)} ──")
+        for n in came:
+            print(f"    + [{cur[n]}] {n}")
+        print(f"  ── 判定翻轉 {len(flip)} ──")
+        for n in flip:
+            print(f"    ! {n}: {tgt[n]} → {cur[n]}")
+        return not (gone or came or flip)
+
+    print(f"靶   {rel(argv[1])}")
+    print(f"本次 {rel(argv[2])}")
+    ok_n = section("名目族（`✅ PASS`／`🔴 FAIL`）", tgt_n, cur_n)
+    ok_f = section("夾具／golden 族（`✅ …rc=N`）", tgt_f, cur_f)
     print("=" * 100)
-    print(f"靶   {rel(argv[1])}: {len(tgt)} 名目  PASS={tp}  FAIL={tf}")
-    print(f"本次 {rel(argv[2])}: {len(cur)} 名目  PASS={cp}  FAIL={cf}")
-    print("=" * 100)
-    gone = sorted(set(tgt) - set(cur))
-    came = sorted(set(cur) - set(tgt))
-    flip = sorted(n for n in (set(tgt) & set(cur)) if tgt[n] != cur[n])
-    print(f"\n── 出（靶有·本次無）{len(gone)} ──")
-    for n in gone:
-        print(f"  - [{tgt[n]}] {n}")
-    print(f"── 進（本次有·靶無）{len(came)} ──")
-    for n in came:
-        print(f"  + [{cur[n]}] {n}")
-    print(f"── 判定翻轉 {len(flip)} ──")
-    for n in flip:
-        print(f"  ! {n}: {tgt[n]} → {cur[n]}")
-    ok = not (gone or came or flip)
-    print("\n✅ 零進零出零翻轉" if ok else "\n🛑 有差異 ⇒ 依施工單停機上呈（⛔ 禁改碼／禁調容差使其變綠）")
+    ok = ok_n and ok_f
+    print("\n✅ 兩族皆零進零出零翻轉" if ok
+          else "\n🛑 有差異 ⇒ 依施工單停機上呈（⛔ 禁改碼／禁調容差使其變綠）")
     return 0 if ok else 1
 
 

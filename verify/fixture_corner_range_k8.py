@@ -51,7 +51,7 @@ import run_verification as rv                         # noqa: E402
 SETBACKS = (0.0, 3.5)
 
 
-def _range_min_depth(cad, lbl, which, t_line_pts):
+def _range_min_depth(cad, cb_by, lbl, which, t_line_pts):
     """夾具側**獨立**量得該街角規定範圍**自身**之最小深度 `D(t*)`（K-9-6-b 之帶深）。
 
     🔴 **K-6-A2 段三(c)-2 §二 新增**：T1 原以 `snap["blocks"][lbl]["街廓分配深度_m"]`
@@ -59,17 +59,28 @@ def _range_min_depth(cad, lbl, which, t_line_pts):
       **K-9-6-b 明訂**帶深為「該範圍**自身**之最小深度」
       （`grep -n "^#### K-9-6-b " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
 
-    **定義**：`D(t*)` ＝ 範圍臨街段（街角 `Q0` → `ALLOC 邊 ∩ 前緣線` 之 `P_front`）
-    各點至 **BASELINE** 垂距之 **min**；垂距沿前緣線**線性** ⇒ min 必落兩端之一。
+    **定義（段四(c)-1 後）**：`D(t*)` ＝ 範圍臨街段（`PQ` ∩ 側界 → `P_block`）
+    各點至 **BASELINE** 垂距之 **min**；垂距沿 `PQ` **線性** ⇒ min 必落兩端之一（⛔ 不取樣）。
+    ⚠️ 改前為「前緣線 ∩ 側界 → 前緣線 ∩ ALLOC 邊」，即自 **FRONT_LINE** 起算（已作廢·見下）。
 
     🔒 **獨立性護欄（claude.ai 明令）**：本函式**只吃 `cad` 幾何與範圍多邊形之 ALLOC 邊**
       （`t_line_pts`·＝受測函式之**輸出幾何**），
       ⛔ **不自 `k97_solve_alloc_t` 或 `_build_corner_range_v3` 之回傳取任何值**
       ——否則本檔 §「T1 之量測係第三份獨立實作」當場消滅、T1 退化為恆真閘。
 
-    ⚠️ **段四須複查**：K-9-6-b-1 明訂量測用之「道路境界線」＝ **K-9-8 之 `PQ` 延伸線段**，
-      深度自該線段起算。本案 `P` 多落 FRONT 重疊段而**退化為 FRONT_LINE**，
-      故現行自 FRONT_LINE 起算可行；**K-9-8 落地後本函式之起算線須一併改**（登記見 GB-28）。
+    🔴 **K-6-A2 段四(c)-1 已改（GB-28 解除）**：起算線由 **FRONT_LINE** 改為 **K-9-8 之 `PQ`**
+      （K-9-6-b-1 明訂量測用之「道路境界線」＝ K-9-8 (3) 之延伸線段，深度自該線段起算）。
+      `PQ` ＝ 過 **`P_block`**、平行前緣線之直線；`P_block` ＝ **`L_in` ∩ BLOCK 邊界**之**臨街側**者
+      （K-9-8 (2)）。臨街段之二端遂為 **`P_block`**（本就在 `L_in` 上）與 **`PQ` ∩ SIDE_LINE**。
+      ⚠️ 本案多數格 `P_block` 落 FRONT 重疊段 ⇒ **`PQ` 與 FRONT_LINE 共線**、與改前同值
+      （K-9-8 (6) 之退化）；**`R4/right` 兩情境**落截角邊（內縮 `0.013039`）⇒ 該二格會變。
+      ⛔ 但**不得**以此當回歸靶——見段四(b) 報告之 3mm 餘裕警語（換 `V6_1` 後該實例消失）。
+
+    🔒 **獨立性護欄仍守**：新增之 `cb_by` 只用來取**街廓多邊形頂點**（`vertices`），
+      `P_block` 由**本檔自行以 numpy 求線段∩無限直線**，
+      ⛔ **仍不自 `k97_solve_alloc_t`／`_build_corner_range_v3`／`k98_virtual_measure_block`
+      取任何回傳值**——否則 T1 退化為恆真閘。
+      ⚠️ 刻意**不 import shapely**：本檔之獨立性正來自「numpy 閉式解、不共用 GEOS」。
     """
     fl = cad["front_lines"][lbl]
     F1 = np.array(fl["p1"], float)[:2]
@@ -90,20 +101,44 @@ def _range_min_depth(cad, lbl, which, t_line_pts):
     L2 = np.array(t_line_pts[1], float)
     lu = (L2 - L1) / np.linalg.norm(L2 - L1)
 
-    def _x_on_front(P, U):
-        """前緣線（過 F1、方向 d）與直線（過 P、方向 U）之交點。"""
+    # ── K-9-8 (2)：`P_block` ＝ `L_in`（過 L1、方向 lu 之**無限直線**）∩ **BLOCK 邊界** ──────
+    #   取**臨街側**者＝至 BASELINE 垂距最大者。⛔ 不與街廓取「面」交集（K-9-8 紅線一）。
+    _verts = (cb_by.get(lbl) or {}).get("vertices")
+    if not _verts or len(_verts) < 3:
+        return None
+    _ln = np.array([-lu[1], lu[0]])                   # L_in 之法向
+    _cands = []
+    _ring = [np.array(v, float)[:2] for v in _verts]
+    for _a, _b in zip(_ring, _ring[1:] + _ring[:1]):
+        _v = _b - _a
+        _nv = np.linalg.norm(_v)
+        if _nv < 1e-12:
+            continue                                   # 零長邊 ⇒ 濾（非靜默：見 docstring）
+        _den = _v @ _ln
+        if abs(_den) < 1e-12:
+            continue                                   # 與 L_in 平行 ⇒ 無單點交
+        _t = ((L1 - _a) @ _ln) / _den
+        if -1e-9 <= _t <= 1.0 + 1e-9:                  # 交點須落在該**邊**上
+            _cands.append(_a + _v * _t)
+    if not _cands:
+        return None
+    P_block = max(_cands, key=lambda q: abs((bp - q) @ bn))
+
+    # ── K-9-8 (3)(5)：`PQ` ＝ 過 `P_block` 平行前緣線；深度自 `PQ` 起算 ──────────────────
+    #   臨街段二端 ＝ `P_block`（本就在 `L_in` 上）與 `PQ` ∩ SIDE_LINE。
+    def _x_on_pq(P, U):
+        """`PQ`（過 P_block、方向 d）與直線（過 P、方向 U）之交點。"""
         n = np.array([-U[1], U[0]])
         den = d @ n
         if abs(den) < 1e-12:
             return None
-        return F1 + d * (((P - F1) @ n) / den)
+        return P_block + d * (((P - P_block) @ n) / den)
 
-    Q0 = _x_on_front(S1, su)              # 街角：前緣線 ∩ 側界（皆無限直線）
-    Pf = _x_on_front(L1, lu)              # P_front：前緣線 ∩ ALLOC 邊
-    if Q0 is None or Pf is None:
+    Q0 = _x_on_pq(S1, su)                 # 街角：PQ ∩ 側界（皆無限直線）
+    if Q0 is None:
         return None
-    # 至 BASELINE 之垂距（bn 已定號指向 BASELINE）
-    return float(min(abs((bp - Q0) @ bn), abs((bp - Pf) @ bn)))
+    # 至 BASELINE 之垂距（bn 已定號指向 BASELINE）；垂距沿 PQ 線性 ⇒ 取兩端·⛔ 不取樣
+    return float(min(abs((bp - Q0) @ bn), abs((bp - P_block) @ bn)))
 
 
 def _band_min_width(cad, cb_by, lbl, which, depth, t_line_pts):
@@ -222,7 +257,7 @@ def main():
             # 🔴 K-6-A2 段三(c)-2 §二：帶深改用**該範圍自身之最小深度 `D(t*)`**
             #   （K-9-6-b），不再用街廓平均深度 `街廓分配深度_m`（＝已被取代之舊定義）。
             #   `D(t*)` 由 `_range_min_depth` **獨立**量得（只吃 cad 幾何＋範圍之 ALLOC 邊）。
-            _Dt = _range_min_depth(cad, lbl, which, edge)
+            _Dt = _range_min_depth(cad, cb_by, lbl, which, edge)
             if _Dt is None:
                 ok = False
                 out.append(f"  {lbl+' '+which:10}{setback:6.1f}  🔴 D(t*) 不可量（前緣線與側界／ALLOC 無交點）")
