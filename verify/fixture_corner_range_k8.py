@@ -51,6 +51,61 @@ import run_verification as rv                         # noqa: E402
 SETBACKS = (0.0, 3.5)
 
 
+def _range_min_depth(cad, lbl, which, t_line_pts):
+    """夾具側**獨立**量得該街角規定範圍**自身**之最小深度 `D(t*)`（K-9-6-b 之帶深）。
+
+    🔴 **K-6-A2 段三(c)-2 §二 新增**：T1 原以 `snap["blocks"][lbl]["街廓分配深度_m"]`
+      （＝**街廓平均深度**）為帶深，量的是 **K-9-7 接生產前之舊定義**之帶。
+      **K-9-6-b 明訂**帶深為「該範圍**自身**之最小深度」
+      （`grep -n "^#### K-9-6-b " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+
+    **定義**：`D(t*)` ＝ 範圍臨街段（街角 `Q0` → `ALLOC 邊 ∩ 前緣線` 之 `P_front`）
+    各點至 **BASELINE** 垂距之 **min**；垂距沿前緣線**線性** ⇒ min 必落兩端之一。
+
+    🔒 **獨立性護欄（claude.ai 明令）**：本函式**只吃 `cad` 幾何與範圍多邊形之 ALLOC 邊**
+      （`t_line_pts`·＝受測函式之**輸出幾何**），
+      ⛔ **不自 `k97_solve_alloc_t` 或 `_build_corner_range_v3` 之回傳取任何值**
+      ——否則本檔 §「T1 之量測係第三份獨立實作」當場消滅、T1 退化為恆真閘。
+
+    ⚠️ **段四須複查**：K-9-6-b-1 明訂量測用之「道路境界線」＝ **K-9-8 之 `PQ` 延伸線段**，
+      深度自該線段起算。本案 `P` 多落 FRONT 重疊段而**退化為 FRONT_LINE**，
+      故現行自 FRONT_LINE 起算可行；**K-9-8 落地後本函式之起算線須一併改**（登記見 GB-28）。
+    """
+    fl = cad["front_lines"][lbl]
+    F1 = np.array(fl["p1"], float)[:2]
+    F2 = np.array(fl["p2"], float)[:2]
+    d = (F2 - F1) / np.linalg.norm(F2 - F1)
+    mb = cad["baselines"][lbl]
+    bp = np.array(mb["point"], float)[:2]
+    th = math.radians(float(mb["angle_deg"]))
+    bu = np.array([math.cos(th), math.sin(th)])
+    bn = np.array([-bu[1], bu[0]])
+    if (bp - F1) @ bn < 0:
+        bn = -bn
+    sd = cad["side_lines_by_side"][lbl][which]
+    S1 = np.array(sd["p1"], float)[:2]
+    S2 = np.array(sd["p2"], float)[:2]
+    su = (S2 - S1) / np.linalg.norm(S2 - S1)
+    L1 = np.array(t_line_pts[0], float)
+    L2 = np.array(t_line_pts[1], float)
+    lu = (L2 - L1) / np.linalg.norm(L2 - L1)
+
+    def _x_on_front(P, U):
+        """前緣線（過 F1、方向 d）與直線（過 P、方向 U）之交點。"""
+        n = np.array([-U[1], U[0]])
+        den = d @ n
+        if abs(den) < 1e-12:
+            return None
+        return F1 + d * (((P - F1) @ n) / den)
+
+    Q0 = _x_on_front(S1, su)              # 街角：前緣線 ∩ 側界（皆無限直線）
+    Pf = _x_on_front(L1, lu)              # P_front：前緣線 ∩ ALLOC 邊
+    if Q0 is None or Pf is None:
+        return None
+    # 至 BASELINE 之垂距（bn 已定號指向 BASELINE）
+    return float(min(abs((bp - Q0) @ bn), abs((bp - Pf) @ bn)))
+
+
 def _band_min_width(cad, cb_by, lbl, which, depth, t_line_pts):
     """夾具側**獨立**量測：帶內二側界間、平行前緣線之距離，取兩端之 min。
 
@@ -164,8 +219,15 @@ def main():
                 ok = False
                 out.append(f"  {lbl+' '+which:10}{setback:6.1f}  🔴 範圍多邊形取不到 ALLOC 邊")
                 continue
-            w = _band_min_width(cad, cb_by, lbl, which,
-                                float(snap["blocks"][lbl]["街廓分配深度_m"]), edge)
+            # 🔴 K-6-A2 段三(c)-2 §二：帶深改用**該範圍自身之最小深度 `D(t*)`**
+            #   （K-9-6-b），不再用街廓平均深度 `街廓分配深度_m`（＝已被取代之舊定義）。
+            #   `D(t*)` 由 `_range_min_depth` **獨立**量得（只吃 cad 幾何＋範圍之 ALLOC 邊）。
+            _Dt = _range_min_depth(cad, lbl, which, edge)
+            if _Dt is None:
+                ok = False
+                out.append(f"  {lbl+' '+which:10}{setback:6.1f}  🔴 D(t*) 不可量（前緣線與側界／ALLOC 無交點）")
+                continue
+            w = _band_min_width(cad, cb_by, lbl, which, _Dt, edge)
             eps = ns["_corner_range_eps"]((cad["baselines"][lbl].get("_match") or {}).get("q_detected"))
             good = (w is not None) and abs(w - T) <= eps
             ok &= good
