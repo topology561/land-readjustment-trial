@@ -9565,6 +9565,159 @@ def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
     return target if not target.is_empty else None
 
 
+def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
+                              l_in_pts, corner_side_pts, _label='', _pid='',
+                              _lot_kind=''):
+    """**K-9-8 虛擬還原塊**（正典逐字：`grep -n "^### K-9-8 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+
+    🔴 **K-6-A2 段四(a)：只量不判·未接生產**（`grep -rn "k98_virtual_measure_block" --include="*.py" .`
+    應僅命中定義與探針）。碼面三處消費端（GB-18／GB-19／GB-28）之切換屬**段四(c)**。
+
+    ── 構成（正典 (1)–(7)·**一條規則涵蓋兩種情形**）────────────────────────────
+    1. `L_in` ＝ 該宗「**往街廓內部那一側**」之 ALLOC_LINE。
+    2. **`P_block`** ＝ `L_in` ∩ **BLOCK 邊界**——可能落**截角邊**、亦可能落**與 FRONT 重疊之段**。
+       ⚠️ **`P_block` 與 K-9-7 之 `P_front`（`ALLOC ∩ 前緣線`）同名異物**
+         （K-9-7-a 衝突二）⇒ 本函式一律用 `P_block`，**取錯即整個虛擬塊錯位**。
+    3. 自 `P_block` 作**平行 FRONT_LINE** 之線段，往**街角方向**延伸，
+       **止於該宗靠街角那一側之境界線**（`corner_side_pts`）：
+       街角第 1 宗→**SIDE_LINE**；第 2 宗以後→**前一宗之 ALLOC_LINE**（必要時延伸）；
+       末端塊→**BLOCK 邊界**。
+       ⛔ **不得一律延伸至 SIDE_LINE**——第 2 宗若如此會把第 1 宗整塊包入，
+         量得之最小寬度將是**兩宗合計**（正典明令）。
+    4. 虛擬塊 ＝ **該延伸線段（PQ）** ＋ **該宗二側境界線** ＋ **BASELINE** 所圍之多邊形。
+    5. **深度自 `PQ` 起算**，非自 FRONT_LINE 起算。
+    6. **退化**：`P_block` 落於與 FRONT 重疊之段時，`PQ` 與 FRONT 重疊 ⇒ 自然退化為原式。
+       🔒 **本實作即一條規則**——`PQ` 恆過 `P_block`，退化與否**不分立兩式**、無 `if` 分支。
+    7. **僅供量測**。
+
+    ── ⛔ 兩條實作紅線（正典逐字）─────────────────────────────────────────────
+    ⛔ **禁與街廓多邊形取交集**——取交集即把還原部分裁掉、等於沒還原。
+      🔒 本實作**由四條界線直接圍成**（`PQ`／二側界／BASELINE），**全程未呼叫 `intersection(blk)`**
+        ⇒ 虛擬塊在街角處**得以伸出街廓之外**（進入截角被切掉之區域），此為裁定本意。
+    ⛔ **虛擬塊之面積禁進入任何面積帳**（`ΣG ＋ 抵費地 ＝ 街廓` 之守恆不得受擾）
+      ⇒ 本函式**只回傳幾何與量測值**，**不寫任何 session／不進 g_rows／不參與 G**。
+
+    參數
+      block_vertices    街廓多邊形頂點（**僅用於求 `P_block`**·不用於裁切）
+      front_pts         FRONT_LINE 兩端（定 `PQ` 之方向）
+      baseline_pts      BASELINE 兩點（取**無限直線**·K-8 §一）
+      l_in_pts          `L_in` 兩點（該宗往街廓內側之 ALLOC_LINE）
+      corner_side_pts   該宗**靠街角側**之境界線兩點（依宗別給·見 (3)）
+    回傳 dict：`poly`（虛擬塊）／`P_block`／`Q`／`on_chamfer`／`depth_from_PQ`／`min_width`
+    **缺件／退化一律 loud raise**（禁兜底）。
+    """
+    import math as _m98
+    from shapely.geometry import Polygon as _SP98, LineString as _LS98
+
+    _who = f"k98_virtual_measure_block[{_label or '?'}·{_pid or '?'}]"
+
+    def _stop(msg):
+        raise RuntimeError(f"🔴 {_who}：{msg}（K-9-8·⛔ 禁兜底、禁取交集）")
+
+    def _u(ax, ay):
+        n = _m98.hypot(ax, ay)
+        if n < 1e-12:
+            _stop("方向向量退化為零")
+        return ax / n, ay / n
+
+    for _nm, _v in (('FRONT_LINE', front_pts), ('BASELINE', baseline_pts),
+                    ('L_in', l_in_pts), ('靠街角側境界線', corner_side_pts)):
+        if not (_v and len(_v) >= 2):
+            _stop(f"缺 {_nm}")
+    if not (block_vertices and len(block_vertices) >= 3):
+        _stop("缺街廓多邊形（求 P_block 需之）")
+
+    F1 = (float(front_pts[0][0]), float(front_pts[0][1]))
+    F2 = (float(front_pts[1][0]), float(front_pts[1][1]))
+    dx, dy = _u(F2[0] - F1[0], F2[1] - F1[1])          # d̂：沿前緣線（＝ PQ 之方向）
+    _ax = _baseline_normal_axis(baseline_pts)          # 與 N-19′／K-9-7 同一軸
+    if _ax is None:
+        _stop("BASELINE 退化為點 ⇒ 法向不可定義")
+    b0x, b0y, bnx, bny = _ax
+
+    def _dep(p):
+        """點至 BASELINE 之垂距（沿共用法向·恆非負）。"""
+        return abs((float(p[0]) - b0x) * bnx + (float(p[1]) - b0y) * bny)
+
+    _LBIG = 1.0e5
+
+    def _inf(pts):
+        (ax_, ay_), (bx_, by_) = (float(pts[0][0]), float(pts[0][1])), \
+                                 (float(pts[1][0]), float(pts[1][1]))
+        ux, uy = _u(bx_ - ax_, by_ - ay_)
+        return _LS98([(ax_ - ux * _LBIG, ay_ - uy * _LBIG),
+                      (ax_ + ux * _LBIG, ay_ + uy * _LBIG)])
+
+    def _x2(l1, l2, what):
+        g = l1.intersection(l2)
+        if g.is_empty or g.geom_type != 'Point':
+            _stop(f"{what}：交點不存在或非單點（`{g.geom_type}`）")
+        return (float(g.x), float(g.y))
+
+    L_in_inf = _inf(l_in_pts)
+    L_cor_inf = _inf(corner_side_pts)                  # 必要時「將該線延伸」＝取無限直線
+    BL_inf = _inf(baseline_pts)
+
+    # ── (2) P_block ＝ L_in ∩ BLOCK 邊界（取**臨街側**者：至 BASELINE 垂距最大）──────
+    _blk = _SP98([(float(v[0]), float(v[1])) for v in block_vertices])
+    if not _blk.is_valid:
+        _blk = _blk.buffer(0)
+    if _blk.is_empty:
+        _stop("街廓多邊形為空")
+    _hits = L_in_inf.intersection(_blk.exterior)
+    _cands = ([(float(_hits.x), float(_hits.y))] if _hits.geom_type == 'Point'
+              else [(float(g.x), float(g.y)) for g in getattr(_hits, 'geoms', [])
+                    if g.geom_type == 'Point'])
+    if not _cands:
+        _stop("L_in 與 BLOCK 邊界無交點 ⇒ 該宗之內側分配線不在街廓上")
+    P_block = max(_cands, key=_dep)                    # 臨街側＝離 BASELINE 最遠
+
+    # ── (3) PQ：過 P_block、平行 FRONT，止於靠街角側境界線 ────────────────────────
+    #   🔒 **一條規則**：無論 P_block 落截角邊或落 FRONT 重疊段，皆走此同一式；
+    #      落 FRONT 重疊段時 PQ 自然與 FRONT 共線（(6) 之退化），**無 if 分支**。
+    PQ_inf = _LS98([(P_block[0] - dx * _LBIG, P_block[1] - dy * _LBIG),
+                    (P_block[0] + dx * _LBIG, P_block[1] + dy * _LBIG)])
+    Q = _x2(PQ_inf, L_cor_inf, "PQ ∩ 靠街角側境界線")
+
+    # ── (4) 虛擬塊 ＝ PQ ＋ 二側界 ＋ BASELINE 所圍（**四點·不裁切**）──────────────
+    P_bl = _x2(L_in_inf, BL_inf, "L_in ∩ BASELINE")
+    Q_bl = _x2(L_cor_inf, BL_inf, "靠街角側境界線 ∩ BASELINE")
+    poly = _SP98([P_block, Q, Q_bl, P_bl])
+    if not poly.is_valid:
+        poly = poly.buffer(0)
+    if poly.is_empty or poly.geom_type != 'Polygon':
+        _stop(f"虛擬塊非單一 Polygon（`{poly.geom_type}`）⇒ 四界圍不成塊")
+
+    # ── (5) 深度自 PQ 起算（非自 FRONT）──────────────────────────────────────────
+    #   PQ ∥ FRONT ⇒ 其上各點至 BASELINE 之垂距沿線性 ⇒ 取兩端 min（解析·禁取樣）。
+    depth_from_PQ = min(_dep(P_block), _dep(Q))
+
+    # ── 最小寬度：帶 [0, depth_from_PQ] 內、平行 PQ 之二側界間距，取兩端 min ────────
+    def _w_at(d):
+        """自 PQ 沿法向深入 d 處，二側界間平行 PQ 之距離。"""
+        _sh = (P_block[0] + bnx * d, P_block[1] + bny * d)
+        _ln = _LS98([(_sh[0] - dx * _LBIG, _sh[1] - dy * _LBIG),
+                     (_sh[0] + dx * _LBIG, _sh[1] + dy * _LBIG)])
+        a = _x2(_ln, L_in_inf, f"深度 {d:.4f} 之量測線 ∩ L_in")
+        b = _x2(_ln, L_cor_inf, f"深度 {d:.4f} 之量測線 ∩ 靠街角側境界線")
+        return _m98.hypot(a[0] - b[0], a[1] - b[1])
+
+    min_width = min(_w_at(0.0), _w_at(depth_from_PQ))
+
+    # `inset_from_front`：`P_block` 距 FRONT **無限直線**之內縮量。
+    #   🔒 **僅為旗標／診斷，不驅動任何分支**——(6) 之退化由 `PQ` 恆過 `P_block` 自然達成，
+    #     故本值為零與否**不改變上方任何一行**（一條規則涵蓋兩種情形）。
+    _t_front = abs((P_block[0] - F1[0]) * bnx + (P_block[1] - F1[1]) * bny)
+    return {
+        'label': _label, 'pid': _pid, 'lot_kind': _lot_kind,
+        'poly': poly, 'P_block': P_block, 'Q': Q,
+        'inset_from_front': _t_front,      # P_block 距 FRONT 無限直線之內縮量
+        'on_chamfer': None,                # 由呼叫端以截角三角形判定（本函式不臆造）
+        'depth_from_PQ': depth_from_PQ, 'min_width': min_width,
+        'area_DO_NOT_USE': float(poly.area),   # ⛔ 僅供診斷·禁進任何面積帳（K-9-8 (7)）
+    }
+
+
 def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
                       alloc_dir, setback, min_width, chamfer_tri=None,
                       block_depth=None, _label='', _side=''):
