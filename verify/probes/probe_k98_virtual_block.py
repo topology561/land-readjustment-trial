@@ -63,6 +63,38 @@ def _alloc_edges(coords, au):
 
 
 REF_LOG = os.path.join(VERIFY, "out", "probe_ruling_K9_corner_width_V6_1.log")
+# 🔴 `P` 之對照錨須用 **V6**（＝生產圖）那支，非 `_V6_1`：
+#    內縮量與落點**因圖而異**（GB-19 已載：V6_1 為 12 格全退化，V6 為 10 退化／2 截角邊）。
+REF_LOG_P = os.path.join(VERIFY, "out", "probe_ruling_K9_corner_width.log")
+
+
+def _load_ref_p():
+    """讀 `probe_ruling_K9_corner_width.log`【K-9-8-A/B】之 `內縮量(m)`／`P 落點` 欄（**V6**）。
+
+    🔒 同為倉內既有錨，⛔ 不由本檔重算。錨側之量為**有號** `-t_P`，
+    本檔之 `inset_from_front` 為**絕對值** ⇒ 只比**量值**、不比號。
+    """
+    if not os.path.exists(REF_LOG_P):
+        return None, f"缺對照檔 {os.path.relpath(REF_LOG_P, REPO)}"
+    with open(REF_LOG_P, encoding="utf-8") as f:
+        lines = f.read().splitlines()
+    try:
+        i0 = next(i for i, s in enumerate(lines) if "【K-9-8-A/B】" in s)
+    except StopIteration:
+        return None, "對照檔內無【K-9-8-A/B】段"
+    ref = {}
+    for s in lines[i0 + 1:]:
+        if "【" in s:
+            break
+        t = s.split()
+        if len(t) < 6 or t[0] not in ("0m", "3.5m") or "/" not in t[1]:
+            continue
+        try:
+            _in = float(t[3])
+        except ValueError:
+            continue
+        ref[(t[0], t[1])] = {"inset": _in, "spot": "截角邊" if "截角邊" in s else "FRONT 重疊段"}
+    return ref, f"{len(ref)} 列 ← {os.path.relpath(REF_LOG_P, REPO)}:{i0 + 1}"
 
 
 def _load_ref():
@@ -200,6 +232,8 @@ def main():
                     rec["w3"] = k98["min_width"]
                     rec["inset"] = k98["inset_from_front"]
                     rec["depth3"] = k98["depth_from_PQ"]
+                    # 🔒 落點**取自建構器之量得值**，⛔ 禁手寫、⛔ 禁由他處結論引入。
+                    rec["spot"] = ("FRONT 重疊段" if k98["on_front"] else "非 FRONT 重疊段")
                 except RuntimeError as e:
                     rec["w3"] = None
                     rec["w3err"] = str(e).splitlines()[0][:70]
@@ -242,8 +276,45 @@ def main():
             L.append(f"        三代 raise：{r['w3err']}")
     L.append("-" * 120)
     L.append(f"  |Δ| 最大 ＝ {dmax:.4f} m（僅為讀數·非判準）")
+    refp, refpnote = _load_ref_p()
     L.append("")
-    L.append("【B】註記")
+    L.append("【B】`P_block` 之內縮量與落點：對**生產圖 V6** 之既有錨")
+    L.append(f"  對照錨：{refpnote}")
+    L.append("  ⚠️ 錨側為**有號** `-t_P`、本檔為**絕對值** ⇒ 只比量值不比號。")
+    L.append("-" * 120)
+    L.append(f"  {'情境':<6}{'街廓/側':<12}{'內縮:錨':>12}{'內縮:本次':>12}{'Δ':>12}"
+             f"   {'落點:錨':<16}{'落點:本次':<16}{'一致':<6}")
+    L.append("-" * 120)
+    imax, nbad = 0.0, 0
+    for r in rows:
+        tag = f"{r['sb']:g}m"
+        key = f"{r['lbl']}/{r['side']}"
+        if r.get("note") or r.get("inset") is None:
+            continue
+        R = (refp or {}).get((tag, key)) or {}
+        a = abs(R["inset"]) if R.get("inset") is not None else None
+        m = float(r["inset"])
+        dd = f"{m - a:+.6f}" if a is not None else "—"
+        if a is not None:
+            imax = max(imax, abs(m - a))
+        sp_ref = R.get("spot", "—")
+        sp_now = r.get("spot", "—")
+        # 錨之「截角邊」＝非 FRONT 重疊段 ⇒ 語意對映後比一致性
+        ok = "—"
+        if sp_ref != "—" and sp_now != "—":
+            same = ((sp_ref == "FRONT 重疊段") == (sp_now == "FRONT 重疊段"))
+            ok = "✓" if same else "✗"
+            if not same:
+                nbad += 1
+        L.append(f"  {tag:<6}{key:<12}"
+                 f"{(f'{a:.6f}' if a is not None else '—'):>12}{m:>12.6f}{dd:>12}"
+                 f"   {sp_ref:<16}{sp_now:<16}{ok:<6}")
+    L.append("-" * 120)
+    L.append(f"  |Δ內縮| 最大 ＝ {imax:.6f} m；落點不一致 {nbad} 格")
+    L.append("  · 落點欄**由建構器之 `on_front` 量得**（判準 `|inset| <= _EPS_TOUCH_FRONT`），")
+    L.append("    ⛔ 非手寫、⛔ 非引用他處結論。`on_chamfer` 仍回 None（須截角三角形，本函式不臆造）。")
+    L.append("")
+    L.append("【C】註記")
     L.append("  · 本檔**只量不判**：不設門檻、不判合格/不合格、rc 恆 0。")
     L.append("  · 三代之量測多邊形**未與街廓取交集**（K-9-8 紅線一）；")
     L.append("    其面積**未進入任何面積帳**（紅線二·守恆不受擾）。")

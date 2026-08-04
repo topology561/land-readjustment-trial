@@ -9708,11 +9708,24 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
     # `inset_from_front`：`P_block` 距 FRONT **無限直線**之內縮量。
     #   🔒 **僅為旗標／診斷，不驅動任何分支**——(6) 之退化由 `PQ` 恆過 `P_block` 自然達成，
     #     故本值為零與否**不改變上方任何一行**（一條規則涵蓋兩種情形）。
-    _t_front = abs((P_block[0] - F1[0]) * bnx + (P_block[1] - F1[1]) * bny)
+    #   🔴 **須用 FRONT 自己的法向 `(-dy, dx)`，⛔ 不得用 BASELINE 法向 `bn`**。
+    #     案由（K-6-A2 段四(a) 補正）：前版誤寫 `bn`，量到的是「沿 BASELINE 法向之落差」
+    #     ——當 FRONT 與 BASELINE **不平行**（斜交街廓）時，一個**沿 FRONT 的位移**
+    #     在 `bn` 上有非零分量 ⇒ 讀數暴增。R6/right 實測前版 `3.934411`、真值 `0.000005`
+    #     （對照錨 `verify/out/probe_ruling_K9_corner_width.log`【K-9-8-A/B】內縮量欄）。
+    #     ⚠️ `P_block` 本身**未受影響**（其取法為 `max(_cands, key=_dep)`，已對上錨）
+    #     ⇒ 寬度亦未受影響；受影響者僅本診斷欄與由它導出之「落點」分類。
+    _t_front = abs((P_block[0] - F1[0]) * (-dy) + (P_block[1] - F1[1]) * dx)
+    # `on_front`：**量出來**的落點分類（⛔ 禁手寫進報告）。
+    #   判準與錨側同構：`|t_front| <= _EPS_TOUCH_FRONT`（`grep -n "^_EPS_TOUCH_FRONT" app.py`）。
+    #   ⚠️ 這只分「落 FRONT 重疊段 / 不落」；**是否落在截角邊**須由呼叫端以截角三角形判，
+    #     故 `on_chamfer` 仍回 `None`（本函式不臆造）。
+    _on_front = bool(_t_front <= _EPS_TOUCH_FRONT)
     return {
         'label': _label, 'pid': _pid, 'lot_kind': _lot_kind,
         'poly': poly, 'P_block': P_block, 'Q': Q,
         'inset_from_front': _t_front,      # P_block 距 FRONT 無限直線之內縮量
+        'on_front': _on_front,             # **量得**：是否落 FRONT 重疊段（(6) 之退化支）
         'on_chamfer': None,                # 由呼叫端以截角三角形判定（本函式不臆造）
         'depth_from_PQ': depth_from_PQ, 'min_width': min_width,
         'area_DO_NOT_USE': float(poly.area),   # ⛔ 僅供診斷·禁進任何面積帳（K-9-8 (7)）
