@@ -9692,17 +9692,18 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
     #   PQ ∥ FRONT ⇒ 其上各點至 BASELINE 之垂距沿線性 ⇒ 取兩端 min（解析·禁取樣）。
     depth_from_PQ = min(_dep(P_block), _dep(Q))
 
-    # ── 最小寬度：帶 [0, depth_from_PQ] 內、平行 PQ 之二側界間距，取兩端 min ────────
-    def _w_at(d):
-        """自 PQ 沿法向深入 d 處，二側界間平行 PQ 之距離。"""
-        _sh = (P_block[0] + bnx * d, P_block[1] + bny * d)
-        _ln = _LS98([(_sh[0] - dx * _LBIG, _sh[1] - dy * _LBIG),
-                     (_sh[0] + dx * _LBIG, _sh[1] + dy * _LBIG)])
-        a = _x2(_ln, L_in_inf, f"深度 {d:.4f} 之量測線 ∩ L_in")
-        b = _x2(_ln, L_cor_inf, f"深度 {d:.4f} 之量測線 ∩ 靠街角側境界線")
-        return _m98.hypot(a[0] - b[0], a[1] - b[1])
-
-    min_width = min(_w_at(0.0), _w_at(depth_from_PQ))
+    # ── 最小寬度：**以既有 N-14 量法量這個虛擬塊**，不另寫第二套 ──────────────────
+    #   🔒 K-9-8 只換**被量的多邊形**與**深度起算線**，**不換量法**：
+    #     故此處逕呼叫 `parcel_min_width_n14`（`grep -n "def parcel_min_width_n14" app.py`），
+    #     僅把三個入參換成虛擬塊之對應物——
+    #       coords ＝ 虛擬塊；front_pt ＝ `P_block`（起算移到 PQ 上）；band ＝ `depth_from_PQ`。
+    #   ⛔ **禁在本函式內另行實作寬度**：前版曾以「二側界於帶兩端之間距」自算，
+    #     與 N-14 之「帶內沿 FRONT 之最小弦」**不同量**，實測對不上既有量測
+    #     （`verify/out/probe_ruling_K9_corner_width_V6_1.log:115`【K-9-8-D】），
+    #     且構成 §7 所禁之 fork。此處改為**共用同一受測者**，二者由構造同源。
+    min_width = float(parcel_min_width_n14(
+        list(poly.exterior.coords), (dx, dy), (P_block[0], P_block[1]),
+        depth_from_PQ, _label=f"{_label}/{_pid}·K-9-8虛擬塊"))
 
     # `inset_from_front`：`P_block` 距 FRONT **無限直線**之內縮量。
     #   🔒 **僅為旗標／診斷，不驅動任何分支**——(6) 之退化由 `PQ` 恆過 `P_block` 自然達成，
