@@ -14,7 +14,14 @@ r"""K-9-7 切換之 **PK 影響評估** — 只算不換（K-6-A2 段三(b′)�
 ⇒ 本檔以**同一支 `select_corner_lots_both_sides_v12` 跑兩次**，
 唯一變因＝**其內部所建之街角規定範圍多邊形**。
 
-## 手法：patch `_build_corner_range_v3`（**不改生產碼**）
+## 🔄 手法（**K-6-A2 段三(c) 切換後·語意已反轉**）
+
+**切換前**（段三(b′)）：生產走舊式 ⇒ patch 注入**新** `t*` 造「新」欄。
+**切換後**（本版）：**生產已走新式** ⇒ 「新」欄＝**不 patch**（生產原樣）、
+「舊」欄改以 `_t_override` 注入 **`t_star_legacy`**（`k97_solve_alloc_t` 同框回算之舊式 `t*`）。
+⇒ 兩欄之**內容不變**，只是誰需要 patch 對調了。
+
+## patch `_build_corner_range_v3`（**不改生產碼**）
 
 `select_corner_lots_both_sides_v12` **於函式內自行呼叫** `_build_corner_range_v3`
 （`grep -n "_rng_wb = _build_corner_range_v3" app.py`）；
@@ -72,7 +79,7 @@ def main():
     L.append("=" * 122)
     L.append("【K-9-7 切換之 PK 影響評估】只算不換（K-6-A2 段三(b′)）")
     L.append("三條路徑同時比較：(a) 候選資格 1.0㎡ / (b) 優先權指數三分項 / (c) G 值門檻")
-    L.append("手法：於 harvest 命名空間 patch _build_corner_range_v3 注入新 t*（生產碼一字未改）")
+    L.append("手法：段三(c) 後生產已走新式 ⇒ **舊**輪以 _t_override 注入 t_star_legacy（生產碼一字未改）")
     L.append("=" * 122)
 
     ns, fake_st = harvest()
@@ -89,8 +96,8 @@ def main():
     bl_by = cad.get("baselines", {}) or {}
     legal_w = float(snapshot["global"]["法定最小寬_m"])
 
-    # ── 1) 先算各 (街廓, 側, 情境) 之新 t* ──────────────────────────────────
-    T_NEW = {}
+    # ── 1) 先算各 (街廓, 側, 情境) 之**舊式** t*（切換後改由 patch 注入舊值）──────
+    T_OLD = {}
     for setback in (0.0, 3.5):
         for lbl in sorted(cb_by):
             b = cb_by[lbl]
@@ -108,20 +115,22 @@ def main():
                     chamfer_tri=ns["_make_chamfer_tri_wb"](b, side),
                     block_depth=float(snapshot["blocks"][lbl]["街廓分配深度_m"]),
                     _label=lbl, _side=side)
-                T_NEW[(lbl, side, setback)] = r["t_star"]
+                # 🔄 段三(c) 後：生產已走新式 ⇒ 需注入者為**舊式** t*
+                T_OLD[(lbl, side, setback)] = r["t_star_legacy"]
 
     # ── 2) patch 機制 ──────────────────────────────────────────────────────
     _orig_range = ns["_build_corner_range_v3"]
     _v12_calls = []          # 攔截 v12 之實際引數（受控比較之佐證）
     _orig_v12 = ns["select_corner_lots_both_sides_v12"]
-    STATE = {"setback": None, "use_new": False, "patched_hits": 0}
+    STATE = {"setback": None, "use_new": True, "patched_hits": 0}
 
     def _patched_range(*a, **kw):
-        if STATE["use_new"]:
+        # 🔄 段三(c) 後：**舊**輪才需 patch（注入 t_star_legacy）；新輪走生產原樣。
+        if not STATE["use_new"]:
             key = (kw.get("_label"), kw.get("_side"), STATE["setback"])
-            if key in T_NEW:
+            if key in T_OLD and T_OLD[key] is not None:
                 kw = dict(kw)
-                kw["_t_override"] = T_NEW[key]
+                kw["_t_override"] = T_OLD[key]
                 STATE["patched_hits"] += 1
         return _orig_range(*a, **kw)
 
@@ -158,7 +167,8 @@ def main():
 
     ns["_build_corner_range_v3"] = _orig_range
     ns["select_corner_lots_both_sides_v12"] = _orig_v12
-    L.append(f"patch 命中次數（新輪注入 t* 之呼叫）＝ {STATE['patched_hits']}")
+    L.append(f"patch 命中次數（**舊**輪注入 t_star_legacy 之呼叫）＝ {STATE['patched_hits']}"
+             f"｜新輪＝生產原樣、零 patch")
 
     # ── 3) 逐格對照 ────────────────────────────────────────────────────────
     def _pick(res, lbl, side):

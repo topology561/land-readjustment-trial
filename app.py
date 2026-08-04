@@ -9599,10 +9599,27 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
     ⛔ **禁二分、禁取樣、禁迭代兜底**（正典 K-9-7）。全函式無迴圈求解。
     ⛔ **退化情形**（`c`／分母為零、範圍不可構造）一律 **loud raise**、禁兜底。
 
-    🔒 **後置斷言（＝ K-9-5-2 ③ 之程式化）**：解出之範圍其**最小深度 ≥ 畸零地深**
-      且**最小寬 ≥ 退縮＋畸零地寬**；任一不成立 ⇒ **loud raise（構造被破壞）**，
-      ⛔ 不得容忍、不得調參。（本函式回傳 `assert_ok`／`assert_note` 供呈現層列印；
-      **硬斷言於 `min_depth_legal` 有給時才執行**——未給即無門檻可比。）
+    🔒 **後置斷言（＝ K-9-5-2 ③ 之程式化）**——**二半各有歸屬，勿誤以為都在本函式**：
+
+    | K-9-5-2 ③ 之半 | 由誰保證 | 本函式之作為 |
+    |---|---|---|
+    | **最小寬 ≥ 退縮＋畸零地寬** | **本函式** | ✅ **無條件硬斷言**（`_W_at >= T`），破即 loud raise |
+    | **最小深度 ≥ 畸零地深** | **K-9-2 街廓層剖面警示** | 僅作**退化守衛**（`D(t*) > 0`），**不重複比附表深** |
+
+    🔴 **深度半不在本函式之由（K-9-6-c 明令「不重複管」）**：
+      「附表深度之合規（宗地最小深度 ≥ 附表深度）由 **K-9-2 街廓層剖面警示**管；
+      **K-9-6 不重複管**」（`grep -n "^#### K-9-6-c " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
+      **且係幾何必然**：`D(t)` 係「範圍臨街段 `Q0→P_front(t)`」之最小垂距，
+      該段為**前緣線之子段** ⇒ `D(t) ≥ 前緣線全段之最小垂距 ＝ K-9-2 之剖面最小深度`
+      ⇒ K-9-2 過即本式必過。
+      🔬 **實測坐實**（K-6-A2 段三(c)·16 格）：`D(t*) − K-9-2 全精度剖面 min` 之最小值
+      ＝ **`+0.000000000`**（多格恰等於——即該街角 `Q0` 正是較淺之端），**無一為負**。
+      ⇒ 於本函式再比一次附表深，係 **K-9-6-c 明禁之「重複管」**。
+
+    ⚠️ **本 docstring 前版之誤（K-6-A2 段三(c) 更正·存查）**：曾載「回傳 `assert_ok`／
+      `assert_note`」「硬斷言於 `min_depth_legal` 有給時才執行」——**該回傳鍵與該參數
+      自始不存在**（`grep -n "min_depth_legal" app.py` 與 `grep -n "assert_ok" app.py` 應僅命中本段）。
+      ⇒ **寬度斷言自始即無條件執行、從無「未給⇒不斷言」之路**。
 
     回傳 dict：`c`／`k`／`m`／`w0`／`D0`／`branch`／`t_star`／`t_interval`／
       `switch_points`／`W_at_t_star`／`depth_at_t_star`／`P_front_on_chamfer`。
@@ -9889,26 +9906,43 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
         """帶內深度 d 處、二側界間**平行前緣線**之距離（往街廓內為正）。"""
         return sigma * (_s_alloc(d, t) - _s_side(d))
 
-    # 解析解：W 對 t 之斜率 k 與 d 無關 ⇒ min_d W(d,t) ＝ min_d W(d,0) + k·t
-    k = sigma / den_a
-    w_lo = min(_W(0.0, 0.0), _W(D, 0.0))
-    t_star = (T - w_lo) / k
+    # 🆕 **K-6-A2 段三(c)：§四 定位改走 `k97_solve_alloc_t`**（KL 放行 2026-08-04）。
+    #   ⛔ **舊式已移除**（原為「帶深固定＝`round(D_avg,2)` ＋ 斜率＝`c`」之
+    #      `k = sigma / den_a; w_lo = min(_W(0,0), _W(D,0)); t_star = (T - w_lo) / k`）
+    #      ——即 **GB-14 ①②** 所登記之二誤：① 帶深應為**範圍自身之最小深度 `D(t)`**、
+    #      ② `k<0 ∧ m≠0` 時正解斜率為 `(c − k·m)` 而非 `c`。
+    #   🔒 **生產路徑只有一條**：無切換開關、無新舊並存、無靜默降級。
+    #   ⚠️ 記號：正典之 `c = ∂w/∂t`、`k = ∂w/∂d`；**舊碼之區域變數 `k` 實係正典之 `c`**
+    #      （K-9-7-a 衝突一）——舊式既刪，該同名異義之坑一併消失。
+    _k97 = k97_solve_alloc_t(
+        block_centroid, front_pts, baseline_pts, side_line_pts, alloc_dir,
+        setback, min_width, chamfer_tri=chamfer_tri, block_depth=D,
+        _label=_label, _side=_side)
+    t_star = _k97['t_star']
+    # 🔒 **帶深自此改用範圍自身之最小深度 `D(t*)`**（非街廓平均深度 `D`）。
+    #   `D` 仍保留：① 供 `k97_solve_alloc_t` 回算舊式 `t*` 以資對照；② 缺值仍 loud raise（見上）。
+    D_at = _k97['depth_at_t_star']
 
-    # 🆕 K-6-A2 段三(a)：`_t_override` **只供對照探針**（比較新舊 `t*` 所生之範圍面積）。
+    # 🆕 K-6-A2 段三(a)→(c)：`_t_override` 之語意**於切換後反轉**——
+    #   切換前：探針用它注入**新** `t*`（生產走舊式）；
+    #   切換後：**生產已走新式**，故探針改用它注入**舊** `t*` 以重現對照組。
     #   ⛔ **生產路徑一律不傳**（`grep -rn "_t_override=" --include="*.py" .` 應只命中探針）。
     #   傳入時**跳過自檢①**——該自檢係「回量帶內最小寬 ＝ T」之**定義性**回代，
     #   而覆寫之 `t` 依定義**不是**該方程之解 ⇒ 硬跑必假紅。其餘幾何與自檢**一律照舊**。
+    #   ⚠️ 覆寫時 `D_at` 亦須隨該 `t` 重算，否則自檢①′ 之量測深度與 `t` 不相稱。
     _t_is_override = False
     if _t_override is not None:
         t_star = float(_t_override)
+        D_at = _k97['D0'] - max(0.0, _k97['m'] * t_star)
         _t_is_override = True
 
     # ── 自檢①：構造之**定義**——回量帶內最小寬 ＝ 退縮寬 ＋ 畸零地最小寬 ──────────
+    #   🔒 量測深度改用 `D_at`（範圍自身最小深度）——與 §四 之定位同一基準。
     eps = _corner_range_eps(dxf_quantum)
-    w0, wD = _W(0.0, t_star), _W(D, t_star)
+    w0, wD = _W(0.0, t_star), _W(D_at, t_star)
     if (not _t_is_override) and abs(min(w0, wD) - T) > eps:
         _stop(f"構造自檢不合：帶內最小寬 {min(w0, wD):.6f} ≠ 退縮＋最小寬 {T:.6f}"
-              f"（eps={eps:.6g}·由 q={dxf_quantum} 導出）")
+              f"（eps={eps:.6g}·由 q={dxf_quantum} 導出·帶深 D(t*)={D_at:.6f}）")
 
     # ── 自檢①′：以**獨立實作**覆算同一組寬度（shapely 線交點·非上方之閉式）──────────
     #   ①單以閉式回代，只證「解方程沒解錯」；①′改用完全不同之求交路徑，才驗得出
@@ -9921,7 +9955,7 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
                 (Q0[0] + t_star * anx + aux * _LBIG, Q0[1] + t_star * any_ + auy * _LBIG)])
     _Sinf = _LS3([(S1[0] - sux * _LBIG, S1[1] - suy * _LBIG),
                   (S1[0] + sux * _LBIG, S1[1] + suy * _LBIG)])
-    for _d_chk, _w_chk in ((0.0, w0), (D, wD)):
+    for _d_chk, _w_chk in ((0.0, w0), (D_at, wD)):
         _P = (F1[0] + _d_chk * bnx, F1[1] + _d_chk * bny)
         _dep = _LS3([(_P[0] - dx * _LBIG, _P[1] - dy * _LBIG),
                      (_P[0] + dx * _LBIG, _P[1] + dy * _LBIG)])
