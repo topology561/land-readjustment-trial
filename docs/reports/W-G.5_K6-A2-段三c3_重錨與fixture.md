@@ -219,7 +219,7 @@ fixture 之正確性由 **§2-4 反向鑑別力檢查**承擔（二者皆不經 
 | 項 | commit | 結果 |
 |---|---|---|
 | §四-1 三支拋棄式合成案**升格為正式探針** | `d6b7c7f` | 三支皆可攜（零硬編路徑）、實跑 `rc=0` 且結論與升格前相同 |
-| §四-2 harness 種子 **xlsx 入庫** | `3fe3cce` | 內容**逐格全等**（本批獨立複驗）·僅容器層差異 |
+| §四-2 harness 種子 xlsx **之工作區修改提交**（🔧 原述「入庫」係誤·見 §五-1） | `3fe3cce` | 內容**逐格全等**（本批獨立複驗＋claude.ai 他機複驗）·僅容器層差異 |
 
 **§四-1 之移植查核**：逐支比對原稿 `import`——f2 原有 `import re`（移植初版漏之·已補）；
 k94 原有 `import math` 而 ported 檔 `grep "math\."` **0 命中** ⇒ 原即冗餘、非移植漏。
@@ -257,3 +257,68 @@ GB-27 所記者為 `GSA_EXPECT` **一族**。**同一形狀**（容差恰等於�
 🔴 **列數會巧合通過**（本表列數曾正確而順序與缺號皆異常）
 ⇒ 已於表頭載明**應以內容檢查**（重複 ID／缺號／最大號）代之。
 本批實跑該檢查：**重複 0、缺號 [12]、最大號 28**。
+
+
+### 5-1 🔧 出處更正：「入庫」係誤述（fixture-provenance）
+
+**事實（本批＋claude.ai 各自查證·非推論）**：
+
+| 項 | 實況 | 查法 |
+|---|---|---|
+| 該檔何時被追蹤 | **自 `1b290e4`（初始遷移）即被追蹤** | `git log --diff-filter=A -- <檔>` ⇒ 僅 `1b290e4` |
+| `3fe3cce` 之狀態碼 | **`M`（修改）**，**非 `A`（新增）** | `git show --name-status 3fe3cce -- <檔>` |
+| 大小 | `12,380,156` → `11,482,185` bytes | — |
+| 產生器 | `Microsoft Excel Compatible / Openpyxl 3.1.5` → `MODA_ODF_Application_Tools/4.0.1.2 … LibreOffice`（AppVersion `3.1`→`15.0000`） | `docProps/app.xml` 之 `<Application>` |
+
+⇒ **「入庫」一詞在 `3fe3cce` 之 commit 訊息與交接文 §五 皆為誤述。**
+正確描述為：該檔長期處於 **tracked-but-dirty**（**已追蹤**、工作區有**未提交**之修改），
+`3fe3cce` 係**提交該修改**（換血），**不是**把一個未追蹤檔加入版控。
+⛔ **已 push 之 commit 訊息不 rewrite**；於此更正並已將用詞規則寫入
+`.claude/skills/fixture-provenance/SKILL.md` 之檢查清單。
+
+**逐格全等之複驗（二路獨立）**：
+
+- 本批：`pandas.testing.assert_frame_equal(..., check_exact=True)` 兩表皆通過。
+- claude.ai 他機：**座標串流逐格對拍**——`U_LAND` 非空格 **2,614,540**、
+  `重劃區地籍` **180**；**值不符 0／型別不符 0／座標零脫序**。
+
+**容器層差異為惰性**：全倉讀取路徑皆 `pd.read_excel(..., engine='openpyxl')`
+（`grep -n "read_excel\|ExcelFile" app.py verify/*.py`：`app.py:288`／`app.py:388` 為 `header=None`；
+`verify/selection_pipeline.py:40-41`、`verify/wd4_tier_list.py:139-140` 為 `header=0`），
+**只取值**；`number_format`／`column_dimensions`／`styles` 之用法**全在寫出端**
+（`grep -n "number_format\|column_dimensions" app.py verify/*.py` ⇒ 命中皆為 `ws.…=` 之寫出）。
+
+🔴 **乾淨 clone 於 `ad2ad40` 及更早，跑的是舊 blob；因逐格全等，數字後果為零。**
+
+🔴 **「本波全部 run_all 含 132/86/46 靶輪皆以此版為輸入」係關於本機工作區隨時間之狀態，
+倉內無法由構造驗證，本文僅記錄該宣稱、不予背書。**
+
+---
+
+## 七、段三收尾補正批（`6e128e6` 後·**零行為**）
+
+### 7-1 探針存證之保真（GB-30）
+
+三支探針之存證 `LOG` **由構造排除引擎自報診斷**（22 支全數自寫緩衝、**無一 tee 真 stdout**）
+⇒ 補捕**全文**存證（`verify/out/*.full.log`·**⛔ 未改探針碼**）。
+
+**三道閘實測**：
+
+| 閘 | 結果 |
+|---|---|
+| ① 策展檔零變動 | `git diff --stat verify/out/F2_stepg_invalidate.log verify/out/K9_4_gate_discrimination.log` ⇒ **空** ✅ |
+| ② 全文 ⊇ 策展 | `F2` full `42` 行／策展 `35`／剝除 `7`；`K9_4` full `37`／策展 `30`／剝除 `7`。**剝除之行逐行皆為引擎自報診斷**（`[T2-DIAG]`／`🔴 S0d 異常`），剝除後**逐行全等** ✅ ⛔ 未以「去掉 N 行」為判準 |
+| ③ `probe_k92_edge_cases` 無策展檔 | `grep -n 'open(' verify/probes/probe_k92_edge_cases.py` ⇒ **0 命中** ⇒ 只產 `.full.log` 為**預期、非缺漏** ✅ |
+
+### 7-2 覆蓋登記（GB-29）
+
+`verify/probes/` **22 支**中 `run_all` 僅接 **4 支**
+（`verify/run_all.py` 之 `:162`／`:185`／`:208`／`:225`·當場 grep）⇒ **18 支未接**。
+本波三支之施工單原就未要求接 ⇒ **非本批缺失**；**本批只登記、禁現在接線**。
+
+### 7-3 零行為之 diff 證據
+
+- `git diff --stat 6e128e6..HEAD -- app.py verify/` **扣除 `verify/out/` 後為空**
+  ⇒ **無任何可執行敘述變更** ⇒ `CLAUDE.md` 之「`main()` 內敘述須附合成案」**不觸發**、
+  本批**不需重跑 `run_all`**。
+- 受影響檔僅：`verify/out/*.full.log`（新增 3）＋兩份 `docs/reports/*.md` ＋兩份 `.claude/skills/*/SKILL.md`。
