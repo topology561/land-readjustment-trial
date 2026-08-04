@@ -9567,7 +9567,7 @@ def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
 
 def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
                               l_in_pts, corner_side_pts, _label='', _pid='',
-                              _lot_kind=''):
+                              _lot_kind='', on_chamfer=None):
     """**K-9-8 虛擬還原塊**（正典逐字：`grep -n "^### K-9-8 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
 
     🔴 **K-6-A2 段四(a)：只量不判·未接生產**（`grep -rn "k98_virtual_measure_block" --include="*.py" .`
@@ -9603,6 +9603,15 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
       baseline_pts      BASELINE 兩點（取**無限直線**·K-8 §一）
       l_in_pts          `L_in` 兩點（該宗往街廓內側之 ALLOC_LINE）
       corner_side_pts   該宗**靠街角側**之境界線兩點（依宗別給·見 (3)）
+      on_chamfer        🆕 **由呼叫端以截角三角形判定後傳入**（K-6-A2 段四(c)-2(a)）。
+                        接受 **`bool`**，或 **`callable(P_block) -> bool`**——
+                        後者係因 `P_block` 於本函式內方求得，呼叫端無從先判：
+                        ⇒ **判定邏輯與截角三角形皆屬呼叫端**，本函式只在**算出 `P_block`
+                        之後**代為呼叫之。🔒 **建構器仍不臆造**：截角三角形不在本函式之
+                        入參集合內，自行猜測即為臆造。
+                        ⇒ 未傳（`None`）時原樣回 `None`，
+                          **⛔ 不以 `on_front` 之反面充數**（二者非互補：
+                          `P_block` 可能既不在 FRONT 重疊段、也不在截角三角形內）。
     回傳 dict：`poly`（虛擬塊）／`P_block`／`Q`／`on_chamfer`／`depth_from_PQ`／`min_width`
     **缺件／退化一律 loud raise**（禁兜底）。
     """
@@ -9719,14 +9728,22 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
     # `on_front`：**量出來**的落點分類（⛔ 禁手寫進報告）。
     #   判準與錨側同構：`|t_front| <= _EPS_TOUCH_FRONT`（`grep -n "^_EPS_TOUCH_FRONT" app.py`）。
     #   ⚠️ 這只分「落 FRONT 重疊段 / 不落」；**是否落在截角邊**須由呼叫端以截角三角形判，
-    #     故 `on_chamfer` 仍回 `None`（本函式不臆造）。
+    #     故 `on_chamfer` **由呼叫端傳入**（🆕 段四(c)-2(a) 接線；未傳則回 `None`·本函式不臆造）。
     _on_front = bool(_t_front <= _EPS_TOUCH_FRONT)
+    # `on_chamfer`：呼叫端之判定（bool 或 predicate）——⛔ 判不出來就回 `None`，禁臆造。
+    if on_chamfer is None:
+        _on_cham98 = None
+    elif callable(on_chamfer):
+        _on_cham98 = bool(on_chamfer(P_block))
+    else:
+        _on_cham98 = bool(on_chamfer)
     return {
         'label': _label, 'pid': _pid, 'lot_kind': _lot_kind,
         'poly': poly, 'P_block': P_block, 'Q': Q,
         'inset_from_front': _t_front,      # P_block 距 FRONT 無限直線之內縮量
         'on_front': _on_front,             # **量得**：是否落 FRONT 重疊段（(6) 之退化支）
-        'on_chamfer': None,                # 由呼叫端以截角三角形判定（本函式不臆造）
+        'on_chamfer': _on_cham98,
+        # ↑ 由呼叫端以截角三角形判定後傳入（本函式不臆造·見參數表）
         'depth_from_PQ': depth_from_PQ, 'min_width': min_width,
         'area_DO_NOT_USE': float(poly.area),   # ⛔ 僅供診斷·禁進任何面積帳（K-9-8 (7)）
     }
@@ -9734,7 +9751,8 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
 
 def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
                       alloc_dir, setback, min_width, chamfer_tri=None,
-                      block_depth=None, _label='', _side=''):
+                      block_depth=None, _label='', _side='',
+                      block_vertices=None):
     """**K-9-7 街角規定範圍之 ALLOC_LINE 解析定位**（正典：
     `grep -n "^### K-9-7 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
 
@@ -9788,8 +9806,23 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
       自始不存在**（`grep -n "min_depth_legal" app.py` 與 `grep -n "assert_ok" app.py` 應僅命中本段）。
       ⇒ **寬度斷言自始即無條件執行、從無「未給⇒不斷言」之路**。
 
+    ── 🆕 `block_vertices`：**K-9-7-d 第二層分支之 opt-in 開關**（K-6-A2 段四(c)-2(a)）──
+      **不傳（`None`）** ⇒ 只走上開**第一層四分支**——**現行生產路徑·逐字未動**。
+      **傳入** ⇒ 追加**第二層**：帶深 `D(t)` 改自 **`PQ`** 量（K-9-8 (5)／K-9-6-b-1），
+        `PQ` ＝ 過 **`P_block(t)`**、平行前緣線之直線；
+        `P_block(t)` ＝ `L_in(t) ∩ **BLOCK 邊界**` 之**臨街側**者（K-9-8 (2)）。
+      🔴 **(c)-2(a) 為「只算不換」** ⇒ **生產零呼叫點**。自癒查法（**正面列舉受檢檔**）：
+        `grep -n -A3 "^    _k97 = " app.py` ⇒ 其四行內**不得出現** `block_vertices`
+        （行首四空格之錨使本 docstring 不自我命中；該處係本函式於 `app.py` 之**唯一**呼叫點）；
+        `grep -c "block_vertices=" verify/probes/probe_K9_7d_layer2.py` ⇒ 2（探針側）。
+      推導逐字見 `docs/reports/W-G.5_K6-A2-段四c2a_第二層分支推導.md`（§二〜§四）。
+
     回傳 dict：`c`／`k`／`m`／`w0`／`D0`／`branch`／`t_star`／`t_interval`／
-      `switch_points`／`W_at_t_star`／`depth_at_t_star`／`P_front_on_chamfer`。
+      `switch_points`／`W_at_t_star`／`depth_at_t_star`／`P_front_on_chamfer`；
+      **第二層啟用時另加**：`layer2`／`t_star_layer1`／`branch_layer1`／
+      `depth_at_t_star_layer1`／`dt_layer2`／`P_block`／`Q_pq`／`P_block_edge`／
+      `P_block_inset_from_front`／`P_block_on_front`／`P_block_on_chamfer`／
+      `l2_edges`／`l2_skipped_edges`／`l2_rejected`／`l2_roots`。
     """
     import math as _m97
 
@@ -9922,10 +9955,211 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
         _sp = _s_Pfront(t_star)
         _Ppt = _PT97(F1[0] + _sp * dx, F1[1] + _sp * dy)
         _on_cham = bool(chamfer_tri.buffer(1e-9).contains(_Ppt))
-        if _on_cham:
+        if _on_cham and block_vertices is None:
             _notes.append("⚠️ `P_front(t*)` 落在截角三角形內 ⇒ 該範圍之臨街段非全在 "
                           "FRONT_LINE 上（K-9-5-2 ②）；K-9-7-d 之第二層分支需 K-9-8 之 "
                           "`PQ` 延伸線段（**段四**）方能解析，本函式不臆造。")
+
+    # ══ 🆕 K-9-7-d **第二層分支**之解析求解（K-6-A2 段四(c)-2(a)·⛔ 只算不換）═══════
+    #   🔴 **opt-in**：唯有呼叫端傳入 `block_vertices` 時才啟用；未傳時**上方逐字未動**
+    #     ⇒ 生產行為零變化（(c)-2(a) 之「生產零呼叫點」）。
+    #
+    #   ── 與第一層之差別（＝ **GB-19**）────────────────────────────────────────────
+    #   第一層之帶深 `D(t)` 自 **FRONT_LINE** 上之臨街段（`Q0 → P_front(t)`）量；
+    #   K-9-8 (5)／K-9-6-b-1 明訂應自 **`PQ`** 量——`PQ` ＝ 過 `P_block(t)`、平行前緣線之直線，
+    #   `P_block(t)` ＝ `L_in(t) ∩ **BLOCK 邊界**`之**臨街側**者（K-9-8 (2)）。
+    #   ⇒ 臨街段之二端改為 `P_block(t)` 與 `PQ(t) ∩ SIDE_LINE`。
+    #   🔒 `P_block` 落 FRONT 重疊段時 `PQ ≡ FRONT` ⇒ **自然退化回第一層**（K-9-8 (6)），
+    #     **一條規則涵蓋兩種情形·無 `if 落哪種邊` 之分立兩式**。
+    #
+    #   ── 為何仍是解析解（⛔ 禁二分／禁取樣／禁迭代兜底）──────────────────────────
+    #   `L_in(t) = { X : (X − F1)·ân = t + c0 }` ⇒ 對街廓多邊形**任一頂點 `C`**，
+    #   `P_block` 通過該頂點之 `t` ＝ **`t_C = (C − F1)·ân − c0`（一次減法·不解方程、不搜尋）**。
+    #   ⇒ 每條邊給出一個 `t` 有效區間 `[t_Ca, t_Cb]`；區間內
+    #      `P_block(t) = C_a + λ(t)·ĉu`、`λ(t) = (t − t_Ca)/(ĉu·ân)` **線性於 `t`**
+    #   ⇒ `dep(P_block(t))`、`dep(PQ(t) ∩ SIDE)` 皆為 `t` 之**仿射函式**
+    #   ⇒ `W(t) = w₀ + c·t + k·D(t)` 於每支仍為**一次式** ⇒ **每支一次除法**。
+    #   🔒 **採逐邊通式**（⛔ 不寫死「截角邊／FRONT 重疊段」兩種）——本案退化回 2 支，
+    #     換案（多段截角、圓弧折線化）**不需改結構**（推導 §二）。
+    #   ⛔ **K-9-8 紅線一**：全程**只逐邊求「線段 ∩ 無限直線」**，
+    #     **從不呼叫 `intersection(街廓多邊形)`**（取「面」交集即把還原部分裁掉）。
+    _t1_star, _t1_branch, _t1_iv = t_star, branch, t_interval
+    _t1_D, _t1_W, _t1_switch = _D_at, _W_at, list(_switch)
+    _l2 = None
+    if block_vertices is not None:
+        if len(block_vertices) < 3:
+            _stop("`block_vertices` 少於三點 ⇒ K-9-8 (2) 之 `P_block` 無從求（禁兜底）")
+        _ring = [(float(v[0]), float(v[1])) for v in block_vertices]
+        _NE = len(_ring)
+        _TOL2 = 1e-9
+
+        def _dep_xy(px, py):
+            """點至 BASELINE 之垂距（沿**已定號**之 `b̂n`·與 `D0` 同一口徑）。
+
+            🔒 用**帶號**值（非 `abs`）：帶號才是 `t` 之仿射函式、閉式賴之；
+              街廓內之點恆為正，落點為負者由下方 loud raise 攔（⛔ 不靜默取絕對值）。
+            """
+            return (B0[0] - px) * bnx + (B0[1] - py) * bny
+
+        def _pblock_at(_tt):
+            """`L_in(t) ∩ BLOCK 邊界`之**臨街側**交點（垂距最大者）＋其邊索引。"""
+            _bst = None
+            for _j in range(_NE):
+                _Aj = _ring[_j]
+                _Bj = _ring[(_j + 1) % _NE]
+                _jx, _jy = _Bj[0] - _Aj[0], _Bj[1] - _Aj[1]
+                if _m97.hypot(_jx, _jy) < 1e-12:
+                    continue
+                _dj = _jx * anx + _jy * any_
+                if abs(_dj) < 1e-12:
+                    continue
+                _sj = (_tt + c0
+                       - ((_Aj[0] - F1[0]) * anx + (_Aj[1] - F1[1]) * any_)) / _dj
+                if not (-1e-9 <= _sj <= 1.0 + 1e-9):
+                    continue
+                _pj = (_Aj[0] + _jx * _sj, _Aj[1] + _jy * _sj)
+                _dpj = _dep_xy(_pj[0], _pj[1])
+                if _bst is None or _dpj > _bst[2]:
+                    _bst = (_pj, _j, _dpj)
+            return _bst
+
+        _l2_edges, _l2_skip, _l2_cand, _l2_sw = [], [], [], []
+        if k >= 0:
+            # 支①：`k ≥ 0` ⇒ `min` 恆在 `d = 0` ⇒ 深度（不論自 FRONT 或自 PQ 量）不影響
+            #   ⇒ **逐邊通式下仍收斂為單一支**、無邊之區間限制。
+            _l2_cand.append({'t': (T - w0) / c, 'edge': None, 'sub': '—',
+                             'slope': c, 'br': '①'})
+        for _i in range(_NE):
+            _Ca = _ring[_i]
+            _Cb = _ring[(_i + 1) % _NE]
+            _ex, _ey = _Cb[0] - _Ca[0], _Cb[1] - _Ca[1]
+            _nv = _m97.hypot(_ex, _ey)
+            if _nv < 1e-12:
+                _l2_skip.append((_i, '零長邊'))
+                continue
+            _cux, _cuy = _ex / _nv, _ey / _nv
+            _e = _cux * anx + _cuy * any_                       # ĉu·ân
+            if abs(_e) < 1e-12:
+                # 推導 §二：該邊平行 ALLOC ⇒ 與 `L_in` **無單點交** ⇒ 不產生分支
+                #   （⛔ 此非「退化兜底」——是該邊本就不在分段線性之定義域內）
+                _l2_skip.append((_i, '平行 ALLOC ⇒ 無單點交'))
+                continue
+            _tCa = (_Ca[0] - F1[0]) * anx + (_Ca[1] - F1[1]) * any_ - c0
+            _tCb = (_Cb[0] - F1[0]) * anx + (_Cb[1] - F1[1]) * any_ - c0
+            _lo, _hi = (_tCa, _tCb) if _tCa <= _tCb else (_tCb, _tCa)
+            _l2_sw.append(('頂點', _i, _tCa))
+            _cbn = _cux * bnx + _cuy * bny                      # ĉu·b̂n
+            _csn = _cux * snx + _cuy * sny                      # ĉu·ŝn
+            # dep(P_block(t)) ＝ A_P + B_P·t（推導 §三 之閉式）
+            _AP = _dep_xy(_Ca[0], _Ca[1]) + _cbn * _tCa / _e
+            _BP = -_cbn / _e
+            # τ(t)：`PQ(t) ∩ SIDE_LINE` 相對 `P_block(t)` 沿 d̂ 之位移（PQ ∥ FRONT）
+            _AT = ((((S1[0] - _Ca[0]) * snx + (S1[1] - _Ca[1]) * sny)
+                    + _csn * _tCa / _e) / den_s)
+            _BT = -_csn / (_e * den_s)
+            # dep(PQ ∩ SIDE) ＝ dep(P_block) − τ·g
+            _AQ, _BQ = _AP - _AT * g, _BP - _BT * g
+            _ed = {'edge': _i, 'Ca': _Ca, 'Cb': _Cb, 'cu': (_cux, _cuy),
+                   'e': _e, 'tCa': _tCa, 'tCb': _tCb, 'lo': _lo, 'hi': _hi,
+                   'AP': _AP, 'BP': _BP, 'AQ': _AQ, 'BQ': _BQ, 'degenerate': []}
+            # 深度端切換點（`dep_P = dep_Q`＝推導 §四 界 7 於逐邊通式下之形）
+            if abs(_BP - _BQ) > 1e-15:
+                _teq = (_AQ - _AP) / (_BP - _BQ)
+                if _lo - _TOL2 <= _teq <= _hi + _TOL2:
+                    _l2_sw.append(('深度端', _i, _teq))
+                    _ed['t_eq'] = _teq
+            _l2_edges.append(_ed)
+            if k >= 0:
+                continue                                        # 支① 已於迴圈外解畢
+            for _sub, _A2, _B2 in (('P', _AP, _BP), ('Q', _AQ, _BQ)):
+                _slp = c + k * _B2                              # ＝ 推導之 (c − k·m′)
+                if abs(_slp) < 1e-12:
+                    _ed['degenerate'].append(_sub)
+                    continue
+                _l2_cand.append({'t': (T - w0 - k * _A2) / _slp, 'edge': _i,
+                                 'sub': _sub, 'slope': _slp, 'br': f'邊{_i}/{_sub}',
+                                 'ed': _ed})
+        # ── 逐支檢查「`t*` 是否落在該支之有效區間」（正典 K-9-7·⛔ 不落入則換支）────
+        _l2_rej, _l2_ok = [], []
+        for _r in _l2_cand:
+            _tt = _r['t']
+            _ed = _r.get('ed')
+            if _ed is not None:
+                if not (_ed['lo'] - _TOL2 <= _tt <= _ed['hi'] + _TOL2):
+                    _l2_rej.append((_r['br'], _tt, '不落該邊之 t 區間'))
+                    continue
+                _dP2 = _ed['AP'] + _ed['BP'] * _tt
+                _dQ2 = _ed['AQ'] + _ed['BQ'] * _tt
+                if _r['sub'] == 'P' and not (_dP2 <= _dQ2 + _TOL2):
+                    _l2_rej.append((_r['br'], _tt, 'dep(P_block) ≤ dep(PQ∩SIDE) 不成立'))
+                    continue
+                if _r['sub'] == 'Q' and not (_dQ2 <= _dP2 + _TOL2):
+                    _l2_rej.append((_r['br'], _tt, 'dep(PQ∩SIDE) ≤ dep(P_block) 不成立'))
+                    continue
+            _pb = _pblock_at(_tt)
+            if _pb is None:
+                _l2_rej.append((_r['br'], _tt, '`L_in(t*)` 與 BLOCK 邊界無交點'))
+                continue
+            if _ed is not None:
+                _lam = (_tt - _ed['tCa']) / _ed['e']
+                _pe = (_ed['Ca'][0] + _ed['cu'][0] * _lam,
+                       _ed['Ca'][1] + _ed['cu'][1] * _lam)
+                if _m97.hypot(_pe[0] - _pb[0][0], _pe[1] - _pb[0][1]) > 1e-6:
+                    _l2_rej.append((_r['br'], _tt, '該邊之交點非臨街側者（P_block 落別邊）'))
+                    continue
+            # 臨街段二端 ＝ `P_block` 與 `PQ ∩ SIDE`；垂距沿 `PQ` 線性 ⇒ **取兩端**（⛔ 不取樣）
+            _Pb = _pb[0]
+            _tau = ((S1[0] - _Pb[0]) * snx + (S1[1] - _Pb[1]) * sny) / den_s
+            _Qq = (_Pb[0] + _tau * dx, _Pb[1] + _tau * dy)
+            _dPb, _dQq = _dep_xy(_Pb[0], _Pb[1]), _dep_xy(_Qq[0], _Qq[1])
+            if _dPb <= 0 or _dQq <= 0:
+                _l2_rej.append((_r['br'], _tt,
+                                f'臨街段端點垂距非正（{_dPb:.6f}／{_dQq:.6f}）'))
+                continue
+            _r.update({'P_block': _Pb, 'edge_hit': _pb[1], 'Q_pq': _Qq,
+                       'dep_P': _dPb, 'dep_Q': _dQq, 'D_new': min(_dPb, _dQq)})
+            _l2_ok.append(_r)
+        if not _l2_ok:
+            _stop("K-9-7-d 第二層：逐邊通式列舉畢，**無任何支之 `t*` 落在其有效區間**"
+                  f"（邊 {len(_l2_edges)}／跳過 {len(_l2_skip)}／候選 {len(_l2_cand)}"
+                  f"／駁回 {len(_l2_rej)}：{_l2_rej[:6]}）"
+                  "⇒ 分段線性之覆蓋有缺口，**非可兜底之情形**")
+        _l2_ts = sorted(r['t'] for r in _l2_ok)
+        if (_l2_ts[-1] - _l2_ts[0]) > 1e-9:
+            _stop("K-9-7-d 第二層：得到**多個相異之 `t*`**"
+                  f"（{['%.9g' % v for v in _l2_ts]}·支 {[r['br'] for r in _l2_ok]}）"
+                  "⇒ `W(t) = T` 於分段線性上多根，**⛔ 不得任選**")
+        _l2 = _l2_ok[0]
+        # ── 覆寫為第二層之解，並以**同一組後置斷言**重驗（K-9-5-2 ③）────────────
+        t_star = _l2['t']
+        branch = f"L2·{_l2['br']}"
+        t_interval = ('(-inf, +inf)' if _l2.get('ed') is None
+                      else f"[{_l2['ed']['lo']:.9g}, {_l2['ed']['hi']:.9g}]")
+        _D_at = _l2['D_new']
+        _W_at = min(_W(0.0, t_star), _W(_D_at, t_star))
+        if not (_W_at >= T - 1e-6):
+            _stop(f"後置斷言破（第二層）：所構造範圍之最小寬 {_W_at:.6f} "
+                  f"< 退縮＋畸零地最小寬 {T:.6f}（支 {branch}·t*={t_star:.9g}）"
+                  f"⇒ **K-9-5-2 ③ 之構造保證被破壞**，⛔ 不得容忍、不得調參")
+        if _D_at <= 0:
+            _stop(f"後置斷言破（第二層）：所構造範圍之最小深度 {_D_at:.6f} ≤ 0（支 {branch}）")
+        # 切換點**明列**（正典 K-9-7-d 要求）：頂點界 `t_C` ＋ 深度端界 `t_eq`
+        _switch = sorted({round(_v, 12) for _tag, _j, _v in _l2_sw})
+        # `P_block` 之落點——**量得**（⛔ 禁手寫進報告）：判準與 K-9-8 同構
+        #   （`|inset| <= _EPS_TOUCH_FRONT`·`grep -n "^_EPS_TOUCH_FRONT = " app.py`）。
+        #   🔴 須用 **FRONT 自己的法向 `(-dy, dx)`**，⛔ 不得用 BASELINE 法向（K-9-8 段四(a) 補正）。
+        _ins = abs((_l2['P_block'][0] - F1[0]) * (-dy)
+                   + (_l2['P_block'][1] - F1[1]) * dx)
+        _pb_cham = None
+        if chamfer_tri is not None and not chamfer_tri.is_empty:
+            from shapely.geometry import Point as _PT97b
+            _pb_cham = bool(chamfer_tri.buffer(1e-9).contains(
+                _PT97b(_l2['P_block'][0], _l2['P_block'][1])))
+        _notes.append(
+            f"K-9-7-d 第二層：支 {branch}｜P_block 內縮 {_ins:.6f}m"
+            f"｜落 {'FRONT 重疊段' if _ins <= _EPS_TOUCH_FRONT else '非 FRONT 段'}"
+            f"｜截角內 {_pb_cham}｜D(t*) {_t1_D:.6f}→{_D_at:.6f}"
+            f"｜t* {_t1_star:.9g}→{t_star:.9g}")
 
     # ── 舊式之 t*（**只供段三(b) 對照·同源同框**）──────────────────────────────
     #   現行生產式：帶深固定為**街廓平均深度** `round(D_avg,2)`、斜率用 `c`
@@ -9947,6 +10181,33 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
         'dt': (None if _t_legacy is None else (t_star - _t_legacy)),
         'block_depth': (None if block_depth is None else float(block_depth)),
         'notes': _notes,
+        # ── 🆕 第二層（K-9-7-d）之診斷欄；**未啟用時 `layer2` 為 False、其餘為 None** ──
+        'layer2': bool(_l2 is not None),
+        'branch_layer1': _t1_branch,
+        't_star_layer1': _t1_star,
+        't_interval_layer1': _t1_iv,
+        'depth_at_t_star_layer1': _t1_D,
+        'W_at_t_star_layer1': _t1_W,
+        'switch_points_layer1': _t1_switch,
+        'dt_layer2': (None if _l2 is None else (t_star - _t1_star)),
+        'P_block': (None if _l2 is None else _l2['P_block']),
+        'Q_pq': (None if _l2 is None else _l2['Q_pq']),
+        'P_block_edge': (None if _l2 is None else _l2['edge_hit']),
+        'P_block_dep': (None if _l2 is None else _l2['dep_P']),
+        'Q_pq_dep': (None if _l2 is None else _l2['dep_Q']),
+        'P_block_inset_from_front': (None if _l2 is None else _ins),
+        'P_block_on_front': (None if _l2 is None else bool(_ins <= _EPS_TOUCH_FRONT)),
+        'P_block_on_chamfer': (None if _l2 is None else _pb_cham),
+        'l2_edges': (None if _l2 is None else
+                     [{'edge': e['edge'], 'lo': e['lo'], 'hi': e['hi'],
+                       'AP': e['AP'], 'BP': e['BP'], 'AQ': e['AQ'], 'BQ': e['BQ'],
+                       't_eq': e.get('t_eq'), 'degenerate': e['degenerate']}
+                      for e in _l2_edges]),
+        'l2_skipped_edges': (None if _l2 is None else list(_l2_skip)),
+        'l2_rejected': (None if _l2 is None else list(_l2_rej)),
+        'l2_roots': (None if _l2 is None else
+                     [{'br': r['br'], 't': r['t'], 'slope': r['slope'],
+                       'D_new': r['D_new']} for r in _l2_ok]),
     }
 
 

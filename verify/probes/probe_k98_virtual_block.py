@@ -152,7 +152,8 @@ def main():
     L.append("=" * 120)
 
     ns, fake_st = harvest()
-    for _s in ("k98_virtual_measure_block", "parcel_min_width_n14"):
+    for _s in ("k98_virtual_measure_block", "parcel_min_width_n14",
+               "_make_chamfer_tri_wb"):
         if not callable(ns.get(_s)):
             raise RuntimeError(f"🔴 harvest 未取得 {_s}")
     snapshot = rv.load_snapshot()
@@ -224,16 +225,29 @@ def main():
                 _sx = _s_of((float(sd["p1"][0]), float(sd["p1"][1])))
                 _edges.sort(key=lambda e: abs((_s_of(e[0]) + _s_of(e[1])) / 2.0 - _sx))
                 _lin = _edges[-1]
+                # 🆕 K-6-A2 段四(c)-2(a)：`on_chamfer` **於呼叫端以截角三角形判定並傳入**。
+                #   截角三角形由**本檔**取得（`_make_chamfer_tri_wb`）、判定式亦由**本檔**寫；
+                #   建構器只在算出 `P_block` 之後代為呼叫之 ⇒ **建構器維持不臆造**。
+                #   ⚠️ 該側無截角時 `_cham` 為 None ⇒ 傳 `None`（**不傳 False**）——
+                #     「沒有截角可判」與「判定為不在截角內」不是同一件事（禁以旗標充數）。
+                _cham98 = ns["_make_chamfer_tri_wb"](b, side)
+                _oc98 = None
+                if _cham98 is not None and not _cham98.is_empty:
+                    from shapely.geometry import Point as _PT98p
+                    _oc98 = (lambda _p, _t=_cham98:
+                             bool(_t.buffer(1e-9).contains(_PT98p(_p[0], _p[1]))))
                 try:
                     k98 = ns["k98_virtual_measure_block"](
                         b.get("vertices"), [F1, F2], bp,
                         [_lin[0], _lin[1]], [sd["p1"], sd["p2"]],
-                        _label=lbl, _pid=str(pid), _lot_kind="corner_first")
+                        _label=lbl, _pid=str(pid), _lot_kind="corner_first",
+                        on_chamfer=_oc98)
                     rec["w3"] = k98["min_width"]
                     rec["inset"] = k98["inset_from_front"]
                     rec["depth3"] = k98["depth_from_PQ"]
                     # 🔒 落點**取自建構器之量得值**，⛔ 禁手寫、⛔ 禁由他處結論引入。
                     rec["spot"] = ("FRONT 重疊段" if k98["on_front"] else "非 FRONT 重疊段")
+                    rec["cham"] = k98["on_chamfer"]
                 except RuntimeError as e:
                     rec["w3"] = None
                     rec["w3err"] = str(e).splitlines()[0][:70]
@@ -306,13 +320,18 @@ def main():
             ok = "✓" if same else "✗"
             if not same:
                 nbad += 1
+        _cm = r.get("cham")
         L.append(f"  {tag:<6}{key:<12}"
                  f"{(f'{a:.6f}' if a is not None else '—'):>12}{m:>12.6f}{dd:>12}"
-                 f"   {sp_ref:<16}{sp_now:<16}{ok:<6}")
+                 f"   {sp_ref:<16}{sp_now:<16}{ok:<6}"
+                 f"{('—' if _cm is None else ('截角內' if _cm else '截角外')):<8}")
     L.append("-" * 120)
     L.append(f"  |Δ內縮| 最大 ＝ {imax:.6f} m；落點不一致 {nbad} 格")
     L.append("  · 落點欄**由建構器之 `on_front` 量得**（判準 `|inset| <= _EPS_TOUCH_FRONT`），")
-    L.append("    ⛔ 非手寫、⛔ 非引用他處結論。`on_chamfer` 仍回 None（須截角三角形，本函式不臆造）。")
+    L.append("    ⛔ 非手寫、⛔ 非引用他處結論。")
+    L.append("  · 🆕 末欄 `on_chamfer`（K-6-A2 段四(c)-2(a) 接線）：**判定式與截角三角形皆屬本檔**，")
+    L.append("    建構器只在算出 `P_block` 後代為呼叫之 ⇒ **建構器維持不臆造**；")
+    L.append("    該側無截角 ⇒ 傳 `None` 而**非 False**（「無從判」≠「判為否」）。")
     L.append("")
     L.append("【C】註記")
     L.append("  · 本檔**只量不判**：不設門檻、不判合格/不合格、rc 恆 0。")
