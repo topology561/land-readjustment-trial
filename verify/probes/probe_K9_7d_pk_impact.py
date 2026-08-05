@@ -208,12 +208,16 @@ def main():
                 chg.append(f"winner {sorted(wo) or '—'}→{sorted(wn) or '—'}")
             if fo != fn:
                 chg.append(f"🔴forced_offset {fo}→{fn}")
+            # 🔒 **決定性欄位**（候選／合格／winner／forced_offset）與**指數分數**分開記——
+            #   前者變動＝**PK 翻盤**（土地後果）；後者變動可能只是小數位擾動、**不必然翻盤**。
+            #   ⛔ 但**也不得逕自視為無事**：名次是否易位須由下方「指數前二」欄自行判讀。
+            _decisive = bool(chg)
             if io != inw:
                 _d = {k: (io.get(k), inw.get(k)) for k in set(io) | set(inw)
                       if io.get(k) != inw.get(k)}
-                chg.append(f"指數變動 {_d}")
+                chg.append(f"指數分數變動（非決定性欄）{_d}")
             if chg:
-                _any_change.append((setback, lbl, side, chg))
+                _any_change.append((setback, lbl, side, chg, _decisive))
 
             def _top2(d):
                 def _num(v):
@@ -271,13 +275,22 @@ def main():
     # ── 4) 結論 ────────────────────────────────────────────────────────────
     L.append("")
     L.append("【B】結論（PK 十六格）")
-    if not _any_change:
-        L.append("  ✅ **零翻盤**：十六格之**候選集合、合格集合、winner、forced_offset "
-                 "皆逐格相同**。")
+    _dec = [x for x in _any_change if x[4]]
+    _nondec = [x for x in _any_change if not x[4]]
+    if not _dec:
+        L.append("  ✅ **決定性欄位零翻盤**：十六格之**候選集合、合格集合、winner、"
+                 "`forced_offset` 皆逐格相同**。")
     else:
-        L.append(f"  🔴 **有變動：{len(_any_change)} 格**（逐格詳列如下·**須停機上呈**）")
-        for sb, lbl, side, chg in _any_change:
+        L.append(f"  🔴 **決定性欄位有變動：{len(_dec)} 格 ⇒ PK 翻盤·須停機上呈**")
+        for sb, lbl, side, chg, _ in _dec:
             L.append(f"     {sb:g}m {lbl}/{side}：" + "；".join(chg))
+    if _nondec:
+        L.append(f"  ⚠️ **指數分數有變動（非決定性欄）：{len(_nondec)} 格**"
+                 "——⛔ 不得逕自視為無事，名次是否易位請對照上表「指數前二」欄：")
+        for sb, lbl, side, chg, _ in _nondec:
+            L.append(f"     {sb:g}m {lbl}/{side}：" + "；".join(chg))
+    else:
+        L.append("  ✅ 指數分數亦逐格相同。")
 
     # ── 5) 受控比較之佐證 ──────────────────────────────────────────────────
     L.append("")

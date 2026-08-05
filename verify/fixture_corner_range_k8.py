@@ -137,16 +137,39 @@ def _range_min_depth(cad, cb_by, lbl, which, t_line_pts):
     Q0 = _x_on_pq(S1, su)                 # 街角：PQ ∩ 側界（皆無限直線）
     if Q0 is None:
         return None
+    # ── 🆕 K-9-6-b-2（KL 裁 2026-08-05·乙式）：另回傳 `δ_P` ────────────────────────
+    #   `δ_P` ＝ 使「`PQ` ＝ FRONT 沿 `bn` 平移 `δ_P`」成立之平移量
+    #   ＝ `P_block − F1` 在**非正交**基底 `{d, bn}` 下之 `bn` 分量。
+    #   以 FRONT 之單位法向 `n̂` 取分量：`(P_block−F1)·n̂ = δ_P·(bn·n̂)`。
+    #   ⛔ **不是 `(P_block − F1) @ bn`**——後者 ＝ `δ_P + α·g`（`α` ＝ 沿 `d` 之座標、
+    #     `g = d·bn`），本案實測最劣差 **4.12 m**（`R6/right 0m`）。
+    #     逐格對照與三條旁證見 `docs/reports/W-G.5_K6-A2-段四c2a2_乙式八支推導.md` §二-3。
+    #   🔒 **本值由本檔自 CAD 幾何算得**（`P_block` 亦然），
+    #     ⛔ **不自 `k97_solve_alloc_t`／`_build_corner_range_v3` 取任何回傳值**
+    #     ——否則夾具即由「第三份獨立實作」退化為引擎之複讀機。
+    _nf = np.array([-d[1], d[0]])
+    _h = bn @ _nf
+    if abs(_h) < 1e-9:
+        return None                        # bn ∥ d ⇒ δ_P 不可定義（缺件語意·由呼叫端判紅）
+    _dlt = float(((P_block - F1) @ _nf) / _h)
     # 至 BASELINE 之垂距（bn 已定號指向 BASELINE）；垂距沿 PQ 線性 ⇒ 取兩端·⛔ 不取樣
-    return float(min(abs((bp - Q0) @ bn), abs((bp - P_block) @ bn)))
+    _D = float(min(abs((bp - Q0) @ bn), abs((bp - P_block) @ bn)))
+    return _D, _dlt
 
 
-def _band_min_width(cad, cb_by, lbl, which, depth, t_line_pts):
+def _band_min_width(cad, cb_by, lbl, which, depth, t_line_pts, delta_p=0.0):
     """夾具側**獨立**量測：帶內二側界間、平行前緣線之距離，取兩端之 min。
 
     第三份實作（numpy 閉式解聯立），與受測函式之 ① ①′ 皆不同路徑。
     `t_line_pts` ＝ 受測函式所回傳範圍多邊形之「ALLOC 邊」兩點——由**輸出幾何**反推，
     故本格量的是**成品**，不是重跑受測者的算式。
+
+    🆕 **K-9-6-b-2（KL 裁 2026-08-05·乙式）**：帶之**兩條**邊界線皆自 `PQ` 起算
+    ⇒ 帶 ＝ **`[delta_p, delta_p + depth]`**（`d` ＝ FRONT 沿 `bn` 之平移量）。
+    `delta_p` 由 `_range_min_depth` **於本檔內**算得後傳入
+    （⛔ 不自引擎取值·見該函式之獨立性護欄）。
+    🗄️ **甲式（帶 ＝ `[0, depth]`）已作廢**；`delta_p=0.0` 之預設**僅供
+    `verify/probes/probe_K9_7d_stageA.py` 重現甲式對照**，⛔ **生產判定一律顯式傳入**。
     """
     fl = cad["front_lines"][lbl]
     F1 = np.array(fl["p1"], float)[:2]
@@ -176,7 +199,7 @@ def _band_min_width(cad, cb_by, lbl, which, depth, t_line_pts):
         return ((P - Q) @ n) / den + (Q - F1) @ d
 
     ws = []
-    for dd in (0.0, float(depth)):
+    for dd in (float(delta_p), float(delta_p) + float(depth)):
         Q = F1 + dd * bn
         a = _hit(S1, su, Q)
         b = _hit(L1, lu, Q)
@@ -257,12 +280,14 @@ def main():
             # 🔴 K-6-A2 段三(c)-2 §二：帶深改用**該範圍自身之最小深度 `D(t*)`**
             #   （K-9-6-b），不再用街廓平均深度 `街廓分配深度_m`（＝已被取代之舊定義）。
             #   `D(t*)` 由 `_range_min_depth` **獨立**量得（只吃 cad 幾何＋範圍之 ALLOC 邊）。
-            _Dt = _range_min_depth(cad, cb_by, lbl, which, edge)
-            if _Dt is None:
+            # 🆕 K-9-6-b-2（乙式）：同時取得 `δ_P`，帶 ＝ `[δ_P, δ_P + D(t*)]`。
+            _rmd = _range_min_depth(cad, cb_by, lbl, which, edge)
+            if _rmd is None:
                 ok = False
                 out.append(f"  {lbl+' '+which:10}{setback:6.1f}  🔴 D(t*) 不可量（前緣線與側界／ALLOC 無交點）")
                 continue
-            w = _band_min_width(cad, cb_by, lbl, which, _Dt, edge)
+            _Dt, _dP = _rmd
+            w = _band_min_width(cad, cb_by, lbl, which, _Dt, edge, delta_p=_dP)
             eps = ns["_corner_range_eps"]((cad["baselines"][lbl].get("_match") or {}).get("q_detected"))
             good = (w is not None) and abs(w - T) <= eps
             ok &= good

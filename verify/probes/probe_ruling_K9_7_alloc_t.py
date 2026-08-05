@@ -13,8 +13,12 @@
 
 | | 符號 | 帶深 | 斜率 |
 |---|---|---|---|
-| **舊（生產中）** | `app._build_corner_range_v3` 內之閉式 | **街廓平均深度** `round(D_avg,2)`（常數） | `c` |
-| **新（本批）** | `app.k97_solve_alloc_t` | **範圍自身之最小深度** `D(t)`（隨 `t` 變動） | 分支 ①`c`／②`c`／③`(c − k·m)` |
+| **舊** | 舊閉式（帶深＝街廓平均深度·斜率 `c`） | **街廓平均深度** `round(D_avg,2)`（常數） | `c` |
+| **新（**現為生產**）** | `app.k97_solve_alloc_t` 第一層 | **範圍自身之最小深度** `D(t)`（隨 `t` 變動） | 分支 ①`c`／②`c`／③`(c − k·m)` |
+
+🔴 **語意已於段三(c)（`0429772`）反轉**：生產**已走新式** ⇒ 本檔之
+「舊」欄須以 `_t_override` 注入 `t_star_legacy`，「新」欄才是「不傳 override」。
+（補正於 K-6-A2 段四(c)-2(a′)；補正前二欄同源、`Δ面積` 恆 `0.000`。）
 
 ⇒ 差異即 **GB-14** 所登記者（`grep -n "GB-14" docs/reports/W-G.4_泛用阻塞項登記表.md`）。
 
@@ -109,14 +113,24 @@ def main():
                     nerr = None
                 except RuntimeError as e:
                     new, nerr = None, str(e)
-                # 面積對照：**同一條多邊形構造路徑**（`_build_corner_range_v3`），
-                #   只換 t —— 生產 t*（不傳 override）vs 新 t*（傳 override）
+                # 面積對照：**同一條多邊形構造路徑**（`_build_corner_range_v3`），只換 `t`。
+                # 🔴 **K-6-A2 段四(c)-2(a′) 補正**：段三(c)（`0429772`）把生產切成 k97 之後，
+                #   「不傳 `_t_override`」＝**新式**、不再是舊式 ⇒ 本欄與 `a_new` **同源**、
+                #   `Δ面積` 恆 `0.000`。實測坐實：`R5/left 0m` 之 `Δt* = −16.560 cm`
+                #   而面積差恰為零——**位移 16.56 公分而面積不動，物理上不可能**。
+                #   `app.py` 早已逐字寫下所需之語意反轉（`grep -n "_t_override.*語意.*反轉" app.py`），
+                #   本檔未跟上。⇒ **`a_old` 改注入 `t_star_legacy`**（＝真正的舊式 `t*`）。
                 a_old = a_new = None
+                _tleg = (new or {}).get("t_star_legacy")
                 try:
+                    if _tleg is None:
+                        raise RuntimeError("`t_star_legacy` 為 None（`block_depth` 未給？）"
+                                           "⇒ 舊式面積不可構造·⛔ 不以生產值充數")
                     _r_old = ns["_build_corner_range_v3"](
                         b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
                         al_by.get(lbl), _depth, setback, legal_w, _chi,
-                        dxf_quantum=_q, _label=lbl, _side=side)
+                        dxf_quantum=_q, _label=lbl, _side=side,
+                        _t_override=_tleg)
                     a_old = float(_r_old.area) if _r_old is not None else None
                 except RuntimeError as e:
                     nerr = (nerr or "") + f"｜舊式 raise：{e}"
@@ -220,9 +234,18 @@ def main():
         L.append("  （無）")
     L.append("")
     L.append("【E】註記")
-    L.append("  · 本檔**只算不換**：`k97_solve_alloc_t` 未接生產路徑（零呼叫點）。")
-    L.append("  · K-9-7-d 之第二層分支（`P_block` 落截角邊 vs FRONT 重疊段）需 K-9-8 之 "
-             "`PQ` 延伸線段（**段四**）⇒ 本批不臆造。")
+    L.append("  · 🔴 **本註於 K-6-A2 段四(c)-2(a′) 更正**（前版已作廢·存查）：")
+    L.append("    前版載「`k97_solve_alloc_t` 未接生產路徑（零呼叫點）」——**自段三(c)"
+             "（`0429772`）起已不成立**，該支即生產之 §四 定位器。")
+    L.append("    ⇒ 本檔之「新」欄＝**生產原樣**、「舊」欄＝以 `_t_override` 注入 "
+             "`t_star_legacy`（語意已反轉）。")
+    L.append("  · 【D】段所測者為 **`P_front(t*)`**（K-9-7），**非** K-9-8 之 `P_block`"
+             "（二者同名異物）。")
+    L.append("    ⇒ 本段之 `0/16` **不是**「GB-19 於本案零實例」之證據；`P_block` 之實測見 "
+             "`verify/out/probe_K9_7d_layer2.log`【C】（**4/16 離開 FRONT**）。**已登記 GB-37。**")
+    L.append("  · K-9-7-d 之第二層分支已於段四(c)-2(a)／(a′) 實作於 `k97_solve_alloc_t` 之 "
+             "**opt-in `block_vertices`** 路徑（**生產零呼叫點**）；本檔**不傳**該引數"
+             "⇒ 所量者為**第一層**。")
 
     txt = "\n".join(L)
     print(txt)

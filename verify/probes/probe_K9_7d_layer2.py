@@ -118,8 +118,9 @@ def main():
     _both("=" * 138)
     _both("【K-9-7-d 第二層分支】第一層 vs 第二層 t* 對照 — **只算不換·生產零呼叫點**"
           "（K-6-A2 段四(c)-2(a)）")
-    _both("第一層＝帶深自 FRONT 之臨街段（Q0→P_front(t)）量；"
-          "第二層＝帶深自 PQ 之臨街段（P_block(t)→PQ∩SIDE）量（GB-19／K-9-8 (5)）")
+    _both("第一層＝帶 `[0, D]`、`D` 自 FRONT 之臨街段（Q0→P_front(t)）量；")
+    _both("第二層（🆕 **乙式**·K-9-6-b-2·KL 裁 2026-08-05）＝帶 **`[δ_P, δ_P+D_new]`**、"
+          "`D_new` 自 PQ 之臨街段（P_block(t)→PQ∩SIDE）量（GB-19／GB-36）")
     _both(f"DXF：{os.path.relpath(DXF_PATH, REPO)}"
           + ("（**生產圖**）" if not _SFX else "（**平行對照·非生產圖**）"))
     _both("=" * 138)
@@ -244,10 +245,12 @@ def main():
     # ── 【C】`P_block` 落點（**量得**·⛔ 禁手寫）──────────────────────────────
     _both("")
     _both("【C】`P_block(t*)` 之落點 — **量得**"
-          f"（判準 `|inset| <= _EPS_TOUCH_FRONT = {_EPS_TF}`·⛔ 禁手寫進報告）")
+          f"（判準 `|inset| <= _EPS_TOUCH_FRONT = {_EPS_TF}`·⛔ 禁手寫進報告）"
+          "｜🆕 乙式之 `δ_P` 與帶之二端")
     _both("-" * 138)
-    _both(f"{'情境':<6}{'街廓/側':<11}{'內縮(m)':>13}{'落FRONT段':>11}{'落截角內':>10}"
-          f"{'邊#':>5}{'dep(P_block)':>15}{'dep(PQ∩SIDE)':>15}{'P_block 座標':>28}")
+    _both(f"{'情境':<6}{'街廓/側':<11}{'內縮(m)':>12}{'δ_P(m)':>12}"
+          f"{'帶上緣d':>11}{'帶下緣d':>11}{'落FRONT段':>10}{'落截角內':>9}"
+          f"{'邊#':>4}{'dep(P_block)':>14}{'dep(PQ∩SIDE)':>14}")
     _both("-" * 138)
     _n_cham, _n_front, _n_other = 0, 0, 0
     for r in rows:
@@ -264,13 +267,15 @@ def main():
             _n_cham += 1
         else:
             _n_other += 1
-        _pbx, _pby = n["P_block"]
-        _xy = "(%.4f, %.4f)" % (_pbx, _pby)
-        _both(f"{tag:<6}{key:<11}{n['P_block_inset_from_front']:>13.6f}"
-              f"{('是' if _of else '否'):>11}"
-              f"{('—' if _oc is None else ('是' if _oc else '否')):>10}"
-              f"{n['P_block_edge']:>5}"
-              f"{n['P_block_dep']:>15.6f}{n['Q_pq_dep']:>15.6f}{_xy:>28}")
+        _both(f"{tag:<6}{key:<11}{n['P_block_inset_from_front']:>12.6f}"
+              f"{n['delta_P']:>12.6f}{n['band_d_top']:>11.6f}{n['band_d_bot']:>11.6f}"
+              f"{('是' if _of else '否'):>10}"
+              f"{('—' if _oc is None else ('是' if _oc else '否')):>9}"
+              f"{n['P_block_edge']:>4}"
+              f"{n['P_block_dep']:>14.6f}{n['Q_pq_dep']:>14.6f}")
+        F.append(f"      {tag} {key} P_block ＝ "
+                 f"({n['P_block'][0]:.4f}, {n['P_block'][1]:.4f})"
+                 f"｜Q_pq ＝ ({n['Q_pq'][0]:.4f}, {n['Q_pq'][1]:.4f})")
     _both("-" * 138)
     _both(f"  ⇒ 落 FRONT 重疊段 **{_n_front}** 格／落截角（非 FRONT 段且在截角三角形內）"
           f"**{_n_cham}** 格／二者皆非 **{_n_other}** 格")
