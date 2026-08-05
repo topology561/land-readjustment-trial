@@ -6394,41 +6394,56 @@ def _get_block_d_hat(block_poly, allocation_dir=None):
     return dv / max(float(np.linalg.norm(dv)), 1e-9)
 
 
-def _n14_band_hi(cut_coords, d_hat, front_pt, baseline_pts, _label=''):
-    """**K-9-6-b 宗地層量測帶之上緣**（K-6-A2 段五(a)·**opt-in·單一真相源**）。
+def _n14_band_geom(cut_coords, d_hat, front_pt, baseline_pts, _label=''):
+    """**K-9-6-b 宗地層量測帶之幾何**（K-6-A2 段五(c)-1·**單一真相源**）。
 
-    回 `(t_lo, t_hi, D, g, bn_dot_n)`；**任何退化一律 loud raise**（禁兜底）。
+    回 `(t_lo, rear, g, bn_dot_n)`；`rear` ＝ **後緣連續段之全部端點**，
+    每項 `(t, dep, s)`、依 `t` **升冪**。**任何退化一律 loud raise**（禁兜底）。
 
     ── 為何抽成 helper ────────────────────────────────────────────────────────
     ⛔ **禁在探針另寫第二份**（**GB-8** 之形狀：多份實作、無一致性看守）
-    ⇒ `parcel_min_width_n14` 與 `verify/probes/probe_K9_6_parcel_band.py` **共用本支**。
+    ⇒ `parcel_min_width_n14`／`_n14_band_hi`／
+      `verify/probes/probe_K9_6_parcel_band.py` **共用本支**。
+    🔒 回 `rear` 全體（非只回 min）之由：**帶底之可稽核性**——探針須逐宗印出
+      「帶底落在哪一個頂點、該頂點之 `|dep|` 多少」，若只回 min 則探針必自行重算 ⇒ GB-8。
+
+    ── 🔴 帶底定義已更正（KL 圖示裁定 2026-08-05）─────────────────────────────
+    **舊式**（段五(a)）依 `K-9-6-a` 表列第 1 列：對**臨街段端點**取至 BASELINE 之垂距 min、
+    再乘投影係數落到 `t` 軸。該表列之**受詞與法規原文相反**
+    （原文：「臨接之道路境界線至該基地**後側境界線**垂直距離之最小值」）
+    ⇒ 舊式帶底**恰切 BASELINE 而未必落在宗內**（實測 34/118 宗於帶底得弦長 0 而停機·
+      **凍存**實料 `verify/out/probe_K9_6_parcel_band_段五a凍存.log`【D】
+      ——⚠️ **非**同名之現行檔：後者已由 (c)-1 重跑覆寫）。
+    **新式**：帶底 ＝ 通過**較淺之後緣角點**、平行前緣線之直線
+    ⇒ `t_hi = min(後緣角點之 t)`——**直接讀環上該頂點之 `t` 分量**。
+    🔴 ⛔ **禁乘、禁除任何投影係數**——前版 ③ 大聲警告之投影係數，於新定義下**不存在**
+      （舊式之係數係「沿 `b̂n` 平移」落到 `n̂` 軸所需；新式之帶底點**本來就在** `t` 軸上）。
+    正典：`grep -n "^#### 🔒 K-9-6-a " docs/rulings/K-6_街角地分配程序與可分配判準.md`
+      之更正註 ＋ 新則 `grep -n "^#### 🔒 K-9-6-g " 同檔`；教訓：**失敗考古 節 42**。
 
     ── 演算法（**解析·禁取樣、禁掃描**）──────────────────────────────────────
-    ① **定號**：`(b0, b̂n) = _baseline_normal_axis(baseline_pts)`
+    ① **基底看守**（🔴 **不參與帶底計算**）：`(b0, b̂n) = _baseline_normal_axis(baseline_pts)`
        （`grep -n "def _baseline_normal_axis" app.py`），
-       再令 `b̂n ← b̂n · sign(b̂n · n̂_eff)` 使 `b̂n · n̂_eff > 0`。
-       🔴 **`n̂_eff` ＝ `parcel_min_width_n14` 內**實際生效**之法向**——該函式於
-         `(s,t)` 局部框內以「形心之 `t` 為負則整環翻號」定向
-         （`grep -n "_ring = \\[(_s, -_t) for _s, _t in _ring\\]" app.py`）
-         ⇒ 本函式**逐字重現該翻號**，否則帶會朝宗地外長（`t_hi < t_lo`）。
+       再令 `b̂n ← b̂n · sign(b̂n · n̂_eff)` 使 `b̂n · n̂_eff > 0`；
+       並自檢恆等式 **`(b̂n·n̂) ＝ sqrt(1 − g²)`**（`{d̂, n̂}` 單範正交 ＋ `|b̂n| = 1`
+       ⇒ `g² + h² = 1`·定號後 `h > 0`）。逐宗斷言其差 `< 1e-12`，破即 raise。
+       其產物僅供 ② 之 `dep` 與 `_n14_band_hi` ④ 之**報表量** `D`。
+       🔴 **`n̂_eff`** ＝ 本框內**實際生效**之法向——含「形心之 `t` 為負則整環翻號」之 σ
+         （`grep -n "_ring = \\[(_s, -_t) for _s, _t in _ring\\]" app.py`），
+         **逐字重現** `parcel_min_width_n14` 之翻號。
        ⛔ **禁以座標正負、街廓名或側別判號**（失敗考古 §35 家族）。
        ⚠️ ⛔ **不得改用 `_build_corner_range_v3` 之法向**——其號規不同（**GB-22** 已載）。
-    ② **該宗最小深度 `D`** ＝ 臨街諸邊之端點至 BASELINE 之垂距之 **min**：
-       `D = min over v of ((b0 − v) · b̂n)`。
-       🔴 **號規**：`b̂n` 已定號為**指向宗地內側（即指向 BASELINE）** ⇒ 對前緣邊之端點
-         `(v − b0)·b̂n` **恆為負**（實測 −33〜−48）；**深度須取 `(b0 − v)·b̂n`**。
-         ⛔ 寫成 `(v − b0)·b̂n` 者，不僅正負顛倒，`min` 亦會挑到**最深**而非最淺之端點。
-       ⛔ **禁取樣、禁掃描**——BASELINE 取無限直線、臨街段為直線段
-         ⇒ 垂距沿段**線性** ⇒ min 必落於端點（同 `_compute_block_depth_alloc` 之家法）。
-    ③ **帶之上緣**：`t_hi = t_lo + D · (b̂n · n̂_eff)`。
-       🔴 **⛔ 禁寫 `t_hi = t_lo + D`**——`{d̂, b̂n}` **非正交**（本案六街廓
-         `g = d̂·b̂n` 皆非零·最大 `R6 +0.050035`）。`D` 係量在 `b̂n` 上之長度，
-         要落到 `n̂` 軸上**必須乘投影係數 `(b̂n·n̂)`**；漏乘即**失敗考古 §40**
-         （「在非正交基底上以內積取係數」）之同一族錯誤。
-       🔒 **獨立恆等式自檢**（⛔ 非把同一算式抄兩遍）：`{d̂, n̂}` 為單範正交基、
-         `|b̂n| = 1` ⇒ `b̂n = g·d̂ + h·n̂`、`g² + h² = 1`；定號後 `h > 0`
-         ⇒ **`(b̂n·n̂) ＝ sqrt(1 − g²)`**。逐宗斷言其差 `< 1e-12`，破即 raise。
-    ④ **量測方向不變**：最小寬度仍為「帶內**平行前緣線**之弦長取 min」
+    ② **後緣連續段 `_re`**：對環上每一頂點還原世界座標，算 `dep(v) = (b0 − v) · b̂n`；
+       取**兩端點之 `|dep|` 皆 ≤ 容差**之**邊**。
+       🔒 **邊基·非頂點門檻基**——比照 `_fe` 之家法
+         （`grep -n "邊基·非頂點門檻基" app.py` 之 reviewer WARNING）。
+       🔒 **容差 ＝ `_EPS_TOUCH_FRONT`**（`grep -n "^_EPS_TOUCH_FRONT = " app.py`）
+         ——即 **K-9-4 之 BASELINE 臨接容差**（**同一常數**·該常數之註解逐字
+         「前端（FRONT）與後端（BASELINE）共用」、K-9-4 上閘 docstring 逐字
+         「容差沿用 `_EPS_TOUCH_FRONT`」）；⛔ **禁新造第二把尺**。
+       · `_re` 為**空** ⇒ raise（**二道防線**：K-9-4 上閘應已擋下「未配到 BASELINE」）。
+       · `_re` 不構成**單一連續段** ⇒ raise（後緣分裂於凸多邊形〔E-8a 已驗〕下不可能）。
+    ③ **量測方向不變**：最小寬度仍為「帶內**平行前緣線**之弦長取 min」
        ——K-9-6-b-2 逐字「只改帶的兩條邊界線，**不改量測方向**」。
        ⛔ 禁把弦改成平行 `b̂n` 或任何其他軸。
     """
@@ -6436,8 +6451,8 @@ def _n14_band_hi(cut_coords, d_hat, front_pt, baseline_pts, _label=''):
     from shapely.geometry import Polygon as _Poly_b
 
     def _stop(msg):
-        raise RuntimeError(f"🔴 _n14_band_hi[{_label or '?'}]：{msg}"
-                           f"（K-9-6-b·段五(a)·⛔ 禁兜底、禁取樣）")
+        raise RuntimeError(f"🔴 _n14_band_geom[{_label or '?'}]：{msg}"
+                           f"（K-9-6-b·段五(c)-1·⛔ 禁兜底、禁取樣）")
 
     if not (cut_coords and len(cut_coords) >= 3):
         _stop("`cut_coords` 不足（<3 點）")
@@ -6484,19 +6499,57 @@ def _n14_band_hi(cut_coords, d_hat, front_pt, baseline_pts, _label=''):
         _stop(f"恆等式自檢破：(b̂n·n̂) = {_bdn:.15g} ≠ sqrt(1−g²) = {_idn:.15g}"
               f"（g = {_g:.15g}·差 {abs(_bdn - _idn):.3e}）⇒ 基底或定號有誤")
 
-    # ② `D`：臨街諸邊之端點至 BASELINE 之垂距之 min（⛔ 取端點·非取樣）
-    _Ds = []
-    for _i in _fe:
-        for _j in (_i, _i + 1):
-            _s_, _t_ = _ring[_j]
-            _v = _fp + _d * _s_ + _n * (_sg * _t_)      # (s,t) → 世界座標（σ 還原）
-            _Ds.append(float((_b0 - _v) @ _bn))
-    _D = min(_Ds)
-    if _D <= 0:
-        _stop(f"該宗最小深度 D = {_D:.6f} ≤ 0 ⇒ 前緣落在 BASELINE 之外側"
-              f"（可能是 BASELINE 配對錯，非算式錯）")
-    # ③ 帶之上緣（🔴 必須乘投影係數）
-    _t_hi = _t_lo + _D * _bdn
+    # ② 後緣連續段 `_re`（🔴 帶底之唯一來源·⛔ 無平移、無投影係數）
+    _n_e = len(_ring) - 1
+    _dep = []
+    for _j in range(_n_e):
+        _s_, _t_ = _ring[_j]
+        _v = _fp + _d * _s_ + _n * (_sg * _t_)          # (s,t) → 世界座標（σ 還原）
+        _dep.append(float((_b0 - _v) @ _bn))
+    _re = [_i for _i in range(_n_e)
+           if abs(_dep[_i]) <= _EPS_TOUCH_FRONT
+           and abs(_dep[(_i + 1) % _n_e]) <= _EPS_TOUCH_FRONT]
+    if not _re:
+        _stop(f"本宗與 BASELINE 無臨接邊（無兩端點之 |dep| 皆 ≤ 容差 "
+              f"{_EPS_TOUCH_FRONT}m 之邊·最小 |dep| ＝ "
+              f"{min(abs(_x) for _x in _dep):.6f}m）"
+              f"——**K-9-4 應已於上游擋下**，本閘為二道防線")
+    _re_set = set(_re)
+    _runs = sum(1 for _i in _re if ((_i - 1) % _n_e) not in _re_set)
+    if _runs != 1:
+        _stop(f"後緣邊於環上分裂為 **{_runs} 段**（邊索引 {sorted(_re)}／共 {_n_e} 邊）"
+              f"——本宗於兩處分別觸及 BASELINE 而中間離開 ⇒ "
+              f"**凸多邊形下不可能**（E-8a 已先驗）⇒ 上游幾何有誤")
+    _ridx = sorted(set(_re) | {(_i + 1) % _n_e for _i in _re})
+    _rear = sorted(((_ring[_i][1], _dep[_i], _ring[_i][0]) for _i in _ridx),
+                   key=lambda _r: _r[0])
+    return (_t_lo, _rear, _g, _bdn)
+
+
+def _n14_band_hi(cut_coords, d_hat, front_pt, baseline_pts, _label=''):
+    """**K-9-6-b 宗地層量測帶之上緣**（K-6-A2 段五(a) 立·**(c)-1 改帶底**·**opt-in**）。
+
+    回 `(t_lo, t_hi, D, g, bn_dot_n)`——**五元組之形不變**（探針不需改形）。
+    幾何一律由 `_n14_band_geom` 供給（**單一真相源**·⛔ 禁在此或探針另寫第二份·**GB-8**）。
+
+    · **`t_hi` ＝ `min(後緣角點之 t)`** ＝ 帶底（K-9-6-b 更正後之定式）。
+      🔴 ⛔ **無任何投影係數**——後緣角點本就在 `t` 軸上，直接讀其 `t` 分量。
+    · **`D` ＝ `t_hi / (b̂n·n̂)`** ＝ 該角點**沿 BASELINE 法向**至前緣線之距離
+      （KL 圖示之橘色箭頭）。
+      🔴 **僅供報表**，⛔ **不得進任何閘或帶**（K-9-3 之後宗地層不再以深度作判定）。
+      ⚠️ 法規原文「垂直距離」亦可讀為 **`t_hi` 本身**（垂直於**道路境界線**）；
+        二者於本案差 ≤ 0.13%，且 `D` 不進任何判定 ⇒ 本倉採 **KL 圖示之定義**，
+        差異記於攤表註腳（`docs/reports/W-G.6_K6-A2-段五c1_宗地帶_攤表.md`）。
+    """
+    _t_lo, _rear, _g, _bdn = _n14_band_geom(
+        cut_coords, d_hat, front_pt, baseline_pts, _label=_label)
+    _t_hi = _rear[0][0]                                 # `_rear` 已依 `t` 升冪 ⇒ [0] 即 min
+    if _t_hi <= _t_lo:
+        raise RuntimeError(
+            f"🔴 _n14_band_hi[{_label or '?'}]：帶底 {_t_hi:.6f} ≤ 帶頂 {_t_lo:.6f}"
+            f"——後緣角點不深於前緣 ⇒ 宗地幾何或 BASELINE 配對有誤"
+            f"（K-9-6-b·段五(c)-1·⛔ 禁兜底）")
+    _D = _t_hi / _bdn                                   # 🔴 僅供報表·⛔ 不進閘、不進帶
     return (_t_lo, _t_hi, _D, _g, _bdn)
 
 
@@ -6513,8 +6566,8 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label='',
         ——**現行生產路徑·逐字未動**（🔴 該用法即 **GB-13** 所登記之誤：把「可建築門檻」
         當成「量測帶深」）。
       **傳入** ⇒ 帶之上緣改由 `_n14_band_hi`（`grep -n "def _n14_band_hi" app.py`）給：
-        自 **BASELINE 法向**量得之**該宗自身最小深度 `D`**，
-        `t_hi = t_lo + D·(b̂n·n̂)`（🔴 **必須乘投影係數**·見該函式 ③）。
+        `t_hi` ＝ **該宗二個後緣角點中較淺者之 `t`**（K-9-6-b·**(c)-1 更正後之定式**）
+        ——🔴 ⛔ **無平移、無投影係數**（舊式「`t_lo + D·(b̂n·n̂)`」已作廢·失敗考古 節 42）。
         此時 `min_depth` **僅供 E-2′ 閘**、不再作 `_t_hi`。
       🔴 **段五(a) 為「只算不換」** ⇒ **生產零呼叫點**。自癒查法：
         `grep -n -A2 "^    _w = parcel_min_width_n14" app.py` ⇒ 其三行內
@@ -6724,7 +6777,7 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label='',
     _t_lo = max(0.0, max(max(_tv[_i], _tv[_i + 1]) for _i in _fe_idx))
     # ── 🆕 **K-9-6-b 之 opt-in 帶**（K-6-A2 段五(a)·⛔ 只算不換）────────────────────
     #   `baseline_pts is None` ⇒ **逐字沿用現行**（`_t_hi = _md`）⇒ **生產零行為變更**。
-    #   傳入 ⇒ 帶之上緣改由 `_n14_band_hi` 給（自 BASELINE 法向量得之該宗最小深度 `D`），
+    #   傳入 ⇒ 帶之上緣改由 `_n14_band_hi` 給（該宗**較淺之後緣角點**之 `t`·(c)-1 更正），
     #     此時 `min_depth` **僅供上方之 E-2′ 閘**、不再作 `_t_hi`（**GB-13** 之解除）。
     #   🔒 **`_t_lo` 之交叉核對**：helper 內另有一份前緣邊偵測（同框同式），
     #     二者須逐位元相符；不符即代表二份實作已漂移 ⇒ **loud raise**
