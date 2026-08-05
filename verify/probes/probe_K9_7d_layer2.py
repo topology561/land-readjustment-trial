@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
-r"""K-9-7-d **第二層分支** — 舊(第一層) vs 新(第二層) 對照·**只算不換**（K-6-A2 段四(c)-2(a)）。
+r"""K-9-7-d **第二層分支** — 第一層 vs 第二層 對照（K-6-A2 段四(c)-2(a) 立·**段四(c) 已切換**）。
 
 ## 定位
 
 (c)-2 分三步，**(b) 為強制停機點**：
 
-- **(a)（本檔）** 第二層以 `k97_solve_alloc_t(..., block_vertices=…)` **opt-in** 求解，
-  **生產零呼叫點** ⇒ 只算不換。
-- **(b)** 攤表呈 KL ⇒ **等 KL 放行**。
-- **(c)** 切換（`_build_corner_range_v3` 改傳 `block_vertices`）。
+- **(a)** 第二層以 `k97_solve_alloc_t(..., block_vertices=…)` **opt-in** 求解（只算不換）。
+- **(b)** 攤表呈 KL。
+- **(c)** ✅ **已切換**（`_build_corner_range_v3` 已傳 `block_vertices`·KL 放行 2026-08-05）
+  ⇒ 🔄 **本檔之「一層／二層」二欄語意隨之反轉**（見下）。
 
 ## 兩層之差別（＝ **GB-19**）
 
 | | 帶深 `D(t)` 之臨街段 | 起算線 |
 |---|---|---|
-| **第一層（生產中）** | `Q0 → P_front(t)`（`Q0`＝FRONT ∩ SIDE、`P_front`＝ALLOC ∩ FRONT） | **FRONT_LINE** |
-| **第二層（本批）** | `P_block(t) → PQ(t) ∩ SIDE` | **`PQ`**＝過 `P_block(t)` 平行 FRONT 之直線 |
+| **第一層**（🗄️ 段四(c) 前之生產） | `Q0 → P_front(t)`（`Q0`＝FRONT ∩ SIDE、`P_front`＝ALLOC ∩ FRONT） | **FRONT_LINE** |
+| **第二層**（✅ **現行生產**·乙式） | `P_block(t) → PQ(t) ∩ SIDE` | **`PQ`**＝過 `P_block(t)` 平行 FRONT 之直線 |
 
 `P_block(t)` ＝ `L_in(t) ∩ **BLOCK 邊界**`之**臨街側**者（K-9-8 (2)）。
 `P_block` 落 FRONT 重疊段時 `PQ ≡ FRONT` ⇒ **自然退化回第一層**（K-9-8 (6)）。
@@ -31,9 +31,10 @@ r"""K-9-7-d **第二層分支** — 舊(第一層) vs 新(第二層) 對照·**�
 
 ## 面積對照之手法（**同一條多邊形構造路徑·只換 `t`**）
 
-「舊」＝生產原樣呼叫 `_build_corner_range_v3`；
-「新」＝同一支、只多傳 `_t_override=<第二層 t*>`（段三(a) 已入庫之純加性參數）。
+🔄 **段四(c) 切換後**：「**二層**」＝生產原樣呼叫 `_build_corner_range_v3`；
+「**一層**」＝同一支、只多傳 `_t_override=<第一層 t*>`（段三(a) 已入庫之純加性參數）。
 ⇒ 兩欄之**唯一變因是 `t*`**，不摻構造差異。
+⛔ 若沿用切換前之寫法（一層＝生產），兩欄同源 ⇒ `Δ面積` 恆 `0.000`（同型缺陷已登記）。
 
 ## 落點欄一律**量得**
 
@@ -46,7 +47,7 @@ r"""K-9-7-d **第二層分支** — 舊(第一層) vs 新(第二層) 對照·**�
     python verify/probes/probe_K9_7d_layer2.py                     # 生產圖 V6
     python verify/probes/probe_K9_7d_layer2.py --dxf data/V6_1.dxf # GB-26 之可證偽檢驗
 
-**rc 恆 0**（只算不換·不作為閘）。輸出：
+**rc 恆 0**（診斷·不作為閘）。輸出：
 `verify/out/probe_K9_7d_layer2[_V6_1].log`（摘要）＋ `….full.log`（**同一次跑**之全量）。
 """
 import os
@@ -116,8 +117,8 @@ def main():
         F.append(s)
 
     _both("=" * 138)
-    _both("【K-9-7-d 第二層分支】第一層 vs 第二層 t* 對照 — **只算不換·生產零呼叫點**"
-          "（K-6-A2 段四(c)-2(a)）")
+    _both("【K-9-7-d 第二層分支】第一層 vs 第二層 t* 對照 —— "
+          "🔴 **段四(c) 已切換：第二層即現行生產**")
     _both("第一層＝帶 `[0, D]`、`D` 自 FRONT 之臨街段（Q0→P_front(t)）量；")
     _both("第二層（🆕 **乙式**·K-9-6-b-2·KL 裁 2026-08-05）＝帶 **`[δ_P, δ_P+D_new]`**、"
           "`D_new` 自 PQ 之臨街段（P_block(t)→PQ∩SIDE）量（GB-19／GB-36）")
@@ -165,25 +166,32 @@ def main():
                         _label=lbl, _side=side, block_vertices=b.get("vertices"))
                 except RuntimeError as e:
                     rec["err"] = str(e)
-                # 面積：**同一條多邊形構造路徑**，只換 t
-                try:
-                    _r_old = ns["_build_corner_range_v3"](
-                        b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
-                        al_by.get(lbl), _depth, setback, legal_w, _chi,
-                        dxf_quantum=_q, _label=lbl, _side=side)
-                    rec["a_old"] = float(_r_old.area)
-                except RuntimeError as e:
-                    rec["err"] = (rec["err"] or "") + f"｜第一層構造 raise：{e}"
+                # 面積：**同一條多邊形構造路徑**，只換 `t`。
+                # 🔴 **K-6-A2 段四(c) 語意反轉**（切換後）：生產 `_build_corner_range_v3`
+                #   **已走第二層** ⇒
+                #     「二層」欄 ＝ **不傳 `_t_override`**（生產原樣）；
+                #     「一層」欄 ＝ 以 `_t_override` 注入 **`t_star_layer1`**。
+                #   ⛔ 若沿用切換前之寫法（一層＝生產、二層＝注入 `t_star`），
+                #     兩欄將**同源** ⇒ `Δ面積` 恆 `0.000`——即上批登記之同型缺陷
+                #     （`probe_ruling_K9_7_alloc_t` 之 `a_old`）。**不得重蹈。**
                 if rec["new"] is not None:
                     try:
-                        _r_new = ns["_build_corner_range_v3"](
+                        _r_old = ns["_build_corner_range_v3"](
                             b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
                             al_by.get(lbl), _depth, setback, legal_w, _chi,
                             dxf_quantum=_q, _label=lbl, _side=side,
-                            _t_override=rec["new"]["t_star"])
-                        rec["a_new"] = float(_r_new.area)
+                            _t_override=rec["new"]["t_star_layer1"])
+                        rec["a_old"] = float(_r_old.area)
                     except RuntimeError as e:
-                        rec["err"] = (rec["err"] or "") + f"｜第二層 t* 構造 raise：{e}"
+                        rec["err"] = (rec["err"] or "") + f"｜第一層 t* 構造 raise：{e}"
+                try:
+                    _r_new = ns["_build_corner_range_v3"](
+                        b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
+                        al_by.get(lbl), _depth, setback, legal_w, _chi,
+                        dxf_quantum=_q, _label=lbl, _side=side)
+                    rec["a_new"] = float(_r_new.area)
+                except RuntimeError as e:
+                    rec["err"] = (rec["err"] or "") + f"｜生產（第二層）構造 raise：{e}"
                 rows.append(rec)
 
     # ── 【A】t* 位移 ＋ 帶深 ─────────────────────────────────────────────────
@@ -359,8 +367,9 @@ def main():
     # ── 【H】註記 ────────────────────────────────────────────────────────────
     _both("")
     _both("【H】註記")
-    _both("  · **只算不換**：第二層僅於傳入 `block_vertices` 時啟用；")
-    _both("    生產之 `_build_corner_range_v3` **未傳** ⇒ 第二層之生產呼叫點 ＝ **0**。")
+    _both("  · 🔴 **段四(c) 已切換**：生產 `_build_corner_range_v3` **已傳** `block_vertices`")
+    _both("    （`grep -n -A4 \"_k97 = k97_solve_alloc_t\" app.py` 之四行內含之）"
+          " ⇒ 本表「二層」欄即**生產實算**。")
     _both("  · ⛔ **禁二分／取樣／迭代**：切換點為一次減法、每支一次除法（推導 §二〜§四）；")
     _both("    退化（邊平行 ALLOC／斜率為零／無支落區間／多根）一律 **loud raise**。")
     _both("  · ⛔ **K-9-8 紅線**：求 `P_block` 全程只逐邊求「線段 ∩ 無限直線」，")

@@ -9756,7 +9756,9 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
     """**K-9-7 街角規定範圍之 ALLOC_LINE 解析定位**（正典：
     `grep -n "^### K-9-7 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
 
-    🔴 **K-6-A2 段三(a)：並行實作·只算不換。** 本函式**未接生產路徑**；
+    🗄️ **本段已過期（存查）**：「K-6-A2 段三(a)：並行實作·只算不換·本函式未接生產路徑」
+      ——**自段三(c)（`0429772`）起本函式即生產之 §四 定位器**，段四(c) 起並走第二層。
+    原文：**K-6-A2 段三(a)：並行實作·只算不換。** 本函式**未接生產路徑**；
     生產仍走 `_build_corner_range_v3`（`grep -n "def _build_corner_range_v3" app.py`）。
     切換屬段三(c)、**須待 KL 就位移表放行**。
 
@@ -9806,21 +9808,28 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
       自始不存在**（`grep -n "min_depth_legal" app.py` 與 `grep -n "assert_ok" app.py` 應僅命中本段）。
       ⇒ **寬度斷言自始即無條件執行、從無「未給⇒不斷言」之路**。
 
-    ── 🆕 `block_vertices`：**K-9-7-d 第二層分支之 opt-in 開關**（K-6-A2 段四(c)-2(a)）──
-      **不傳（`None`）** ⇒ 只走上開**第一層四分支**——**現行生產路徑·逐字未動**。
-      **傳入** ⇒ 追加**第二層**：量測帶之**兩條邊界線皆自 `PQ` 起算**
-        （🆕 **乙式**·K-9-6-b-2·KL 裁 2026-08-05）⇒ 帶 ＝ `[δ_P(t), δ_P(t) + D_new(t)]`；
+    ── `block_vertices`：**K-9-7-d 第二層分支之開關**（立於 K-6-A2 段四(c)-2(a)）──────
+      **傳入** ⇒ 走**第二層**：量測帶之**兩條邊界線皆自 `PQ` 起算**
+        （**乙式**·K-9-6-b-2·KL 裁 2026-08-05）⇒ 帶 ＝ `[δ_P(t), δ_P(t) + D_new(t)]`；
         `PQ` ＝ 過 **`P_block(t)`**、平行前緣線之直線；
         `P_block(t)` ＝ `L_in(t) ∩ **BLOCK 邊界**` 之**臨街側**者（K-9-8 (2)）。
         🗄️ **甲式（帶 ＝ `[0, D_new]`·只改帶深不改上緣）已作廢**。
-      🔴 **(c)-2(a) 為「只算不換」** ⇒ **生產零呼叫點**。自癒查法（**正面列舉受檢檔**）：
-        `grep -n -A3 "^    _k97 = " app.py` ⇒ 其四行內**不得出現** `block_vertices`
-        （行首四空格之錨使本 docstring 不自我命中；該處係本函式於 `app.py` 之**唯一**呼叫點）；
-        `grep -c "block_vertices=" verify/probes/probe_K9_7d_layer2.py` ⇒ 2（探針側）。
-      推導逐字見 `docs/reports/W-G.5_K6-A2-段四c2a_第二層分支推導.md`（§二〜§四）。
+      **不傳（`None`）** ⇒ 只走**第一層四分支**（🗄️ 段四(c) 前之生產式）
+        ——現僅供**探針之對照輪**（如 `probe_ruling_K9_7_alloc_t` 不傳）。
+      🔴 **K-6-A2 段四(c)（KL 放行 2026-08-05）起，生產已傳之** ⇒
+        ⛔ **前四批之「生產零呼叫點」斷言作廢**。現行自癒查法：
+        `grep -n -A3 "^    _k97 = " app.py` ⇒ 其四行內**應出現** `block_vertices`
+        （行首四空格之錨使本 docstring 不自我命中；該處係本函式於 `app.py` 之**唯一**呼叫點）。
+      推導逐字見 `docs/reports/W-G.5_K6-A2-段四c2a2_乙式八支推導.md`
+        （🗄️ 甲式原推導 `…段四c2a_第二層分支推導.md` 之 §三／§四 已加註作廢·§一§二仍有效）。
 
     回傳 dict：`c`／`k`／`m`／`w0`／`D0`／`branch`／`t_star`／`t_interval`／
-      `switch_points`／`W_at_t_star`／`depth_at_t_star`／`P_front_on_chamfer`；
+      `switch_points`／`W_at_t_star`／`depth_at_t_star`；
+      （🗄️ **舊之「`P_front` 截角旗標」及其回傳鍵已於段四(c) 整段刪除·GB-37 已收**
+        ——該旗標之受測對象為 `P_front`，對 GB-19 之觸發條件為**假陰性**
+        （0/16 vs `P_block` 之 4/16）且無任何消費端；
+        截角判定改由下列之 `P_block_on_chamfer` 承擔。
+        🔒 本段**刻意不寫出已刪符號之字面名**，使 GB-37 之驗收 grep 為**真零命中**。）
       **第二層啟用時另加**：`layer2`／`t_star_layer1`／`branch_layer1`／
       `depth_at_t_star_layer1`／`dt_layer2`／`P_block`／`Q_pq`／`P_block_edge`／
       `P_block_inset_from_front`／`P_block_on_front`／`P_block_on_chamfer`／
@@ -9946,25 +9955,21 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
     if _D_at <= 0:
         _stop(f"後置斷言破：所構造範圍之最小深度 {_D_at:.6f} ≤ 0（分支 {branch}）")
 
-    # ── K-9-7-d 之第二層分支（`P_block` 落截角邊 vs FRONT 重疊段）────────────
-    #   🔴 **本層需 K-9-8 之 `PQ` 延伸線段方能定義**（K-9-6-b-1：量測用之「道路境界線」
-    #     ＝ K-9-8 (3) 之延伸線段）。K-9-8 屬**段四**、尚未實作
-    #     ⇒ 本函式**只偵測、不臆造**：偵到即回報旗標，由呼叫端決定是否停機。
-    #   ⚠️ 此處偵測用之 `P_front` 與 K-9-8 之 `P_block` **同名異物**（K-9-7-a 衝突二）。
-    _on_cham = None
-    if chamfer_tri is not None and not chamfer_tri.is_empty:
-        from shapely.geometry import Point as _PT97
-        _sp = _s_Pfront(t_star)
-        _Ppt = _PT97(F1[0] + _sp * dx, F1[1] + _sp * dy)
-        _on_cham = bool(chamfer_tri.buffer(1e-9).contains(_Ppt))
-        if _on_cham and block_vertices is None:
-            _notes.append("⚠️ `P_front(t*)` 落在截角三角形內 ⇒ 該範圍之臨街段非全在 "
-                          "FRONT_LINE 上（K-9-5-2 ②）；K-9-7-d 之第二層分支需 K-9-8 之 "
-                          "`PQ` 延伸線段（**段四**）方能解析，本函式不臆造。")
+    # ── 🗄️ **GB-37 已收（K-6-A2 段四(c)·2026-08-05）：舊截角偵測器整段刪** ────────────
+    #   舊碼於此以 **`P_front(t*)`**（`ALLOC ∩ 前緣線`）測「是否落截角三角形內」，
+    #   並以一個同名回傳鍵輸出之。**該偵測器係對 GB-19 觸發條件之假陰性**：
+    #     實測 `P_front` **0/16**、而 K-9-8 (2) 之 `P_block` **4/16** 離開 FRONT
+    #     （`verify/out/probe_ruling_K9_7_alloc_t.log`【D】舊版 ／
+    #      `verify/out/probe_K9_7d_layer2.log`【C】）；
+    #   且**無任何呼叫端在讀它**（`_build_corner_range_v3` 只取 `t_star`／
+    #     `depth_at_t_star`／`D0`／`m`／`band_d_*`）。
+    #   ⇒ 留著只會讓讀者據其 `0/16` 誤判「GB-19 於本案零實例」——**已發生過一次**。
+    #   🔒 **正解已在同一份回傳裡**：`P_block_on_chamfer`（第二層之判定·測 `P_block`）。
+    #   ⛔ **勿再新增任何以 `P_front` 為受測對象之截角旗標。**
 
-    # ══ 🆕 K-9-7-d **第二層分支**之解析求解（K-6-A2 段四(c)-2(a)·⛔ 只算不換）═══════
-    #   🔴 **opt-in**：唯有呼叫端傳入 `block_vertices` 時才啟用；未傳時**上方逐字未動**
-    #     ⇒ 生產行為零變化（(c)-2(a) 之「生產零呼叫點」）。
+    # ══ K-9-7-d **第二層分支**之解析求解（立於段四(c)-2(a)·**段四(c) 起即生產路徑**）══
+    #   🔴 由 `block_vertices` 啟用；未傳時走上方之第一層四分支（🗄️ 段四(c) 前之生產式，
+    #     現僅供探針之對照輪）。**生產已傳** ⇒ ⛔ 舊之「只算不換·生產零呼叫點」敘述作廢。
     #
     #   ── 與第一層之差別（＝ **GB-19**）────────────────────────────────────────────
     #   第一層之量測帶 ＝ `[0, D(t)]`，其**上緣釘在 FRONT_LINE**、帶深自 FRONT 上之
@@ -10212,7 +10217,8 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
         'branch': branch, 't_star': t_star, 't_interval': t_interval,
         'switch_points': _switch,
         'W_at_t_star': _W_at, 'depth_at_t_star': _D_at,
-        'P_front_on_chamfer': _on_cham,
+        # 🗄️ 舊之 `P_front` 截角旗標鍵已刪（GB-37 已收·段四(c)）——見上方註；
+        #    截角判定改由 `P_block_on_chamfer`（第二層）承擔。
         't_star_legacy': _t_legacy,
         'dt': (None if _t_legacy is None else (t_star - _t_legacy)),
         'block_depth': (None if block_depth is None else float(block_depth)),
@@ -10383,14 +10389,26 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     #   🔒 **生產路徑只有一條**：無切換開關、無新舊並存、無靜默降級。
     #   ⚠️ 記號：正典之 `c = ∂w/∂t`、`k = ∂w/∂d`；**舊碼之區域變數 `k` 實係正典之 `c`**
     #      （K-9-7-a 衝突一）——舊式既刪，該同名異義之坑一併消失。
+    # 🔴 **K-6-A2 段四(c)：切換至乙式**（KL 放行 2026-08-05·**生產行為首次真變**）。
+    #   多傳 `block_vertices` ⇒ 啟用 **K-9-7-d 第二層**（K-9-6-b-2·帶 ＝ `[δ_P, δ_P+D_new]`）。
+    #   ⛔ **前四批之「生產零呼叫點」斷言自此作廢**；本行即該斷言之反面證據。
+    #   放行依據（土地後果）：最大位移 `0.004846 m`（＜法定粒度 `0.01 m`）、
+    #     候選資格餘裕／擾動 ＝ 142×、PK 決定性欄位零翻盤
+    #     （`docs/reports/W-G.5_K6-A2-段四c2a2_乙式實作與攤表.md` §三）。
     _k97 = k97_solve_alloc_t(
         block_centroid, front_pts, baseline_pts, side_line_pts, alloc_dir,
         setback, min_width, chamfer_tri=chamfer_tri, block_depth=D,
-        _label=_label, _side=_side)
+        _label=_label, _side=_side, block_vertices=block_vertices)
     t_star = _k97['t_star']
     # 🔒 **帶深自此改用範圍自身之最小深度 `D(t*)`**（非街廓平均深度 `D`）。
     #   `D` 仍保留：① 供 `k97_solve_alloc_t` 回算舊式 `t*` 以資對照；② 缺值仍 loud raise（見上）。
     D_at = _k97['depth_at_t_star']
+    # 🆕 **乙式之量測帶二端**（`d` ＝ FRONT 沿 `b̂n` 之平移量）：`[δ_P, δ_P + D_new]`。
+    #   ⛔ **自檢①／①′ 必須量這兩條線**——若沿用甲式之 `(0, D_at)`，量到的是
+    #     **另一個帶**，其與 `T` 之差恰為階段 A 之殘差 `−k·δ_P`（最劣 `4.867e-03`，
+    #     而 `eps` 上限為 `_CR_EPS_LEGAL_CEIL = 0.005`）⇒ **僅以 2.7% 之餘裕僥倖不紅**，
+    #     且所驗者非本構造之定義。實料：`verify/out/probe_K9_7d_stageA_asrun.log`【A】。
+    _band_lo, _band_hi = _k97['band_d_top'], _k97['band_d_bot']
 
     # 🆕 K-6-A2 段三(a)→(c)：`_t_override` 之語意**於切換後反轉**——
     #   切換前：探針用它注入**新** `t*`（生產走舊式）；
@@ -10403,15 +10421,22 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     if _t_override is not None:
         t_star = float(_t_override)
         D_at = _k97['D0'] - max(0.0, _k97['m'] * t_star)
+        # ⚠️ 覆寫路徑為**診斷重播**：所注入之 `t` 依定義不是本方程之解 ⇒ 自檢① 跳過，
+        #   其帶亦不是該 `t` 之乙式帶。此處仍取**第一層口徑** `[0, D_at]`，
+        #   使自檢①′ 退化為「閉式 vs shapely 之覆算」（其唯一仍成立之作用）。
+        #   ⛔ 勿據覆寫輪之帶推論乙式之幾何。
+        _band_lo, _band_hi = 0.0, D_at
         _t_is_override = True
 
     # ── 自檢①：構造之**定義**——回量帶內最小寬 ＝ 退縮寬 ＋ 畸零地最小寬 ──────────
-    #   🔒 量測深度改用 `D_at`（範圍自身最小深度）——與 §四 之定位同一基準。
+    #   🔒 量測線改用**乙式帶之二端**（`[δ_P, δ_P+D_new]`·K-9-6-b-2），
+    #     ⛔ 非甲式之 `(0, D_at)`——見上方 `_band_lo/_band_hi` 之註。
     eps = _corner_range_eps(dxf_quantum)
-    w0, wD = _W(0.0, t_star), _W(D_at, t_star)
+    w0, wD = _W(_band_lo, t_star), _W(_band_hi, t_star)
     if (not _t_is_override) and abs(min(w0, wD) - T) > eps:
         _stop(f"構造自檢不合：帶內最小寬 {min(w0, wD):.6f} ≠ 退縮＋最小寬 {T:.6f}"
-              f"（eps={eps:.6g}·由 q={dxf_quantum} 導出·帶深 D(t*)={D_at:.6f}）")
+              f"（eps={eps:.6g}·由 q={dxf_quantum} 導出·"
+              f"帶 [{_band_lo:.6f}, {_band_hi:.6f}]·D_new(t*)={D_at:.6f}）")
 
     # ── 自檢①′：以**獨立實作**覆算同一組寬度（shapely 線交點·非上方之閉式）──────────
     #   ①單以閉式回代，只證「解方程沒解錯」；①′改用完全不同之求交路徑，才驗得出
@@ -10424,7 +10449,7 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
                 (Q0[0] + t_star * anx + aux * _LBIG, Q0[1] + t_star * any_ + auy * _LBIG)])
     _Sinf = _LS3([(S1[0] - sux * _LBIG, S1[1] - suy * _LBIG),
                   (S1[0] + sux * _LBIG, S1[1] + suy * _LBIG)])
-    for _d_chk, _w_chk in ((0.0, w0), (D_at, wD)):
+    for _d_chk, _w_chk in ((_band_lo, w0), (_band_hi, wD)):
         _P = (F1[0] + _d_chk * bnx, F1[1] + _d_chk * bny)
         _dep = _LS3([(_P[0] - dx * _LBIG, _P[1] - dy * _LBIG),
                      (_P[0] + dx * _LBIG, _P[1] + dy * _LBIG)])

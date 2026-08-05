@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-r"""K-9-7-d 第二層分支之 **PK 影響評估** — 只算不換（K-6-A2 段四(c)-2(a)）。
+r"""K-9-7-d 第二層分支之 **PK 影響評估**（K-6-A2 段四(c)-2(a) 立·段四(c) 切換後語意反轉）。
 
 ## 為何不能只換 `min_corner_area_p*`
 
@@ -16,10 +16,12 @@ r"""K-9-7-d 第二層分支之 **PK 影響評估** — 只算不換（K-6-A2 段
 
 ## 手法
 
-**舊**輪＝生產原樣（第一層·零 patch）；
-**新**輪＝於 harvest 命名空間把 `_build_corner_range_v3` 換成
-「注入**第二層 `t*`**」之包裝（只多傳 `_t_override=`，該參數係段三(a) 已入庫之純加性參數）。
-⇒ **生產碼一字未改**、第二層維持**零生產呼叫點**。
+🔄 **K-6-A2 段四(c) 切換後·語意已反轉**：
+**新**輪＝生產原樣（**生產已走第二層**·零 patch）；
+**舊**輪＝於 harvest 命名空間把 `_build_corner_range_v3` 換成
+「注入**第一層 `t*`**」之包裝（只多傳 `_t_override=`·段三(a) 已入庫之純加性參數）。
+⇒ **生產碼一字未改**。
+⛔ 若沿用切換前之寫法（注入 `t_star`），兩輪同源 ⇒ 全表恆同、驗不到東西。
 
 ⛔ **禁只換 `min_corner_area_p*` 而沿用舊範圍多邊形**——那只測了 (c)。
 
@@ -27,7 +29,7 @@ r"""K-9-7-d 第二層分支之 **PK 影響評估** — 只算不換（K-6-A2 段
 
     python verify/probes/probe_K9_7d_pk_impact.py
 
-**rc 恆 0**（只算不換）。輸出 `verify/out/probe_K9_7d_pk_impact.log`。
+**rc 恆 0**（診斷·不作為閘）。輸出 `verify/out/probe_K9_7d_pk_impact.log`。
 """
 import os
 import sys
@@ -62,9 +64,9 @@ def main():
     os.makedirs(OUTDIR, exist_ok=True)
     L = []
     L.append("=" * 128)
-    L.append("【K-9-7-d 第二層分支之 PK 影響評估】只算不換（K-6-A2 段四(c)-2(a)）")
+    L.append("【K-9-7-d 第二層分支之 PK 影響評估】第一層 vs 第二層（**生產已為第二層**）")
     L.append("三條路徑同時比較：(a) 候選資格 1.0㎡ / (b) 優先權指數三分項 / (c) G 值門檻")
-    L.append("舊＝生產原樣（第一層·零 patch）；新＝patch 注入第二層 t*（生產碼一字未改）")
+    L.append("🔄 切換後語意反轉：新＝生產原樣（**第二層**·零 patch）；舊＝patch 注入**第一層** t*")
     L.append("=" * 128)
 
     ns, fake_st = harvest()
@@ -85,8 +87,8 @@ def main():
     bl_by = cad.get("baselines", {}) or {}
     legal_w = float(snapshot["global"]["法定最小寬_m"])
 
-    # ── 1) 先算各 (街廓, 側, 情境) 之**第二層** t*（新輪由 patch 注入）────────────
-    T_NEW, DT = {}, {}
+    # ── 1) 先算各 (街廓, 側, 情境) 之**第一層** t*（**舊**輪由 patch 注入）──────────
+    T_OLD, DT = {}, {}
     for setback in (0.0, 3.5):
         for lbl in sorted(cb_by):
             b = cb_by[lbl]
@@ -104,7 +106,10 @@ def main():
                     chamfer_tri=ns["_make_chamfer_tri_wb"](b, side),
                     block_depth=float(snapshot["blocks"][lbl]["街廓分配深度_m"]),
                     _label=lbl, _side=side, block_vertices=b.get("vertices"))
-                T_NEW[(lbl, side, setback)] = r["t_star"]
+                # 🔴 **K-6-A2 段四(c) 語意反轉**（切換後）：生產已走第二層 ⇒
+                #   需 patch 注入者為 **第一層**之 `t*`（「舊」輪）；「新」輪＝生產原樣。
+                #   ⛔ 若沿用切換前之寫法（注入 `t_star`），兩輪同源 ⇒ 全表恆同、驗不到東西。
+                T_OLD[(lbl, side, setback)] = r["t_star_layer1"]
                 DT[(lbl, side, setback)] = r["t_star"] - r["t_star_layer1"]
     # **位移組／對照組由實算之 Δt* 定**（⛔ 不硬寫死格名·換圖即自動重分組）
     MOVED = {(l, s) for (l, s, _sb), d in DT.items() if abs(d) > 1e-12}
@@ -118,11 +123,12 @@ def main():
     STATE = {"setback": None, "use_new": False, "patched_hits": 0}
 
     def _patched_range(*a, **kw):
-        if STATE["use_new"]:
+        # 🔄 切換後：**舊**輪才需 patch（注入第一層 `t*`）；新輪＝生產原樣（第二層）。
+        if not STATE["use_new"]:
             key = (kw.get("_label"), kw.get("_side"), STATE["setback"])
-            if key in T_NEW and T_NEW[key] is not None:
+            if key in T_OLD and T_OLD[key] is not None:
                 kw = dict(kw)
-                kw["_t_override"] = T_NEW[key]
+                kw["_t_override"] = T_OLD[key]
                 STATE["patched_hits"] += 1
         return _orig_range(*a, **kw)
 
@@ -159,8 +165,8 @@ def main():
 
     ns["_build_corner_range_v3"] = _orig_range
     ns["select_corner_lots_both_sides_v12"] = _orig_v12
-    L.append(f"patch 命中次數（**新**輪注入第二層 t* 之呼叫）＝ {STATE['patched_hits']}"
-             f"｜舊輪＝生產原樣、零 patch")
+    L.append(f"patch 命中次數（**舊**輪注入第一層 t* 之呼叫）＝ {STATE['patched_hits']}"
+             f"｜新輪＝生產原樣（第二層）、零 patch")
 
     # ── 3) 逐格對照 ────────────────────────────────────────────────────────
     def _pick(res, lbl, side):
@@ -314,7 +320,8 @@ def main():
     L.append("-" * 128)
     L.append("")
     L.append("【D】註記")
-    L.append("  · 本檔**只算不換**：第二層維持零生產呼叫點；patch 僅存在於本行程。")
+    L.append("  · 🔴 **段四(c) 後生產已走第二層**（`grep -n -A4 \"_k97 = k97_solve_alloc_t\" app.py`"
+             " 之四行內含 `block_vertices`）；patch 僅存在於本行程、生產碼一字未改。")
     L.append("  · 三條路徑皆隨範圍多邊形變動——patch 的是 v12 內部所呼叫之 "
              "`_build_corner_range_v3`，")
     L.append("    故 (a) 候選資格、(b) 指數三分項分母、(c) G 值門檻 同時改用新範圍。")
