@@ -105,6 +105,11 @@ def main():
     for _fx, _what in (("fixture_cad_binding_order.py", "🆕 C-6 CAD 線層綁定·順序不變性(3 置換)"),
                        ("fixture_baseline_candidates.py", "🆕 C-5 BASELINE 候選三分支＋R1 共線 golden"),
                        ("fixture_n14_min_width.py", "🆕 N-14/N-15 宗地最小寬度·深度帶內取 min"),
+                       # 🆕 K-6-A2 段五(c)-2 之**合成案**：`baseline_pts` 餵值鏈在 `main()` 內
+                       #   ⇒ `run_all` 從不執行之（`CLAUDE.md:56`）。掛入本清單之由 ＝ 上方
+                       #   同一段註解所指之**覆蓋率洞**（「檔存在於 verify/ 卻不在任何自動流程內」）。
+                       ("fixture_n14_feed_chain.py",
+                        "🆕 K-9-6-b 餵值鏈合成案·逐街廓路由＋查無 BASELINE 停機"),
                        ("fixture_block_depth_n19p.py",
                         "🆕 K-8 §二 N-19′ 街廓平均深度·app 真符號 vs 裁定靶(六塊+region_min)"),
                        ("fixture_corner_range_k8.py",
