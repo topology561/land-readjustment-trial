@@ -217,7 +217,12 @@ sed -n '1,80p' docs/reports/W-G.5_K6-A2-段五_偵察.md            # 段五之�
 - 現行驗收基線：**名目族 132／86 PASS／46 FAIL**；**夾具/golden 族 12／11 PASS／1 FAIL**
   （🔧 `3c6a184` 更新：夾具族由 `10/2` 變 **`11/1`**——`fixture_corner_range_k8` 已於段四(c) 轉綠；
    餘 1 紅 ＝ **E 系列實測快照閘**·CLAUDE.md 既載）。
-- **最新靶 log ＝ `verify/out/K6A2_seg5a_runall.log`**（`9fbce47`·與 `K6A2_seg4c_runall.log` **逐字節相同**·兩檔皆 1,688,154 bytes）；
+- **最新靶 log ＝ `verify/out/K6A2_seg5c1_runall.log`**（`64b9bb8`·與 `K6A2_seg5a_runall.log`／
+  `K6A2_seg4c_runall.log` **逐字節相同**——以 `diff` 為據）。
+  🔴 **位元組數須聲明量測框**（**失敗考古 節 48**）：**工作樹** `wc -c` ⇒ `1688154`（CRLF）；
+  **倉內 blob** `git cat-file -s $(git rev-parse HEAD:verify/out/K6A2_seg5c1_runall.log)` ⇒ `1681942`。
+  二者差 `6212` ＝ 該檔之 CRLF 數（`core.autocrlf=true`，而 `.gitattributes` 之 `-text`
+  **不涵蓋 `*.log`**）。⇒ **claude.ai 自倉內看到的是 `1681942`**；「逐字節相同」一律以 `diff` 為據。
   對拍工具 `verify/tools/nameset_diff.py`（**兩族分開比**·⛔ 禁以計數驗收·見 **GB-38**）。
 - ⚠️ 守恆殘差 `F.3 結構永久閘0m` 現為 **`0.03`**（容差 `0.585`）——**KL 已裁定接受**；且依「池採量」之推論，**該殘差恆非零**、⛔ 不得再訂「回到精確零」之驗收線（正典 `grep -n "^#### 🔒 抵費地池之面積採" docs/rulings/K-6_*.md`）。
 - 收官前置：`git rev-parse origin/wip/s1-endpart` 已含該 commit（**不綠不推、不推不報**）。
