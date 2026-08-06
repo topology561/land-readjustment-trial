@@ -252,7 +252,8 @@ def main():
     L.append(f"{'情境':<6}{'街廓/側':<12}{'T':>7}{'帶端 d':>12}"
              f"{'(a)線距':>13}{'(b)弦':>13}{'(a)−(b)':>13}{'弦段數':>7}  (c) 弦兩端點之邊界歸屬")
     L.append("-" * 190)
-    _viol, _okcell, _errc = [], 0, 0
+    _viol, _eqT, _okcell, _errc = [], [], 0, 0
+    _Q = 1e-5      # DXF 量化步長之量級（`dxf_quantum`）
     for r in rows:
         _tag = f"{r['lbl']}/{r['side']}"
         if "err" in r:
@@ -262,10 +263,17 @@ def main():
         _okcell += 1
         for _d, _ld, _ch, _ns, _own in r["res"]:
             _gap = _ld - _ch
+            _flag = ("  ⚠️ 量化噪訊（|(a)−(b)| ≤ 1e-5·⛔ 非違反號規）"
+                     if -_Q <= _gap < 0 else "")
             L.append(f"{r['sb']:<6}{_tag:<12}{r['T']:>7.2f}{_d:>12.6f}"
                      f"{_ld:>13.6f}{_ch:>13.6f}{_gap:>13.6f}{_ns:>7}  "
-                     + "｜".join(_own))
-            if _ch < r['T'] - 1e-9:
+                     + "｜".join(_own) + _flag)
+            # 🔒 **計數口徑**（S6-2 補丁二-4）：`_Q` ＝ DXF 量化步長之量級（1e-5）。
+            #   「弦 < T」須**嚴格小於且超出量化噪訊**；`|弦 − T| ≤ _Q` 者另計為「== T」。
+            #   ⛔ 前版以 `T - 1e-9` 為界 ⇒ 兩情境對同一格給出不一致之歸類。
+            if abs(_ch - r['T']) <= _Q:
+                _eqT.append((r['sb'], _tag, _d, _ld, _ch, r['T']))
+            elif _ch < r['T']:
                 _viol.append((r['sb'], _tag, _d, _ld, _ch, r['T']))
     L.append("-" * 190)
 
@@ -300,13 +308,25 @@ def main():
     for v in _viol:
         L.append(f"      {v[0]:<6}{v[1]:<12}d＝{v[2]:.6f}　線距 {v[3]:.6f}"
                  f"　**弦 {v[4]:.6f}** < T {v[5]:.2f}")
-    if _viol and not _bad:
-        L.append("  ⇒ 🔴 **(b) < T 而 (a) == T** ⇒ 「構造保證」與「實量」**是兩個量**；")
-        L.append("     `K-9-5-2` ⑤「面積夠 ⇒ 寬度自動合格」之推論**於規定範圍上即已證偽**，")
-        L.append("     **與 winner 無關** ⇒ ⛔ 不必再看 winner 之虛擬塊。")
-    elif not _viol:
-        L.append("  ⇒ **(b) == (a) == T** ⇒ 假說**於規定範圍上不成立**；")
-        L.append("     成因必在「規定範圍 → winner 虛擬塊」之間 ⇒ 回原單 §一 逐格追。")
+    L.append(f"  **(b) 弦 == T（差 ≤ {_Q:g}·量化噪訊內）之帶端**：**{len(_eqT)}** 處"
+             + ("　⇒ " + "；".join(f"{v[0]} {v[1]} d={v[2]:.6f}（弦 {v[4]:.9f}）"
+                                   for v in _eqT) if _eqT else ""))
+    L.append("")
+    L.append("  🔧 **本段之結論已於 S6-2 補丁二撤回（claude.ai 自撤·2026-08-06）**：")
+    L.append("     🗄️ 原印「⇒ (b) < T 而 (a) == T ⇒ ⑤ 之推論於規定範圍上即已證偽、")
+    L.append("        **與 winner 無關** ⇒ ⛔ 不必再看 winner 之虛擬塊」——**整段作廢**。")
+    L.append("     **作廢之由**：本段之判別條件係「量 `rng` 之弦（**截角後**）對 `T`」，")
+    L.append("        違反 `CLAUDE.md` 🔒「**兩套側界·禁混用**」及其法源")
+    L.append("        （花蓮縣畸零地使用規則第四條末句：角地應截角者，其寬度深度係指**截角前**）")
+    L.append("        ⇒ **`rng` 之弦本就不是法定寬度**，拿它對 `T` 不構成對 ⑤ 之證偽。")
+    L.append("  🔴 **本批未涉 winner；winner 側之成因『未查』。**")
+    L.append("  ⛔ 二則裁定（`K-9-5-2-a`-3／`K-9-5-3`）之**互斥標記維持不動**，"
+             "⛔ 不得據本批解除。")
+    L.append("  ✅ **本批仍證成者**（⛔ 以下三項不涉 ⑤）：")
+    L.append("     (a) 截角對 `rng` 弦之削減量於 `0m`／`3.5m` **逐位相同**"
+             "（見【C-2】之 `(a)−(b)` 欄）⇒ 退縮只平移 `L(t*)`、不動截角；")
+    L.append("     (b) 碼註「R4 左 弦@d=0 ＝1.36 vs 真寬 5.08」**完全複現**（見【C-2】）；")
+    L.append("     (c) `rng` 之弦**不是法定寬度**（法源如上）。")
 
     # ── 【C-2】§三-補：`d = 0`（FRONT_LINE 上）之弦 vs 線距 ────────────────────
     L.append("")
@@ -324,6 +344,21 @@ def main():
     L.append("-" * 190)
     L.append("  🎯 **靶**：碼內註記載「實測 R4 左 弦@d=0 ＝1.36 vs 真寬 5.08」"
              "（`app.py` 之自檢①′ 上方）⇒ 對讀本表 `0m R4/left` 一列。")
+
+    # ── 【C-3】兩項**待答觀測**（S6-2 補丁二-5·⛔ 不得留白給後人當前提）─────────
+    L.append("")
+    L.append("【C-3】⚠️ 兩項**待答觀測**（本批**未解釋**·⛔ 禁當作已解）")
+    L.append("-" * 190)
+    L.append("  (a) **帶頂深度 `d_top` 為負**之格（`δ_P < 0` ⇒ `P_block` 落 FRONT_LINE **臨路側**）：")
+    for r in rows:
+        if "band" not in r or r["band"][0] >= 0:
+            continue
+        L.append(f"      {r['sb']:<6}{r['lbl'] + '/' + r['side']:<12}"
+                 f"d_top ＝ {r['band'][0]:+.9f}")
+    L.append(f"      ⚠️ 最劣者之量級為 DXF 量化步長（{_Q:g}）之 **1400 倍以上** ⇒ **不是噪訊**。")
+    L.append("      🛑 **其幾何成因本批未查**——⛔ 不得臆測，亦不得當作已知。")
+    L.append("  (b) **弦 > 線距**（`(a)−(b)` 為負）之帶端：見【A】之 ⚠️ 標記列；")
+    L.append(f"      其量值落在 `±{_Q:g}` 內 ⇒ **量化噪訊**，⛔ **非**違反號規、⛔ 非幾何異常。")
 
     L.append("")
     L.append("【D】註記")

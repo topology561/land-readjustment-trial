@@ -23,7 +23,7 @@
 
 | 事實 | 據 |
 |---|---|
-| 其 **G ≥ 街角規定面積** 係**碼面強制** | `app.py:11255` `if cand_G < cand.get('min_area_to_apply', 0): … eliminated` ⇒ 未達者**根本進不了 `qualified`**，遑論成為 winner |
+| 其 **G ≥ 街角規定面積** 係**碼面強制** | `app.py:11255` `if cand_G < cand.get('min_area_to_apply', 0): … eliminated` ⇒ 未達者**根本進不了 `qualified`**，遑論成為 winner<br>🔴 **本列已於 S6-2 主測後存疑·⛔ 不得再作為本上呈之實例佐證**：`g_rows` 之 `G(㎡)` 於 `3.5m R1/right` 實測為 **`227.72`**，**低於**同格之街角規定範圍面積 **`232.79`**（`verify/out/probe_K9_s62_k98_line_vs_chord.log`【B】）⇒ 該格**可能是「面積也不足」而非「面積過、寬不足」**，若然則 `K-9-5-2-a`-3 **根本不適用**。⚠️ 資格閘所比之 `cand_G` 與 `g_rows` 之 `G(㎡)` **是否同量未查明**（同名不同量之嫌·體例同 `K-9-6-a`）。詳見 `docs/reports/W-G.7_K6-A2-S6-2_主測_線距vs弦.md` §〇-2 |
 | 該格**確為 winner 且合格** | `verify/out/probe_K9_7d_pk_impact.log:29`：`3.5m R1/right … 門檻 232.79→232.79｜候選 1→1｜合格 1→1｜winner ['628(5)']` |
 | 其**量得寬 < 門檻** | `verify/out/probe_K9_seg6_w_delta.log`【B】：`6.847031` vs `T = 7.00`（短少 `0.152969`） |
 | 與正典 `K-9-5-2` ④⑤ 之預測**相反** | ④「winner 之 G 一定 ≥ 街角最小規定範圍」；⑤「**面積夠 ⇒ 街角第 1 宗寬度自動合格」為真**」 |
