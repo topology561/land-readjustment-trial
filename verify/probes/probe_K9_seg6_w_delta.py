@@ -23,9 +23,11 @@ r"""**GB-40 寬度攤表** — 街角第 1 宗於虛擬塊上：舊帶 vs 新帶
 ⇒ 新帶分支下 `min_depth` **只剩 `:6660` 之 `>0` 檢查** ⇒ 傳何值不影響 `w_new`。
 ⛔ **不得**為此替 `k98_virtual_measure_block` 加附表 `min_depth` 入參。
 
-🔒 **出處自檢閘（⛔ 不得省·不得放寬為容差）**：`w_old` 必須與 `k98["min_width"]`
-**完全相等**（`==`·同進程同引數同函式）。不等 ⇒ **loud raise**
-——代表本檔量的不是生產要切的那個東西。
+🔒 **切換哨兵（⛔ 不得省·不得放寬為容差）**：`w_new` 必須與 `k98["min_width"]`
+**完全相等**（`==`·同進程同引數同函式）。不等 ⇒ **loud raise**。
+🔧 **本閘已於 K-6-A2 段六前置反向**：切換前 k98 走舊帶 ⇒ 閘對 `w_old`；
+**切換後 k98 走新帶**（`grep -n "baseline_pts=baseline_pts))" app.py`）⇒ 閘改對 `w_new`。
+⇒ 自此其角色為**切換方向之哨兵**：若有人回退該切換，k98 又回舊帶量 ⇒ **本閘即響**。
 （`d_hat` 之位元同一性：k98 之 `_u()` 與本檔之 `dh` **係同一算式**
  `ax/hypot(ax,ay)` ⇒ 位元相同；⛔ 勿改寫成先算長度再乘倒數。）
 
@@ -218,15 +220,6 @@ def main():
                 w_old = float(ns["parcel_min_width_n14"](
                     _cc, dh, _pb, _dep, _label=f"{lbl}/{side}·old"))
                 rec["w_old"] = w_old
-                # 🔒 出處自檢閘：`==`，⛔ 不放寬為容差
-                _same = (w_old == k98["min_width"])
-                _gate.append((rec["sb"], lbl, side, str(pid), w_old,
-                              k98["min_width"], _same))
-                if not _same:
-                    raise RuntimeError(
-                        f"🔴 出處自檢閘破：{lbl}/{side} 之 w_old {w_old!r} "
-                        f"≠ k98['min_width'] {k98['min_width']!r}"
-                        f"——本檔量的不是生產要切的那個東西，停")
                 try:
                     rec["t_hi_new"] = float(ns["_n14_band_hi"](
                         _cc, dh, _pb, bp, _label=f"{lbl}/{side}")[1])
@@ -239,6 +232,21 @@ def main():
                 except RuntimeError as e:
                     # 🔒 §7-5 末：逐字記入備註，⛔ 不得整支掛掉、⛔ 不得靜默跳過
                     rec["note"] = "w_new raise：" + str(e).splitlines()[0][:110]
+                # 🔒 **切換方向之哨兵**（K-6-A2 段六前置 §六-1·閘已反向）：
+                #   切換前 k98 回的是舊帶之量 ⇒ 對 `w_old`；**切換後 k98 回的是新帶之量**
+                #   ⇒ 改對 **`w_new`**。若有人回退 `grep -n "baseline_pts=baseline_pts))" app.py`
+                #   之切換，k98 又回舊帶量 ⇒ **本閘即響**。
+                #   ⛔ 判準仍為 `==`（同進程同引數同函式 ⇒ 位元必等），**不得放寬為容差**。
+                #   ⚠️ 本閘置於 `w_new` **算出之後**——⛔ 不得留下對 `w_old` 之死閘。
+                if "w_new" in rec:
+                    _same = (rec["w_new"] == k98["min_width"])
+                    _gate.append((rec["sb"], lbl, side, str(pid), rec["w_new"],
+                                  k98["min_width"], _same))
+                    if not _same:
+                        raise RuntimeError(
+                            f"🔴 切換哨兵破：{lbl}/{side} 之 w_new {rec['w_new']!r} "
+                            f"≠ k98['min_width'] {k98['min_width']!r}"
+                            f"——k98 未走新帶（`baseline_pts` 之切換恐已被回退），停")
                 # `max(_tv)`（E-2′ 之流失紀錄）＋ 框之逐位元核對
                 _tv = _ring_ts(_cc, dh, _pb)
                 rec["tmax"] = max(_tv)
@@ -252,16 +260,19 @@ def main():
 
     # ── 【A】出處自檢閘（**逐格**·⛔ 非「12 格全過」一句話）─────────────────────
     L.append("")
-    L.append("【A】§7-4 出處自檢閘：`w_old == k98['min_width']`（**逐格列示**·⛔ 禁計數式驗收）")
+    L.append("【A】切換哨兵：`w_new == k98['min_width']`（**逐格列示**·⛔ 禁計數式驗收）"
+             "——🔧 閘已反向（切換後 k98 走新帶）")
     L.append("-" * 200)
     L.append(f"{'情境':<6}{'街廓/側':<12}{'街角第1宗':<13}"
-             f"{'w_old（本檔現算）':>22}{'k98[min_width]':>22}  相等？")
+             f"{'w_new（本檔現算）':>22}{'k98[min_width]':>22}  相等？")
     L.append("-" * 200)
     for _sb, _lbl, _sd, _pid, _wo, _km, _ok in _gate:
         L.append(f"{_sb:<6}{_lbl + '/' + _sd:<12}{_pid:<13}"
                  f"{_wo!r:>22}{_km!r:>22}  {'✅ ==' if _ok else '🔴 ≠'}")
     L.append("-" * 200)
     L.append("  🔒 判準為 `==`（⛔ 未放寬為容差）；任一格不等即 loud raise、本檔不會走到此處。")
+    L.append("  🔧 **本閘已反向**：切換前對 `w_old`、切換後對 `w_new`"
+             "——⇒ 本段同時是**切換生效之證據**與**回退之哨兵**。")
 
     # ── 【B】GB-40 寬度攤表（§7-5·全精度·⛔ 禁捨入）─────────────────────────────
     L.append("")

@@ -9875,7 +9875,8 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
                         ⇒ 未傳（`None`）時原樣回 `None`，
                           **⛔ 不以 `on_front` 之反面充數**（二者非互補：
                           `P_block` 可能既不在 FRONT 重疊段、也不在截角三角形內）。
-    回傳 dict：`poly`（虛擬塊）／`P_block`／`Q`／`on_chamfer`／`depth_from_PQ`／`min_width`
+    回傳 dict：`poly`（虛擬塊）／`P_block`／`Q`／`on_chamfer`／
+      `depth_from_PQ`（**診斷用**·⛔ 非帶深·見 (5) 之 ⛔）／`min_width`
     **缺件／退化一律 loud raise**（禁兜底）。
     """
     import math as _m98
@@ -9962,20 +9963,34 @@ def k98_virtual_measure_block(block_vertices, front_pts, baseline_pts,
 
     # ── (5) 深度自 PQ 起算（非自 FRONT）──────────────────────────────────────────
     #   PQ ∥ FRONT ⇒ 其上各點至 BASELINE 之垂距沿線性 ⇒ 取兩端 min（解析·禁取樣）。
+    #
+    #   🔴 **K-6-A2 段六已切換**：本值**僅為診斷／報表**，⛔ **不再驅動量測帶**。
+    #     其受詞為**臨街段**（`P_block` 與 `Q` **皆在 `PQ` 上**·K-9-6-a 之衍生句），
+    #     與正典 **K-9-6-b** 之**後緣**受詞不同
+    #     ——**失敗考古 節 42 之同一錯誤**（受詞倒置）。
+    #     實測差達 **0.120267 m**（帶底）／**2.674315 m**（寬度）
+    #     ——`verify/out/probe_K9_seg6_w_delta_切換前凍存.log`（KL 放行依據·凍存）。
+    #     ⛔ **禁任何新碼再以本值作帶深。**
     depth_from_PQ = min(_dep(P_block), _dep(Q))
 
     # ── 最小寬度：**以既有 N-14 量法量這個虛擬塊**，不另寫第二套 ──────────────────
     #   🔒 K-9-8 只換**被量的多邊形**與**深度起算線**，**不換量法**：
     #     故此處逕呼叫 `parcel_min_width_n14`（`grep -n "def parcel_min_width_n14" app.py`），
     #     僅把三個入參換成虛擬塊之對應物——
-    #       coords ＝ 虛擬塊；front_pt ＝ `P_block`（起算移到 PQ 上）；band ＝ `depth_from_PQ`。
+    #       coords ＝ 虛擬塊；front_pt ＝ `P_block`（起算移到 PQ 上）；
+    #       **帶之底** ＝ 由 `parcel_min_width_n14` 內之 `_n14_band_hi` 定
+    #       （＝ 該虛擬塊**後緣連續段最淺端點之 `t`**·K-9-6-b）
+    #       ⇒ 傳 `baseline_pts` 即為此（**K-6-A2 段六前置·KL 放行 2026-08-06**）。
+    #       ⛔ `depth_from_PQ` **不再為帶深**（其仍為 `min_depth` 位置引數，惟該分支下
+    #         只剩 `>0` 有效性檢查·見 `parcel_min_width_n14` 之 `baseline_pts` 段）。
     #   ⛔ **禁在本函式內另行實作寬度**：前版曾以「二側界於帶兩端之間距」自算，
     #     與 N-14 之「帶內沿 FRONT 之最小弦」**不同量**，實測對不上既有量測
     #     （`verify/out/probe_ruling_K9_corner_width_V6_1.log:115`【K-9-8-D】），
     #     且構成 §7 所禁之 fork。此處改為**共用同一受測者**，二者由構造同源。
     min_width = float(parcel_min_width_n14(
         list(poly.exterior.coords), (dx, dy), (P_block[0], P_block[1]),
-        depth_from_PQ, _label=f"{_label}/{_pid}·K-9-8虛擬塊"))
+        depth_from_PQ, _label=f"{_label}/{_pid}·K-9-8虛擬塊",
+        baseline_pts=baseline_pts))
 
     # `inset_from_front`：`P_block` 距 FRONT **無限直線**之內縮量。
     #   🔒 **僅為旗標／診斷，不驅動任何分支**——(6) 之退化由 `PQ` 恆過 `P_block` 自然達成，
