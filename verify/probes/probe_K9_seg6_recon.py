@@ -217,8 +217,11 @@ def main():
              "`_re` 以 BASELINE 為據（K-9-8 (4) 之虛擬塊遠側界即 BASELINE）")
     L.append("  ⚠️ 「成立」僅指**二判準可辨**；其值是否為 K-9-5 所欲之量，屬段六之題、本檔不判。")
     L.append("")
-    L.append(f"  🔧 **A-2 `depth_from_PQ` 係待改正之陳舊量**（⚠️ **非**待裁之「二選一」·KL 2026-08-06 更正）"
-             f"——與 `帶底 t_hi` 逐格 max|Δ| ＝ **{_dmax:.6f} m**（**＞ 法定粒度 0.01** ⇒ 非浮點噪訊）。")
+    L.append(f"  🔧 **A-2 `depth_from_PQ` 已改正並已切換**（**GB-40**·KL 放行 2026-08-06）："
+             f"帶底改由 `_n14_band_hi` 定，本值自此**僅供診斷**。"
+             f"（與 `帶底 t_hi` 逐格 max|Δ| ＝ **{_dmax:.6f} m**·**＞ 法定粒度 0.01** ⇒ 非浮點噪訊。）")
+    L.append("     🗄️ **沿革**：偵察當時（`9e3e378`）之判讀為「**待改正之陳舊量**」；"
+             "其後 KL 放行切換 ⇒ 已改正。⛔ 本行係**探針原始碼所印**，非手改 log。")
     L.append("     依據（三錨·逐字）：`app.py` `depth_from_PQ = min(_dep(P_block), _dep(Q))`；")
     L.append("       `P_block = max(_cands, key=_dep)  # 臨街側＝離 BASELINE 最遠`；")
     L.append("       `Q = _x2(PQ_inf, L_cor_inf, \"PQ ∩ 靠街角側境界線\")`")

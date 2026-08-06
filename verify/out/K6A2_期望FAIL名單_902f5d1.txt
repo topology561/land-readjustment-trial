@@ -1,0 +1,57 @@
+# K-6-A2 期望 FAIL 名單（凍存·錨定 SHA 902f5d1）
+#
+# 來源 log ：verify/out/K6A2_seg6_gb40_runall.log
+# 抽取指令：grep '🔴 FAIL' verify/out/K6A2_seg6_gb40_runall.log | sed 's/^ *//'
+# 用途    ：本分支為「准紅碼」（KL 裁 2026-07-21）⇒ 驗收改為「與本名單**逐項**相同」，
+#           ⛔ 非「全綠」、⛔ 非「總數相同」。
+# ⚠️ 本檔之價值在**逐項名目**；總數僅為附註：86 PASS／46 FAIL（合 132）。
+#     只比總數會讓「一項變綠＋另一項變紅」完全隱形。
+#
+# ⛔ 波末重烤後本檔即失效，須連同 baselines 一併更新（屆時請改錨定新 SHA）。
+# ---------------------------------------------------------------------------
+🔴 FAIL  參數0m
+🔴 FAIL  參數3.5m
+🔴 FAIL  v3·診斷0m（全欄逐格·無豁免）
+🔴 FAIL  率接線無串聯0m（vs v1 原錨，豁免 G估 後逐格全等）
+🔴 FAIL  率接線 G估 欄變動0m 2 格（期 0·Y 波後 baseline 同源）
+🔴 FAIL  指配0m
+🔴 FAIL  抵費地0m(應空)
+🔴 FAIL  v3·G值0m
+🔴 FAIL  v3·滑池槽0m
+🔴 FAIL  v3·J表0m
+🔴 FAIL  v3·診斷3.5m（全欄逐格·無豁免）
+🔴 FAIL  率接線無串聯3.5m（vs v1 原錨，豁免 G估 後逐格全等）
+🔴 FAIL  指配3.5m
+🔴 FAIL  抵費地3.5m
+🔴 FAIL  v3·G值3.5m
+🔴 FAIL  v3·滑池槽3.5m
+🔴 FAIL  v3·J表3.5m
+🔴 FAIL  W-D.3 碎片幾何/三分類（v3）
+🔴 FAIL  W-D.3 碎片逐邊CAD（v3）
+🔴 FAIL  W-D.4 四梯清單0m（v3 半實算）
+🔴 FAIL  W-D.4 跨占分配線0m
+🔴 FAIL  W-D.4 四梯清單3.5m（v3 半實算）
+🔴 FAIL  W-D.4 跨占分配線3.5m
+🔴 FAIL  W-D.4 MinA_區==114.07(正典rounded)·½顯示==57.04(Decimal非round)
+🔴 FAIL  F.0 釋池對象＝梯3 二群 [('G025', 1.79), ('G030', 55.58)]（Σ=57.37㎡）
+🔴 FAIL  F.0·G值0m（trunk B 終態）
+🔴 FAIL  F.0·滑池槽0m
+🔴 FAIL  F.0·J表0m
+🔴 FAIL  F.0·合併決策0m
+🔴 FAIL  F.0·池差閉合0m
+🔴 FAIL  F.0·G值3.5m（trunk B 終態）
+🔴 FAIL  F.0·滑池槽3.5m
+🔴 FAIL  F.0·J表3.5m
+🔴 FAIL  F.0·合併決策3.5m
+🔴 FAIL  F.0·池差閉合3.5m
+🔴 FAIL  F.2·G值0m（trunk C 終態）
+🔴 FAIL  F.2·池流向0m
+🔴 FAIL  F.2·跨街廓調配3.5m
+🔴 FAIL  F.2·G值3.5m（trunk C 終態）
+🔴 FAIL  F.2·池流向3.5m
+🔴 FAIL  F.3·G值0m（trunk D 終態）
+🔴 FAIL  F.3·池流向0m
+🔴 FAIL  F.3·G值3.5m（trunk D 終態）
+🔴 FAIL  F.3·池流向3.5m
+🔴 FAIL  W-F F.4
+🔴 FAIL  W-G G.2 世代幾何曝出契約
