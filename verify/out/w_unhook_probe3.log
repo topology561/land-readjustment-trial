@@ -1,0 +1,22 @@
+… ownership（tab1 歸戶指紋複刻，讀 匿名版 xlsx）
+    重劃區地籍 53 筆｜U_LAND 64453 筆｜失敗 0｜歸戶群組 33 組
+    ✅ 靶 628-18 → G005（預期 G005）
+    ✅ 靶 628-45 → G007（預期 G007）
+    ✅ 靶 628 → G009（預期 G009）
+    ✅ 靶 628-37 → G019（預期 G019）
+    ✅ 靶 628-41 → G023（預期 G023）
+    ✅ 靶 628-36 → G029（預期 G029）
+… parcels：temp 126 筆｜可建築 build 61 筆｜面積交叉換位 2 對
+… Step G headless（0m；v3 真值財務＋結構不變量永久閘）
+Traceback (most recent call last):
+  File "C:\Users\admin\Desktop\land-readjustment-trial\verify\run_verification.py", line 1210, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\admin\Desktop\land-readjustment-trial\verify\run_verification.py", line 478, in main
+    _sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
+                     param_by_tag[tag], build_parcels,
+                     winners_state, forced_map, setback)
+  File "C:\Users\admin\Desktop\land-readjustment-trial\verify\stepg_pipeline.py", line 696, in run_step_g
+    _b_R0 = _mp_base_W0(end_pt, _right_buffer_S, d_hat_rev, _side_mid_right, allocation_dir_block)
+                        ^^^^^^
+NameError: name 'end_pt' is not defined
