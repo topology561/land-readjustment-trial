@@ -6414,7 +6414,7 @@ def _n14_band_geom(cut_coords, d_hat, front_pt, baseline_pts, _label=''):
     ⇒ 舊式帶底**恰切 BASELINE 而未必落在宗內**（實測 34/118 宗於帶底得弦長 0 而停機·
       **凍存**實料 `verify/out/probe_K9_6_parcel_band_段五a凍存.log`【D】
       ——⚠️ **非**同名之現行檔：後者已由 (c)-1 重跑覆寫）。
-    **新式**：帶底 ＝ 通過**較淺之後緣角點**、平行前緣線之直線
+    **新式**：帶底 ＝ 通過**後緣連續段之最淺端點**、平行前緣線之直線
     ⇒ `t_hi = min(後緣角點之 t)`——**直接讀環上該頂點之 `t` 分量**。
     🔴 ⛔ **禁乘、禁除任何投影係數**——前版 ③ 大聲警告之投影係數，於新定義下**不存在**
       （舊式之係數係「沿 `b̂n` 平移」落到 `n̂` 軸所需；新式之帶底點**本來就在** `t` 軸上）。
@@ -6566,7 +6566,7 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label='',
         ——**現行生產路徑·逐字未動**（🔴 該用法即 **GB-13** 所登記之誤：把「可建築門檻」
         當成「量測帶深」）。
       **傳入** ⇒ 帶之上緣改由 `_n14_band_hi`（`grep -n "def _n14_band_hi" app.py`）給：
-        `t_hi` ＝ **該宗二個後緣角點中較淺者之 `t`**（K-9-6-b·**(c)-1 更正後之定式**）
+        `t_hi` ＝ **該宗後緣連續段之最淺端點之 `t`**（K-9-6-b·**(c)-1 更正後之定式**）
         ——🔴 ⛔ **無平移、無投影係數**（舊式「`t_lo + D·(b̂n·n̂)`」已作廢·失敗考古 節 42）。
         此時 `min_depth` **僅供 E-2′ 閘**、不再作 `_t_hi`。
       🔴 **段五(a) 為「只算不換」** ⇒ **生產零呼叫點**。自癒查法：
@@ -6718,7 +6718,17 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label='',
     #      該夾制會**靜默吸收不合規之分配線**——街廓分配線深度本就**不得**小於
     #      畸零地規則之最小深度（手冊 二(一)3）⇒ 淺於此即**分配線不合規**，
     #      屬上游錯誤、非「寬度閘與深度閘重複計」之問題。
-    if max(_tv) < _md:
+    #   🆕 **守衛（K-6-A2 段五(c)-2）·⛔ 禁刪除本閘**：
+    #     本閘僅於**舊帶分支**（`baseline_pts is None`）適用。
+    #     🔴 **新帶分支下其受詞退化**：`_t_hi` 已改為「該宗**後緣連續段最淺端點**之 `t`」
+    #       ⇒ 本閘變成「拿該宗**最大**深度比該宗**最小**深度」
+    #       ⇒ **由構造恆不成立（空閘）**——`max(_tv) ≥ _t_hi` 恆真（§六-3 已逐宗實測）。
+    #     🔒 其**法定職責**已由**街廓層 `K-9-2`** 承擔（正典 `K-9-3`：街廓層過 ⇒ 宗地層
+    #       不再以宗地深度比對附表深度；`grep -n "^### 🔒 K-9-3-1 " docs/rulings/K-6_*.md`）。
+    #     ⛔ **不刪之由**：舊帶分支仍是**受測路徑**——夾具案例
+    #       `grep -n "⑧b E-2′" verify/fixture_n14_min_width.py` 走 `None` 分支並**要求 raise**；
+    #       刪之即失去該覆蓋（且 `min_depth` 之語意仍為法定門檻）。
+    if baseline_pts is None and max(_tv) < _md:
         raise RuntimeError(
             f"🔴 parcel_min_width_n14[{_label}]：本宗深度 {max(_tv):.4f}m "
             f"< 法定最小深度 {_md:.4f}m。**街廓分配線深度不得小於畸零地規則最小深度**"
@@ -6777,7 +6787,7 @@ def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _label='',
     _t_lo = max(0.0, max(max(_tv[_i], _tv[_i + 1]) for _i in _fe_idx))
     # ── 🆕 **K-9-6-b 之 opt-in 帶**（K-6-A2 段五(a)·⛔ 只算不換）────────────────────
     #   `baseline_pts is None` ⇒ **逐字沿用現行**（`_t_hi = _md`）⇒ **生產零行為變更**。
-    #   傳入 ⇒ 帶之上緣改由 `_n14_band_hi` 給（該宗**較淺之後緣角點**之 `t`·(c)-1 更正），
+    #   傳入 ⇒ 帶之上緣改由 `_n14_band_hi` 給（該宗**後緣連續段最淺端點**之 `t`·(c)-1 更正），
     #     此時 `min_depth` **僅供上方之 E-2′ 閘**、不再作 `_t_hi`（**GB-13** 之解除）。
     #   🔒 **`_t_lo` 之交叉核對**：helper 內另有一份前緣邊偵測（同框同式），
     #     二者須逐位元相符；不符即代表二份實作已漂移 ⇒ **loud raise**
@@ -6881,7 +6891,7 @@ WIDTH_VERDICT_NA = '不適用（非配地列）'
 
 
 def evaluate_parcel_width_n14(row, front_line, min_depth, legal_min_width,
-                              corner_min_area=None, _label=''):
+                              corner_min_area=None, _label='', baseline_pts=None):
     """🆕 **宗地寬度判定**（N-14 量測 ＋ E-7 三態）——**module 級純函式**（不改 `row`）。
 
     ── 為何抽成 module 級（非留在 Tab body）─────────────────────────────────────
@@ -6938,8 +6948,14 @@ def evaluate_parcel_width_n14(row, front_line, min_depth, legal_min_width,
     _L = (_dx ** 2 + _dy ** 2) ** 0.5
     if _L <= 0:
         raise RuntimeError(f"🔴 evaluate_parcel_width_n14[{_label}]：FRONT_LINE 長度 0，停")
+    # 🆕 `baseline_pts` **原樣轉交**（K-6-A2 段五(c)-2·中層穿參）。
+    #   `None` ⇒ 逐字沿用舊帶（附表 `min_depth`）⇒ **零行為變更**。
+    #   🔴 **本層之存在即本項之全部理由**：切換**不是**「呼叫點多傳一個引數」
+    #     ——中層簽章裡原本沒有這個參數。此即**失敗考古 節 41-2**
+    #     （「切換只需一個引數」·未 grep 全部消費端）之同一形狀。
     _w = parcel_min_width_n14(row.get('cut_coords') or [],
-                              (_dx / _L, _dy / _L), _p1, min_depth, _label=_label)
+                              (_dx / _L, _dy / _L), _p1, min_depth, _label=_label,
+                              baseline_pts=baseline_pts)
     _out = {'實際寬度(m)': round(_w, 2)}
     _lw = float(legal_min_width or 0.0)
     if _lw > 0 and _w < _lw:
