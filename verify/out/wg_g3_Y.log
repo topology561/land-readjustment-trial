@@ -1,6 +1,0 @@
-… app-path _build_wf_ctx → wf_f0→f4（0m）
-… app-path _build_wf_ctx → wf_f0→f4（3.5m）
-================================================================
-  ✅ 45/45 閘綠（app-path f0→f4 逐代 byte-perfect＋逐格 vs 重烤 baseline·雙情境＋圍欄段價）
-================================================================
-W-G G.3 雙路同源終驗: ALL GREEN（app live §7 == 重烤後 baseline·真同源）
