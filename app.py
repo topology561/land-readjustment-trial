@@ -6090,6 +6090,36 @@ def k92_block_depth_check(build_blocks, depth_info_by_label, front_road_width_by
     return _rows
 
 
+def bl_pts_by_label(classified_blocks, manual_baseline_by):
+    """**BASELINE 端點 `{label: [(x1,y1),(x2,y2)]}` 之單一構造點**（K-6-A2 段五(c)-2）。
+
+    ── 🔴 為何非得抽出來 ──────────────────────────────────────────────────────
+    倉內原有之構造（`grep -n "_k94_bl_by = bl_pts_by_label" app.py`）與 N-14 之消費點
+    （`grep -n "_bl_by_jw = bl_pts_by_label" app.py`）**同在 `main()` 內、但分屬不同分支**
+    ——以 `ast` 求祖先鏈實證（`verify/out/K6A2_seg5c2_bindproof.txt`）：
+
+      構造點：… `if temp_parcels:` → **`if not build_parcels:`** → **`if _btn_clicked or _auto_recalc:`**
+      消費點：… `if temp_parcels:` → **`if st.session_state.get('f3_G_values'):`**
+
+    二者於 `if temp_parcels:` **之下即分岔**，且構造點所在之 `If` 節點**止於消費點之前**
+    ⇒ **消費點不被構造點支配**。Python 係函式作用域 ⇒ 構造分支未執行時，
+    於消費點取用即 **`NameError`**——且該路徑 `run_all` 走不到（`main()` 從不執行）
+    ⇒ **latent bug**。
+    ⇒ 依施工單 §三-2 之第二選項**上提為單一構造點**，二處共同消費。
+    ⛔ **禁在消費點複製一份 dict comprehension**（那是 GB-8「多份實作、無一致性看守」）。
+
+    classified_blocks   `[{'label':…, 'vertices':[…]}, …]`
+    manual_baseline_by  `st.session_state['f3_manual_baseline']`（`{label: {...}}`）
+    回 `{label: _baseline_pts_from_manual(...)}`——**值得為 `None`**（該街廓無 BASELINE）；
+       ⛔ **本函式不代判**：是否容許 `None` 由**消費端**依其法定職責決定
+       （N-14 消費端一律 loud raise·見 `evaluate_parcel_width_n14` 之 `_require_baseline`）。
+    """
+    _mbl = manual_baseline_by or {}
+    return {_b['label']: _baseline_pts_from_manual(_mbl.get(_b['label']),
+                                                  _b.get('vertices') or [])
+            for _b in (classified_blocks or [])}
+
+
 def k94_baseline_touch_by_parcel(parcels, baseline_pts_by_label):
     """**K-9-4 BASELINE 臨接量測**（正典：`grep -n "K-9-4" docs/rulings/K-6_街角地分配程序與可分配判準.md`）。
 
@@ -6891,7 +6921,8 @@ WIDTH_VERDICT_NA = '不適用（非配地列）'
 
 
 def evaluate_parcel_width_n14(row, front_line, min_depth, legal_min_width,
-                              corner_min_area=None, _label='', baseline_pts=None):
+                              corner_min_area=None, _label='', baseline_pts=None,
+                              _require_baseline=False):
     """🆕 **宗地寬度判定**（N-14 量測 ＋ E-7 三態）——**module 級純函式**（不改 `row`）。
 
     ── 為何抽成 module 級（非留在 Tab body）─────────────────────────────────────
@@ -6948,6 +6979,20 @@ def evaluate_parcel_width_n14(row, front_line, min_depth, legal_min_width,
     _L = (_dx ** 2 + _dy ** 2) ** 0.5
     if _L <= 0:
         raise RuntimeError(f"🔴 evaluate_parcel_width_n14[{_label}]：FRONT_LINE 長度 0，停")
+    # 🔒 **禁靜默回退**（K-6-A2 段五(c)-2·施工單 §三-4-2）：
+    #   `_require_baseline=True` 之呼叫端（＝**生產**）若因某街廓查無 BASELINE 而傳入 `None`，
+    #   `parcel_min_width_n14` 會**靜默沿用舊帶（附表 14.00m）** ⇒ 該街廓悄悄用一套尺、
+    #   其餘街廓用另一套，且**無任何診斷**。⇒ 一律 loud raise。
+    #   🔴 **本閘之落點**：須置於上方三個提前 return（抵費地／孤立公設地／現金補償、
+    #     缺 FRONT_LINE、街角地 K-4）**之後**——該三類**依構造不量寬度**，
+    #     對其要求 BASELINE 係誤咬。⇒ 判準與早退條件**共用同一份**、不另複製述詞。
+    if _require_baseline and baseline_pts is None:
+        raise RuntimeError(
+            f"🔴 evaluate_parcel_width_n14[{_label}]：本宗須量寬度，"
+            f"但**查無該街廓之 BASELINE**（`baseline_pts is None`）。"
+            f"⛔ **禁靜默回退舊帶**——回退即以畸零地附表深度 {min_depth} 充當量測帶深"
+            f"（**GB-13** 之誤），且該街廓與其餘街廓將使用**不同之尺**而無診斷。"
+            f"請至 CAD 補畫／檢查該街廓之 BASELINE 圖層（K-9-4 亦以同一圖層為據）")
     # 🆕 `baseline_pts` **原樣轉交**（K-6-A2 段五(c)-2·中層穿參）。
     #   `None` ⇒ 逐字沿用舊帶（附表 `min_depth`）⇒ **零行為變更**。
     #   🔴 **本層之存在即本項之全部理由**：切換**不是**「呼叫點多傳一個引數」
@@ -19713,12 +19758,11 @@ def main():
                     #   ＝ K-9-4 **可被評估之最早時點**。
                     #   ✅ 仍守段二-0 一-8 之戒：本處**不在任何 `st.expander` 之內**（已以 `ast` 確證）。
                     _k94_land_rows, _k94_no_land = k94_partition_land_rows(g_rows)
-                    _k94_blk_verts = {_b['label']: (_b.get('vertices') or [])
-                                      for _b in classified_blocks}
-                    _k94_mbl = st.session_state.get('f3_manual_baseline', {}) or {}
-                    _k94_bl_by = {
-                        _lbl: _baseline_pts_from_manual(_k94_mbl.get(_lbl), _vts)
-                        for _lbl, _vts in _k94_blk_verts.items()}
+                    # 🔄 **改走單一構造點**（K-6-A2 段五(c)-2·`grep -n "def bl_pts_by_label" app.py`）
+                    #   ——本處與 N-14 消費點分屬 `main()` 內之**不同分支**（`ast` 證明見
+                    #   `verify/out/K6A2_seg5c2_bindproof.txt`）⇒ ⛔ 不得由消費點取用本地變數。
+                    _k94_bl_by = bl_pts_by_label(
+                        classified_blocks, st.session_state.get('f3_manual_baseline', {}))
                     _k94_touch = k94_baseline_touch_by_parcel(
                         [{'label': str(_r.get('所屬街廓', '')),
                           'pid': str(_r.get('暫編地號', '')),
@@ -20522,6 +20566,13 @@ def main():
                 #     街角第 1 宗**寬度要實量**（截角前），門檻＝退縮寬＋畸零地最小寬。
                 #     ⚠️ **本區塊尚未改**（實作屬 **K-6-A2**）⇒ 下方之 K-4 分支與其
                 #     `st.info` 文案所述**皆為過渡態**；文案字串本批不動（見遷移項登記）。
+                # 🆕 **K-9-6-b 帶底之餵值鏈**（K-6-A2 段五(c)-2·**生產切換**）。
+                #   ⛔ **禁在此複製 dict comprehension**——與 K-9-4 共用**單一構造點**
+                #   （`grep -n "def bl_pts_by_label" app.py`）；二處分屬不同分支，
+                #   綁定必然性**證不出來** ⇒ 依施工單 §三-2 上提（證明見
+                #   `verify/out/K6A2_seg5c2_bindproof.txt`）。
+                _bl_by_jw = bl_pts_by_label(
+                    classified_blocks, st.session_state.get('f3_manual_baseline', {}))
                 _cr_areas_jw = st.session_state.get('f3_corner_range_areas', {}) or {}
                 _width_violation_count = 0
                 _width_pending_count = 0
@@ -20539,7 +20590,14 @@ def main():
                         float(_min_depth_by_block.get(_blk_jw, 0.0) or 0.0),
                         float(_min_width_by_block.get(_blk_jw, 0.0) or 0.0),
                         corner_min_area=_thr_jw,
-                        _label=f"{_blk_jw}·{_r_jw.get('暫編地號')}"))
+                        _label=f"{_blk_jw}·{_r_jw.get('暫編地號')}",
+                        # 🆕 **生產切換**（K-6-A2 段五(c)-2·KL 放行 2026-08-06）：
+                        #   帶底改由該宗**後緣連續段最淺端點**定位（K-9-6-b）。
+                        #   🔒 `_require_baseline=True` ⇒ 查無該街廓之 BASELINE 時**loud raise**，
+                        #     ⛔ **禁靜默 `None` 回退到舊帶**（施工單 §三-4-2：那會讓一個街廓
+                        #     悄悄用附表 14.00m 而其餘用實測值，且無任何診斷）。
+                        baseline_pts=_bl_by_jw.get(_blk_jw),
+                        _require_baseline=True))
                     _v_jw = _r_jw.get('寬度判定')
                     if _v_jw == WIDTH_VERDICT_BAD:
                         _width_violation_count += 1

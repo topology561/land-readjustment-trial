@@ -1,0 +1,53 @@
+==============================================================================================================
+TARGET 19719  k94_bl_by build site
+   FunctionDef          lines  12338- 21407  def main():
+   If                   lines  12445- 21407  if selected_tab == TAB_LAND_TRADE:
+   If                   lines  12487- 21407  elif selected_tab == TAB_BUILDING_TRADE:
+   If                   lines  12588- 21407  elif selected_tab == TAB_LAND_DEV:
+   If                   lines  12919- 21407  elif selected_tab == TAB_EXPECTED_DEV:
+   If                   lines  13263- 21407  elif selected_tab == TAB_PRICE_ZONE:
+   If                   lines  13680- 21407  elif selected_tab == TAB_FINANCE:
+   If                   lines  14749- 21407  elif selected_tab == TAB_LAND_AGGREGATION:
+   If                   lines  15376- 21407  elif selected_tab == TAB_BLOCK_INTERACT:
+   If                   lines  17320- 21153  if temp_parcels:
+   If                   lines  17395- 20437  if not build_parcels:
+   If                   lines  18567- 19827  if _btn_clicked or _auto_recalc:
+   Assign               lines  19719- 19721  _k94_bl_by = {
+   Name                 lines  19719- 19719  _k94_bl_by = {
+   DictComp             lines  19719- 19721  _k94_bl_by = {
+==============================================================================================================
+TARGET 20500  min_depth_by_block build site
+   FunctionDef          lines  12338- 21407  def main():
+   If                   lines  12445- 21407  if selected_tab == TAB_LAND_TRADE:
+   If                   lines  12487- 21407  elif selected_tab == TAB_BUILDING_TRADE:
+   If                   lines  12588- 21407  elif selected_tab == TAB_LAND_DEV:
+   If                   lines  12919- 21407  elif selected_tab == TAB_EXPECTED_DEV:
+   If                   lines  13263- 21407  elif selected_tab == TAB_PRICE_ZONE:
+   If                   lines  13680- 21407  elif selected_tab == TAB_FINANCE:
+   If                   lines  14749- 21407  elif selected_tab == TAB_LAND_AGGREGATION:
+   If                   lines  15376- 21407  elif selected_tab == TAB_BLOCK_INTERACT:
+   If                   lines  17320- 21153  if temp_parcels:
+   If                   lines  20440- 20613  if st.session_state.get('f3_G_values'):
+   Assign               lines  20500- 20500  _min_depth_by_block = {}     # 🆕 N-15：N-14 量測帶之深度上界（法定最小深）
+   Name                 lines  20500- 20500  _min_depth_by_block = {}     # 🆕 N-15：N-14 量測帶之深度上界（法定最小深）
+   Dict                 lines  20500- 20500  _min_depth_by_block = {}     # 🆕 N-15：N-14 量測帶之深度上界（法定最小深）
+==============================================================================================================
+TARGET 20536  evaluate_parcel_width_n14 call site
+   FunctionDef          lines  12338- 21407  def main():
+   If                   lines  12445- 21407  if selected_tab == TAB_LAND_TRADE:
+   If                   lines  12487- 21407  elif selected_tab == TAB_BUILDING_TRADE:
+   If                   lines  12588- 21407  elif selected_tab == TAB_LAND_DEV:
+   If                   lines  12919- 21407  elif selected_tab == TAB_EXPECTED_DEV:
+   If                   lines  13263- 21407  elif selected_tab == TAB_PRICE_ZONE:
+   If                   lines  13680- 21407  elif selected_tab == TAB_FINANCE:
+   If                   lines  14749- 21407  elif selected_tab == TAB_LAND_AGGREGATION:
+   If                   lines  15376- 21407  elif selected_tab == TAB_BLOCK_INTERACT:
+   If                   lines  17320- 21153  if temp_parcels:
+   If                   lines  20440- 20613  if st.session_state.get('f3_G_values'):
+   For                  lines  20530- 20551  for _r_jw in st.session_state.get('f3_G_values', []) or []:
+   Expr                 lines  20536- 20542  _r_jw.update(evaluate_parcel_width_n14(
+   Call                 lines  20536- 20542  _r_jw.update(evaluate_parcel_width_n14(
+   Attribute            lines  20536- 20536  _r_jw.update(evaluate_parcel_width_n14(
+   Name                 lines  20536- 20536  _r_jw.update(evaluate_parcel_width_n14(
+   Call                 lines  20536- 20542  _r_jw.update(evaluate_parcel_width_n14(
+   Name                 lines  20536- 20536  _r_jw.update(evaluate_parcel_width_n14(
