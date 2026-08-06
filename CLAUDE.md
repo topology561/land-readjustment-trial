@@ -100,6 +100,16 @@ KL 是都市計畫領域專家、非程式設計師。**工作分支：`wip/s1-e
     ——**該檔正是 `run_all` 的受測夾具之一** ⇒ **commit 4 之改動污染 commit 3 之靶**。
     已 TaskStop、`git checkout` 還原該檔、於**乾淨工作樹**重跑，方得 §三-3 之 DIFF-EMPTY。
   - ⚠️ 危險之處在於**它不會報錯**：污染後之 log 看起來一樣正常，只是**證的不是你以為的那件事**。
+- **🔒 `verify/out/` ⛔ 禁 `git add -A`／`.`（CC 立 2026-08-06·段六前置收尾批·失敗考古節 49-1）**：
+  該目錄**混放**「**入庫之證據 log**」與「**本機臨時 log**」，且後者常在 session 開始前就躺在
+  `git status` 之 `??` 區 ⇒ **一律逐檔 `git add`**。
+  🔒 **commit 前必跑** `git show --name-status`（或 `git status --porcelain`）**對照施工單之異動清單**
+  ——`CLAUDE.md` 既有之「套用後列實際異動清單對照 plan」即此條之上位。
+  - **案由**：段六前置 commit C 以 `git add -A verify/out/` 掃入 **33 檔**本 session 前既存之
+    未過目診斷 log／csv（已於 commit D `git rm --cached` 退回·檔案未刪）。
+  - ⚠️ **退回不等於消失**：該 33 檔仍可由 commit C 抵達 ⇒ 後人考古**勿誤認為刻意入庫**。
+  - ⚠️ **宣稱「某檔應入庫而未入庫」前必先讀 `.gitignore`**——`verify/out/got_*`／`verify/out/W-D.4_*`
+    係**刻意忽略**之族，其報告引用以「baseline 入庫＋可重生」成立，⛔ 不得列為缺失。
 - **🔒 位元組數／校驗碼須聲明量測框（CC 立 2026-08-05·失敗考古節 48 戒(a)(b) 升格）**：
   工作樹（`wc -c`）與倉內 blob（`git cat-file -s $(git rev-parse HEAD:<path>)`）在本倉**不相等**
   ——`core.autocrlf=true`，而 `.gitattributes` 之 `-text` **僅涵蓋 `*.dxf`／`*.dwg`**
