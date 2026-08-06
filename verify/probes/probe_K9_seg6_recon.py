@@ -217,13 +217,21 @@ def main():
              "`_re` 以 BASELINE 為據（K-9-8 (4) 之虛擬塊遠側界即 BASELINE）")
     L.append("  ⚠️ 「成立」僅指**二判準可辨**；其值是否為 K-9-5 所欲之量，屬段六之題、本檔不判。")
     L.append("")
-    L.append(f"  🔴 **A-2 段六之前置決策項**：`帶底 t_hi` 與 k98 之 `depth_from_PQ`"
-             f" **不是同一個量**——逐格 max|Δ| ＝ **{_dmax:.6f} m**（⚠️ **＞ 法定粒度 0.01**）。")
-    L.append("     · `depth_from_PQ` ＝ `_dep()` 之**沿 BASELINE 法向**距離（k98 (5)）；")
-    L.append("     · `帶底 t_hi` ＝ **後緣連續段最淺端點之 `t`**（K-9-6-b·(c)-1 更正後）。")
-    L.append("     ⇒ 二者為「同名不同量」之又一例（體例同 K-9-6-a）。**段六接線前須先定用哪一個**；")
-    L.append("       ⛔ 本檔**不代判**——現行 k98 係把 `depth_from_PQ` 當 `min_depth` 餵給"
-             "`parcel_min_width_n14`（走**舊帶**分支），切換為新帶即改由 `_n14_band_geom` 定帶底。")
+    L.append(f"  🔧 **A-2 `depth_from_PQ` 係待改正之陳舊量**（⚠️ **非**待裁之「二選一」·KL 2026-08-06 更正）"
+             f"——與 `帶底 t_hi` 逐格 max|Δ| ＝ **{_dmax:.6f} m**（**＞ 法定粒度 0.01** ⇒ 非浮點噪訊）。")
+    L.append("     依據（三錨·逐字）：`app.py` `depth_from_PQ = min(_dep(P_block), _dep(Q))`；")
+    L.append("       `P_block = max(_cands, key=_dep)  # 臨街側＝離 BASELINE 最遠`；")
+    L.append("       `Q = _x2(PQ_inf, L_cor_inf, \"PQ ∩ 靠街角側境界線\")`")
+    L.append("       ⇒ 二者**皆在 `PQ` 上** ⇒ 其 min **取自臨街段之端點**"
+             " ⇒ **受詞為「臨街段」**，正是 KL 2026-08-05 推翻之受詞（**失敗考古 節 42**）。")
+    L.append("     而正典早已逐字定式（`grep -n \"通過後緣連續段之最淺端點且平行 PQ\""
+             " docs/rulings/K-6_*.md`）：")
+    L.append("       帶 ＝ `[PQ, 通過後緣連續段之最淺端點且平行 PQ 之直線]`")
+    L.append("     ⇒ 🔴 二者**不是兩個合法選項**，而是「**已被推翻者**」與「**現行定式**」")
+    L.append("       ——`depth_from_PQ` 與舊帶底 `t_lo + D·h` 係**同一受詞錯誤之兩個落點**。")
+    L.append("     ⇒ **段六隨 GB-18 一併改正**；⛔ 不必上呈、不必擇一。")
+    L.append("     （現行 k98 把 `depth_from_PQ` 當 `min_depth` 餵給 `parcel_min_width_n14`"
+             " ⇒ 走**舊帶**分支；改走新帶後該用途即消滅。）")
 
     # ── 【B】4-5 GB-39 可觸發性（**取既有契約旗標**·⛔ 未新造判定）─────────────
     L.append("")
