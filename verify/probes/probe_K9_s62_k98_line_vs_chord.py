@@ -116,7 +116,7 @@ def main():
     bl_by = cad.get("baselines", {}) or {}
     legal_w = float(snapshot["global"]["法定最小寬_m"])
 
-    rows = []
+    rows, _diag, _grG = [], [], {}
     for setback in (0.0, 3.5):
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
         _d0, _s2, _o, winners, forced = run_corner_pk(
@@ -125,6 +125,10 @@ def main():
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot, params,
                         build_p, winners, forced, setback)
         by_pid = {str(r.get("暫編地號")): r for r in sg["g_rows"]}
+        for _dg in (_d0 or []):
+            _diag.append(dict(_dg, _sb=f"{setback:g}m"))
+        for _gr in sg["g_rows"]:
+            _grG[(f"{setback:g}m", str(_gr.get('暫編地號')))] = _gr.get('G(㎡)')
         for lbl in sorted(cb_by):
             b = cb_by[lbl]
             blk = (snapshot["blocks"].get(lbl) or {})
@@ -283,9 +287,10 @@ def main():
                               _pb[1] + _sv * dyh + _sig * _t * ny)
                         _p = _PT(_w)
                         _on = [nm for nm, ob in _OBJ if _p.distance(ob) <= _TOL]
-                        _own.append("+".join(_on) if _on else
-                                    "🔴 諸界皆不在容差內：" + "／".join(
-                                        f"{nm} {_p.distance(ob):.6f}" for nm, ob in _OBJ))
+                        _dists = "／".join(f"{nm} {_p.distance(ob):.6f}" for nm, ob in _OBJ)
+                        # 🔒 S6-2-B §三-2：**恆記六界距離**（⛔ 非只在皆不在容差內時才印）
+                        _own.append(("+".join(_on) if _on else "🔴 諸界皆不在容差內")
+                                    + f"　〔六界距離：{_dists}〕")
                     _res.append((_t, _ld, _ch, _own))
                 rec["res"] = _res
                 rec["chk"] = min(x[2] for x in _res)
@@ -369,6 +374,84 @@ def main():
         else:
             L.append("  ⇒ **其餘情形**（照實陳述·⛔ 未硬套二分）："
                      f"(a)={_amin:.6f}／(b)={_bmin:.6f}／T={_r['T']:.2f}")
+
+    # ── 【E】S6-2-B §一：資格閘之**真運算元**逐格對照 ────────────────────────
+    L.append("")
+    L.append("【E】S6-2-B §一：資格閘之**真運算元**（⛔ 皆自生產呼叫點取值·未重算）")
+    L.append("-" * 200)
+    L.append("  🔒 **閘 `app.py:11255` 實際比的是**（**正面指名**）：")
+    L.append("       左 ＝ `cand_G`  ——  本案 `require_g_map=True`（`app.py:18026` 之呼叫端）")
+    L.append("                          ⇒ `cand_G = float(g_values_map[_pid] or 0)`（`app.py:11238`）")
+    L.append("       右 ＝ `cand.get('min_area_to_apply', 0)`（`app.py:11255`）")
+    L.append("                          ⇒ 其值來自呼叫端之 `min_corner_area_p1/p2`"
+             "（`app.py:18023`／`:18024`）")
+    L.append("  🔒 `cand['_G_true'] = round(cand_G, 2)`（`app.py:11252`）"
+             "⇒ **② 即 ① 之 2dp**（⛔ 非另一個量）")
+    L.append("  🔒 `cand['G_for_threshold'] = round(G_estimated, 2)`（`app.py:11254`）"
+             "⇒ **④ 係估算欄·⛔ 不參與本閘**")
+    L.append("-" * 200)
+    L.append(f"{'情境':<6}{'街廓':<5}{'端':<5}{'候選':<13}"
+             f"{'②真G':>10}{'④G估':>10}{'⑤門檻':>10}{'⑥範圍面積':>11}{'⑦探針rng':>11}"
+             f"{'⑧g_rows G':>11}{'範圍=門檻?':>12}{'達標':>6}  ①cand_G")
+    L.append("-" * 200)
+    _rngmap = {(r["sb"], r["lbl"], r["side"]): r.get("rng_area") for r in rows}
+    _sidename = {"左": "left", "右": "right", "p1": "left", "p2": "right"}
+    for _dg in _diag:
+        _sd = _sidename.get(str(_dg.get("端", "")).strip(), str(_dg.get("端", "")))
+        _key = (_dg["_sb"], str(_dg.get("街廓", "")), _sd)
+        _r7 = _rngmap.get(_key)
+        _pidd = str(_dg.get("候選地號", ""))
+        _g8 = _grG.get((_dg["_sb"], _pidd))
+        _tg = _dg.get("真G(㎡)")
+        L.append(f"{_dg['_sb']:<6}{str(_dg.get('街廓','')):<5}{str(_dg.get('端','')):<5}{_pidd:<13}"
+                 f"{(f'{float(_tg):.2f}' if _tg not in ('', None) else '—'):>10}"
+                 f"{float(_dg.get('G估(㎡)', 0) or 0):>10.2f}"
+                 f"{float(_dg.get('門檻(㎡)', 0) or 0):>10.2f}"
+                 f"{float(_dg.get('範圍面積(㎡)', 0) or 0):>11.2f}"
+                 f"{('—' if _r7 is None else f'{_r7:.2f}'):>11}"
+                 f"{('—' if _g8 is None else f'{float(_g8):.2f}'):>11}"
+                 f"{str(_dg.get('範圍=門檻?','')):>12}{str(_dg.get('達標','')):>6}"
+                 f"  ＝②之未捨入值（`_G_true` ＝ `round(cand_G,2)`）")
+    L.append("-" * 200)
+    L.append("  ⚠️ **① `cand_G` 之未捨入值不另印**——碼面**只把它捨入後存為 `_G_true`**"
+             "（`app.py:11252`），⛔ 未另存未捨入者 ⇒ 自生產取值只能取到 2dp。")
+    L.append("     ⇒ 判 `① ≥ ⑤` 時，若二者差 < 0.005 則 2dp 不足以定奪；本表逐格之差見下。")
+
+    # ── 【F】§二 判準（⛔ 兩分支對等·未觸發者亦明寫）──────────────────────────
+    L.append("")
+    L.append("【F】S6-2-B §二 判準（⛔ 只陳述·不裁定·**兩分支對等**）")
+    L.append("-" * 200)
+    _k = [d for d in _diag if d["_sb"] == "3.5m" and str(d.get("街廓","")) == "R1"
+          and _sidename.get(str(d.get("端","")).strip()) == "right"]
+    if not _k:
+        L.append("  🔴 `3.5m R1/right` 於診斷列中未找到 ⇒ 無從陳述")
+    else:
+        _dg = _k[0]
+        _g = float(_dg.get("真G(㎡)") or 0); _m = float(_dg.get("門檻(㎡)", 0) or 0)
+        L.append(f"  `3.5m R1/right {_dg.get('候選地號')}`："
+                 f"② 真G ＝ **{_g:.2f}**／⑤ 門檻 ＝ **{_m:.2f}**／差 ＝ **{_g - _m:+.2f}**"
+                 f"｜達標欄 ＝ **{_dg.get('達標')}**")
+        if _g >= _m:
+            L.append("  ⇒ **分支 A 成立**：① ≥ ⑤ ⇒ 它**合法通過**資格閘")
+            L.append("     ⇒ 🔧 **「面積也不足」之說不成立·前批之 🔴 發現撤回**；")
+            L.append("     ⇒ **此時寬度不足之成因仍未明** ⇒ 回報並停。")
+            L.append("  ⇒ **分支 B（① < ⑤ 而仍為 winner ⇒ 閘被繞過）：未觸發。**")
+        else:
+            L.append("  ⇒ 🛑 **分支 B 成立**：① < ⑤ 而它仍是 winner ⇒ **閘被繞過**"
+                     "（引擎缺陷·非域裁）⇒ **停機上呈**。")
+            L.append("  ⇒ **分支 A（合法通過）：未觸發。**")
+    _bad56 = [d for d in _diag
+              if abs(float(d.get("範圍面積(㎡)", 0) or 0)
+                     - float(d.get("門檻(㎡)", 0) or 0)) > 0.5]
+    L.append(f"  **⑤ vs ⑥ 之 `|差| > 0.5`（碼面 `app.py:18054` 之診斷容差）**："
+             f"**{len(_bad56)}** 格")
+    for d in _bad56:
+        L.append(f"      {d['_sb']:<6}{d.get('街廓')}/{d.get('端')} {d.get('候選地號')}："
+                 f"⑤ {float(d.get('門檻(㎡)',0) or 0):.2f} vs ⑥ "
+                 f"{float(d.get('範圍面積(㎡)',0) or 0):.2f}"
+                 f"　差 {float(d.get('範圍面積(㎡)',0) or 0) - float(d.get('門檻(㎡)',0) or 0):+.2f}")
+    if not _bad56:
+        L.append("      （無）⇒ ⑤ 與 ⑥ 於全部診斷列皆在容差內。")
 
     L.append("")
     L.append("【D】註記")

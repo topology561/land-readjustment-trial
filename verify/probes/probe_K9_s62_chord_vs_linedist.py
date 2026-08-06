@@ -46,6 +46,8 @@ r"""**S6-2 補丁一 §一-補**：街角規定範圍多邊形之**弦** vs **�
 
     python verify/probes/probe_K9_s62_chord_vs_linedist.py
 
+🔧 **S6-2-B §四**：(b) 欄已自 GEOS 世界座標改為 `(s,t)` **解析**求（**E-10**）。
+
 輸出 `verify/out/probe_K9_s62_chord_vs_linedist.log`。rc 恆 0。
 """
 import math
@@ -98,7 +100,7 @@ def main():
     alloc = cad.get("alloc_dir_by_block", {}) or {}
     bls = cad.get("baselines", {}) or {}
 
-    rows = []
+    rows, _gate2 = [], []
     for setback in (0.0, 3.5):
         for lbl in sorted(cb_by):
             b = cb_by[lbl]
@@ -190,6 +192,7 @@ def main():
                     return (pt[0] - F1[0]) * dxh + (pt[1] - F1[1]) * dyh
 
                 _res = []
+                r_sb, _tag2 = rec['sb'], f"{lbl}/{which}"
                 for _d in (_dtop, _dbot):
                     _P = (F1[0] + _d * bnx, F1[1] + _d * bny)
                     _line = _LS([(_P[0] - dxh * _LBIG, _P[1] - dyh * _LBIG),
@@ -200,18 +203,47 @@ def main():
                            if (not _i1.is_empty and not _i2.is_empty
                                and _i1.geom_type == 'Point' and _i2.geom_type == 'Point')
                            else float('nan'))
-                    # (b) 弦（該多邊形之實體交集）
-                    _cl = _line.intersection(rng)
-                    if _cl.is_empty:
-                        _ch, _nseg, _ends = 0.0, 0, []
-                    elif _cl.geom_type == 'LineString':
-                        _ch, _nseg = _cl.length, 1
-                        _ends = [_cl.coords[0], _cl.coords[-1]]
-                    else:
-                        _gs = [g for g in getattr(_cl, 'geoms', []) if g.length > 0]
-                        _ch = sum(g.length for g in _gs)
-                        _nseg = len(_gs)
-                        _ends = ([_gs[0].coords[0], _gs[-1].coords[-1]] if _gs else [])
+                    # (b) 弦 —— 🔒 **S6-2-B §四：改於 `(s,t)` 局部框解析求**（**E-10**）
+                    #   案由：前版以 GEOS 於**世界座標**（TWD97 ~3.1e5）求交，
+                    #   量測線與多邊形邊**共線**時會回錯值（同族實證見
+                    #   `probe_K9_s62_k98_line_vs_chord` 之【A】：3.684 vs 真值 6.847）。
+                    #   ⇒ 本欄改走與 `parcel_min_width_n14` 同一之解析路徑。
+                    #   框：`s` 沿 `d̂`、`t` 沿 `b̂n`（本檔之深度軸即 `d`）⇒ 逐點 (s,t)。
+                    #   🔴 **框之號規（前版寫錯·已修）**：量測線 ＝ `{F1 + d·b̂n + s·d̂}`。
+                    #     因 `d̂` 與 `b̂n` **不正交**（`g = d̂·b̂n ≠ 0`），
+                    #     ⛔ **不可**用 `t = (P−F1)·b̂n` 當該線之常數座標——那是另一條線。
+                    #     正解：以 `n̂ = (−dy, dx) ⊥ d̂` 取 `t = ((P−F1)·n̂) / h`，`h = b̂n·n̂`
+                    #     ⇒ 線上各點 `(P−F1)·n̂ = d·h + s·(d̂·n̂) = d·h` ⇒ `t ≡ d` ✅。
+                    _nfx, _nfy = -dyh, dxh
+                    _h = bnx * _nfx + bny * _nfy
+                    _rst = [(( float(_q[0]) - F1[0]) * dxh + (float(_q[1]) - F1[1]) * dyh,
+                             (( float(_q[0]) - F1[0]) * _nfx
+                              + (float(_q[1]) - F1[1]) * _nfy) / _h)
+                            for _q in rng.exterior.coords]
+                    _xs = []
+                    for _i in range(len(_rst) - 1):
+                        _s0, _t0 = _rst[_i]
+                        _s1, _t1 = _rst[_i + 1]
+                        if _t0 == _t1:
+                            if _t0 == _d:
+                                _xs += [_s0, _s1]
+                            continue
+                        if (_t0 - _d) * (_t1 - _d) <= 0.0:
+                            _xs.append(_s0 + (_d - _t0) / (_t1 - _t0) * (_s1 - _s0))
+                    _ch = (max(_xs) - min(_xs)) if _xs else 0.0
+                    _nseg = (1 if _xs else 0)
+                    _ends = ([(F1[0] + _sv * dxh + _d * bnx, F1[1] + _sv * dyh + _d * bny)
+                              for _sv in (min(_xs), max(_xs))] if _xs else [])
+                    # 🔒 **弦欄之自我驗證閘**（`CLAUDE.md` 常設條）：本欄無碼面保證可用
+                    #   ⇒ 改以「**非共線時，解析值須與 GEOS 值相符**」為閘
+                    #     （共線正是 E-10 使 GEOS 失準之情形 ⇒ 該類格豁免、另計）。
+                    _coll = any(abs(_rst[_i][1] - _d) < 1e-9 and abs(_rst[_i + 1][1] - _d) < 1e-9
+                                for _i in range(len(_rst) - 1))
+                    _cg = _line.intersection(rng)
+                    _chg = (0.0 if _cg.is_empty else
+                            (_cg.length if _cg.geom_type == 'LineString'
+                             else sum(g.length for g in getattr(_cg, 'geoms', []))))
+                    _gate2.append((r_sb, _tag2, _d, _coll, _ch, _chg, abs(_ch - _chg)))
                     # (c) 弦兩端點之邊界歸屬
                     _own = []
                     for _e in _ends:
@@ -346,6 +378,21 @@ def main():
              "（`app.py` 之自檢①′ 上方）⇒ 對讀本表 `0m R4/left` 一列。")
 
     # ── 【C-3】兩項**待答觀測**（S6-2 補丁二-5·⛔ 不得留白給後人當前提）─────────
+    L.append("")
+    L.append("【B-2】🔒 **弦欄之自我驗證閘**（非共線時：解析 vs GEOS 須相符）")
+    L.append("-" * 190)
+    _g2bad = [x for x in _gate2 if (not x[3]) and x[6] > 1e-4]
+    _g2col = [x for x in _gate2 if x[3]]
+    L.append(f"  受檢帶端 {len(_gate2)}｜其中**與多邊形邊共線**者 {len(_g2col)} 端"
+             f"（**E-10 之失準情形·豁免本閘**）｜非共線者 {len(_gate2) - len(_g2col)} 端")
+    L.append(f"  非共線且 `|解析 − GEOS| > 1e-4` 者：**{len(_g2bad)}** 端"
+             + ("" if not _g2bad else "　🔴 ⇒ 解析路徑仍有誤、⛔ 不得據【A】"))
+    for x in _g2bad:
+        L.append(f"      {x[0]:<6}{x[1]:<12}d={x[2]:.6f}　解析 {x[4]:.6f} vs GEOS {x[5]:.6f}"
+                 f"　Δ {x[6]:.3e}")
+    if not _g2bad:
+        L.append("  ✅ 非共線之帶端全數相符 ⇒ **解析路徑正確**；"
+                 "共線之帶端則以解析值為準（GEOS 於該處失準·E-10）。")
     L.append("")
     L.append("【C-3】⚠️ 兩項**待答觀測**（本批**未解釋**·⛔ 禁當作已解）")
     L.append("-" * 190)

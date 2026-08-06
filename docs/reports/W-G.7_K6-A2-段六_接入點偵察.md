@@ -23,7 +23,7 @@
 
 | 事實 | 據 |
 |---|---|
-| 其 **G ≥ 街角規定面積** 係**碼面強制** | `app.py:11255` `if cand_G < cand.get('min_area_to_apply', 0): … eliminated` ⇒ 未達者**根本進不了 `qualified`**，遑論成為 winner<br>🔴 **本列已於 S6-2 主測後存疑·⛔ 不得再作為本上呈之實例佐證**：`g_rows` 之 `G(㎡)` 於 `3.5m R1/right` 實測為 **`227.72`**，**低於**同格之街角規定範圍面積 **`232.79`**（`verify/out/probe_K9_s62_k98_line_vs_chord.log`【B】）⇒ 該格**可能是「面積也不足」而非「面積過、寬不足」**，若然則 `K-9-5-2-a`-3 **根本不適用**。⚠️ 資格閘所比之 `cand_G` 與 `g_rows` 之 `G(㎡)` **是否同量未查明**（同名不同量之嫌·體例同 `K-9-6-a`）。詳見 `docs/reports/W-G.7_K6-A2-S6-2_主測_線距vs弦.md` §〇-2 |
+| 其 **G ≥ 街角規定面積** 係**碼面強制** | `app.py:11255` `if cand_G < cand.get('min_area_to_apply', 0): … eliminated` ⇒ 未達者**根本進不了 `qualified`**，遑論成為 winner<br>🔧 **存疑已解除·本列恢復成立**（S6-2-B）：前批所報之 `G ＝ 227.72` 係**取錯運算元**（那是 `g_rows` 之配地成果 G）；資格閘 `app.py:11255` 實比 **`cand_G`**，其 2dp 為 `cand['_G_true']`（`app.py:11252`）＝ **`240.57`** ≥ 門檻 **`232.79`**（差 `+7.78`·達標）——見 `verify/out/probe_K9_s62_k98_line_vs_chord.log`【E】【F】。⇒ `3.5m R1/right` **確為「面積過、寬不足」**，本上呈之實例佐證**成立**。⚠️ `cand_G` 與 `g_rows` 之 `G(㎡)` **確為同名不同量**（體例同 `K-9-6-a`） |
 | 該格**確為 winner 且合格** | `verify/out/probe_K9_7d_pk_impact.log:29`：`3.5m R1/right … 門檻 232.79→232.79｜候選 1→1｜合格 1→1｜winner ['628(5)']` |
 | 其**量得寬 < 門檻** | `verify/out/probe_K9_seg6_w_delta.log`【B】：`6.847031` vs `T = 7.00`（短少 `0.152969`） |
 | 與正典 `K-9-5-2` ④⑤ 之預測**相反** | ④「winner 之 G 一定 ≥ 街角最小規定範圍」；⑤「**面積夠 ⇒ 街角第 1 宗寬度自動合格」為真**」 |
@@ -136,19 +136,27 @@ if not (_W_at >= T - 1e-6):
 
 **呼叫點盤點**（裸 grep·⛔ 無後續過濾：`grep -rn --exclude-dir=.claude "_build_corner_range_v3" --include="*.py" .`）：
 
+> 🔧 **本表已於 S6-2-B 重做**（前版分項相加 ＝ 14 與總數 15 不符·且漏列一整類）。
+> **窮舉之揭示（`CLAUDE.md` 戒·⛔ 連過濾條件一併揭示）**：`_build_corner_range_v3(`
+> 之綁裸名式**只得 3**（且含 1 個**字串內偽命中**：`probe_ruling_K9_corner_width.py:1178`
+> 在 `L.append("…")` 內）；**須另加二變體**——`ns["…"](` 之間接呼叫、
+> 以及**別名呼叫** `_orig*(*a, **kw)`（替身內回呼原函式）。
+
 | 類別 | 處 | 數 |
 |---|---|---:|
 | 定義 | `app.py:10539` | 1 |
-| **生產真呼叫** | `app.py:11004`（`select_corner_lots_both_sides_v12` 內）／`app.py:17687`（UI 街角參數表） | **2** |
-| harness | `verify/run_verification.py:237` | 1 |
-| 夾具 | `verify/fixture_corner_range_k8.py:263` | 1 |
-| 探針（含 patch 用） | `probe_k97_r5_attribution`／`probe_K9_7d_layer2`（2）／`probe_K9_7d_pk_impact`／`probe_K9_7d_stageA`（2）／`probe_ruling_K9_7_alloc_t`（2）／`probe_ruling_K9_7_pk_impact`／`probe_ruling_K9_corner_width` | **10** |
-| **真呼叫合計** | | **15** |
-| 註解／字串／符號表 | `app.py` 8 處＋`app_harvest.py:152`＋各探針之說明 | — |
+| **生產真呼叫**（裸名） | `app.py:11004`／`app.py:17687` | **2** |
+| harness（`ns[...](`） | `verify/run_verification.py:237` | **1** |
+| 夾具（`ns[...](`） | `verify/fixture_corner_range_k8.py:263` | **1** |
+| 探針·直接（`ns[...](`） | `probe_K9_7d_layer2:179,188`／`probe_K9_7d_stageA:129`／`probe_K9_s62_chord_vs_linedist:132`／`probe_ruling_K9_7_alloc_t:129,139`／`probe_ruling_K9_corner_width:451` | **7** |
+| 探針·**別名呼叫**（替身內回呼） | `probe_K9_7d_pk_impact:133`／`probe_k97_r5_attribution:109`／`probe_ruling_K9_7_pk_impact:135`（皆 `_orig_range(*a, **kw)`）／`probe_K9_7d_stageA:237`（`_orig(*a, **kw)`） | **4** |
+| **真呼叫合計** | 2 ＋ 1 ＋ 1 ＋ 7 ＋ 4 | **15** ✅ |
+| **替身賦值**（⛔ 非呼叫·惟改型別即破其簽章） | `probe_K9_7d_pk_impact:148,166`／`probe_K9_7d_stageA:239,247`／`probe_k97_r5_attribution:111,144`／`probe_ruling_K9_7_pk_impact:150,168` | 8 |
+| 字串／註解／符號表 | `app.py` 8 處＋`app_harvest.py:152`＋各探針說明＋上開字串內偽命中 | — |
 
-⚠️ **探針中有 5 支係以 `ns["_build_corner_range_v3"] = _patched` 之方式 patch 之**
-（`probe_k97_r5_attribution:111`／`probe_K9_7d_pk_impact:148`／`probe_K9_7d_stageA:239`／
-`probe_ruling_K9_7_pk_impact:150`）⇒ **改回傳型別會同時破壞這些 patch 之替身簽章**。
+⚠️ **探針中有 4 支係以 `ns["_build_corner_range_v3"] = _patched` 之方式 patch 之**
+（`probe_k97_r5_attribution`／`probe_K9_7d_pk_impact`／`probe_K9_7d_stageA`／
+`probe_ruling_K9_7_pk_impact`）⇒ **改回傳型別會同時破壞這些 patch 之替身簽章**。
 
 | 改法 | 作法 | 爆炸半徑 | 代價 |
 |---|---|---|---|
