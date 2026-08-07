@@ -24,9 +24,13 @@ import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
 
 OUTDIR = os.path.join(VERIFY, "out")
-LOG = os.path.join(OUTDIR, "probe_D1_reconcile.log")
+LOG = os.path.join(OUTDIR, f"probe_reconcile_col{os.environ.get('RECON_COL','2')}.log")
 FROZEN = os.path.join(REPO, "docs", "reports", "W-G.8_D_期望影響表_凍存.md")
-COL = 2          # 0-based：F現行×舊／F現行×新／**F改正×舊**／F改正×新
+# 0-based 欄序：0 ＝ F現行×舊／1 ＝ F現行×新／**2 ＝ F改正×舊**／**3 ＝ F改正×新**
+# 🔒 **D-1 比 `2`、D-2 比 `3`**——⛔ 比錯欄會產生一整片假「不符」
+#   （實例：D-2 誤用 2 ⇒ 37 格「不符」，而其真G 逐格相同、只有門檻欄是舊值）。
+COL = int(os.environ.get("RECON_COL", "2"))
+COLNAME = ("F現行×舊門檻", "F現行×新門檻", "F改正×舊門檻", "F改正×新門檻")[COL]
 
 
 def main():                                                    # noqa: C901
@@ -38,7 +42,7 @@ def main():                                                    # noqa: C901
     os.makedirs(OUTDIR, exist_ok=True)
     L = []
     L.append("=" * 190)
-    L.append("【D-1 §B-4】與凍存期望表逐格對帳（欄 ＝ **F改正×舊門檻**）— ⛔ 不得修改凍存表")
+    L.append(f"【對帳】與凍存期望表逐格對帳（欄 ＝ **{COLNAME}**·`RECON_COL={COL}`）— ⛔ 不得修改凍存表")
     L.append("=" * 190)
 
     # ── 讀凍存表 ────────────────────────────────────────────────────────
@@ -100,7 +104,8 @@ def main():                                                    # noqa: C901
     L.append("")
     L.append("【A】逐候選對帳（**凍存 vs 現況**·⛔ 三欄皆比：真G／門檻／達標含★）")
     L.append("-" * 190)
-    L.append(f"{'情境':<6}{'街廓/側':<12}{'候選':<13}{'凍存(F改正×舊門檻)':<26}{'現況(切換後)':<26}  判")
+    L.append(f"{'情境':<6}{'街廓/側':<12}{'候選':<13}"
+             f"{('凍存(' + COLNAME + ')'):<26}{'現況(切換後)':<26}  判")
     L.append("-" * 190)
     _ok = _bad = 0
     _mis = []
@@ -122,8 +127,8 @@ def main():                                                    # noqa: C901
     L.append("【B】判定")
     L.append("-" * 190)
     if _bad == 0:
-        L.append("  ✅ **逐格全符** ⇒ D-1 之實跑與凍存期望表之 `F改正×舊門檻` 欄**一致**。")
-        L.append("  ⇒ **未觸發** §B-4 之停機條件。")
+        L.append(f"  ✅ **逐格全符** ⇒ 實跑與凍存期望表之 `{COLNAME}` 欄**一致**。")
+        L.append("  ⇒ **未觸發**對帳之停機條件。")
     else:
         L.append(f"  🔴 **不符 {_bad} 格 ⇒ 依 §B-4 為「發現」⇒ 停機上呈**（⛔ 凍存表未改一字）：")
         for k, e, n in _mis:

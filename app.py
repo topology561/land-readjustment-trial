@@ -10626,6 +10626,9 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     S2 = (float(side_line_pts[1][0]), float(side_line_pts[1][1]))
     sux, suy = _u(S2[0] - S1[0], S2[1] - S1[1])
     snx, sny = -suy, sux                                    # 截角前側界之法向
+    # ⚠️ **D-2 之後 `alloc_dir` 不再參與本構造之幾何**（內側界改 ∥SIDELINE·K-9-5-4）。
+    #   以下三行**僅存為前置條件之驗證**（缺 ALLOC／ALLOC∥FRONT 仍 loud stop）——
+    #   ⛔ 參數與守衛**刻意保留**：呼叫端一律仍傳，且該二前提為街廓幾何之健全性檢查。
     aux, auy = _u(float(alloc_dir[0]), float(alloc_dir[1]))
     anx, any_ = -auy, aux                                   # ALLOC 法向
 
@@ -10645,19 +10648,15 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
         return (((S1[0] - F1[0]) * snx + (S1[1] - F1[1]) * sny)
                 - d * (bnx * snx + bny * sny)) / den_s
 
-    def _s_alloc(d, t):
-        """同上，與 L(t)＝{p:(p−Q0)·a_n ＝ t} 之交點。"""
-        return (t + ((Q0[0] - F1[0]) * anx + (Q0[1] - F1[1]) * any_)
-                - d * (bnx * anx + bny * any_)) / den_a
+    # ⛔ **`_s_alloc`／`_W` 已隨 D-2 切換整段刪除**（K-9-5-4：內側界改 ∥SIDELINE ⇒
+    #   「與 L(t) 之交點」與「二側界平行前緣線之距離」皆不再是本構造之量）。
+    #   ⛔ 不留死碼（CLAUDE.md：不留 fallback 舊邏輯、舊函式整個刪）。
 
     # σ：街廓內側位於 d_hat 之正向或負向（左街角 +1、右街角 −1；由形心定號·不靠側別字串）
     s_cen = ((float(block_centroid[0]) - F1[0]) * dx
              + (float(block_centroid[1]) - F1[1]) * dy)
     sigma = 1.0 if s_cen > t_q else -1.0
 
-    def _W(d, t):
-        """帶內深度 d 處、二側界間**平行前緣線**之距離（往街廓內為正）。"""
-        return sigma * (_s_alloc(d, t) - _s_side(d))
 
     # 🆕 **K-6-A2 段三(c)：§四 定位改走 `k97_solve_alloc_t`**（KL 放行 2026-08-04）。
     #   ⛔ **舊式已移除**（原為「帶深固定＝`round(D_avg,2)` ＋ 斜率＝`c`」之
@@ -10673,72 +10672,70 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     #   放行依據（土地後果）：最大位移 `0.004846 m`（＜法定粒度 `0.01 m`）、
     #     候選資格餘裕／擾動 ＝ 142×、PK 決定性欄位零翻盤
     #     （`docs/reports/W-G.5_K6-A2-段四c2a2_乙式實作與攤表.md` §三）。
-    _k97 = k97_solve_alloc_t(
-        block_centroid, front_pts, baseline_pts, side_line_pts, alloc_dir,
-        setback, min_width, chamfer_tri=chamfer_tri, block_depth=D,
-        _label=_label, _side=_side, block_vertices=block_vertices)
-    t_star = _k97['t_star']
-    # 🔒 **帶深自此改用範圍自身之最小深度 `D(t*)`**（非街廓平均深度 `D`）。
-    #   `D` 仍保留：① 供 `k97_solve_alloc_t` 回算舊式 `t*` 以資對照；② 缺值仍 loud raise（見上）。
-    D_at = _k97['depth_at_t_star']
-    # 🆕 **乙式之量測帶二端**（`d` ＝ FRONT 沿 `b̂n` 之平移量）：`[δ_P, δ_P + D_new]`。
-    #   ⛔ **自檢①／①′ 必須量這兩條線**——若沿用甲式之 `(0, D_at)`，量到的是
-    #     **另一個帶**，其與 `T` 之差恰為階段 A 之殘差 `−k·δ_P`（最劣 `4.867e-03`，
-    #     而 `eps` 上限為 `_CR_EPS_LEGAL_CEIL = 0.005`）⇒ **僅以 2.7% 之餘裕僥倖不紅**，
-    #     且所驗者非本構造之定義。實料：`verify/out/probe_K9_7d_stageA_asrun.log`【A】。
-    _band_lo, _band_hi = _k97['band_d_top'], _k97['band_d_bot']
-
-    # 🆕 K-6-A2 段三(a)→(c)：`_t_override` 之語意**於切換後反轉**——
-    #   切換前：探針用它注入**新** `t*`（生產走舊式）；
-    #   切換後：**生產已走新式**，故探針改用它注入**舊** `t*` 以重現對照組。
-    #   ⛔ **生產路徑一律不傳**（`grep -rn "_t_override=" --include="*.py" .` 應只命中探針）。
-    #   傳入時**跳過自檢①**——該自檢係「回量帶內最小寬 ＝ T」之**定義性**回代，
-    #   而覆寫之 `t` 依定義**不是**該方程之解 ⇒ 硬跑必假紅。其餘幾何與自檢**一律照舊**。
-    #   ⚠️ 覆寫時 `D_at` 亦須隨該 `t` 重算，否則自檢①′ 之量測深度與 `t` 不相稱。
-    _t_is_override = False
+    # 🔴 **K-6-A2 D-2：切換至 `K-9-5-4` 之新構造**（KL 裁 2026-08-08·D-②·canonical）。
+    #   內側界改為 **SIDELINE 平行移動 `S1_par`**（⛔ **不再是** ALLOC 方向之 `L(t*)`）。
+    #   ⛔ **舊式（`k97_solve_alloc_t` → `t_star` → `L(t*)`）於本函式整段移除**·不留 fallback。
+    #   🔒 `k97_solve_alloc_t` **本身不刪、不停用、不標作廢**（D 波範圍界線 #5）——
+    #      其仍為 K-9-7 之正典實作，供第 2 宗量測機具與既有探針使用
+    #      （`grep -c "k97_solve_alloc_t" app.py`；探針側見 `grep -ln "k97_solve_alloc_t" verify/probes/*.py`）。
+    #   實證：GEO-1 硬約束 16/16（分配線永不切截角）、閘 H3 16/16（定寬成立）
+    #      —— `verify/out/probe_K9_geo1_S1_construction.log`。
     if _t_override is not None:
-        t_star = float(_t_override)
-        D_at = _k97['D0'] - max(0.0, _k97['m'] * t_star)
-        # ⚠️ 覆寫路徑為**診斷重播**：所注入之 `t` 依定義不是本方程之解 ⇒ 自檢① 跳過，
-        #   其帶亦不是該 `t` 之乙式帶。此處仍取**第一層口徑** `[0, D_at]`，
-        #   使自檢①′ 退化為「閉式 vs shapely 之覆算」（其唯一仍成立之作用）。
-        #   ⛔ 勿據覆寫輪之帶推論乙式之幾何。
-        _band_lo, _band_hi = 0.0, D_at
-        _t_is_override = True
+        _stop("`_t_override` 係**舊式 `t*`** 之注入口，而新構造（K-9-5-4）**無 `t*`** "
+              "⇒ ⛔ 不得靜默忽略（no-silent-fallback）。舊式對照請改走 `k97_solve_alloc_t` 自身。")
+    if chamfer_tri is None or getattr(chamfer_tri, "is_empty", True):
+        _stop("K-9-5-4 需**道路截角線段**以定 `Ps`，然該側取不到截角三角形（⛔ 禁兜底）")
 
-    # ── 自檢①：構造之**定義**——回量帶內最小寬 ＝ 退縮寬 ＋ 畸零地最小寬 ──────────
-    #   🔒 量測線改用**乙式帶之二端**（`[δ_P, δ_P+D_new]`·K-9-6-b-2），
-    #     ⛔ 非甲式之 `(0, D_at)`——見上方 `_band_lo/_band_hi` 之註。
+    # ── `P0` ＝ FRONT∞ ∩ SIDE∞ ＝ 上方之 `Q0`（其 d_hat 座標 ＝ `t_q`）───────────
+    # ── `Ps` ＝ FRONT 與**道路截角線段**之交點 ＝ 截角三角形中**非 P0** 且**最靠 FRONT∞** 之頂點
+    def _d_front(p):
+        """點至 FRONT∞ 之距離（解析·⛔ 非 GEOS·E-10）。"""
+        return abs((p[0] - F1[0]) * (-dy) + (p[1] - F1[1]) * dx)
+
+    _cv = [(float(c[0]), float(c[1])) for c in chamfer_tri.exterior.coords[:-1]]
+    _cv = [c for c in _cv if _m3.hypot(c[0] - Q0[0], c[1] - Q0[1]) > 1e-9]
+    if len(_cv) < 2:
+        _stop(f"截角三角形除 P0 外不足二頂點（得 {len(_cv)}）⇒ `Ps` 不可定")
+    _cv.sort(key=_d_front)
+    Ps = _cv[0]
+    # 🔒 **辨別性檢（GEO-1 閘 H2）**：所取者須**明確**為 FRONT 側頂點。
+    #   ⛔ 不可寫成絕對 `< 1e-6`——BLOCK 邊與 FRONT_LINE 係**兩個圖層**，實測相距達 1.48cm。
+    if not (_d_front(Ps) < 0.05 and _d_front(_cv[1]) > _d_front(Ps) * 10.0):
+        _stop(f"`Ps` 辨別失敗：d(取用,FRONT∞)={_d_front(Ps):.9f}、"
+              f"d(另一頂點,FRONT∞)={_d_front(_cv[1]):.9f} ⇒ 二者未明確可分（⛔ 禁猜）")
+
+    # ── `S1_par` ＝ max(線段 P0–Ps, 退縮 ＋ 畸零地最小寬)（**沿 FRONTLINE 量·路平行**）──
+    #   🔒 `S1_par` 為「與道路境界線**平行**」之距離（畸零地使用規則第四條第三款）
+    #      ⛔ **非垂距**；`W`（供 Rw 查表）為垂距，二者**同名不同量·禁互代**。
+    _s_Ps = (Ps[0] - F1[0]) * dx + (Ps[1] - F1[1]) * dy
+    _seg_P0Ps = abs(_s_Ps - t_q)
+    S1_par = max(_seg_P0Ps, T)
+    # 🔒 硬約束（GEO-1 §二(6)）：平移後之界線與 FRONT 之交點須落在 `Ps` 或其**內側**
+    #   ⇒ **分配線永不切到截角**。
+    if S1_par + 1e-9 < _seg_P0Ps:
+        _stop(f"S1_par {S1_par:.6f} < 線段 P0–Ps {_seg_P0Ps:.6f} ⇒ 分配線會切到截角（⛔ 構造矛盾）")
+
     eps = _corner_range_eps(dxf_quantum)
-    w0, wD = _W(_band_lo, t_star), _W(_band_hi, t_star)
-    if (not _t_is_override) and abs(min(w0, wD) - T) > eps:
-        _stop(f"構造自檢不合：帶內最小寬 {min(w0, wD):.6f} ≠ 退縮＋最小寬 {T:.6f}"
-              f"（eps={eps:.6g}·由 q={dxf_quantum} 導出·"
-              f"帶 [{_band_lo:.6f}, {_band_hi:.6f}]·D_new(t*)={D_at:.6f}）")
-
-    # ── 自檢①′：以**獨立實作**覆算同一組寬度（shapely 線交點·非上方之閉式）──────────
-    #   ①單以閉式回代，只證「解方程沒解錯」；①′改用完全不同之求交路徑，才驗得出
-    #   `_s_side`／`_s_alloc` 之推導本身有無錯（fixture-provenance：期望值須來自獨立真相源）。
-    #   ⚠️ **不可**改以「範圍多邊形之弦長」覆算——§三 明定該帶為**純量測工具·不截斷實體**，
-    #      二側界取**無限直線**；街廓於該街角處未必深達 D，且前端弦另被截角削去
-    #      （實測 R4 左 弦@d=0 ＝1.36 vs 真寬 5.08）⇒ 以弦覆算會造出假紅。
-    _LBIG = 1.0e5
-    _Lt = _LS3([(Q0[0] + t_star * anx - aux * _LBIG, Q0[1] + t_star * any_ - auy * _LBIG),
-                (Q0[0] + t_star * anx + aux * _LBIG, Q0[1] + t_star * any_ + auy * _LBIG)])
-    _Sinf = _LS3([(S1[0] - sux * _LBIG, S1[1] - suy * _LBIG),
-                  (S1[0] + sux * _LBIG, S1[1] + suy * _LBIG)])
-    for _d_chk, _w_chk in ((_band_lo, w0), (_band_hi, wD)):
+    # ── 自檢（新構造之**定義性**回代）：二側界之**路平行距**恆 ＝ `S1_par`，全深度 ──
+    #   🔒 以**獨立實作**（shapely 線交點）覆算，⛔ 非以閉式自證（套套邏輯無鑑別力）。
+    _LBIG_CR = 1.0e5
+    _Tp = (S1[0] + sigma * S1_par * dx, S1[1] + sigma * S1_par * dy)
+    _Sinf_cr = _LS3([(S1[0] - sux * _LBIG_CR, S1[1] - suy * _LBIG_CR),
+                     (S1[0] + sux * _LBIG_CR, S1[1] + suy * _LBIG_CR)])
+    _Tinf_cr = _LS3([(_Tp[0] - sux * _LBIG_CR, _Tp[1] - suy * _LBIG_CR),
+                     (_Tp[0] + sux * _LBIG_CR, _Tp[1] + suy * _LBIG_CR)])
+    for _d_chk in (0.0, 0.5 * D, D):
         _P = (F1[0] + _d_chk * bnx, F1[1] + _d_chk * bny)
-        _dep = _LS3([(_P[0] - dx * _LBIG, _P[1] - dy * _LBIG),
-                     (_P[0] + dx * _LBIG, _P[1] + dy * _LBIG)])
-        _i1, _i2 = _dep.intersection(_Sinf), _dep.intersection(_Lt)
+        _dep = _LS3([(_P[0] - dx * _LBIG_CR, _P[1] - dy * _LBIG_CR),
+                     (_P[0] + dx * _LBIG_CR, _P[1] + dy * _LBIG_CR)])
+        _i1, _i2 = _dep.intersection(_Sinf_cr), _dep.intersection(_Tinf_cr)
         if _i1.is_empty or _i2.is_empty:
-            _stop(f"自檢①′：深度 {_d_chk:.2f} 之量測線與側界／ALLOC_LINE 無交點")
-        _w_ind = sigma * (((_i2.x - F1[0]) * dx + (_i2.y - F1[1]) * dy)
-                          - ((_i1.x - F1[0]) * dx + (_i1.y - F1[1]) * dy))
-        if abs(_w_ind - _w_chk) > eps:
-            _stop(f"自檢①′：深度 {_d_chk:.2f} 之寬度 獨立覆算 {_w_ind:.6f} "
-                  f"≠ 閉式 {_w_chk:.6f}（eps={eps:.6g}）——推導有誤")
+            _stop(f"自檢：深度 {_d_chk:.2f} 之量測線與側界／平移後側界無交點")
+        _w_ind = abs(((_i2.x - F1[0]) * dx + (_i2.y - F1[1]) * dy)
+                     - ((_i1.x - F1[0]) * dx + (_i1.y - F1[1]) * dy))
+        if abs(_w_ind - S1_par) > eps:
+            _stop(f"構造自檢不合：深度 {_d_chk:.2f} 之路平行距 獨立覆算 {_w_ind:.6f} "
+                  f"≠ S1_par {S1_par:.6f}（eps={eps:.6g}）——平移有誤")
 
     blk = _SP3([(float(v[0]), float(v[1])) for v in block_vertices])
     if not blk.is_valid:
@@ -10746,15 +10743,17 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     if blk.is_empty:
         _stop("街廓多邊形為空")
 
-    # §五：以 L(t*) 切街廓，取街角側之片（街廓邊界＝前緣線／**截角後**側界／BASELINE）
+    # 🔴 **K-9-5-4**：以**平移後 SIDELINE** 切街廓，取街角側之片
+    #   （街廓邊界＝前緣線／道路截角／**截角後**側界／BASELINE）
+    #   ⇒ 範圍 ＝ `Ps → 道路截角 → SIDELINE → BASELINE → 平移後SIDELINE`（正典逐字）。
+    #   ⛔ 舊式之 `L(t*)`（∥ALLOC）已移除。
     _ext = 2.0 * (blk.bounds[2] - blk.bounds[0] + blk.bounds[3] - blk.bounds[1]) + 100.0
-    _Lp = (Q0[0] + t_star * anx, Q0[1] + t_star * any_)
-    cut = _LS3([(_Lp[0] - aux * _ext, _Lp[1] - auy * _ext),
-                (_Lp[0] + aux * _ext, _Lp[1] + auy * _ext)])
+    cut = _LS3([(_Tp[0] - sux * _ext, _Tp[1] - suy * _ext),
+                (_Tp[0] + sux * _ext, _Tp[1] + suy * _ext)])
     pieces = list(_split3(blk, cut).geoms)
     if len(pieces) < 2:
-        _stop(f"L(t*) 未切到街廓（t*={t_star:.4f}）——滑動至街廓另一側仍達不到"
-              f"街角地最小寬度 {T:.2f}m（§6-1 停機·⛔ 禁兜底）")
+        _stop(f"平移後 SIDELINE 未切到街廓（S1_par={S1_par:.4f}）——"
+              f"街廓於該街角處容不下「退縮＋畸零地最小寬」{T:.2f}m（§6-1 停機·⛔ 禁兜底）")
     # 街角側＝含側界之片：以側界於帶中央之點為錨（該點在街角側之邊界上）
     _anchor = _PT3(F1[0] + 0.5 * D * bnx + _s_side(0.5 * D) * dx,
                    F1[1] + 0.5 * D * bny + _s_side(0.5 * D) * dy)
