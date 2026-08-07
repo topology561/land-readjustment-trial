@@ -23,8 +23,10 @@ import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
 
 OUTDIR = os.path.join(VERIFY, "out")
-LOG = os.path.join(OUTDIR, "probe_D2切換前凍存.log")
-RUNALL = os.path.join(OUTDIR, "D1_runall.log")
+# 🔒 檔名帶批次識別（⛔ 禁寫入他批已入庫之 log 檔名）——由 `FREEZE_TAG` 指定
+_FT = os.environ.get("FREEZE_TAG", "D2")
+LOG = os.path.join(OUTDIR, f"probe_{_FT}切換前凍存.log")
+RUNALL = os.path.join(OUTDIR, os.environ.get("FREEZE_RUNALL", "D1_runall.log"))
 
 
 def main():                                                    # noqa: C901
@@ -116,8 +118,15 @@ def main():                                                    # noqa: C901
     _f = _t.count("🔴 FAIL")
     L.append(f"  來源：`{os.path.relpath(RUNALL, REPO)}`（D-1 切換後之 run_all）")
     L.append(f"  PASS ＝ **{_p}**　FAIL ＝ **{_f}**　名目總數 ＝ **{_p + _f}**")
-    L.append("  （施工單 §二 之期望：名目數 123／74 PASS／49 FAIL）")
-    L.append(f"  ⇒ 相符？ PASS {_p == 74}／FAIL {_f == 49}／總數 {_p + _f == 123}")
+    # 🔒 期望值**隨批次而異** ⇒ 由 env 指定；⛔ 不得寫死（寫死者於另一批即自相矛盾·考古節 50）
+    _eP = os.environ.get("FREEZE_EXP_PASS")
+    _eF = os.environ.get("FREEZE_EXP_FAIL")
+    if _eP is None or _eF is None:
+        L.append("  ⚠️ 未指定本批之期望值（`FREEZE_EXP_PASS`／`FREEZE_EXP_FAIL`）⇒ **只記錄實測·不作比較**")
+    else:
+        _eP, _eF = int(_eP), int(_eF)
+        L.append(f"  （本批期望：名目數 {_eP + _eF}／{_eP} PASS／{_eF} FAIL）")
+        L.append(f"  ⇒ 相符？ PASS {_p == _eP}／FAIL {_f == _eF}／總數 {_p + _f == _eP + _eF}")
 
     L.append("")
     L.append("🔒 **本檔為切換前之凍存·⛔ 一字不得改。** 切換後之對照見 D-2 §三 哨兵。")

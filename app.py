@@ -11455,6 +11455,44 @@ def _extract_corner_cut_line(block_poly,
     }
 
 
+def _first_corner_alloc_dir(side_mid):
+    """🔴 **K-9-5-4 ②**（KL 裁 2026-08-08·D-2b）：街角**第 1 宗之遠側界 ∥SIDELINE**
+    ⇒ 其切帶之 `allocation_dir` 改為 **`rot90_cw(SIDE 方向)`**
+    （`_block_strip` 之 `n_hat = rot90(allocation_dir)` ⇒ 界線 ∥SIDELINE；
+      `solve_G_binary` 之 `_n_alloc = normalize(allocation_dir)` ⇒ `W` 沿其法向＝**垂距**）。
+
+    🔒 **以 `side_mid` 幾何反查 SIDE_LINE**——⛔ **不靠任何字串標籤**。
+       案由（D-2b-0 實測）：`_corner_first_lot_G` 之 `_label` 實為複合字串
+       `'R4·628(1)·左'`、**非街廓標籤**；以其查表必 `None` ⇒ 靜默退回。
+    ⛔ 查無即 **loud raise**（no-silent-fallback）。
+    """
+    import streamlit as _st_fc
+    if side_mid is None:
+        raise RuntimeError("🔴 K-9-5-4②：`side_mid` 缺 ⇒ 無法定位側界（禁靜默沿用 ALLOC 方向）")
+    _m = np.asarray(side_mid, dtype=float)[:2]
+    _slbs = (_st_fc.session_state.get('f3_cad_side_lines_by_side', {}) or {})
+    for _lbl in _slbs:
+        for _w in ('left', 'right'):
+            _sd = (_slbs.get(_lbl) or {}).get(_w)
+            if not _sd:
+                continue
+            _md = _sd.get('mid')
+            if _md is None:
+                continue
+            if float(np.linalg.norm(np.asarray(_md, dtype=float)[:2] - _m)) < 1e-6:
+                _p1 = np.asarray(_sd['p1'], dtype=float)[:2]
+                _p2 = np.asarray(_sd['p2'], dtype=float)[:2]
+                _v = _p2 - _p1
+                _n = float(np.linalg.norm(_v))
+                if _n < 1e-9:
+                    raise RuntimeError(f"🔴 K-9-5-4②：{_lbl}/{_w} 之 SIDE_LINE 退化為零長")
+                _v = _v / _n
+                return (float(_v[1]), float(-_v[0]))           # rot90_cw(SIDE)
+    raise RuntimeError(
+        f"🔴 K-9-5-4②：`side_mid`={tuple(float(x) for x in _m)} 於 "
+        "`f3_cad_side_lines_by_side` 查無對應側界 ⇒ 停（no-silent-fallback）")
+
+
 def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                  S_max, is_corner, side, avg_depth, B, C, tab6_burden,
                  allocation_dir=None, side_mid=None, W_prev=0.0):
@@ -11467,6 +11505,13 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
     **loud raise 限輸入缺值**（Q-M4）：solver（solve_G_binary）失敗**不 raise**、照走 `iterate_G_S`
     fallback（與實配同側·口徑一致）。回 `(res, solver_label)`。
     """
+    # 🔴 **K-9-5-4 ② 之唯一決定點**（KL 裁 2026-08-08·D-2b·§〇-2「決定點必須恰好一個」）：
+    #   `is_corner=True` ＝ 街角**第 1 宗**（或 `_corner_first_lot_G` 之「假設第 1 宗」）
+    #   ⇒ 其遠側界改 ∥SIDELINE。**六個 `_solve_one` 呼叫端、兩份 `_solve_one` 薄殼、
+    #     `_corner_first_lot_G` 皆 `git diff` 0 行**——⛔ 未於呼叫端各寫一次條件。
+    #   ⛔ 第 2 宗以後（`is_corner=False`）一律沿用 `allocation_dir`（∥ALLOC）·未動。
+    if is_corner:
+        allocation_dir = _first_corner_alloc_dir(side_mid)
     if blk_poly is not None and d_hat is not None and baseline_pt is not None:
         try:
             _r = solve_G_binary(

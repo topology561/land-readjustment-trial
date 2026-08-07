@@ -1,0 +1,34 @@
+# K-6-A2 期望 FAIL 名單（D-2b-1 切換後）
+# 來源 log ：verify/out/D2b1_runall.log
+# 計數指令：grep -c "^🔴 FAIL" <本檔>        ← ⛔ 非 `wc -l`
+#
+# 🔑 **根因單一**：`①' 覆蓋閘破`（app.py:8789）——第 1 宗改 ∥SIDELINE 後，
+#    與仍為 ∥ALLOC 之池片（`_place_pool_parcels`·app.py:8886）間出現楔形空隙 12.0568㎡
+#    ⇒ `run_step_g` 中止（verify/stepg_pipeline.py:972）⇒ 下游世代全數不產出。
+#    本 log 中 `覆蓋閘破` 出現 7 次；D-1／D-2 各 0 次 ⇒ **本批新破**。
+#    ⇒ **無法歸因之變動 ＝ 0**。
+# 🛑 停機上呈中：修復須動池片切線方向，不在 D-2b 清單、不在授權內。
+# ⚠️ 本名單於覆蓋閘修復後即失效——本批之紅係**單一阻塞之連鎖**、非各自獨立之問題。
+# ---------------------------------------------------------------------------
+🔴 FAIL  參數0m
+🔴 FAIL  參數3.5m
+🔴 FAIL  v3·診斷0m（全欄逐格·無豁免）
+🔴 FAIL  率接線無串聯0m（vs v1 原錨，豁免 G估 後逐格全等）
+🔴 FAIL  率接線 G估 欄變動0m 1 格（期 0·Y 波後 baseline 同源）
+🔴 FAIL  指配0m
+🔴 FAIL  v3·StepG0m（結構閘/看守觸發）
+🔴 FAIL  v3·診斷3.5m（全欄逐格·無豁免）
+🔴 FAIL  率接線無串聯3.5m（vs v1 原錨，豁免 G估 後逐格全等）
+🔴 FAIL  指配3.5m
+🔴 FAIL  抵費地3.5m
+🔴 FAIL  v3·StepG3.5m（結構閘/看守觸發）
+🔴 FAIL  v3 財務接線閘
+🔴 FAIL  W-D.3 碎片
+🔴 FAIL  W-D.4
+🔴 FAIL  W-F F.0
+🔴 FAIL  W-F F.1
+🔴 FAIL  W-F F.2
+🔴 FAIL  W-F F.3
+🔴 FAIL  W-F F.4
+🔴 FAIL  W-G G.1 接線層 ctx-builder 同源
+🔴 FAIL  W-G G.2 世代幾何曝出契約
