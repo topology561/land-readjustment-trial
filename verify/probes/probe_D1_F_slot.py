@@ -207,7 +207,13 @@ def main():                                                    # noqa: C901
     L.append("  🔒 **本哨兵之合格條件**：**恰有一態成立**（⛔ 兩態同時成立 ⇒ 哨兵無鑑別力·須重設計）。")
     L.append(f"  ⇒ 本次：切換前態 {_pre_all}／切換後態 {_post_all} ⇒ "
              f"**{'✅ 具鑑別力' if _pre_all != _post_all else '🔴 無鑑別力'}**")
-    L.append(f"  ⛔ 本批**未切換**（`git diff -U0 027a06d -- app.py` ⇒ 0 行）⇒ 期望為**切換前態成立**。")
+    # 🔒 本行**須隨相位改寫**——寫死之結論句於另一相位即自相矛盾（失敗考古節 50 之族）
+    if _TAG == "pre":
+        L.append("  ⛔ 本相位為**切換前**（`app.py` 之 `F` 槽仍取路寬）⇒ 期望為**切換前態成立**。")
+    else:
+        L.append("  ✅ 本相位為**切換後**（`F` 槽已取側長度）⇒ 期望為**切換後態成立**。")
+        L.append("  🔒 與凍存檔逐項對讀：`verify/out/probe_D1_F_slot_切換前凍存.log`"
+                 "（⛔ 該檔一字不得改）。")
 
     txt = "\n".join(L)
     print(txt)
