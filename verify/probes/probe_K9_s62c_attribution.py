@@ -498,8 +498,14 @@ def main():                                                    # noqa: C901
                  f"　本格 forced＝**{_t['forced']}** ⇒ buf ＝ **0.0**／樂觀 **0**")
         L.append(f"     🆕 **F**    ：實配 `sb_row['右側長度(m)']`"
                  f"（`stepg_pipeline.py:548`）＝**{_F_prod:.2f}**")
+        # 🔧 **時點註（D-2b-2 §七-2·CC 自查）**：下列敘述之「樂觀＝路寬_m」係
+        #   **`D-1`（`c56067f`）之前**之生產態。D-1 已將 `verify/selection_pipeline.py:436-437`
+        #   之 `F` 槽切換為 `左側長度(m)`／`右側長度(m)` ⇒ **該行所述之來源已非現行生產態**。
+        #   ⛔ **本檔之計算不動**——`_F_opt` 之雙口徑並存係本檔**設計**（S6-2-C 歸因所需之對照組），
+        #   僅補時點標示，⛔ 禁改其取值。
         L.append(f"                 樂觀 `snapshot[blk]['右側']['路寬_m']`"
-                 f"（`verify/selection_pipeline.py:437`）＝**{_F_opt:.2f}**"
+                 f"（**D-1 之前**之 `verify/selection_pipeline.py:437`；"
+                 f"D-1 `c56067f` 後該處已改取 `右側長度(m)`）＝**{_F_opt:.2f}**"
                  f"　⇒ Δ ＝ **{_F_opt - _F_prod:+.2f}**")
         L.append(f"     l₁ 側尺度  ：兩側同鍵 `右側尺度` ＝ {_lside_prod:.2f}（⇒ 非分歧項）")
 

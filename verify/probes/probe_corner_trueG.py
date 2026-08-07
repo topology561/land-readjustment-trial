@@ -145,7 +145,12 @@ def _run_tag(ns, fake_st, snapshot, setback, tag, L):
         sbr = sb_rows.get(blk) or _fail(f"{blk} 缺 sb row")
         l_front = float(sbr.get("正街尺度", 0) or 0)
         l_side = float(sbr.get("左側尺度" if end == "左" else "右側尺度", 0) or 0)
-        F = float(SB[blk]["左側" if end == "左" else "右側"]["路寬_m"] or 0)
+        # 🔧 **更正（D-2b-2 §七-1·CC 自查）**：原式 `SB[blk][側]["路寬_m"]` 係 **F 槽餵錯量**
+        #   ——正典明訂 **F ＝ SIDE_LINE 全長**，非側街路寬（`GB-41`）。本處為 GB-41 所載
+        #   「誤用之二處」**之外的第三處**（該登記之「二處」係**列舉、非窮舉**·已加具名更正註）。
+        #   改源為 `sbr`（＝`sb_rows_by_label` 之列）——與 D-1 落地之
+        #   `app.py:18030-18031`／`verify/selection_pipeline.py:436-437` **同一 dict、同一欄名**。
+        F = float(sbr.get("左側長度(m)" if end == "左" else "右側長度(m)", 0) or 0)
         slb = ((cad.get("side_lines_by_side") or {}).get(blk) or {})
         side_mid = (slb.get("left" if end == "左" else "right") or {}).get("mid")
         zone = zof.get(bpr.get("原地號", ""), "")
