@@ -1109,20 +1109,62 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 f"{'／🔄方向改變' if d['authorized'] else ''}"
                 for d in _ifs)))
 
-        def _guard_auth_scope(_side_tag, _nodes, _ifs):
-            """§二-3 ➕ **範圍守衛**：符合方向判準者須**恰為街角第 1 宗**；不符 ⇒ loud raise。
+        def _side_alloc_degenerate(_side_tag):
+            """🆕 **`K-9-5-8`（D-2b-8 §A-2）**：該側 `SIDE` 與街廓 `ALLOC` 是否**幾何上退化為平行**。
 
-            ⛔ 非套套邏輯——`authorized` 由**生產輸出之方向**判定，`marker` 由**選角流程**標記，
-            二者來源不同 ⇒ 本斷言確實可能失敗（即 `K-9-5-5` 之範圍被違反時）。
+            KL 裁（逐字）：「**有可能使用者於該街廓就是依據某側的 SIDELINE 方向畫設 ALLOCLINE。**」
+            ⇒ `SIDE ∥ ALLOC` 係**使用者畫設選擇**、**預期且合法**；退化時 `K-9-5-4 ②` 之
+            `rot90_cw(SIDE)` **恰等於** `allocation_dir_block`（＝`rot90(ALLOC_cad)`）
+            ⇒ 方向「**套用了但等值**」、**無楔形**、配地結果與未套用相同。
+            ⛔ **不得視為異常、不得據以判定圖資有誤**（`K-9-5-8`）。
+
+            🔒 **容差與 `_dir_is_alloc` 同源**（`_PAR_TOL`）——⛔ 不另立門檻。
+            🔒 **由幾何算出**（量 `SIDE` 與 `ALLOC_cad` 之 `|cross|`），
+               ⛔ **不是**「是否為街角第 1 宗」（那才是套套邏輯）。
+            回傳 (是否退化, |cross|, 夾角度數)；缺 SIDE／ALLOC ⇒ (False, None, None)。
             """
+            _sd = (_side_lines_blk.get(_side_tag) or {})
+            _p1 = _sd.get('p1'); _p2 = _sd.get('p2')
+            if _p1 is None or _p2 is None or _alloc_dir_cad is None:
+                return False, None, None
+            _v = _np_d.asarray(_p2, dtype=float)[:2] - _np_d.asarray(_p1, dtype=float)[:2]
+            _a = _np_d.asarray(_alloc_dir_cad, dtype=float)[:2]
+            _nv = float(_np_d.linalg.norm(_v)); _na = float(_np_d.linalg.norm(_a))
+            if _nv < 1e-12 or _na < 1e-12:
+                return False, None, None
+            _c = abs(float(_np_d.cross(_v / _nv, _a / _na)))
+            return (_c <= _PAR_TOL), _c, float(_np_d.degrees(_np_d.arcsin(min(1.0, _c))))
+
+        def _guard_auth_scope(_side_tag, _nodes, _ifs):
+            """**範圍守衛**（`K-9-5-5` 之範圍限制）：符合判準者須**恰為街角第 1 宗**；不符 ⇒ loud raise。
+
+            ⛔ 非套套邏輯——`authorized` 由**生產輸出之方向**判定、退化由**幾何**判定，
+            `marker` 由**選角流程**標記，三者來源不同 ⇒ 本斷言確實可能失敗。
+
+            🆕 **D-2b-8 §A-2 修正**：原以「方向 ≠ ALLOC」為**充要**條件 ⇒ 於 `SIDE ∥ ALLOC`
+            之合法退化（`K-9-5-8`）**誤報**（實測 R6/right 夾角 `0.000003°`）。
+            改為：**「方向已改變」<u>或</u>「該側 SIDE 與 ALLOC 幾何退化為平行」**皆算符合。
+            ⛔ **未**改成「是否為街角第 1 宗」。
+            """
+            _deg, _cx, _ang = _side_alloc_degenerate(_side_tag)
             _auth = [d for d in _ifs if d['authorized']]
             _auth_lots = [d['lot'] for d in _auth]
             _marked = [_n['id'] for _n in _nodes if _n['marker']]
             _expect = [_l for _l in _marked if any(d['lot'] == _l for d in _ifs)]
+            if _deg:
+                # 退化命中：印出**實測夾角**（⛔ 不得靜默略過·§A-2）
+                print(f"[K-9-5-8] 街廓 {blk_label} {_side_tag} 側：SIDE ∥ ALLOC **退化**"
+                      f"（|cross|={_cx:.10f}／夾角={_ang:.6f}°　≤ 容差 {_PAR_TOL:g}）"
+                      f"⇒ `K-9-5-4 ②` 套用後方向等值、無楔形；"
+                      f"方向判準所得 {_auth_lots}／街角第 1 宗 {_expect}"
+                      f"——**合法組態·⛔ 非異常**（KL 裁 2026-08-08）")
+                return _auth
             if _auth_lots != _expect:
                 raise RuntimeError(
                     f"🔴 K-9-5-5 範圍守衛破：街廓 {blk_label} {_side_tag} 側 "
                     f"方向判準所得授權界面 {_auth_lots} ≠ 街角第 1 宗 {_expect}"
+                    f"（該側非 SIDE∥ALLOC 退化：|cross|="
+                    f"{('%.10f' % _cx) if _cx is not None else '—'}）"
                     f"——`K-9-5-5` 限街角第 1 宗，⛔ 不得推廣至其他宗／界面（停機上呈）")
             return _auth
 
