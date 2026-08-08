@@ -40,7 +40,9 @@ from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
 
 OUTDIR = os.path.join(VERIFY, "out")
-LOG = os.path.join(OUTDIR, "probe_D2b10_baseline.log")
+# 🆕 D-2b-11【a-2】：輸出檔可由環境變數覆寫，供**複驗**寫入新檔
+#   ⇒ ⛔ **不覆寫** `probe_D2b10_baseline.log`（已入庫實料）。預設值不變。
+LOG = os.path.join(OUTDIR, os.environ.get("WV_BASELINE_LOG", "probe_D2b10_baseline.log"))
 NOEXC = "（無例外）"
 W = 200
 TRUNC_CELLS = {("3.5m", "R2"), ("3.5m", "R5"), ("3.5m", "R3")}   # 舊基準真被截斷者
