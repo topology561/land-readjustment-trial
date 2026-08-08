@@ -1145,6 +1145,22 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             之合法退化（`K-9-5-8`）**誤報**（實測 R6/right 夾角 `0.000003°`）。
             改為：**「方向已改變」<u>或</u>「該側 SIDE 與 ALLOC 幾何退化為平行」**皆算符合。
             ⛔ **未**改成「是否為街角第 1 宗」。
+
+            🔴 **D-2b-9 §A′-1 修正（承重·⛔ 勿再退回豁免）**：D-2b-8 之退化分支為
+            `print(...)` 後**直接 `return`** ⇒ **整條斷言被跳過**＝該側守衛**全失效**。
+            實料 `verify/out/probe_D2b8_guard.log`【A-2】逐字：該側
+            `方向判準所得 []／街角第 1 宗 ['628-18(1)']` —— **兩者不等**，
+            若無短路即會 raise ⇒ **短路是承重的、不是裝飾**。
+            而 `K-9-5-8` 已裁 `SIDE ∥ ALLOC` 係**使用者畫設選擇**、**會重複出現**
+            ⇒ 換案必然踩到 ⇒ 「豁免」等於把守衛在整類街廓上關掉。
+
+            **改法（判準理由·⛔ 不得省略）**：退化側**兩方向等值**
+            ⇒ 方向判準之**正確輸出即空集合**。故退化側改斷言 **`_auth_lots` 必為空**。
+            此斷言**可證偽**，能抓到：`_alloc_dir_used` 來源錯誤／`_PAR_TOL` 與
+            `_dir_is_alloc` 不同源／`rot90` 方向約定翻轉。
+            ⛔ **不得**改以「是否為街角第 1 宗」判定（套套邏輯）。
+            ⛔ **不得**把 `_expect` 納入本斷言——退化側**仍有**街角第 1 宗，
+               `_expect` 非空**屬正常**。
             """
             _deg, _cx, _ang = _side_alloc_degenerate(_side_tag)
             _auth = [d for d in _ifs if d['authorized']]
@@ -1158,6 +1174,15 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                       f"⇒ `K-9-5-4 ②` 套用後方向等值、無楔形；"
                       f"方向判準所得 {_auth_lots}／街角第 1 宗 {_expect}"
                       f"——**合法組態·⛔ 非異常**（KL 裁 2026-08-08）")
+                # 🔴 **D-2b-9 §A′-1**：退化側**仍須守衛**（⛔ 非豁免）——兩方向等值
+                #   ⇒ 正確輸出即空集合；非空即代表方向來源或容差不同源。
+                if _auth_lots:
+                    raise RuntimeError(
+                        f"🔴 K-9-5-5 範圍守衛破（退化側）：街廓 {blk_label} {_side_tag} 側 "
+                        f"SIDE∥ALLOC 退化（|cross|={_cx:.10f}／夾角={_ang:.6f}°）"
+                        f"⇒ `K-9-5-4 ②` 之遠側界方向與 ALLOC **等值**、"
+                        f"不應有任何界面被判為「方向已改變」；"
+                        f"實得授權界面 {_auth_lots}——方向來源或容差不同源（停機上呈）")
                 return _auth
             if _auth_lots != _expect:
                 raise RuntimeError(
