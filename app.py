@@ -8374,7 +8374,8 @@ def _detect_block_allocation_dir(block_poly, front_dir):
         return f_dir, fallback_n
 
 
-def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
+def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
+                 n_hat_far=None):
     """
     從 baseline_pt 沿 d_hat 推進 S，切出 block ∩ 切割帶。回傳 (cut_geom, area)。
 
@@ -8382,6 +8383,24 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
     rot90(f3_cad_alloc_dir)（§0.5-B），使 n_hat ∥ f3_cad_alloc_dir（地界線 ∥ 宗地分配線）。
     🆕 W-C §0.5-C：缺 allocation_dir → 退「⊥d_hat」矩形近似，**不再從 MBR 推算**
     （廢 _detect_block_allocation_dir 靜默退 MBR 長邊；缺 ALLOC 之街廓由上游 st.warning）。
+
+    ── 🆕 **D-2b-11【a-1】雙線形式（擴充—收縮之「擴充」半）** ─────────────────────
+    `n_hat_far`：**遠側**切邊之方向。`None` ⇒ **沿用近側 `n_hat`** ＝ **現行行為·逐位不變**。
+    近側方向仍**只**由既有 `allocation_dir` 決定 ——⛔ **未新增近側參數**
+    （避免「一槽兩用」再犯 `GB-41`）。
+
+    **為何需要**：本函式原以 `Polygon([bp−big·n̂, bp+S·d̂−big·n̂, bp+S·d̂+big·n̂, bp+big·n̂])`
+    造帶，兩條切邊**共用同一個 `n̂`** ⇒ **僅能表達平行四邊形**。
+    而 `K-9-5-4 ②` 令街角第 1 宗遠側界 ∥SIDELINE、「第 2 宗遠側界不動」使其遠側界留 ∥ALLOC
+    ⇒ **第 2 宗必為梯形**，現行原語無法表達。
+
+    **幾何（雙線分支）**：近側線過 `bp`、方向 `n̂`；遠側線過 `bp + S·d̂`、方向 `n̂_far`。
+    切帶 ＝ `block ∩ halfplane⁺(近側) ∩ halfplane⁻(遠側)`。
+    🔒 **半平面法**——⛔ **不得**以 `Polygon(四點)` 造梯形：兩線不平行時四點法會**自交或翻面**。
+    🔒 `n_hat_far is None` 之路徑**原式一字未動**（⛔ 非「改寫成通式後宣稱等價」）。
+    🔒 兩線平行且距離為零、或半平面交集為空 ⇒ 回傳 `(None, 0.0)`（與 `S<=0` 同慣例）。
+    ⛔ 未放寬 `_S_EPS`／`_BISECT_TOL`／覆蓋閘 `0.01` 之任一者。
+    ⛔ 未復活 `block.difference(...buffer(...))` 或任何 boolean 差集（半平面交集非差集）。
     """
     import numpy as np
     from shapely.geometry import Polygon
@@ -8409,6 +8428,54 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None):
     bnd = block_poly.bounds
     big = max(bnd[2] - bnd[0], bnd[3] - bnd[1]) * 4.0 + 100.0
     bp = np.asarray(baseline_pt, dtype=float)
+
+    # ── 🆕 D-2b-11【a-1】雙線分支（`n_hat_far` 有值時才走·⛔ 不影響 None 路徑）──
+    if n_hat_far is not None:
+        _m = np.asarray(n_hat_far, dtype=float)
+        _mn = float(np.linalg.norm(_m))
+        if not np.all(np.isfinite(_m)) or _mn < 1e-9:
+            return None, 0.0
+        _m = _m / _mn
+        _nh = np.asarray(n_hat, dtype=float)
+        _nh = _nh / float(np.linalg.norm(_nh))
+        _dh = np.asarray(d_hat, dtype=float)
+        _dhn = float(np.linalg.norm(_dh))
+        if _dhn < 1e-9:
+            return None, 0.0
+        _dh = _dh / _dhn
+        _fp = bp + S * np.asarray(d_hat, dtype=float)
+
+        def _halfplane(_q, _g, _keep_sign):
+            """過 `_q`、方向 `_g` 之半平面多邊形；保留 `_keep_sign · (p−_q)·ŵ ≥ 0` 側。
+
+            `ŵ` ＝ `d̂` 去掉沿 `_g` 之分量後之單位向量（⇒ ⊥ 該線、且指向 +d̂ 側）。
+            `_g ∥ d̂` ⇒ 該線與推進向平行、半平面不可定義 ⇒ 回 None（呼叫端轉 (None,0.0)）。
+            """
+            _w = _dh - float(np.dot(_dh, _g)) * _g
+            _wn = float(np.linalg.norm(_w))
+            if _wn < 1e-9:
+                return None
+            _w = (_w / _wn) * float(_keep_sign)
+            return Polygon([
+                tuple(_q - big * _g),
+                tuple(_q + big * _g),
+                tuple(_q + big * _g + big * _w),
+                tuple(_q - big * _g + big * _w),
+            ])
+
+        _hp_near = _halfplane(bp, _nh, +1.0)          # 保留 +d̂ 側
+        _hp_far = _halfplane(_fp, _m, -1.0)           # 保留 −d̂ 側
+        if _hp_near is None or _hp_far is None:
+            return None, 0.0
+        try:
+            cut = block_poly.intersection(_hp_near).intersection(_hp_far)
+        except Exception:
+            return None, 0.0
+        if cut is None or getattr(cut, 'is_empty', True):
+            return None, 0.0
+        return cut, float(cut.area) if hasattr(cut, 'area') else 0.0
+
+    # ── 現行單線路徑（`n_hat_far is None`）·**原式一字未動**·⛔ 勿改寫為通式 ──
     strip = Polygon([
         tuple(bp - big * n_hat),
         tuple(bp + S * d_hat - big * n_hat),
@@ -8503,6 +8570,12 @@ def _strip_axis(d_hat, allocation_dir=None):
 
     n_hat 之取法**逐字對映 `_block_strip`**（含 allocation_dir 缺值／零向量退 rot90(d_hat)
     之正交近似）——否則切線與被切體不同源，§N3-0 T2「同一組切線」之前提即破。
+
+    ⚠️ **D-2b-11【a-1】交叉引用**：`_block_strip` 已加**雙線形式**（具名參數 `n_hat_far`）。
+       `n_hat_far=None`（現行全部呼叫端之預設）⇒ **語意與幾何皆不變**，本函式之
+       s 座標軸定義**仍完全適用**。⚠️ 惟雙線形式下遠側界之方向為 `n_hat_far`
+       ⇒ **s 座標之「切線」不再唯一**；屆時本函式須逐線施行（列 T2 一般化之工作，
+       **本批未做**）。⛔ 本批僅加註，未改本函式之碼。
     """
     import numpy as np
     d = np.asarray(d_hat, dtype=float)
@@ -8598,6 +8671,8 @@ def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, si
     兩側語意**刻意不對稱**（左 `buf`＝絕對 s 上界／右 `buf`＝自 `s_max` 起之寬），**與消費端逐位對映**。
 
     ── 斜交（補丁九 約束 1·施工核已驗）──────────────────────────────────────────
+    ⚠️ **D-2b-11【a-1】交叉引用**：`_block_strip` 已加雙線形式 `n_hat_far`；本函式**未傳**該參數
+    ⇒ 走 `None` 分支 ＝ **現行單線行為·逐位不變**。⛔ 本批僅加註，未改本函式之碼。
     s 座標與切帶一律走 `_strip_s_range`／`_block_strip`＝**∥ALLOC 斜交**（`n_hat = rot90(allocation_dir)`）；
     **禁垂直投影**（`_strip_axis` docstring 載實測：正交式殘差 346.89㎡／93.21㎡ → 斜交後 0.0000）。
     `allocation_dir` 缺值/零向量時 `_strip_axis`/`_block_strip` 會**退 `rot90(d_hat)` 正交近似**——
