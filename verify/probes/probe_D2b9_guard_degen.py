@@ -27,7 +27,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 VERIFY = os.path.dirname(HERE)
 SRC = os.path.join(VERIFY, "stepg_pipeline.py")
 OUTDIR = os.path.join(VERIFY, "out")
-LOG = os.path.join(OUTDIR, "probe_D2b9_guard_degen.log")
+# 🔴 **D-2b-10 §前-1**：本檔之 `_family()` 已修（去萬用桶）⇒ 輸出改寫**新檔**，
+#   ⛔ **不覆寫** `probe_D2b9_guard_degen.log`（已入庫實料·D-2b-9 之歷史證據）。
+LOG = os.path.join(OUTDIR, "probe_D2b10_family.log")
 W = 200
 
 # D-2b-8【B】之錯誤值（供具名更正對照·⛔ 非重新抄寫閘位，係記錄「被取代者」）
@@ -69,15 +71,78 @@ def _extract():
     return out, start + 1, end
 
 
-def _family(msg):
-    """由**訊息內容**歸併閘族（⛔ 不預設族數）。"""
-    for key in ("抵費地計算失敗", "§N3-0 逐宗主閘破", "K-9-5-5 範圍守衛破",
-                "結構閘 階段2 telescoping 破", "結構閘 telescoping 破",
-                "â 定向雙判準不一致", "結構閘 理論＝實跑 破", "停機③（守恆-帳幾何級破）"):
-        if key in msg:
-            return key
-    m = re.search(r'🔴\s*([^：:{（(]{4,40})', msg)
-    return (m.group(1).strip() if m else "（其他）")
+# ══ 🆕 **D-2b-10 §前-1**：去萬用桶、改「骨架正規化 ＋ 明列登記表 ＋ 雙向對帳」══
+#
+# 🔴 **舊 `_family()` 之病（已刪·⛔ 不得復活）**：先比一組**硬編八鍵**，落空走 regex
+#    `🔴\s*(...)`，再落空回傳 **`（其他）`**。而 `:575`（`條件③ J 非零看守破`）與
+#    `:819`（`停機②（J 下降）`）之訊息**不帶 🔴 前綴** ⇒ regex 落空 ⇒
+#    **兩個結構上不同之閘被併入同一桶** ⇒ 桶數 14 之中有一桶含兩族、**實際族數 15**。
+#    更要緊者：`（其他）` 會**靜默吸收未來任何新閘** ——
+#    一支為根除「以固定 regex 代窮舉」而寫之探針，**自己犯了同一個病**（失敗考古節 53）。
+#
+# **骨架規則**（決定性·⛔ 無回退鏈）：取字串字面 → 去 f-string 佔位符 `{...}`
+#    → 去前導 `🔴` 與空白 → 取至**第一個 `：`** 或行末 → 壓縮連續空白。
+#    骨架為空 ⇒ 列入「無法正規化」殘差（⛔ 不得靜默丟棄）。
+
+GATE_FAMILIES = {
+    "財務鋪底未完成":              ["f3_total_burden_rate_from_finance 未鋪底"],
+    "BASELINE 圖層未解析/配對全失敗": ["run_step_g"],
+    "結構閘 ⊥":                   ["結構閘 ⊥ 破"],
+    "P2-a 退化序卻有階段2宗":       ["P2-a"],
+    "結構閘 位次＝投影序":           ["結構閘 位次＝投影序 破"],
+    "條件③ J 非零看守":            ["條件③ J 非零看守破"],          # ← 舊版被 `（其他）` 吸收
+    "停機②（J 下降）":             ["停機②（J 下降）街廓"],          # ← 舊版被 `（其他）` 吸收
+    "抵費地計算失敗（覆蓋閘/②-宗 之外層）": ["街廓 抵費地計算失敗"],
+    "§N3-0 逐宗主閘":              ["§N3-0 逐宗主閘破"],
+    "K-9-5-5 範圍守衛":            ["K-9-5-5 範圍守衛破（退化側）", "K-9-5-5 範圍守衛破"],
+    "結構閘 telescoping 總量段":    ["結構閘 telescoping 破（鏈斷·`K-9-5-6`）",
+                                   "結構閘 telescoping 破"],
+    "結構閘 階段2 telescoping 段":  ["結構閘 階段2 telescoping 破（鏈斷·`K-9-5-6`）",
+                                   "結構閘 階段2 telescoping 破"],
+    "â 定向雙判準":                ["â 定向雙判準不一致（補丁八 §三）"],
+    "結構閘 理論＝實跑":            ["結構閘 理論＝實跑 破（鏈斷·`K-9-5-6`）",
+                                   "結構閘 理論＝實跑 破"],
+    "停機③ 守恆-帳幾何級":          ["停機③（守恆-帳幾何級破）街廓"],
+}
+
+
+def _skeleton(msg):
+    """訊息 → 正規化骨架（⛔ 無回退鏈·空骨架須由呼叫端列入殘差）。"""
+    m = re.search(r'"(.*)"', msg)
+    inner = m.group(1) if m else msg
+    inner = re.sub(r'\{[^{}]*\}', '', inner)          # 去 f-string 佔位符
+    inner = inner.lstrip().lstrip('🔴').strip()        # 去前導 🔴
+    inner = inner.split('：')[0]                       # 取至第一個 `：`
+    return re.sub(r'\s+', ' ', inner).strip()
+
+
+def _reconcile(rows):
+    """**雙向**對帳。回傳 (族→行號, 殘差甲, 殘差乙, 空骨架)。
+
+    🔒 **兩種「空」方向相反·⛔ 不得混淆**：
+      · **母體**（`raise` 枚舉）為空 ⇒ **失敗**（解析壞了）——由 `_extract` 負責 raise。
+      · **殘差**（對帳未命中）為空 ⇒ **通過**，但仍須逐字印出「（無）」，⛔ 不得以不印代表無。
+    """
+    _skel2fam = {}
+    for fam, sks in GATE_FAMILIES.items():
+        for sk in sks:
+            _skel2fam[sk] = fam
+    byfam, resid_a, empty = {}, [], []
+    hit = set()
+    for ln, msg in rows:
+        sk = _skeleton(msg)
+        if not sk:
+            empty.append((ln, msg))
+            continue
+        fam = _skel2fam.get(sk)
+        if fam is None:
+            resid_a.append((ln, sk))                  # 方向甲：骨架無對應登記族
+            continue
+        byfam.setdefault(fam, []).append(ln)
+        hit.add(sk)
+    resid_b = [(fam, sk) for fam, sks in GATE_FAMILIES.items()
+               for sk in sks if sk not in hit]        # 方向乙：登記族無對應 raise（登記表過期）
+    return byfam, resid_a, resid_b, empty
 
 
 def main():
@@ -113,15 +178,36 @@ def main():
         L.append(f"{i:>3}  {ln:>6}  {msg[:170]}")
 
     L.append("")
-    L.append("【閘族歸併】（由**訊息內容**歸併·⛔ 不預設族數）")
+    L.append("【閘族歸併】🆕 **D-2b-10 §前-1**：骨架正規化 ＋ 明列登記表 ＋ **雙向對帳**")
     L.append("-" * W)
-    fam = {}
-    for ln, msg in rows:
-        fam.setdefault(_family(msg), []).append(ln)
-    for k, v in fam.items():
+    L.append("  🔴 舊 `_family()` 之 `（其他）` **萬用桶已刪**——其曾把 `:575`（條件③ J 非零看守破）")
+    L.append("     與 `:819`（停機②（J 下降））**兩個不同族併為一桶** ⇒ 舊載「閘族數 14」**應為 15**。")
+    fam, resid_a, resid_b, empty = _reconcile(rows)
+    for k in GATE_FAMILIES:
+        v = fam.get(k)
         _cov = "　🔑 **覆蓋閘之外層**" if "抵費地計算失敗" in k else ""
-        L.append(f"  {k:<34} 行號 {v}{_cov}")
-    L.append(f"  ⇒ **閘族數 ＝ {len(fam)}**（⛔ 非預設之 7）")
+        L.append(f"  {k:<34} 行號 {v if v else '（無對應 raise）'}{_cov}")
+    L.append(f"  ⇒ **閘族數 ＝ {len(GATE_FAMILIES)}**（登記表明列·⛔ 非回退鏈推得）")
+    L.append("")
+    L.append("  🔒 **雙向對帳**（⛔ 兩方向殘差**皆須逐字印出**·含「（無）」）")
+    L.append(f"    **殘差甲**（`raise` 之骨架無對應登記族）："
+             + ("（無）" if not resid_a else ""))
+    for ln, sk in resid_a:
+        L.append(f"        🔴 :{ln}  骨架 |{sk}|")
+    L.append(f"    **殘差乙**（登記族無對應 `raise`＝登記表過期）："
+             + ("（無）" if not resid_b else ""))
+    for f_, sk in resid_b:
+        L.append(f"        🔴 族「{f_}」之骨架 |{sk}| 查無對應 raise")
+    L.append(f"    **無法正規化**（骨架為空）：" + ("（無）" if not empty else ""))
+    for ln, msg in empty:
+        L.append(f"        🔴 :{ln}  {msg[:120]}")
+    if resid_a or resid_b or empty:
+        raise RuntimeError(
+            f"🔴 閘族雙向對帳破：殘差甲 {len(resid_a)} 筆／殘差乙 {len(resid_b)} 筆／"
+            f"空骨架 {len(empty)} 筆 ——⛔ 不得以新增鍵或放寬正規化「修掉」，停機上呈。"
+            f"　甲={resid_a}　乙={resid_b}　空={[l for l, _ in empty]}")
+    L.append("    ⇒ ✅ 兩方向殘差**皆空**（母體 "
+             f"{len(rows)} 筆 `raise` ⇒ **非空**·⛔ 與殘差之空方向相反）")
 
     # ══════ 驗收 1／2：零行為變更（原文並列）＋ 退化命中實值列舉 ══════
     import contextlib
