@@ -9342,7 +9342,11 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
 
         # 🆕 W 正典（補丁六 §一〔da6acf1〕＋補丁七 §四＋補丁八 §一·**脫鉤 S**·法源手冊 P93/P111）：
         #   W_i ＝ mp → 本宗**遠側**分配界線之垂距（**intrinsic 直量**·非 telescoping〔虛胖陷阱〕）。
-        #   遠側界線過 P_far = baseline_pt + S_guess·d̂（∥ALLOC）；近側界線過 baseline_pt → W_near（首宗 W₀=mp→corner·照實可負·禁 clamp）。
+        #   遠側界線過 P_far = baseline_pt + S_guess·d̂（∥ALLOC——🔧 **街角第 1 宗除外**·D-2b-3 具名更新）；近側界線過 baseline_pt → W_near（首宗 W₀=mp→corner·照實可負·禁 clamp）。
+        #   🔧 **更新（D-2b-3·CC·⛔ 不默默改）**：`K-9-5-4 ②` 落地後（決定點 `grep -n "K-9-5-4 ② 之唯一決定點" app.py`），
+        #     街角第 1 宗之 `allocation_dir` 已換為 `_first_corner_alloc_dir(side_mid)` ⇒ 其遠側界 **∥SIDELINE**、非 ∥ALLOC。
+        #     ⇒ 上行括號之「（∥ALLOC）」對**街角第 1 宗不成立**；其 `W` 亦隨之改以**新界線之垂距**量測
+        #     （本 `allocation_dir` 為**一槽兩用**：①切帶方向 ②`W` 量測軸 `_n_alloc`）——此為 **`K-9-5-5`** 所追認之正行為、⛔ 非 bug。
         #   â ＝ n_alloc 沿推進向定號（d̂·â≥0·補丁八 §三主判準）使 W 隨 S 遞增；Rw = R(W)−R(W_near)〔rw_increment·R(W≤0)=0〕。
         #   ⚠️ ΣRw<100% 於負δ/forced 塊係**誠實結果·非 bug**（補丁八 §二·缺口內含吸收於池 ΔΣ池=−ΔΣG）；「ΣRw 閉合 100%」僅飽和特例。
         #   舊註「不可從中點絕對量」係舊 (ii) 語意·W 正典已推翻（直量 mp 為零點；首宗下限另 loud 規制·見 stepg）。
@@ -11512,6 +11516,13 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
     #   ⛔ 第 2 宗以後（`is_corner=False`）一律沿用 `allocation_dir`（∥ALLOC）·未動。
     if is_corner:
         allocation_dir = _first_corner_alloc_dir(side_mid)
+    # 🆕 **D-2b-3 §二-3：記錄「實際採用之遠側界方向」**（**純加性**·⛔ 零行為變更）。
+    #   為何必要：`K-9-5-5` 之三閘須以**方向**判定「授權界面」（⛔ 禁以街廓名／側別／宗序號硬編），
+    #   且須**斷言**符合方向判準者恰為街角第 1 宗。若該方向由 harness 依 `is_corner` **自行重算**，
+    #   則「判準集合 == 標記集合」成為**套套邏輯**（`fixture-provenance`：期望值不得由受測邏輯自產）。
+    #   ⇒ 方向須由**生產路徑本身**輸出。本欄即該輸出；⛔ 不參與任何計算、⛔ 無消費者讀之以改行為。
+    _alloc_dir_used = (None if allocation_dir is None
+                       else tuple(float(_c) for _c in allocation_dir))
     if blk_poly is not None and d_hat is not None and baseline_pt is not None:
         try:
             _r = solve_G_binary(
@@ -11526,6 +11537,7 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                 allocation_dir=allocation_dir,
                 side_mid=side_mid, W_prev=W_prev,
             )
+            _r['_alloc_dir_used'] = _alloc_dir_used      # D-2b-3 §二-3（純加性）
             return _r, '幾何二分法'
         except Exception:
             pass
@@ -11540,6 +11552,7 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
     )
     _r['area_geom'] = round(_r.get('S', 0) * avg_depth, 2)
     _r['cut_coords'] = []
+    _r['_alloc_dir_used'] = _alloc_dir_used          # D-2b-3 §二-3（純加性·fallback 路徑同記）
     return _r, '代數迭代(fallback)'
 
 

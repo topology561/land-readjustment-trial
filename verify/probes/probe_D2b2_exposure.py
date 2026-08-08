@@ -344,9 +344,13 @@ def main():                                                        # noqa: C901
     L.append("     telescoping 只讀 `_adv_final['rows']`／`W0_*`／`Wf_*`；")
     L.append("     `_adv_final` 賦值於 `stepg_pipeline.py:780`／`:821`，**早於**被 shim 之呼叫 `:928`。")
     L.append("     ⇒ 其輸入於 shim 生效前**已定案** ⇒ 本 shim 不可能改變之；")
-    L.append("     ⇒ 該破係 **D-2b-1 態既有、僅被覆蓋閘之 raise 遮蔽**（先 raise 者勝）。")
-    L.append("     佐證：`結構閘 telescoping 破` 於 `K6A2_seg6_gb40`／`D1`／`D2`／`D2b1` 四份 "
-             "`run_all` log 命中**各 0**。")
+    L.append("     ⇒ 本 shim **未注入新值**。")
+    L.append("  🔧 **更正（D-2b-3）**：舊版此處續稱『該破 D-2b-1 態既有、僅被遮蔽 …… 以前根本走不到』"
+             "——**已作廢**。")
+    L.append("     `D2_runall.log` 之 `街廓 R1..R6` **各 15 次**、`覆蓋閘破` 0、`telescoping 破` 0")
+    L.append("     ⇒ 該閘於 **D-2 執行且通過** ⇒ 其破係 **D-2b-1 引入**，⛔ 非『被遮住』。")
+    L.append("     ⚠️ 上方之**結構證明**（`_adv_final` 早於 `:928`）仍成立——其所證為"
+             "「shim 未注入新值」，⛔ **不等於**「破非本批引入」（兩個命題·舊版誤用）。")
     L.append("")
     L.append("  🔒 **⛔ 已排除之替代路徑**（⛔ 非未想到·係想過而不可用）：")
     L.append("     「自 `cb` 剔除 R1 以觸及 R2…」**不可用**——`compute_total_burden_rate`")
