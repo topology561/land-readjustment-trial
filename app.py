@@ -9475,6 +9475,12 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         'W': round(W_conv, 2), 'W_far': round(W_conv, 2),  # W_far：本宗遠側 KL W（mp→遠側·脫鉤後 intrinsic）
         'W_near': round(_W_near_out, 2),                    # W 正典：本宗近側 KL W（供 stepg telescoping 閘 W₀）
         'W_rw_start': round(_rw_start, 4),                  # 🆕 K-9-5-6：Rw 鏈起點（哨兵 §四(b)(c) 用·純加性）
+        # 🆕 **D-2b-5 §三 歸因用·純加性·⛔ 零行為變更·⛔ 無消費者讀之以改行為**：
+        #   `W_far`／`Rw_pct` 皆 2dp 顯示值；鏈起點取自**已捨入之 `W_far`** ⇒ 捨入誤差經
+        #   `rw_from_width` 之斜率**放大**後進入 ΣRw。歸因須逐位比對，故曝未捨入值。
+        'W_far_raw': W_conv,                                # 未捨入之本宗遠側 W
+        'Rw_raw': Rw_conv,                                  # 未捨入之本宗 Rw(%)
+        'W_rw_start_raw': _rw_start,                        # 未捨入之鏈起點（＝上一宗之**已捨入** W_far）
         'Rw_pct': round(Rw_conv, 2),
         'area_geom': round(area_conv, 2),
         'iterations': it, 'converged': converged, 'trace': trace,
