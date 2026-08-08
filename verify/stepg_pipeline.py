@@ -1075,11 +1075,20 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _prev_marker = False
             for _n in _nodes:
                 _wnear = float(_n['res'].get('W_near', 0.0) or 0.0)
+                # 🆕 D-2b-4 §四(b)：`Δ_i` 改量**實際鏈起點**（`K-9-5-6` 之 `W_rw_start`），
+                #   ⛔ 非本宗自量之 `W_near`。⇒ 鏈若真的續上，`Δ_i` 恆 0（**含授權界面**）。
+                #   ⚠️ **非套套邏輯**：`W_rw_start` 由**生產路徑**（`solve_G_binary`）依外層 thread
+                #     之 `W_prev` 決定；若推進迴圈漏 thread、或走錯分支，本式即非 0。
+                _wstart = _n['res'].get('W_rw_start')
+                _wstart = _wnear if _wstart is None else float(_wstart)
                 if _prev_far is not None:
                     _out.append({
                         'lot': _prev_id, 'next': _n['id'],
                         'W_far_i': _prev_far, 'W_near_next': _wnear,
-                        'delta': _rw_from_width(_wnear) - _rw_from_width(_prev_far),
+                        'W_start_next': _wstart,
+                        'delta': _rw_from_width(_wstart) - _rw_from_width(_prev_far),
+                        # 診斷：舊式（本宗自量近側）之鏈斷量＝`K-9-5-6` 所修之**帳務漏項**
+                        'delta_self': _rw_from_width(_wnear) - _rw_from_width(_prev_far),
                         'authorized': (_prev_dir is not None
                                        and not _dir_is_alloc(_prev_dir)),
                         'dir_used': _prev_dir,
@@ -1092,9 +1101,12 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             return _out
 
         def _fmt_ifaces(_tag, _ifs):
+            # §四(c)：逐界面必印 `W_far,i`／`W_near,{i+1}`／`Δ_i`／是否方向改變（⛔ 禁只印總和）
             return (f"[Δ_i·{blk_label}·{_tag}] " + ("（無界面）" if not _ifs else "　".join(
-                f"{d['lot']}→{d['next']}: W_far={d['W_far_i']:.4f}／W_near={d['W_near_next']:.4f}"
-                f"／Δ={d['delta']:+.4f}{'／🔓授權' if d['authorized'] else ''}"
+                f"{d['lot']}→{d['next']}: W_far={d['W_far_i']:.4f}"
+                f"／W_near={d['W_near_next']:.4f}／W_start={d['W_start_next']:.4f}"
+                f"／Δ={d['delta']:+.4f}／Δ_self={d['delta_self']:+.4f}"
+                f"{'／🔄方向改變' if d['authorized'] else ''}"
                 for d in _ifs)))
 
         def _guard_auth_scope(_side_tag, _nodes, _ifs):
@@ -1133,23 +1145,25 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _ifs_a = _iface_deltas(_nodes_a)
             print(_fmt_ifaces(f"{_sd_tag}·總量", _ifs_a))          # §二-1：逐界面印數值
             _guard_auth_scope(_sd_tag, _nodes_a, _ifs_a)           # §二-3 ➕ 範圍守衛
-            # §二-2：**未授權界面之 Δ_i 一律須為 0**（⛔ 未放寬 0.1、⛔ 未整側豁免）
-            _bad_a = [d for d in _ifs_a
-                      if (not d['authorized']) and abs(d['delta']) > _IFACE_TOL]
+            # 🆕 D-2b-4 §四(b)：**所有界面**之 `Δ_i` 一律須為 0（**含方向改變之界面**）。
+            #   ⚠️ 相對 D-2b-3 之**唯一驗收轉向**：前批容許授權界面 Δ_i≠0（`K-9-5-5` 半條），
+            #     該半條已由 KL **撤回** ⇒ 依 `K-9-5-6` 鏈定式，缺口不應存在。
+            #   ⛔ 容差 `0.1` 未放寬；⛔ `_guard_auth_scope`／方向識別**未刪**（降為守衛·仍印出）。
+            _bad_a = [d for d in _ifs_a if abs(d['delta']) > _IFACE_TOL]
             if _bad_a:
                 raise RuntimeError(
-                    f"🔴 結構閘 telescoping 破（未授權界面鏈斷）：街廓 {blk_label} {_sd_tag} 側 "
-                    + "；".join(f"{d['lot']}→{d['next']} Δ={d['delta']:+.3f}" for d in _bad_a)
-                    + f"（>{_IFACE_TOL}）——⛔ 非 `K-9-5-5` 之授權界面（方向 ∥ALLOC）")
-            _sum_delta_a = sum(d['delta'] for d in _ifs_a)
+                    f"🔴 結構閘 telescoping 破（鏈斷·`K-9-5-6`）：街廓 {blk_label} {_sd_tag} 側 "
+                    + "；".join(f"{d['lot']}→{d['next']} Δ={d['delta']:+.3f}"
+                                f"（Δ_self={d['delta_self']:+.3f}）" for d in _bad_a)
+                    + f"（>{_IFACE_TOL}）——鏈起點未續上前一宗之 W_far")
+            # §四(a)：三閘**回原式**（⛔ 不再減 ΣΔ_i·`K-9-5-5` 半條已撤回）
             _sum_rw_side = _rw_real_wd2(_sd_tag)
-            _tele_exp = (_rw_from_width(_sd_Wf) - _rw_from_width(_sd_W0)) - _sum_delta_a
+            _tele_exp = _rw_from_width(_sd_Wf) - _rw_from_width(_sd_W0)
             if abs(_sum_rw_side - _tele_exp) > _IFACE_TOL:
                 raise RuntimeError(
                     f"🔴 結構閘 telescoping 破：街廓 {blk_label} {_sd_tag} 側 "
-                    f"ΣRw_實跑={_sum_rw_side:.2f} ≠ [R(W_final={_sd_Wf:.2f})−R(W₀={_sd_W0:.2f})]"
-                    f"−ΣΔ_i({_sum_delta_a:+.3f})={_tele_exp:.2f}"
-                    f"（Δ={abs(_sum_rw_side - _tele_exp):.3f} >{_IFACE_TOL}）"
+                    f"ΣRw_實跑={_sum_rw_side:.2f} ≠ R(W_final={_sd_Wf:.2f})−R(W₀={_sd_W0:.2f})"
+                    f"={_tele_exp:.2f}（Δ={abs(_sum_rw_side - _tele_exp):.3f} >{_IFACE_TOL}）"
                     f"｜逐界面：{_fmt_ifaces(_sd_tag, _ifs_a)}")
 
         # ── 🆕 結構閘 階段2 telescoping（三閘合圍之**中段**·claude.ai 裁定 2026-07-24 §五(a)修正版）──
@@ -1169,22 +1183,21 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _nodes_b = _chain(_sd_t2, _stage=2)
             _ifs_b = _iface_deltas(_nodes_b, _w0_prev=float(_W1_end_t2))
             print(_fmt_ifaces(f"{_sd_t2}·階段2", _ifs_b))
-            _bad_b = [d for d in _ifs_b
-                      if (not d['authorized']) and abs(d['delta']) > _IFACE_TOL]
+            _bad_b = [d for d in _ifs_b if abs(d['delta']) > _IFACE_TOL]      # §四(b)：含授權界面
             if _bad_b:
                 raise RuntimeError(
-                    f"🔴 結構閘 階段2 telescoping 破（未授權界面鏈斷）：街廓 {blk_label} "
+                    f"🔴 結構閘 階段2 telescoping 破（鏈斷·`K-9-5-6`）：街廓 {blk_label} "
                     f"{_sd_t2} 側 "
-                    + "；".join(f"{d['lot']}→{d['next']} Δ={d['delta']:+.3f}" for d in _bad_b)
+                    + "；".join(f"{d['lot']}→{d['next']} Δ={d['delta']:+.3f}"
+                                f"（Δ_self={d['delta_self']:+.3f}）" for d in _bad_b)
                     + f"（>{_IFACE_TOL}）——池內落位之 Rw 鏈與 W 續推脫鉤")
-            _sum_delta_b = sum(d['delta'] for d in _ifs_b)
             _rw_s2 = round(_rw_real_wd2(_sd_t2) - _rw_stage1_only(_sd_t2), 2)
-            _exp_s2 = (_rw_from_width(_Wf_t2) - _rw_from_width(_W1_end_t2)) - _sum_delta_b
+            _exp_s2 = _rw_from_width(_Wf_t2) - _rw_from_width(_W1_end_t2)     # §四(a)：回原式
             if abs(_rw_s2 - _exp_s2) > _IFACE_TOL:
                 raise RuntimeError(
                     f"🔴 結構閘 階段2 telescoping 破：街廓 {blk_label} {_sd_t2} 側 "
-                    f"ΣRw_階段2={_rw_s2:.2f} ≠ [R(W_final={_Wf_t2:.2f})−"
-                    f"R(W_階段1末={_W1_end_t2:.2f})]−ΣΔ_i({_sum_delta_b:+.3f})={_exp_s2:.2f}"
+                    f"ΣRw_階段2={_rw_s2:.2f} ≠ R(W_final={_Wf_t2:.2f})−"
+                    f"R(W_階段1末={_W1_end_t2:.2f})={_exp_s2:.2f}"
                     f"（Δ={abs(_rw_s2 - _exp_s2):.3f} >{_IFACE_TOL}）"
                     f"——池內落位之 Rw 鏈與 W 續推脫鉤｜逐界面：{_fmt_ifaces(_sd_t2, _ifs_b)}")
 
@@ -1249,14 +1262,13 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _ifs_c = _iface_deltas(_nodes_c)
                 print(_fmt_ifaces(f"{_sd_tag2}·階段1", _ifs_c))
                 _guard_auth_scope(_sd_tag2, _nodes_c, _ifs_c)
-                _bad_c = [d for d in _ifs_c
-                          if (not d['authorized']) and abs(d['delta']) > _IFACE_TOL]
+                _bad_c = [d for d in _ifs_c if abs(d['delta']) > _IFACE_TOL]   # §四(b)：含授權界面
                 if _bad_c:
                     raise RuntimeError(
-                        f"🔴 結構閘 理論＝實跑 破（未授權界面鏈斷）：街廓 {blk_label} "
+                        f"🔴 結構閘 理論＝實跑 破（鏈斷·`K-9-5-6`）：街廓 {blk_label} "
                         f"{_sd_tag2} 側 "
                         + "；".join(f"{d['lot']}→{d['next']} Δ={d['delta']:+.3f}"
-                                    for d in _bad_c)
+                                    f"（Δ_self={d['delta_self']:+.3f}）" for d in _bad_c)
                         + f"（>{_IFACE_TOL}）")
                 _sum_delta_c = sum(d['delta'] for d in _ifs_c)
                 if abs(_th - _re) > _IFACE_TOL:

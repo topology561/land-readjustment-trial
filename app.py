@@ -9333,6 +9333,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     converged = False
     S_conv = 0.0; G_conv = 0.0; W_conv = 0.0; Rw_conv = 0.0; area_conv = 0.0
     _W_near_out = 0.0                # W 正典：本宗近側界線之 KL W（mp→近側·供 stepg telescoping 閘 W₀ 用）
+    _rw_start = 0.0                  # 🆕 K-9-5-6：本宗 Rw 鏈之**起點**（首宗＝自量 W_near；其餘＝前一宗 W_far）
     last_W = 0.0; last_Rw = 0.0; last_G_target = 0.0; last_area = 0.0
     it = 0
     for it in range(1, max_iter + 1):
@@ -9361,7 +9362,22 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
             _W_near = float(np.dot(_bp_w - _mp_w, _ahat))
             W = float(np.dot(_bp_w + S_guess * _dhu - _mp_w, _ahat))
             _W_near_out = _W_near                    # 常數（不隨 S_guess）·供 telescoping 閘 W₀
-            Rw = rw_increment(_W_near, W)
+            # 🔴 **K-9-5-6 W 鏈之唯一決定點**（KL 裁 2026-08-08·D-2b-4·§二-1「決定點恰一處」）：
+            #   KL 逐字：「第 2 宗之 G 值所用之 Rw ＝ `Rw_2 − Rw_1`……依此一路到最後一宗」
+            #   ⇒ `Rw_i = R(W_i) − R(W_{i−1})`，`W_{i−1}` ＝ **前一宗之 `W_far`**（＝該共用界線）。
+            #   🔑 **每條界線只量一次**——由**前一宗**量；本宗**直接取用**，⛔ 不得自行再投影一次。
+            #   ⛔ 舊式 `rw_increment(_W_near, W)` 之病：`_W_near` 係本宗**以自己的軸**重量同一條
+            #     共用界線；全街廓共軸時兩者恆等（故長期不可見），`K-9-5-4 ②` 令首宗換軸後即分岔
+            #     （實測 1|2 界線：第 1 宗量得 6.4600、第 2 宗量得 6.6200 ⇒ 中間 0.16m 兩邊都沒收
+            #      ⇒ ΣRw 短少 0.912）＝**帳務漏項**、⛔ 非誠實短收（`K-9-5-5` 該半條已撤回）。
+            #   🔒 **首宗例外（§二-2·維持現行·⛔ 不動）**：`is_corner` ⇒ 起點 ＝ 自量之 `_W_near`
+            #     （＝mp→corner·**照實可負·⛔ 禁 clamp**）；forced 時即其 buffer 起算點。
+            #   🔒 **`W_i` 之量測不變**（§二-3）：仍為 intrinsic 直量 mp→本宗遠側界（⛔ 非累加·
+            #     不觸「虛胖陷阱」`:9344`）——**累積的是 `Rw`、不是 `W`**。
+            #   📌 代數 fallback `iterate_G_S` **本即此式**（`grep -n "rw_increment(W_prev, W_cur)" app.py`）
+            #     ⇒ 本改動係令幾何解與代數解**回到同一定義**、⛔ 非新造。
+            _rw_start = _W_near if is_corner else float(W_prev)
+            Rw = rw_increment(_rw_start, W)
             Rw_pct = Rw * 100.0
         else:
             W = 0.0; Rw_pct = 0.0; Rw = 0.0
@@ -9458,6 +9474,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         'S_raw': S_conv,   # S0d（補丁四 §二）：'S' 為 2dp 顯示·'S_raw' 全精度供推進同源（app/stepg 四處推進讀之）
         'W': round(W_conv, 2), 'W_far': round(W_conv, 2),  # W_far：本宗遠側 KL W（mp→遠側·脫鉤後 intrinsic）
         'W_near': round(_W_near_out, 2),                    # W 正典：本宗近側 KL W（供 stepg telescoping 閘 W₀）
+        'W_rw_start': round(_rw_start, 4),                  # 🆕 K-9-5-6：Rw 鏈起點（哨兵 §四(b)(c) 用·純加性）
         'Rw_pct': round(Rw_conv, 2),
         'area_geom': round(area_conv, 2),
         'iterations': it, 'converged': converged, 'trace': trace,
