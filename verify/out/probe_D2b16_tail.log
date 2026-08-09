@@ -1,0 +1,87 @@
+========================================================================================================================================================================================================
+【D-2b-16 §e-1／§e-3】對拍補欄 ＋ `.intersection()` AST 窮舉
+========================================================================================================================================================================================================
+
+【§e-1】新舊判準對拍（**補『舊判準是否破』欄**·四格全列）
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  🔒 D-2b-15 之對拍報「0 差異」，但其中**舊判準破者為 0**
+     ⇒ 該組**未涵蓋受測現象**（本批所修者正是「舊判準**誤破**」）
+     ⇒ 「0 差異」只證明**現象未發生處**兩者都沒事，**未**證明新舊等價。
+  🔒 此為「空集合偽裝成沒問題」之**深一層**：母體非空，但**受測現象之子集為空**。
+     ⛔ **母體筆數不得作為涵蓋性之證據。**
+
+  母體筆數 ＝ **240**
+  🔑 **舊判準破者筆數（＝現象涵蓋數）＝ 0**
+  四格：舊破新過 **0**／舊過新破 **0**／兩者皆破 **0**／兩者皆過 **240**
+  ⇒ 🔒 **本組未涵蓋受測現象，對拍不構成等價性證據**（⛔ 不得以四格數字充作等價結論）。
+  🔒 **目前唯一涵蓋該現象之樣本 ＝ fixture 本身，n = 1**（`verify/fixtures/case_D2b15_tilegate_intersection.py`）。
+  ⛔ **未**為使舊破筆數非零而擴大或更換母體——母體與 D-2b-15 §d-4-3 **完全相同**（同 seed、同生成式）⇒ 兩批可直接對照。
+
+【§e-3】生產碼之集合運算呼叫點（**AST 窮舉**·⛔ 非字面 grep）
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  掃描之運算子：['contains', 'crosses', 'difference', 'intersection', 'intersects', 'overlaps', 'symmetric_difference', 'touches', 'union', 'within']　＋ ops：['cascaded_union', 'shared_paths', 'snap', 'split', 'unary_union']
+  `app.py` 全部集合運算呼叫點 ＝ **72**；其中 `.intersection()` ＝ **26**
+  其中**鏈式**（`a.intersection(b).intersection(c)`）＝ **4**　⇒ 字面 grep 之計數會與此**不同**（提醒 3）
+
+       行號  形式                    受詞      原文
+     4361  .intersection()       單一      inter = p_sp.intersection(b['sp'])
+     4525  .intersection()       單一      inter = residue.intersection(pp_poly).intersection(blk_poly)
+     4525  .intersection()       鏈式      inter = residue.intersection(pp_poly).intersection(blk_poly)
+     7368  .intersection()       單一      clipped = long_line.intersection(road_poly.buffer(0.05))
+     7771  .intersection()       單一      clipped = ext_line.intersection(road_poly)
+     8504  .intersection()       單一      cut = block_poly.intersection(_hp_near).intersection(_hp_far)
+     8504  .intersection()       鏈式      cut = block_poly.intersection(_hp_near).intersection(_hp_far)
+     8520  .intersection()       單一      cut = block_poly.intersection(strip)
+     8618  .intersection()       單一      _A_lo = float(block_poly.intersection(_hp_lo).area)
+     8619  .intersection()       單一      _A_hi = float(block_poly.intersection(_hp_hi).area)
+     8620  .intersection()       單一      _A_both = float(block_poly.intersection(_hp_lo).intersection(_hp_hi).area)
+     8620  .intersection()       鏈式      _A_both = float(block_poly.intersection(_hp_lo).intersection(_hp_hi).area)
+     8624  .intersection()       單一      _pc = rem.intersection(_hp_lo)
+     8625  .intersection()       單一      rem = rem.intersection(_hp_hi)
+     9047  .intersection()       單一      pool_x += float(pieces[i].intersection(pieces[j]).area)
+     9050  .intersection()       單一      pool_x += float(pg.intersection(bg).area)
+     9062  .intersection()       單一      biz_x += float(_biz[i].intersection(_biz[j]).area)
+     9120  .intersection()       單一      inter = pool_geom.intersection(burden_geom)
+     9506  .intersection()       鏈式      band = Polygon([e - B * ca, e + B * ca,
+    10203  .intersection()       單一      g = l1.intersection(l2)
+    10218  .intersection()       單一      _hits = L_in_inf.intersection(_blk.exterior)
+    11009  .intersection()       單一      _i1, _i2 = _dep.intersection(_Sinf_cr), _dep.intersection(_Tinf_cr)
+    11009  .intersection()       單一      _i1, _i2 = _dep.intersection(_Sinf_cr), _dep.intersection(_Tinf_cr)
+    11379  .intersection()       單一      inter1 = cp.intersection(_corner_poly_p1_B4)
+    11391  .intersection()       單一      inter2 = cp.intersection(_corner_poly_p2_B4)
+    16238  .intersection()       單一      _inter = _u_poly.intersection(_pp_poly)
+
+  【型態標註】兩運算元是否為 **sliver**（已多次裁切之細長片）：
+    :4361   未判定（宗地 sp × 街廓 sp·兩者皆為輸入多邊形、非本機制切出之片）
+    :4525   未判定（residue × 宗地 × 街廓·`residue` 係差集殘餘 ⇒ **可能為 sliver**）
+    :4525   未判定（residue × 宗地 × 街廓·`residue` 係差集殘餘 ⇒ **可能為 sliver**）
+    :7368   線 × 道路多邊形（非片×片）
+    :7771   線 × 道路多邊形（非片×片）
+    :8504   街廓 × 半平面（`_block_strip` 雙線）⇒ 非 sliver 互切
+    :8504   街廓 × 半平面（`_block_strip` 雙線）⇒ 非 sliver 互切
+    :8520   街廓 × 平行四邊形（`_block_strip` 單線）⇒ 非 sliver 互切
+    :8618   街廓 × 半平面（`_block_partition` 閘③）⇒ 非 sliver 互切
+    :8619   街廓 × 半平面（`_block_partition` 閘③）⇒ 非 sliver 互切
+    :8620   街廓 × 半平面 × 半平面（閘③ 含斥）⇒ 非 sliver 互切
+    :8620   街廓 × 半平面 × 半平面（閘③ 含斥）⇒ 非 sliver 互切
+    :8624   餘塊 × 半平面（`_block_partition` 削餘）⇒ 非 sliver 互切
+    :8625   餘塊 × 半平面（`_block_partition` 削餘）⇒ 非 sliver 互切
+    :9047   🛑 **池片 × 池片**（`_pool_strips_for_block` ②-池閘）＝ **sliver 互切**
+    :9050   🛑 **池片 × 業主宗片**（同閘）＝ **sliver 互切**
+    :9062   🛑 **業主宗片 × 業主宗片**（②-宗 圍堵閘）＝ **sliver 互切**
+    :9120   池幾何 × 18m 負擔範圍（`_pool_overlap_len_s`）＝ **切出之池 × 構造多邊形**⇒ **一側為 sliver**
+    :9506   鏈式建構 band（非片×片）
+    :10203  線 × 線（求交點）
+    :10218  無限線 × 街廓 exterior
+    :11009  depth 線 × 無限線（街角）
+    :11009  depth 線 × 無限線（街角）
+    :11379  候選宗 × 街角範圍多邊形 ⇒ **一側為宗地多邊形**
+    :11391  候選宗 × 街角範圍多邊形 ⇒ **一側為宗地多邊形**
+    :16238  union 多邊形 × 宗地多邊形（W-A.2 診斷）
+
+  ⚠️ **未判定（須人工複核）** ＝ [4525, 9120, 11379, 11391, 16238]　⛔ 不得以「未判定」等同「安全」
+
+  ⇒ **sliver 互切之呼叫點 ＝ [9047, 9050, 9062]**
+  🛑 **停機上呈（§六 第 3 條）**：生產碼存在 sliver 互切之呼叫點，可能同病。
+
+========================================================================================================================================================================================================
