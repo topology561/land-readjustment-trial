@@ -8384,6 +8384,33 @@ def _detect_block_allocation_dir(block_poly, front_dir):
 _STRIP_PARALLEL_TOL = 1e-6
 
 
+def _strip_halfplane(_q, _g, _keep_sign, _dh_unit, _big):
+    """過 `_q`、方向 `_g` 之**半平面多邊形**；保留 `_keep_sign · (p−_q)·ŵ ≥ 0` 側。
+
+    `ŵ` ＝ `d̂` 去掉沿 `_g` 之分量後之單位向量（⇒ ⊥ 該線、且指向 +d̂ 側）。
+    `_g ∥ d̂` ⇒ 該線與推進向平行、半平面不可定義 ⇒ 回 `None`（呼叫端轉 `(None, 0.0)`）。
+
+    🆕 **D-2b-13【b1-1】自 `_block_strip` 內之巢狀 `_halfplane` 提為 module 級**
+    ——供 `_block_strip` 雙線分支與 `_block_partition` **共用同一取法**（`GB-46` 單一生產者）。
+    🔒 提出後 `_block_strip` 之行為**逐位不變**（`n_hat_far=None` 之單線路徑根本不經本函式；
+       雙線分支之算式一字未改）——由 12 格 sha256 把關。
+    ⛔ 僅用交集所需之多邊形建構；⛔ 未用 `difference`／`buffer`／`unary_union`。
+    """
+    import numpy as np
+    from shapely.geometry import Polygon
+    _w = _dh_unit - float(np.dot(_dh_unit, _g)) * _g
+    _wn = float(np.linalg.norm(_w))
+    if _wn < 1e-9:
+        return None
+    _w = (_w / _wn) * float(_keep_sign)
+    return Polygon([
+        tuple(_q - _big * _g),
+        tuple(_q + _big * _g),
+        tuple(_q + _big * _g + _big * _w),
+        tuple(_q - _big * _g + _big * _w),
+    ])
+
+
 def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
                  n_hat_far=None):
     """
@@ -8466,27 +8493,11 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
         _dh = _dh / _dhn
         _fp = bp + S * np.asarray(d_hat, dtype=float)
 
-        def _halfplane(_q, _g, _keep_sign):
-            """過 `_q`、方向 `_g` 之半平面多邊形；保留 `_keep_sign · (p−_q)·ŵ ≥ 0` 側。
-
-            `ŵ` ＝ `d̂` 去掉沿 `_g` 之分量後之單位向量（⇒ ⊥ 該線、且指向 +d̂ 側）。
-            `_g ∥ d̂` ⇒ 該線與推進向平行、半平面不可定義 ⇒ 回 None（呼叫端轉 (None,0.0)）。
-            """
-            _w = _dh - float(np.dot(_dh, _g)) * _g
-            _wn = float(np.linalg.norm(_w))
-            if _wn < 1e-9:
-                return None
-            _w = (_w / _wn) * float(_keep_sign)
-            return Polygon([
-                tuple(_q - big * _g),
-                tuple(_q + big * _g),
-                tuple(_q + big * _g + big * _w),
-                tuple(_q - big * _g + big * _w),
-            ])
-
+        # 🆕 D-2b-13【b1-1】：`_halfplane` 已提為 module 級 `_strip_halfplane`
+        #   （與 `_block_partition` 共用同一取法·`GB-46` 單一生產者）。算式一字未改。
         if not _parallel_delegate:
-            _hp_near = _halfplane(bp, _nh, +1.0)      # 保留 +d̂ 側
-            _hp_far = _halfplane(_fp, _m, -1.0)       # 保留 −d̂ 側
+            _hp_near = _strip_halfplane(bp, _nh, +1.0, _dh, big)    # 保留 +d̂ 側
+            _hp_far = _strip_halfplane(_fp, _m, -1.0, _dh, big)     # 保留 −d̂ 側
             if _hp_near is None or _hp_far is None:
                 return None, 0.0
             try:
@@ -8510,6 +8521,109 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
         return cut, float(cut.area) if hasattr(cut, 'area') else 0.0
     except Exception:
         return None, 0.0
+
+
+# 🆕 **D-2b-13【b1-1】** 依序削餘鋪滿原語（⛔ 本批**不接線**·生產路徑呼叫數須為 0）
+_PARTITION_TILE_TOL = 1e-6      # 鋪滿閘之閘寬（⛔ 遠嚴於下游 ①' 覆蓋閘 0.01·不得以其代掃）
+
+
+def _block_partition(block_poly, d_hat, lines, _label=''):
+    """**依序削餘**：每條界線只把「**餘塊**」一分為二 ⇒ **構造性鋪滿**。
+
+    ── 為何需要（⛔ 非為好看）────────────────────────────────────────────────
+    `_block_strip` 之雙線分支係**逐片獨立**切（`block ∩ hp_near ∩ hp_far`），
+    其鋪滿**前提至今未知**——三個候選前提皆已實測排除、無一為充要：
+      ① 非凸街廓　② 相鄰線交點落於街廓內　③ 各界線仿射函數於街廓上全序遞減。
+    ⇒ **T2 之帳不得建在未證明之前提上**。本原語改以**構造**保證鋪滿：
+    餘塊逐次二分 ⇒ 片之聯集**恆等於**街廓、片間**恆不重疊**（皆為交集之代數必然）。
+
+    ── 介面 ────────────────────────────────────────────────────────────────
+    `lines` ＝ **有序**序列，每筆 `(q, n_hat)`：`q` 線上一點、`n_hat` 線方向。
+    ⛔ **不接受純量 `s`**——本原語之目的即令每條界線**各自帶方向**，純量帳正是被取代者。
+    第一條線僅界定起點；自第二條起，每條線切下一片。回傳 `(pieces, diag)`。
+
+        rem = block_poly
+        for L_i in lines[1:]:
+            piece_i = rem ∩ hp⁻(L_i)
+            rem     = rem ∩ hp⁺(L_i)
+        pieces = [...piece_i..., rem]        # 末尾 rem 為最後一片
+
+    🔒 **只用交集**。⛔ 未用 `difference`、⛔ 未用 `buffer`（含 `buffer(0)`／`(-1e-4)`／`(0.001)`）、
+       ⛔ 未用 `unary_union` 補洞。
+    🔒 半平面沿用 `_strip_halfplane`（與 `_block_strip` 雙線分支**同一取法**·`GB-46`）。
+    🔒 **空片屬正常**（該線落於街廓外）——**保留於回傳序列**並於 `diag['empty_idx']` 標記；
+       ⛔ **不得靜默丟棄或壓縮序列**：片與界線之**對應關係是帳的身分鍵**。
+
+    ── 鋪滿閘（**內建**·⛔ 不得外掛·任一項不過即 raise）─────────────────────
+      ① `|Σ pieces.area − block.area| ≤ 1e-6`
+      ② **所有片兩兩**交集面積 `≤ 1e-6`（⛔ 非只檢相鄰）
+    ⛔ **不得以下游 `①' 覆蓋閘 0.01` 代掃**——本原語之賣點即構造性鋪滿，閘寬須遠嚴於下游。
+    """
+    import numpy as np
+
+    if block_poly is None or getattr(block_poly, 'is_empty', True):
+        raise RuntimeError(f"🔴 _block_partition[{_label}]：block_poly 缺／空，停")
+    if not lines or len(lines) < 2:
+        raise RuntimeError(
+            f"🔴 _block_partition[{_label}]：`lines` 需 ≥2 條（首條界定起點），"
+            f"實得 {0 if not lines else len(lines)}，停")
+
+    _dh = np.asarray(d_hat, dtype=float)
+    _dhn = float(np.linalg.norm(_dh))
+    if _dhn < 1e-9:
+        raise RuntimeError(f"🔴 _block_partition[{_label}]：d_hat 退化為零向量，停")
+    _dh = _dh / _dhn
+    _b = block_poly.bounds
+    big = max(_b[2] - _b[0], _b[3] - _b[1]) * 4.0 + 100.0
+    blk_area = float(block_poly.area)
+
+    rem = block_poly
+    pieces = []
+    for _i, _ln in enumerate(lines[1:], start=1):
+        _q = np.asarray(_ln[0], dtype=float)
+        _g = np.asarray(_ln[1], dtype=float)
+        _gn = float(np.linalg.norm(_g))
+        if not np.all(np.isfinite(_g)) or _gn < 1e-9:
+            raise RuntimeError(
+                f"🔴 _block_partition[{_label}]：第 {_i} 條界線方向退化（{_ln[1]!r}），停")
+        _g = _g / _gn
+        _hp_lo = _strip_halfplane(_q, _g, -1.0, _dh, big)      # 本片：保留 −d̂ 側
+        _hp_hi = _strip_halfplane(_q, _g, +1.0, _dh, big)      # 餘塊：保留 +d̂ 側
+        if _hp_lo is None or _hp_hi is None:
+            raise RuntimeError(
+                f"🔴 _block_partition[{_label}]：第 {_i} 條界線 ∥ 推進向 ⇒ "
+                f"半平面不可定義（no-silent-fallback），停")
+        pieces.append(rem.intersection(_hp_lo))
+        rem = rem.intersection(_hp_hi)
+    pieces.append(rem)                                          # 末片 ＝ 最後之餘塊
+
+    # ── 鋪滿閘（內建）──
+    _areas = [float(p.area) if p is not None and not p.is_empty else 0.0 for p in pieces]
+    _empty = [i for i, p in enumerate(pieces)
+              if p is None or getattr(p, 'is_empty', True) or float(p.area) <= 0.0]
+    _resid = sum(_areas) - blk_area
+    _maxx, _maxpair = 0.0, None
+    for _i in range(len(pieces)):
+        for _j in range(_i + 1, len(pieces)):
+            _a, _bp2 = pieces[_i], pieces[_j]
+            if _a is None or _bp2 is None or _a.is_empty or _bp2.is_empty:
+                continue
+            _x = float(_a.intersection(_bp2).area)
+            if _x > _maxx:
+                _maxx, _maxpair = _x, (_i, _j)
+    diag = {'n_pieces': len(pieces), 'areas': _areas, 'empty_idx': _empty,
+            'resid': _resid, 'block_area': blk_area,
+            'max_pair_overlap': _maxx, 'max_pair': _maxpair}
+    if abs(_resid) > _PARTITION_TILE_TOL:
+        raise RuntimeError(
+            f"🔴 _block_partition[{_label}] 鋪滿閘①破：|Σ片 − 街廓| = {_resid:+.9e} > "
+            f"{_PARTITION_TILE_TOL:g}（Σ片 {sum(_areas):.9f}／街廓 {blk_area:.9f}"
+            f"／片數 {len(pieces)}／空片 {_empty}）")
+    if _maxx > _PARTITION_TILE_TOL:
+        raise RuntimeError(
+            f"🔴 _block_partition[{_label}] 鋪滿閘②破：最大兩兩交集 = {_maxx:.9e} > "
+            f"{_PARTITION_TILE_TOL:g}（片對 {_maxpair}／片數 {len(pieces)}）")
+    return pieces, diag
 
 
 # ═══════════════════════════════════════════════════════════════════════
