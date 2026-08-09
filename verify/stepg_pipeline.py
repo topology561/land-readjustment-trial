@@ -383,7 +383,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
-                   _allocation_dir=None, _side_mid=None, _W_prev=0.0):
+                   _allocation_dir=None, _side_mid=None, _W_prev=0.0,
+                   _near_dir=None):
         # 🆕 P-0b（裁定M·Q-M4）：薄殼委派 app module 級 `_solve_G_one`（單一真相源·經 ns）。
         #   B_value/C_for_calc（_compute_v3_finance 拆出）＋ _tab6_burden（本函式上方檢查）為閉包捕獲。
         return ns["_solve_G_one"](
@@ -391,7 +392,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt,
             S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
             B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
-            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev)
+            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
+            near_dir=_near_dir)   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
 
     # ── 逐街廓（app Step G 迴圈逐行複刻；st.* 於 headless 為 fake no-op 故略） ──
     for blk_label, parcels_in_blk in parcels_by_block.items():
@@ -614,6 +616,12 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _Wfirst_left = 0.0; _Wfirst_right = 0.0   # 首宗下限（補丁六 §二）：首宗角落宗 KL W（=res['W']=W_far）
             _W_prev_left = 0.0
             _W_prev_right = 0.0
+            # 🆕 D-2b-23【甲】：**界面單線鏈**（與 `_W_prev` 同法 thread·⛔ 兩者不同物）。
+            #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
+            #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）。
+            #   ⚠️ app 側鏡射：`grep -n "界面單線鏈" app.py`（#20 四處同改之同源要求）。
+            _near_dir_left = None
+            _near_dir_right = None
             first_corner_used_left = False
             left_results = []
             for entry in left_group:
@@ -648,12 +656,15 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _allocation_dir=allocation_dir_block,
                     _side_mid=(_side_mid_left if _has_left_corner else None),
                     _W_prev=_W_prev_left,
+                    _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                 )
                 if _has_left_corner:
                     if not _W0_left_set:
                         _W0_left = float(res.get('W_near', 0.0)); _W0_left_set = True
                         _Wfirst_left = float(res.get('W', 0.0))   # 首宗下限：首宗角落宗 KL W（=W_far）
                     _W_prev_left = float(res.get('W_far', _W_prev_left))
+                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
+                _near_dir_left = res.get('_alloc_dir_used')
                 _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改）
                 _G_target = float(res.get('G', 0.0))
                 _area_actual = float(res.get('area_geom', 0.0))
@@ -719,6 +730,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _allocation_dir=allocation_dir_block,
                     _side_mid=(_side_mid_right if _has_right_corner else None),
                     _W_prev=_W_prev_right,
+                    _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                 )
                 if (float(res.get('area_geom', 0)) < 0.5
                     and d_hat_rev is not None and baseline_pt is not None):
@@ -732,6 +744,7 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                             _allocation_dir=allocation_dir_block,
                             _side_mid=(_side_mid_right if _has_right_corner else None),
                             _W_prev=_W_prev_right,
+                            _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                         )
                         if float(_r2.get('area_geom', 0)) >= 0.5:
                             res, solver_label = _r2, _sl2
@@ -741,6 +754,8 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                         _W0_right = float(res.get('W_near', 0.0)); _W0_right_set = True
                         _Wfirst_right = float(res.get('W', 0.0))   # 首宗下限：首宗角落宗 KL W（=W_far）
                     _W_prev_right = float(res.get('W_far', _W_prev_right))
+                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
+                _near_dir_right = res.get('_alloc_dir_used')
                 _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改）
                 _G_target = float(res.get('G', 0.0))
                 _area_actual = float(res.get('area_geom', 0.0))

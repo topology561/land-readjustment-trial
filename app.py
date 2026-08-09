@@ -9545,7 +9545,8 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
                    side_label: str = '左側',
                    tol: float = 0.01, max_iter: int = 80,
                    allocation_dir=None,
-                   side_mid=None, W_prev: float = 0.0) -> dict:
+                   side_mid=None, W_prev: float = 0.0,
+                   near_dir=None) -> dict:
     """
     幾何驅動的二分法解 S：
       每輪猜 S_guess → 從 baseline_pt 沿 d_hat 切出 block strip 多邊形 → 計算 area_geom；
@@ -9556,6 +9557,22 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     🆕 任務二（2026-04）：新增 allocation_dir 參數
       若提供，則切割帶之兩側界線方向「垂直於 allocation_dir（街廓分配線）」；
       未提供則由 _block_strip 自動以 MBR 推算（再 fallback 至垂直於 d_hat）。
+
+    ── 🆕 **D-2b-23【甲】`near_dir`：一個界面只有一條線**（`K-9-5-4 ②` 之另一半）──────
+    正典逐字（`grep -n "^### 🔒 K-9-5-4 " docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+    「街角**第 1 宗與第 2 宗之境界線** ＝ SIDELINE 平行移動」＝ **一條**線、**一個**方向。
+    `near_dir` ＝ **前一宗實際採用之 `allocation_dir`**（＝其**遠側界**之方向源），
+    由推進迴圈以 `res['_alloc_dir_used']` **交遞**（D-2b-3 §二-3 之純加性欄）。
+
+    🔒 **單一生產者（`GB-46`）**：本函式**不自行重算**該方向——⛔ 「第 2 宗自己再算一次
+       側街向、再宣稱與第 1 宗相同」係把雙定義從幾何搬到程式，缺陷仍在。
+    🔒 **`near_dir is None` ⇒ 現行單線路徑·逐位不變**（首宗恆為 None）。
+    🔒 **自動退化**：第 3 宗以後 `near_dir == allocation_dir` ⇒ 兩線同向 ⇒
+       `_block_strip` 之**同向即委派**（D-2b-12·`_STRIP_PARALLEL_TOL`）落回單線 ⇒ **逐位不變**。
+       `SIDE ∥ ALLOC` 之退化街廓（`K-9-5-8`）亦由同一機制委派。
+    ⚠️ **⛔ 不動 `_n_alloc`**：`allocation_dir` 於本函式為**一槽兩用**（①切帶方向 ②`W` 量測軸）；
+       `near_dir` **只改①之近側邊**，`W` 軸仍由 `allocation_dir` 決定（⛔ 否則重演 `GB-41`
+       「一槽兩用餵錯量」）。
 
     回傳：{'G', 'S', 'W', 'Rw_pct', 'area_geom', 'iterations', 'converged', 'trace',
           'allocation_dir'}
@@ -9579,6 +9596,41 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         except Exception:
             _n_alloc = None
 
+    # 🆕 **D-2b-23【甲】**：近側界方向之交遞（⛔ 本函式不自行重算·`GB-46` 單一生產者）。
+    #   `_near_ad` ＝ 供 `_block_strip` 之 `allocation_dir` 槽（⇒ 其 `n_hat` ＝ **近**側邊方向）；
+    #   `_far_nhat` ＝ 本宗自己的 `rot90(allocation_dir)`（⇒ **遠**側邊方向·與現行單線同源）。
+    #   ⛔ 未觸 `_n_alloc`（W 量測軸）——見 docstring「一槽兩用」段。
+    _near_ad = None
+    _far_nhat = None
+    if near_dir is not None:
+        if allocation_dir is None:
+            raise RuntimeError(
+                "🔴 solve_G_binary：`near_dir` 有值而 `allocation_dir` 缺 ⇒ 遠側界方向"
+                "不可定義（no-silent-fallback），停")
+        _nd = np.asarray(near_dir, dtype=float)
+        if (not np.all(np.isfinite(_nd))) or float(np.linalg.norm(_nd)) < 1e-9:
+            raise RuntimeError(
+                f"🔴 solve_G_binary：`near_dir` 退化（{near_dir!r}）·"
+                f"界線方向不可定義（no-silent-fallback），停")
+        _ad_f = np.asarray(allocation_dir, dtype=float)
+        if (not np.all(np.isfinite(_ad_f))) or float(np.linalg.norm(_ad_f)) < 1e-9:
+            raise RuntimeError(
+                f"🔴 solve_G_binary：`allocation_dir` 退化（{allocation_dir!r}）而 "
+                f"`near_dir` 有值（no-silent-fallback），停")
+        _near_ad = _nd
+        _far_nhat = np.array([-_ad_f[1], _ad_f[0]])   # ＝ `_block_strip` 內之 rot90(allocation_dir)
+
+    def _cut_strip(_S):
+        """本函式**唯一**之切帶入口（⛔ 兩處呼叫共用·避免同式分岔·#20）。
+
+        `_near_ad is None` ⇒ **原式一字未動**（逐位不變）；否則走 `_block_strip` 雙線分支。
+        """
+        if _near_ad is None:
+            return _block_strip(block_poly, d_hat, baseline_pt, _S,
+                                allocation_dir=allocation_dir)
+        return _block_strip(block_poly, d_hat, baseline_pt, _S,
+                            allocation_dir=_near_ad, n_hat_far=_far_nhat)
+
     S_min, S_max = 0.0, S_max_limit
     trace = []
     converged = False
@@ -9589,8 +9641,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     it = 0
     for it in range(1, max_iter + 1):
         S_guess = (S_min + S_max) / 2.0
-        cut, area_geom = _block_strip(block_poly, d_hat, baseline_pt, S_guess,
-                                       allocation_dir=allocation_dir)
+        cut, area_geom = _cut_strip(S_guess)
 
         # 🆕 W 正典（補丁六 §一〔da6acf1〕＋補丁七 §四＋補丁八 §一·**脫鉤 S**·法源手冊 P93/P111）：
         #   W_i ＝ mp → 本宗**遠側**分配界線之垂距（**intrinsic 直量**·非 telescoping〔虛胖陷阱〕）。
@@ -9694,8 +9745,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     _S_cut = S_conv                    # S0d：未捨入實切 S（＝推進 S_raw·全精度同源·補丁四 §二）
     cut_coords = []
     try:
-        final_cut, _final_area = _block_strip(block_poly, d_hat, baseline_pt, _S_cut,
-                                               allocation_dir=allocation_dir)
+        final_cut, _final_area = _cut_strip(_S_cut)
         # S0c 第 2 項（S0d 沿用）：area_geom 改取**實切**（S0d：未捨入 S_conv）之幾何面積 → 帳實一致
         #   （⚠️ 原註引「乙-2 之幾何分配 4dp 匯出即匯真值」——**乙-2 已廢止**
         #    〔KL 2026-07-17：N0-16 溶解其前提＋N0-18 法定成果本即 2dp〕；
@@ -11773,7 +11823,7 @@ def _first_corner_alloc_dir(side_mid):
 
 def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                  S_max, is_corner, side, avg_depth, B, C, tab6_burden,
-                 allocation_dir=None, side_mid=None, W_prev=0.0):
+                 allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None):
     """🆕 P-0b（裁定M·Q-M4）：G 解算**單一真相源**——幾何二分法優先，失敗 fallback 至代數迭代。
 
     app 內嵌 `_solve_one`（`main()` 內）與 `verify/stepg_pipeline.py` 之 `_solve_one` 皆改**薄殼**
@@ -11788,6 +11838,10 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
     #   ⇒ 其遠側界改 ∥SIDELINE。**六個 `_solve_one` 呼叫端、兩份 `_solve_one` 薄殼、
     #     `_corner_first_lot_G` 皆 `git diff` 0 行**——⛔ 未於呼叫端各寫一次條件。
     #   ⛔ 第 2 宗以後（`is_corner=False`）一律沿用 `allocation_dir`（∥ALLOC）·未動。
+    #   🔧 **更新（D-2b-23【甲】·⛔ 上文不刪）**：`②` 之**另一半**已落地——第 2 宗之**近側**界
+    #     不再自行 ∥ALLOC，改由推進迴圈以 `near_dir`（＝**前一宗**之 `_alloc_dir_used`）交遞
+    #     ⇒ 該界面**只有一條線**（正典 `K-9-5-4`「第 1 宗與第 2 宗之境界線」逐字為單數）。
+    #     ⛔ 本函式**不因 `is_corner` 推導 `near_dir`**——推導即再造一個決定點。
     if is_corner:
         allocation_dir = _first_corner_alloc_dir(side_mid)
     # 🆕 **D-2b-3 §二-3：記錄「實際採用之遠側界方向」**（**純加性**·⛔ 零行為變更）。
@@ -11810,6 +11864,7 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                 tol=0.01, max_iter=80,
                 allocation_dir=allocation_dir,
                 side_mid=side_mid, W_prev=W_prev,
+                near_dir=near_dir,                       # 🆕 D-2b-23【甲】：界面單線（⛔ 不在此推導）
             )
             _r['_alloc_dir_used'] = _alloc_dir_used      # D-2b-3 §二-3（純加性）
             return _r, '幾何二分法'
@@ -19113,7 +19168,8 @@ def main():
 
                     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
-                                   _allocation_dir=None, _side_mid=None, _W_prev=0.0):
+                                   _allocation_dir=None, _side_mid=None, _W_prev=0.0,
+                                   _near_dir=None):
                         """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
 
                         🆕 W-C §0.5-B/§4：_allocation_dir = rot90(f3_cad_alloc_dir)（臨街向）；
@@ -19125,7 +19181,8 @@ def main():
                             blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt,
                             S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
                             B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
-                            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev)
+                            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
+                            near_dir=_near_dir)   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
 
                     st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
                     for blk_label, parcels_in_blk in parcels_by_block.items():
@@ -19473,6 +19530,12 @@ def main():
                             # 🆕 W-C §4：thread 累積 W_前（首筆=0；forced_offset 時=buffer 臨街寬）
                             _W_prev_left = (_left_buffer_S * _cos_dn) if _has_left_corner else 0.0
                             _W_prev_right = (_right_buffer_S * _cos_dn) if _has_right_corner else 0.0
+                            # 🆕 D-2b-23【甲】：**界面單線鏈**（與 `_W_prev` 同法 thread·⛔ 兩者不同物）。
+                            #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
+                            #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）
+                            #   ——界面鏈之存在與該側有無街角無關；有無街角只影響「前一宗用了哪個方向」。
+                            _near_dir_left = None
+                            _near_dir_right = None
                             first_corner_used_left = False
                             left_results = []
                             for entry in left_group:
@@ -19511,9 +19574,12 @@ def main():
                                     _allocation_dir=allocation_dir_block,
                                     _side_mid=(_side_mid_left if _has_left_corner else None),
                                     _W_prev=_W_prev_left,
+                                    _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                                 )
                                 if _has_left_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_left = float(res.get('W_far', _W_prev_left))
+                                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
+                                _near_dir_left = res.get('_alloc_dir_used')
                                 _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
                                 # 極端防呆 3：S_remain 觸頂
                                 _G_target = float(res.get('G', 0.0))
@@ -19590,6 +19656,7 @@ def main():
                                     _allocation_dir=allocation_dir_block,
                                     _side_mid=(_side_mid_right if _has_right_corner else None),
                                     _W_prev=_W_prev_right,
+                                    _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                                 )
                                 # 極端防呆 2 後援：右側起點數值微修
                                 if (float(res.get('area_geom', 0)) < 0.5
@@ -19604,6 +19671,7 @@ def main():
                                             _allocation_dir=allocation_dir_block,
                                             _side_mid=(_side_mid_right if _has_right_corner else None),
                                             _W_prev=_W_prev_right,
+                                            _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                                         )
                                         if float(_r2.get('area_geom', 0)) >= 0.5:
                                             res, solver_label = _r2, _sl2
@@ -19614,6 +19682,8 @@ def main():
                                             break
                                 if _has_right_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_right = float(res.get('W_far', _W_prev_right))
+                                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
+                                _near_dir_right = res.get('_alloc_dir_used')
                                 _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
                                 # 極端防呆 3：S_remain 觸頂
                                 _G_target = float(res.get('G', 0.0))
