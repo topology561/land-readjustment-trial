@@ -8374,6 +8374,16 @@ def _detect_block_allocation_dir(block_poly, front_dir):
         return f_dir, fallback_n
 
 
+# 🆕 **D-2b-12【b0-1】**：`_block_strip` 雙線分支之「**同向即委派回單線**」門檻。
+#   **述詞**＝「兩條界線方向是否平行（含反向·界線方向定義至差一負號）」，
+#   **與 `verify/stepg_pipeline.py` 之 `_PAR_TOL`（`grep -n "_PAR_TOL = " verify/stepg_pipeline.py`）
+#   為<u>同一述詞</u>**（該處用於 `SIDE ∥ ALLOC` 退化判定·`K-9-5-8`）⇒ **沿用同值**，⛔ 未自創新數。
+#   ⚠️ 兩處定義同一述詞 ＝ 觸 `GB-46`（單一生產者）；本批**未統一**（避免動 `stepg` 擴大範圍），
+#      改以探針斷言把關（`verify/probes/probe_D2b12_bridge.py`【0】），已登記於泛用阻塞項登記表。
+#   ⚠️ ⛔ 與 `_BL_PARALLEL_TOL_DEG`（BASELINE vs FRONTLINE 之**角度**容差）**非同一述詞**，勿混用。
+_STRIP_PARALLEL_TOL = 1e-6
+
+
 def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
                  n_hat_far=None):
     """
@@ -8430,6 +8440,13 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
     bp = np.asarray(baseline_pt, dtype=float)
 
     # ── 🆕 D-2b-11【a-1】雙線分支（`n_hat_far` 有值時才走·⛔ 不影響 None 路徑）──
+    #   🆕 **D-2b-12【b0-1】同向即委派**：兩線平行時**落回單線路徑**（⇒ 與 `None` **逐位相同**）。
+    #     成因：單線 ＝ `block ∩ 平行四邊形`（**一次** intersection）；
+    #           雙線 ＝ `block ∩ hp_near ∩ hp_far`（**兩次**）⇒ 頂點捨入序不同 ⇒ 不逐位相同。
+    #           實測（`verify/out/probe_D2b12_bridge_before.log`【1】·難幾何 48 例）：
+    #           **36 例不同·最大絕對差 1.8189894035458565e-12**。
+    #     ⚠️ D-2b-11【a-3】第 1 項所測「差 0.0」係**軸對齊整數矩形之假象**（鑑別力為零）。
+    _parallel_delegate = False
     if n_hat_far is not None:
         _m = np.asarray(n_hat_far, dtype=float)
         _mn = float(np.linalg.norm(_m))
@@ -8438,6 +8455,10 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
         _m = _m / _mn
         _nh = np.asarray(n_hat, dtype=float)
         _nh = _nh / float(np.linalg.norm(_nh))
+        # 🔒 判定量 ＝ `|cross|`（皆單位向量）——⛔ **不得**用向量相等或內積符號：
+        #    界線方向定義**至差一負號**，`n̂` 與 `−n̂` 是**同一條線**。
+        if abs(float(_nh[0] * _m[1] - _nh[1] * _m[0])) <= _STRIP_PARALLEL_TOL:
+            _parallel_delegate = True
         _dh = np.asarray(d_hat, dtype=float)
         _dhn = float(np.linalg.norm(_dh))
         if _dhn < 1e-9:
@@ -8463,17 +8484,19 @@ def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None,
                 tuple(_q - big * _g + big * _w),
             ])
 
-        _hp_near = _halfplane(bp, _nh, +1.0)          # 保留 +d̂ 側
-        _hp_far = _halfplane(_fp, _m, -1.0)           # 保留 −d̂ 側
-        if _hp_near is None or _hp_far is None:
-            return None, 0.0
-        try:
-            cut = block_poly.intersection(_hp_near).intersection(_hp_far)
-        except Exception:
-            return None, 0.0
-        if cut is None or getattr(cut, 'is_empty', True):
-            return None, 0.0
-        return cut, float(cut.area) if hasattr(cut, 'area') else 0.0
+        if not _parallel_delegate:
+            _hp_near = _halfplane(bp, _nh, +1.0)      # 保留 +d̂ 側
+            _hp_far = _halfplane(_fp, _m, -1.0)       # 保留 −d̂ 側
+            if _hp_near is None or _hp_far is None:
+                return None, 0.0
+            try:
+                cut = block_poly.intersection(_hp_near).intersection(_hp_far)
+            except Exception:
+                return None, 0.0
+            if cut is None or getattr(cut, 'is_empty', True):
+                return None, 0.0
+            return cut, float(cut.area) if hasattr(cut, 'area') else 0.0
+        # `_parallel_delegate is True` ⇒ **不 return**，落回下方單線路徑（逐位等同 `None`）
 
     # ── 現行單線路徑（`n_hat_far is None`）·**原式一字未動**·⛔ 勿改寫為通式 ──
     strip = Polygon([
