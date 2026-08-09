@@ -8555,9 +8555,26 @@ def _block_partition(block_poly, d_hat, lines, _label=''):
        ⛔ **不得靜默丟棄或壓縮序列**：片與界線之**對應關係是帳的身分鍵**。
 
     ── 鋪滿閘（**內建**·⛔ 不得外掛·任一項不過即 raise）─────────────────────
-      ① `|Σ pieces.area − block.area| ≤ 1e-6`
-      ② **所有片兩兩**交集面積 `≤ 1e-6`（⛔ 非只檢相鄰）
+      ① **總量恆等**：`|Σ pieces.area − block.area| ≤ 1e-6`
+      ② **逐步恆等**（**純算術**）：對每一 `i`，`|片_i − (rem_{i−1} − rem_i)| ≤ 1e-6`
+      ③ **每線互補性自檢**：`|hp⁻ ∩ hp⁺| == 0` 且 `街廓 未被 hp⁻∪hp⁺ 覆蓋之面積 == 0`
+         （以**含斥原理** `A_lo + A_hi − A_both` vs `block.area` 求之
+          ⇒ ⛔ **未用** `difference`／`union`；且作用於**街廓 × 半平面**
+          ——凸、大尺度、頂點少，⛔ **非**作用於已被多次裁切之片）
     ⛔ **不得以下游 `①' 覆蓋閘 0.01` 代掃**——本原語之賣點即構造性鋪滿，閘寬須遠嚴於下游。
+
+    ── 🔴 **已作廢之舊判準（D-2b-15 §d-3·具名記載·⛔ 不得復活）** ──────────────
+    舊 ② ＝「**所有片兩兩交集面積 ≤ 1e-6**」，以 `.intersection()` 計算。
+    **廢止理由**：`.intersection()` **本身即失效者** ⇒ 舊 ② 會在**正確之分割**上**誤報停機**。
+    **實證**（回歸案例 `verify/fixtures/case_D2b15_tilegate_intersection.py`）：
+      · 取樣點 `(-6.731264, 23.873288)` 之帶號 `f(L3) = (p−q₃)·ŵ₃ = +4.262478 ≥ 0`
+        ⇒ 該點**進餘塊、不屬片2**；且 `片2.contains(取樣點)` 亦回 **False**；
+      · 面積鏈自洽：`13609.319061 → 9300.0945 → 7664.9449 → 5708.5477 → 5568.7502 → 4644.5484`
+        ——各片恰為相鄰差值；
+      · **然** `pieces[2].intersection(pieces[4]).area = **924.201867**`（＝**片4 全部面積**），
+        **與其自身 `contains=False` 矛盾**。
+    ⇒ **分割正確、量法失效**。⛔ 舊判準**未保留**為「參考輸出」——留之必被後續批次誤引為證據。
+    環境：`shapely 2.1.2 | GEOS (3, 13, 1)`（CC 與 claude.ai 兩側**一致**）。
     """
     import numpy as np
 
@@ -8579,6 +8596,8 @@ def _block_partition(block_poly, d_hat, lines, _label=''):
 
     rem = block_poly
     pieces = []
+    _chain = []          # 🆕 D-2b-15 §d-3①：逐步恆等之實測（rem_{i−1}／片_i／rem_i）
+    _compl = []          # 🆕 D-2b-15 §d-3③：每線互補性自檢
     for _i, _ln in enumerate(lines[1:], start=1):
         _q = np.asarray(_ln[0], dtype=float)
         _g = np.asarray(_ln[1], dtype=float)
@@ -8593,8 +8612,21 @@ def _block_partition(block_poly, d_hat, lines, _label=''):
             raise RuntimeError(
                 f"🔴 _block_partition[{_label}]：第 {_i} 條界線 ∥ 推進向 ⇒ "
                 f"半平面不可定義（no-silent-fallback），停")
-        pieces.append(rem.intersection(_hp_lo))
+        # §d-3③ 每線互補性自檢（作用於**街廓 × 半平面**：凸、大尺度、頂點少
+        #   ⇒ ⛔ 非作用於已被多次裁切之片）。以**含斥原理**求補集面積：
+        #   `A_lo + A_hi − A_both` 應 == `block.area` ⇒ ⛔ 未用 `difference`／`union`。
+        _A_lo = float(block_poly.intersection(_hp_lo).area)
+        _A_hi = float(block_poly.intersection(_hp_hi).area)
+        _A_both = float(block_poly.intersection(_hp_lo).intersection(_hp_hi).area)
+        _compl.append({'i': _i, 'both': _A_both,
+                       'gap': blk_area - (_A_lo + _A_hi - _A_both)})
+        _prev_area = float(rem.area)
+        _pc = rem.intersection(_hp_lo)
         rem = rem.intersection(_hp_hi)
+        _chain.append({'i': _i, 'prev': _prev_area, 'piece': float(_pc.area),
+                       'rem': float(rem.area),
+                       'resid': abs(float(_pc.area) - (_prev_area - float(rem.area)))})
+        pieces.append(_pc)
     pieces.append(rem)                                          # 末片 ＝ 最後之餘塊
 
     # ── 鋪滿閘（內建）──
@@ -8602,27 +8634,34 @@ def _block_partition(block_poly, d_hat, lines, _label=''):
     _empty = [i for i, p in enumerate(pieces)
               if p is None or getattr(p, 'is_empty', True) or float(p.area) <= 0.0]
     _resid = sum(_areas) - blk_area
-    _maxx, _maxpair = 0.0, None
-    for _i in range(len(pieces)):
-        for _j in range(_i + 1, len(pieces)):
-            _a, _bp2 = pieces[_i], pieces[_j]
-            if _a is None or _bp2 is None or _a.is_empty or _bp2.is_empty:
-                continue
-            _x = float(_a.intersection(_bp2).area)
-            if _x > _maxx:
-                _maxx, _maxpair = _x, (_i, _j)
+    _max_chain = max((c['resid'] for c in _chain), default=0.0)
+    _max_both = max((c['both'] for c in _compl), default=0.0)
+    _max_gap = max((abs(c['gap']) for c in _compl), default=0.0)
     diag = {'n_pieces': len(pieces), 'areas': _areas, 'empty_idx': _empty,
             'resid': _resid, 'block_area': blk_area,
-            'max_pair_overlap': _maxx, 'max_pair': _maxpair}
+            'chain': _chain, 'max_chain_resid': _max_chain,
+            'compl': _compl, 'max_compl_both': _max_both, 'max_compl_gap': _max_gap}
+
+    # ── §d-3② 總量恆等（＝原閘①·保留）──
     if abs(_resid) > _PARTITION_TILE_TOL:
         raise RuntimeError(
             f"🔴 _block_partition[{_label}] 鋪滿閘①破：|Σ片 − 街廓| = {_resid:+.9e} > "
             f"{_PARTITION_TILE_TOL:g}（Σ片 {sum(_areas):.9f}／街廓 {blk_area:.9f}"
             f"／片數 {len(pieces)}／空片 {_empty}）")
-    if _maxx > _PARTITION_TILE_TOL:
+    # ── §d-3① 逐步恆等（**純算術**·取代已作廢之「最大兩兩交集」判準）──
+    if _max_chain > _PARTITION_TILE_TOL:
+        _w = max(_chain, key=lambda c: c['resid'])
         raise RuntimeError(
-            f"🔴 _block_partition[{_label}] 鋪滿閘②破：最大兩兩交集 = {_maxx:.9e} > "
-            f"{_PARTITION_TILE_TOL:g}（片對 {_maxpair}／片數 {len(pieces)}）")
+            f"🔴 _block_partition[{_label}] 鋪滿閘②破（逐步恆等）：第 {_w['i']} 步 "
+            f"|片 − (rem₋₁ − rem)| = {_w['resid']:.9e} > {_PARTITION_TILE_TOL:g}"
+            f"（rem₋₁ {_w['prev']:.9f}／片 {_w['piece']:.9f}／rem {_w['rem']:.9f}）")
+    # ── §d-3③ 每線互補性自檢 ──
+    if _max_both > _PARTITION_TILE_TOL or _max_gap > _PARTITION_TILE_TOL:
+        _w = max(_compl, key=lambda c: max(c['both'], abs(c['gap'])))
+        raise RuntimeError(
+            f"🔴 _block_partition[{_label}] 鋪滿閘③破（半平面互補性）：第 {_w['i']} 條線 "
+            f"|hp⁻∩hp⁺| = {_w['both']:.9e}／街廓未被 hp⁻∪hp⁺ 覆蓋 = {_w['gap']:+.9e}"
+            f"（> {_PARTITION_TILE_TOL:g}）——**半平面構造本身有洞**，遠比量法問題嚴重，停")
     return pieces, diag
 
 
