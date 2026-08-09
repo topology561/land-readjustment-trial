@@ -40,9 +40,18 @@ from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
 
 OUTDIR = os.path.join(VERIFY, "out")
-# 🆕 D-2b-11【a-2】：輸出檔可由環境變數覆寫，供**複驗**寫入新檔
-#   ⇒ ⛔ **不覆寫** `probe_D2b10_baseline.log`（已入庫實料）。預設值不變。
+# 🆕 D-2b-11【a-2】：輸出檔可由環境變數覆寫，供**複驗**寫入新檔。
+# 🔴 **D-2b-12【b0-3】補強**：預設值仍指向**已入庫實料** ⇒ **未設環境變數即會覆寫**。
+#   改為 **目標檔已存在即 raise**（`_assert_not_exists`），⛔ 任何已入庫 log 皆不得被覆寫。
 LOG = os.path.join(OUTDIR, os.environ.get("WV_BASELINE_LOG", "probe_D2b10_baseline.log"))
+
+
+def _assert_not_exists(path):
+    """⛔ 目標檔已存在即停——防「未設 `WV_BASELINE_LOG` 而覆寫已入庫實料」。"""
+    if os.path.exists(path):
+        raise RuntimeError(
+            f"🔴 目標 log 已存在，⛔ 拒絕覆寫（已入庫實料不得被蓋）：{path}\n"
+            f"   ⇒ 請設 `WV_BASELINE_LOG=<新檔名>` 後重跑。")
 NOEXC = "（無例外）"
 W = 200
 TRUNC_CELLS = {("3.5m", "R2"), ("3.5m", "R5"), ("3.5m", "R3")}   # 舊基準真被截斷者
@@ -80,6 +89,7 @@ def main():                                                        # noqa: C901
         except Exception:
             pass
     os.makedirs(OUTDIR, exist_ok=True)
+    _assert_not_exists(LOG)          # 🔴 D-2b-12【b0-3】：⛔ 拒絕覆寫已入庫 log
 
     ns, fake_st = harvest()
     snapshot = rv.load_snapshot()
