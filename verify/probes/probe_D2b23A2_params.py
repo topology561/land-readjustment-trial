@@ -48,6 +48,21 @@ OUTDIR = os.path.join(VERIFY, "out")
 W = 200
 KEYS = ("S_max", "A", "B", "C", "tab6_burden")
 
+def _resolve_out(default_name):
+    """輸出檔名解析 ＋ **拒絕覆寫**守衛（⛔ 禁覆寫任何已入庫 log）。
+
+    `WV_OUT_NAME=<新檔名>` 覆寫預設；⛔ 目標已存在即 raise，
+    除非明示 `WV_ALLOW_OVERWRITE=1`。⇒ 甲前／甲後兩份得以**並存、可逐格對拍**。
+    """
+    name = os.environ.get("WV_OUT_NAME") or default_name
+    path = os.path.join(OUTDIR, name)
+    if os.path.exists(path) and os.environ.get("WV_ALLOW_OVERWRITE") != "1":
+        raise RuntimeError(
+            f"🔴 拒絕覆寫既有 log：{path}"
+            f"　⇒ 請設 WV_OUT_NAME=<新檔名>（⛔ 禁覆寫已入庫實料）")
+    return path
+
+
 
 def _canon(v):
     """可比較之正規化表示（⛔ 不改值·只求可 hash／可印）。"""
@@ -67,6 +82,7 @@ def main():                                                          # noqa: C90
         except Exception:                                             # noqa: BLE001
             pass
     os.makedirs(OUTDIR, exist_ok=True)
+    out = _resolve_out("probe_D2b23A2_params_before.log")   # ⚠️ **fail-fast**：先解析再跑（⛔ 別跑完才攔）
     L = []
 
     def P(s=""):
@@ -154,7 +170,6 @@ def main():                                                          # noqa: C90
         for t, c in sorted(d.items()):
             P(f"     ×{c:<4}" + "　".join(f"{k}={v}" for k, v in zip(KEYS, t)))
 
-    out = os.path.join(OUTDIR, "probe_D2b23A2_params_before.log")
     with open(out, "w", encoding="utf-8") as fh:
         fh.write("\n".join(L) + "\n")
     print(f"\n📄 {out}", file=sys.stderr)
