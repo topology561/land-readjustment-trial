@@ -9029,6 +9029,46 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
         pieces.append(g)
         kept_iv.append((a, b))
 
+    # ── 5b. 🆕 **D-2b-24：幾何餘（`K-9-5-7` 配餘）** ──────────────────────────────
+    #   正典逐字（`grep -n "^### 🔒 K-9-5-7" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+    #   「**抵費地係配餘**：抵費地為該街廓原位次配地完成後**剩下的**街廓空間」；
+    #   同檔「池 ＝ 扣除所有已定位宗後之…」（`grep -n "扣除所有已定位宗" 同檔`）。
+    #
+    #   **為何原構造不足**：步驟 3–4 以「業主宗之 **s 區間**」取補集 ⇒ 凡落在
+    #   *某宗之 s 帶內、卻不屬該宗多邊形* 之土地（＝街角第 1 宗斜置遠側界所遺之楔形，
+    #   且該側**無下一宗**可承接），既非宗、亦不在任何池帶 ⇒ **無人分到**。
+    #   實測 `0m/3.5m R4` 各 `58.4792㎡`、`3.5m R1` `5.3881㎡`
+    #   【倉】`verify/out/probe_D2b23C_attrib_after.log`。
+    #
+    #   🔒 **採<u>加性</u>殘餘、⛔ 不重寫步驟 3–5**：
+    #     ① 既有池帶之幾何**逐位不動** ⇒ 無殘餘之街廓（含 `SIDE ∥ ALLOC` 退化側、
+    #        無街角宗之街廓）**輸出逐位相同**（施工單 §2 之「退化須逐位不變」）；
+    #     ② 殘餘之判準沿用 **T1 既有寬度退化式** `buffer(-1e-4).is_empty`
+    #        （見上方步驟 5 之同式）⇒ **⛔ 未新訂任何常數／閘寬**。
+    #   🔒 **單一生產者**：池之產生點仍恰好一個（本函式）；stepg／app／wf_f1／wf_f4
+    #     皆經 `ns` 取用同一支 ⇒ ⛔ 未於 harness 另算一次。
+    #   🔒 **side-agnostic**：⛔ 未依側別／街廓名／宗序號分支。
+    #
+    #   🔴 **本項使 `①' 覆蓋閘` 成為<u>構造恆真</u>**（claude.ai 增補單 補-1·KL 2026-08-09）：
+    #     池 ⊇ 街廓 − ∪宗 ⇒ `union(宗+池) ≡ 街廓` ⇒ 下方 `cover_resid ≡ 0`。
+    #     ⛔ **該閘之 `0` 自本批起不得作為任何驗收憑據**（引用時須併記「構造恆真·非證據」）；
+    #     ⛔ **但不得刪除／停用／標作廢**——退化案例與未來實作仍可能使其非恆真，
+    #     且刪閘與「因結果不利而移除偵測器」不可區辨。
+    #     ⇒ **承重閘換位為守恆式** `|ΣG − Σ宗幾何|`（`_acct_geom_tol_block` 之原理式）。
+    _resid_src = _biz + pieces
+    if _resid_src:
+        _resid = block_poly.difference(unary_union(_resid_src))
+        for _rg in (list(_resid.geoms) if hasattr(_resid, 'geoms') else [_resid]):
+            if _rg is None or _rg.is_empty or _rg.buffer(-1e-4).is_empty:
+                continue                      # T1 既有退化判準（⛔ 未新訂常數）
+            _riv = _strip_s_range(_rg, d_hat, corner_pt, allocation_dir)
+            pieces.append(_rg)
+            kept_iv.append(_riv if _riv is not None else (s_min, s_max))
+            if _verbose:
+                print(f"🟢 [配餘] 街廓 {_label}：幾何餘 {float(_rg.area):.4f}㎡ 入抵費地"
+                      f"（`K-9-5-7` 配餘·s∈[{(_riv or (s_min, s_max))[0]:.4f},"
+                      f"{(_riv or (s_min, s_max))[1]:.4f}]）——原為「非宗亦非池帶」之無主空間")
+
     # ── 6. 自檢
     _all = _biz + pieces
     _uni = unary_union(_all) if _all else None
