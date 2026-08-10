@@ -1,0 +1,41 @@
+==============================================================================
+D-2b-29 §1-2 #3　產出鏈遞移閉包 → 結構閘「實跑」側算子
+==============================================================================
+
+【射程】種子（selection_pipeline 之 ns["…"]·AST 取） = 14 個
+   · F3_CATEGORY_BURDEN                         app.py 有定義？ ❌（外部／常數）
+   · _annotate_temp_parcel_cut_type             app.py 有定義？ ✅
+   · _assign_four_column_areas                  app.py 有定義？ ✅
+   · _corner_block_true_G                       app.py 有定義？ ✅
+   · _estimate_G_for_qualification              app.py 有定義？ ✅
+   · _normalize_landno_module                   app.py 有定義？ ✅
+   · _oblique_s_max                             app.py 有定義？ ✅
+   · _projection_order                          app.py 有定義？ ✅
+   · alloc_normal_axis                          app.py 有定義？ ✅
+   · get_min_lot_size                           app.py 有定義？ ✅
+   · overlay_polygons_to_blocks                 app.py 有定義？ ✅
+   · parse_cadastral_geofile                    app.py 有定義？ ✅
+   · select_corner_lots_both_sides_v12          app.py 有定義？ ✅
+   · validate_parcel_assignments_by_area        app.py 有定義？ ✅
+
+【自我驗證閘②】目標名於 app.py 之定義：
+   · solve_G_binary       ✅ 有定義  (lineno=[9580])
+   · iterate_G_S          ✅ 有定義  (lineno=[6312])
+
+【閉包】自 13 個有定義之種子起，BFS 至不動點 ⇒ 觸及名 154 個
+        其中 app.py 有定義者 51／外部名（stdlib 等）103
+
+【判定】目標可達性（⛔ 遞移·非一層）：
+   ✅ solve_G_binary     可達（跳數 3）
+      路徑：_corner_block_true_G → _corner_first_lot_G → _solve_G_one → solve_G_binary
+   ✅ iterate_G_S        可達（跳數 3）
+      路徑：_corner_block_true_G → _corner_first_lot_G → _solve_G_one → iterate_G_S
+
+【對照】只做一層之結果（施工單所禁之作法）：
+   · solve_G_binary     一層命中？ **否**
+   · iterate_G_S        一層命中？ **否**
+   ⇒ 若只做一層即下「零交集」之結論，將與遞移閉包之結果相反。
+
+【自我驗證閘③】差集自證：閉包 154 ＝ app.py 有定義 51 ＋ 外部名 103，差 0（須為 0）
+
+rc = 0
