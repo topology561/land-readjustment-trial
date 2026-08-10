@@ -1,0 +1,118 @@
+================================================================================
+D-2b-29 §4　W-G.9 前置偵察 Q1〜Q3（⛔ 只查不改）
+================================================================================
+【射程】倉內 *.py 共 108 檔（⛔ 已排除 .claude/worktrees/）
+        生產碼定義 = app.py / verify/stepg_pipeline.py / verify/selection_pipeline.py / verify/run_verification.py / verify/wf_f0.py / verify/wf_f1.py / verify/wf_f2.py / verify/wf_f3.py / verify/wf_f4.py
+
+【自我驗證閘⓪】母體非空 ＋ 生產碼全在母體內：
+   · 母體檔數 = 108（須 > 0）
+   · 生產碼 9 支中不在母體者 = 0 
+
+################################################################################
+## Q1　`w_lo = min(_W(0,0), _W(D,0))` 於倉內是否存在為**活碼**
+################################################################################
+
+【文字命中】`w_lo` 共 11 處：
+   · app.py                                         :5913   w_lo = max(min(p[0] for p in fw), min(p[0] for p in bw))
+   · app.py                                         :5915   if w_hi - w_lo > 1e-6:
+   · app.py                                         :5919   w = w_lo + (w_hi - w_lo) * i / N
+   · app.py                                         :11031  #      `k = sigma / den_a; w_lo = min(_W(0,0), _W(D,0)); t_star = (T - w_lo) / k`）
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :157    say("## Q1　`w_lo = min(_W(0,0), _W(D,0))` 於倉內是否存在為**活碼**")
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :162    for ln, src in text_lines(f, "w_lo"):
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :166    for ln, fn in live_lines(t, "w_lo"):
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :170    say("【文字命中】`w_lo` 共 %d 處：" % len(q1_text))
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :175    say("【活碼命中】`w_lo` 作為 AST Name 節點 共 %d 處：" % len(q1_live))
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :184    q1_cmt, q1_str, q1_res = partition(q1_text, live_key, "w_lo", _trees1)
+   · verify/probes/probe_D2b29_wg9_q1q3.py          :198    say("【Q1 判定】`w_lo` 於 `_build_corner_range_v3` 內是否為活碼：")
+
+【活碼命中】`w_lo` 作為 AST Name 節點 共 4 處：
+   · app.py                                         :5913    函式 = _compute_block_depth_alloc
+   · app.py                                         :5915    函式 = _compute_block_depth_alloc
+   · app.py                                         :5919    函式 = _compute_block_depth_alloc
+   · app.py                                         :5919    函式 = _compute_block_depth_alloc
+
+【差集自證】三分：AST 活節點 3 ＋ `#` 註解 2 ＋ 字串常數 6 ＝ 11／文字命中 11
+            ⇒ **殘差 = 0**（須為 0）
+   · [註解]   app.py                                     :11031  #      `k = sigma / den_a; w_lo = min(_W(0,0), _W(D,0)); t_star = (T -
+   · [註解]   verify/probes/probe_D2b29_wg9_q1q3.py      :157    say("## Q1　`w_lo = min(_W(0,0), _W(D,0))` 於倉內是否存在為**活碼**")
+   · [字串]   verify/probes/probe_D2b29_wg9_q1q3.py      :162    for ln, src in text_lines(f, "w_lo"):
+   · [字串]   verify/probes/probe_D2b29_wg9_q1q3.py      :166    for ln, fn in live_lines(t, "w_lo"):
+   · [字串]   verify/probes/probe_D2b29_wg9_q1q3.py      :170    say("【文字命中】`w_lo` 共 %d 處：" % len(q1_text))
+   · [字串]   verify/probes/probe_D2b29_wg9_q1q3.py      :175    say("【活碼命中】`w_lo` 作為 AST Name 節點 共 %d 處：" % len(q1_live))
+   · [字串]   verify/probes/probe_D2b29_wg9_q1q3.py      :184    q1_cmt, q1_str, q1_res = partition(q1_text, live_key, "w_lo", _trees1)
+   · [字串]   verify/probes/probe_D2b29_wg9_q1q3.py      :198    say("【Q1 判定】`w_lo` 於 `_build_corner_range_v3` 內是否為活碼：")
+
+【Q1 判定】`w_lo` 於 `_build_corner_range_v3` 內是否為活碼：
+   ⇒ ❌ **否**（無活碼）（該函式內活碼命中 0 處）
+
+################################################################################
+## Q2　活之「min 取二端」結構位於哪些函式；其二端幾何各是什麼線
+################################################################################
+
+【活碼】`min(...)` 之實參中含 `_W(...)` 呼叫者：
+   · app.py                         :10595  函式 = k97_solve_alloc_t          min(_W(0.0, t_star), _W(_D_at, t_star))
+   · app.py                         :10825  函式 = k97_solve_alloc_t          min(_W(_l2['d_top'], t_star), _W(_l2['d_bot'], t_star))
+   · app.py                         :10858  函式 = k97_solve_alloc_t          min(_W(0.0, 0.0), _W(_Db, 0.0))
+
+【`_W` 之定義處（活碼·逐函式）】：
+   · app.py                         :10545  定義於 = k97_solve_alloc_t
+
+################################################################################
+## Q3　`k97_solve_alloc_t` 之**生產呼叫數**（三形式全覆蓋 ＋ 差集自證）
+################################################################################
+
+【文字命中】共 38 處：
+   · app.py                         :10398  [def                   ] 函式=<module>                 def k97_solve_alloc_t(block_centroid, front_pts, bas
+   · app.py                         :10486  [**未歸類**               ] 函式=—                        _who = f"k97_solve_alloc_t[{_label or '?'}·{_side or
+   · app.py                         :11029  [**未歸類**               ] 函式=—                        # 🆕 **K-6-A2 段三(c)：§四 定位改走 `k97_solve_alloc_t`**（KL 
+   · app.py                         :11045  [**未歸類**               ] 函式=—                        #   ⛔ **舊式（`k97_solve_alloc_t` → `t_star` → `L(t*)`）
+   · app.py                         :11046  [**未歸類**               ] 函式=—                        #   🔒 `k97_solve_alloc_t` **本身不刪、不停用、不標作廢**（D 波範圍界線 
+   · app.py                         :11048  [**未歸類**               ] 函式=—                        #      （`grep -c "k97_solve_alloc_t" app.py`；探針側見 `g
+   · app.py                         :11053  [**未歸類**               ] 函式=—                        "⇒ ⛔ 不得靜默忽略（no-silent-fallback）。舊式對照請改走 `k97_solve_a
+   · verify/fixture_corner_range_k8.py :68     [**未歸類**               ] 函式=—                        ⛔ **不自 `k97_solve_alloc_t` 或 `_build_corner_range_v3
+   · verify/fixture_corner_range_k8.py :81     [**未歸類**               ] 函式=—                        ⛔ **仍不自 `k97_solve_alloc_t`／`_build_corner_range_v3`
+   · verify/fixture_corner_range_k8.py :148    [**未歸類**               ] 函式=—                        #     ⛔ **不自 `k97_solve_alloc_t`／`_build_corner_rang
+   · verify/probes/probe_D2b29_wg9_q1q3.py :250    [**未歸類**               ] 函式=—                        say("## Q3　`k97_solve_alloc_t` 之**生產呼叫數**（三形式全覆蓋 ＋ 差
+   · verify/probes/probe_D2b29_wg9_q1q3.py :253    [**未歸類**               ] 函式=—                        NAME = "k97_solve_alloc_t"
+   · verify/probes/probe_K9_7d_layer2.py :8      [**未歸類**               ] 函式=—                        - **(a)** 第二層以 `k97_solve_alloc_t(..., block_vertice
+   · verify/probes/probe_K9_7d_layer2.py :42     [**未歸類**               ] 函式=—                        **全部取自 `k97_solve_alloc_t` 之回傳**（判準 `|inset| <= _EPS
+   · verify/probes/probe_K9_7d_layer2.py :130    [**未歸類**               ] 函式=—                        for _s in ("k97_solve_alloc_t", "_build_corner_range
+   · verify/probes/probe_K9_7d_layer2.py :163    [call:ns["…"]          ] 函式=main                     rec["new"] = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_K9_7d_layer2.py :371    [**未歸類**               ] 函式=—                        _both("    （`grep -n -A4 \"_k97 = k97_solve_alloc_t\
+   · verify/probes/probe_K9_7d_pk_impact.py :73     [**未歸類**               ] 函式=—                        for _s in ("k97_solve_alloc_t", "_build_corner_range
+   · verify/probes/probe_K9_7d_pk_impact.py :101    [call:ns["…"]          ] 函式=main                     r = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_K9_7d_pk_impact.py :323    [**未歸類**               ] 函式=—                        L.append("  · 🔴 **段四(c) 後生產已走第二層**（`grep -n -A4 \"_k
+   · verify/probes/probe_K9_7d_stageA.py :6      [**未歸類**               ] 函式=—                        乙式同時改**引擎**（`k97_solve_alloc_t` 第二層）與**夾具**
+   · verify/probes/probe_K9_7d_stageA.py :19     [**未歸類**               ] 函式=—                        🔴 **`k` 取解析 `∂w/∂d`**（`k97_solve_alloc_t` 回傳之 `k`），
+   · verify/probes/probe_K9_7d_stageA.py :89     [**未歸類**               ] 函式=—                        for _s in ("k97_solve_alloc_t", "_build_corner_range
+   · verify/probes/probe_K9_7d_stageA.py :120    [call:ns["…"]          ] 函式=main                     r = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_K9_s62_chord_vs_linedist.py :37     [**未歸類**               ] 函式=—                        - 帶二端 ← `app.k97_solve_alloc_t` 之 `band_d_top`／`band
+   · verify/probes/probe_K9_s62_chord_vs_linedist.py :90     [**未歸類**               ] 函式=—                        for _s in ("_build_corner_range_v3", "k97_solve_allo
+   · verify/probes/probe_K9_s62_chord_vs_linedist.py :139    [call:ns["…"]          ] 函式=main                     _k = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_K9_s62_chord_vs_linedist.py :413    [**未歸類**               ] 函式=—                        L.append("  · `rng` 與帶二端**皆取自生產真符號**（`_build_corner_
+   · verify/probes/probe_k97_r5_attribution.py :88     [call:ns["…"]          ] 函式=main                     r = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :17     [**未歸類**               ] 函式=—                        | **新（**現為生產**）** | `app.k97_solve_alloc_t` 第一層 | **
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :76     [**未歸類**               ] 函式=—                        L.append("新＝k97_solve_alloc_t（帶深＝範圍自身最小深度 D(t)·斜率 ①c
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :80     [**未歸類**               ] 函式=—                        for _s in ("k97_solve_alloc_t", "_build_corner_range
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :109    [call:ns["…"]          ] 函式=main                     new = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :242    [**未歸類**               ] 函式=—                        L.append("    前版載「`k97_solve_alloc_t` 未接生產路徑（零呼叫點）」—
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :250    [**未歸類**               ] 函式=—                        L.append("  · K-9-7-d 之第二層分支已於段四(c)-2(a)／(a′) 實作於 `k
+   · verify/probes/probe_ruling_K9_7_pk_impact.py :21     [**未歸類**               ] 函式=—                        「舊」欄改以 `_t_override` 注入 **`t_star_legacy`**（`k97_sol
+   · verify/probes/probe_ruling_K9_7_pk_impact.py :110    [call:ns["…"]          ] 函式=main                     r = ns["k97_solve_alloc_t"](
+   · verify/probes/probe_ruling_K9_7_pk_impact.py :312    [**未歸類**               ] 函式=—                        L.append("  · 本檔**只算不換**：k97_solve_alloc_t 維持零生產呼叫點；
+
+【差集自證】三分：AST 活節點 8 ＋ `#` 註解 6 ＋ 字串常數 24 ＝ 38／文字命中 38
+            ⇒ **殘差 = 0**（須為 0·⛔ 空集合不算通過·母體 38 > 0 已由閘⓪保證）
+
+【呼叫彙總】全倉呼叫 7 處；其中**生產碼**內 0 處
+   · verify/probes/probe_K9_7d_layer2.py :163    call:ns["…"]     函式=main                       （量測件）
+   · verify/probes/probe_K9_7d_pk_impact.py :101    call:ns["…"]     函式=main                       （量測件）
+   · verify/probes/probe_K9_7d_stageA.py :120    call:ns["…"]     函式=main                       （量測件）
+   · verify/probes/probe_K9_s62_chord_vs_linedist.py :139    call:ns["…"]     函式=main                       （量測件）
+   · verify/probes/probe_k97_r5_attribution.py :88     call:ns["…"]     函式=main                       （量測件）
+   · verify/probes/probe_ruling_K9_7_alloc_t.py :109    call:ns["…"]     函式=main                       （量測件）
+   · verify/probes/probe_ruling_K9_7_pk_impact.py :110    call:ns["…"]     函式=main                       （量測件）
+
+【Q3 判定】`k97_solve_alloc_t` 之**生產呼叫數 ＝ 0**
+
+rc = 0
