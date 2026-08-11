@@ -116,7 +116,15 @@ def main():
                         "🆕 K-8 §三〜§五 街角規定範圍新構造·構造/單調性自檢＋判別力反例"),
                        ("fixture_end_reserve.py", "P2-f 末端保留·窗位移(左右)"),
                        ("fixture_end_fallback.py", "§4 無勝者 fallback·守恆真檢(左右)"),
-                       ("fixture_end_winner.py", "末端 gate 判別力·_unfront_area＋咬合反例")):
+                       ("fixture_end_winner.py", "末端 gate 判別力·_unfront_area＋咬合反例"),
+                       # 🆕 `W-G.9-4b`：app `_WF_NS_NAMES` ↔ 引擎 `ns[...]` 接線守護。
+                       #   掛入本清單之由 ＝ 該缺陷本應由 `run_verification` 之 **W-8 反向閘**
+                       #   攔下，惟該閘所在之「W-G G.1 接線層 ctx-builder 同源」於到達差集
+                       #   檢查**之前**即以 `KeyError: '0m'` 崩（見 `out/WG94_runall.log`
+                       #   之 `[G.1] '0m'`）⇒ **閘在、但為死閘**。本夾具**繞過**它、**不修**它
+                       #   （上游屬另案·`W-G.9-4b` §3 明文不修）。
+                       ("fixture_wf_ns_wiring.py",
+                        "🆕 W-G.9-4b app 接線清單↔引擎 ns[] 消費（AST 靜態＋_wf_ns() 實跑＋竄改自檢）")):
         try:
             _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
                                 capture_output=True, text=True, encoding="utf-8", timeout=600)

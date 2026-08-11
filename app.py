@@ -12428,6 +12428,14 @@ _WF_NS_NAMES = [
     "_solve_G_one",
     # 🆕 P-A（裁定M·M-2/Q1）：假設第 1 宗真 G（樂觀口徑·內呼 _solve_G_one）。
     "_corner_first_lot_G",
+    # 🆕 W-G.9-4b（接線修復·`W-G.9-4` expand 之收尾）：**W 之單一產生者**
+    #   （`K-9-5-6` intrinsic 直量·正典**權威序第 1 級**）。`stepg_pipeline` 之
+    #   `ns["k956_W_from_mp"]`（`grep -n 'ns\["k956_W_from_mp"\]' verify/stepg_pipeline.py`）
+    #   於 `run_step_g` 函式體**無條件執行**（AST 證：祖先鏈無 Try/If）
+    #   ⇒ 漏列則 app 路徑（`_build_wf_ctx`→`_wf_ns()`→wf_f0.compute→run_step_g）
+    #   **必 KeyError**（實測落點 `stepg_pipeline.py:334`·見 `verify/out/probe_WG94b_wiring.log`）。
+    #   ⛔ 禁改為 `ns.get(...)` 加自算 fallback（`no-silent-fallback`／`GB-60` 病灶族）。
+    "k956_W_from_mp",
 ]
 
 

@@ -1,0 +1,41 @@
+============================================================================================
+# `W-G.9-4b` 夾具：app `_WF_NS_NAMES` ↔ 引擎 `ns[...]` 接線守護
+============================================================================================
+────────────────────────────────────────────────────────────────────────────────────────────
+【靜態層】AST：引擎 `ns[<字面字串>]` 消費 ⊆ app `_WF_NS_NAMES`
+────────────────────────────────────────────────────────────────────────────────────────────
+  【目錄射程】硬判 6 檔：wf_f0.py, wf_f1.py, wf_f2.py, wf_f3.py, wf_f4.py, stepg_pipeline.py
+              （相對 `verify/`·⛔ 不含 `.claude/worktrees/`）
+  【字樣射程】**任何** `ns[<字面字串>]`——⛔ 不預設符號名、⛔ 不列舉已知名單
+  【連接方式】AST `Subscript(Name('ns'), Constant(str))` 結構匹配——⛔ 非正則、⛔ 無固定距離窗
+  引擎消費之相異名 ＝ 24；app 清單名目 ＝ 25
+  🔴 引擎消費但 `_WF_NS_NAMES` 漏列（app 路徑必 KeyError）：['k956_W_from_mp']
+       k956_W_from_mp ← stepg_pipeline.py:334  函式 `run_step_g`
+  ── 射程外之列示：import 遞移閉包 11 檔，硬判範圍外 5 檔 ＝ app_harvest.py, run_verification.py, selection_pipeline.py, wd3_fragment_geom.py, wd4_tier_list.py
+     其中「消費但未列」之名 ＝ ['_WF_NS_NAMES', '__file__', '__harvest_stats__', '_anchor_chamfers_topology', '_annotate_block_corner_flags', '_annotate_temp_parcel_cut_type', '_assign_four_column_areas', '_baseline_pts_from_manual', '_build_wf_ctx', '_compute_per_end_cutoff_areas', '_corner_block_true_G', '_estimate_G_for_qualification', '_is_uc9898', '_make_chamfer_tri_wb', '_normalize_landno_module', '_pk_one_side_v12', '_read_dxf_any_encoding', '_rebuild_corners_topology', 'n19p_depth_info_by_label', 'overlay_polygons_to_blocks', 'parse_block_dxf', 'parse_cad_precision_layers', 'parse_cadastral_geofile', 'select_corner_lots_both_sides_v12', 'validate_parcel_assignments_by_area']　⚠️ **僅列示不判紅**（harness 全 harvest 路徑·非 `_wf_ns()` 路徑）
+
+────────────────────────────────────────────────────────────────────────────────────────────
+【竄改自檢·靜態】⛔ 二態皆印；抽名後仍綠 ⇒ 本夾具不得計入交付
+────────────────────────────────────────────────────────────────────────────────────────────
+  抽掉 `F3_CATEGORY_BURDEN`（引擎確有消費）
+   ├ 竄改態 差集 ＝ ['F3_CATEGORY_BURDEN', 'k956_W_from_mp']  ⇒ 🔴 紅
+   └ 還原態 差集 ＝ ['k956_W_from_mp']  ⇒ 🔴 紅
+  ✅ 竄改自檢具鑑別力（`F3_CATEGORY_BURDEN` 因抽名而新出現於差集）
+
+────────────────────────────────────────────────────────────────────────────────────────────
+【動態層】ns 由 **`_wf_ns()`** 建出（⛔ 非 `harvest()` 全 globals）·實跑 `run_step_g`
+────────────────────────────────────────────────────────────────────────────────────────────
+  `run_step_g` 函式體內之 `ns[...]` 解包點 ＝ 15 處（行 279–871）；其中**無條件執行** 13 處
+  ⚠️ **情境射程 ＝ 僅 `0m`**（施工單 §2-3 之「至少一次」）——⛔ 正面標示，非靜默截斷
+  ⚠️ 建置階段用 harvest 全 ns（harness 函式所需）；**受詞為 `run_step_g` 所收之受限 ns**
+  `_wf_ns()` 受限 ns 名目數 ＝ 25
+  → [正常態] run_step_g(ns=_wf_ns(), …)
+       實拋 KeyError @ stepg_pipeline.py:334｜'k956_W_from_mp'
+  🔴 ns 解包段拋 KeyError ⇒ app 生產路徑必崩（KeyError @ stepg_pipeline.py:334）
+  → [竄改態] 自受限 ns 抽掉 `get_min_lot_size`（`stepg:279`·無條件）後重跑
+       實拋 KeyError @ stepg_pipeline.py:279｜'get_min_lot_size'
+  ✅ 竄改態如期轉紅（KeyError @ stepg_pipeline.py:279）⇒ **動態層具鑑別力**
+
+============================================================================================
+🔴 夾具 FAIL（rc=1）
+============================================================================================
