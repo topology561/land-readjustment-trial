@@ -232,3 +232,24 @@ $ git diff --numstat -- verify/stepg_pipeline.py            ⇒ （空輸出）
 3. ⚠️ `verify/wg_g1_smoke.py`（自述為「app `_build_wf_ctx` → wf_f0→f4 全鏈端到端跑通」，
    ＝**真 app 路徑之唯一複本**）**不在任何自動流程內**——三處命中皆僅取其 helper
    `_reconstruct_sb_rows`。⇒ 與 `run_all.py:99` 所指之覆蓋率洞**同族**，本批**未處置**。
+
+---
+
+## 🔧 加註（`W-G.9-6`·CC／2026-08-11·⛔ 上文原句一字未刪）
+
+🔴 **§9-3 之「唯一複本」為誤**（CC 自誤·`W-G.9-6` §2-4 現查）。
+真 app 路徑（`_build_wf_ctx` → f0→f4）之端到端複本**實有三支**，且**三支皆不在任何自動流程內**：
+
+| 檔 | `_build_wf_ctx` 命中 | 跑 `wf_f4.compute` | 在 `run_all` 內 |
+|---|---|---|---|
+| `verify/wg_g1_smoke.py` | 6 | ✅ | 🔴 否 |
+| `verify/wg_g2_smoke.py` | 3 | ✅ | 🔴 否 |
+| `verify/wg_g3.py`（**W-G 收官王牌**·`CLAUDE.md` 收官判準 ① 之 G.3 終驗工具） | 6 | ✅ | 🔴 否 |
+
+```
+$ grep -c "wg_g1_smoke\|wg_g2_smoke\|wg_g3" verify/run_all.py
+0
+```
+
+⇒ 覆蓋率洞之**規模大於**原述；⛔ 結論方向不變（本批仍未處置），惟**受詞應為三支**。
+詳見 `docs/reports/W-G.9-6_期望FAIL名單守備盤點.md` §6。
