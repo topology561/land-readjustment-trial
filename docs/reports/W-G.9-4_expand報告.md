@@ -169,3 +169,72 @@ $ 正規化（worktree 路徑 ＋ stepg traceback 行號）後 diff ⇒ rc=0、�
 3. ⚠️ 切換必使 `run_all` 之基準過期 ⇒ 須與**重烤時點**協調
    （`D-3` 仍受 `K-9-5-10`【裁】1／2 拘束：等 `R1` 結構閘另案修好之後才做）。
 4. ⚠️ `GB-58`／`GB-59`（∥SIDELINE 多邊形與族②③④ 之耦合）之處置**併入 `W-G.9`**。
+
+---
+
+## 🔧 加註（`W-G.9-4b`·CC／2026-08-11·⛔ 上文原句一字未刪）
+
+> 🔴 **本報告 §1 之 `E3` 判定「✅ 成立」<u>撤回</u>。**
+> 本批**確實使生產行為改變**：`verify/stepg_pipeline.py` 新增 `ns["k956_W_from_mp"]`，
+> 而 `app.py` 之 `_WF_NS_NAMES` **未同步登錄該名** ⇒ app 生產路徑
+> （「執行七級調配」→ `_build_wf_ctx` → `_wf_ns()` → `wf_f0.compute` → `run_step_g`）
+> 之 ns 取不到該名 ⇒ **`KeyError` 於 `stepg_pipeline.py:334`**。
+> ⇒ 本批事前登記 §3 之 **`S-2` 於當批即已觸發，而當批未偵測到**。
+
+### 加-1 `E3` 撤回之實證（⛔ 非推定）
+
+| 證據 | 出處 |
+|---|---|
+| AST：`ns["k956_W_from_mp"]` 落於 `run_step_g` 函式體、祖先鏈**無** `Try`／`If` ⇒ **無條件執行** | `verify/out/probe_WG94b_wiring_PRE.log`【A 層】 |
+| 實呼：以 `_wf_ns()` 建出之受限 ns 跑 `run_step_g` ⇒ **實拋** `KeyError: 'k956_W_from_mp'` @ `:334` | 同上【B 層·B-2】 |
+| 缺陷態全檢：於 `1041874` 跑守護夾具 ⇒ 靜態差集 `['k956_W_from_mp']`、動態 `KeyError @ :334`、`rc=1` | `verify/out/fixture_wf_ns_wiring_缺陷態1041874.log` |
+
+**§3 之碼面證據為何未攔下**：§3 所證者為「`app.py` 之**生產函式體**逐字未變」
+（函式體 md5 ＋ hunk 為純插入 ＋ 族②③ 消費點零命中）——**皆為真**。
+🔒 **斷點在於：本缺陷不在任何函式體之內，而在 `_WF_NS_NAMES` 這個<u>清單</u>該不該多一個名。**
+⇒ 「函式體未變」與「生產路徑仍可走」**是兩個命題**；§3 只證了前者。
+
+### 加-2 `E4` ——**判定維持、措辭更正、證據力撤回**（⛔ 逐項分述）
+
+⚠️ **本節與施工單 `W-G.9-4b` §2-4 之文字有出入**：該單指示「加註撤回 `E3`／`E4` 之『✅ 成立』」。
+CC 現查後**只撤回 `E3`**，`E4` 改為三分處置——理由：`E4` 之**登記原文**
+（「`run_all` 之 PASS/FAIL 層與 `6ab9e86` **逐項相同**」）**經現查為真**，
+⛔ 把一個為真之陳述整條撤回，會在倉內留下新的不準確。**偏離已於此具名。**
+
+| 項 | 處置 | 依據（指令與輸出並列·本次重跑） |
+|---|---|---|
+| `E4` 之**登記原文**（逐項相同） | ✅ **維持** | `diff` 之 44 行差異**全部**含 `worktrees`；非 worktree 路徑行 ＝ **0** |
+| §4／紅框之**措辭**「整份 log 逐字相同」 | 🔧 **更正為「正規化後逐字相同」** | `md5sum` **兩檔不同**：`8762557103cac46a7fd5bf13f280b514`（`D2b24_runall.log`）／`1aaad8d7ed1d689c3bcd4c2bc7a057b8`（`WG94_runall.log`） |
+| `E4` 作為**「生產行為零變化」之證據力** | 🔴 **撤回** | `run_all` 全程走 `app_harvest.harvest()` 之**全 globals**，**從不**建 `_wf_ns()` 之受限 ns ⇒ 對本缺陷**結構性零覆蓋**——`E4` 不論綠紅都不可能反映之 |
+
+```
+$ md5sum verify/out/D2b24_runall.log verify/out/WG94_runall.log
+8762557103cac46a7fd5bf13f280b514 *verify/out/D2b24_runall.log
+1aaad8d7ed1d689c3bcd4c2bc7a057b8 *verify/out/WG94_runall.log
+$ diff verify/out/D2b24_runall.log verify/out/WG94_runall.log | wc -l
+44
+$ diff verify/out/D2b24_runall.log verify/out/WG94_runall.log | grep "^[<>]" | grep -v worktrees | wc -l
+0
+```
+
+### 加-3 §5 閘 6 之否定性宣稱 —— **為真，但與本缺陷正交**
+
+⚠️ **本節亦與施工單文字有出入**：該單指示加註「閘 6 之否定性宣稱**射程未涵蓋 `_wf_ns()` 接線層**」。
+現查：閘 6 之**目錄射程確已涵蓋** `app.py`（§5-1 逐字：「全倉 `*.py`…母體 **114 檔**」）。
+⇒ 洞**不在目錄射程**，而在**字樣射程之受詞**：
+
+- 閘 6 之字樣為 `(np.dot|_np_d.dot|內積) ∧ (mp|side_mid|中點) ∧ (adir|allocation_dir|n_alloc|â)`
+  ——所找者為 **W 之算式**。
+- 本缺陷之受詞為 **`_WF_NS_NAMES` ↔ `ns[<字面字串>]` 之接線登錄**，**內無任何上述字樣**。
+
+⇒ 閘 6 之宣稱（「未增加第三份 W 定義」）**成立且未被推翻**；
+🔒 真正之缺口是：**`W-G.9-4` 全批<u>無任何一道閘</u>檢查「新增之 `ns[...]` 消費是否已登錄於 app 清單」**
+——⛔ 不是某道閘沒掃到，是**該命題從未被立為閘**。
+
+### 加-4 處置與現況
+
+- **`S-2` 之結案手段**：經 claude.ai 裁定（施工單 `W-G.9-4b` §2-1）改採**前推修復**（roll-forward），
+  **不回退** `2e6afc6`；判準未放寬。逐條理由見 `docs/reports/W-G.9-4b_前置登記.md` §4。
+- **修復**：`"k956_W_from_mp"` 已補入 `_WF_NS_NAMES`（25 → **26** 名目）。
+- **新守護**：`verify/fixture_wf_ns_wiring.py` 已掛入 `verify/run_all.py` 之末端夾具清單。
+- 全批處置與殘留見 `docs/reports/W-G.9-4b_接線修復報告.md`。
