@@ -265,8 +265,44 @@ def main():
     print()
 
     print("### [3/3] W-V headless 對拍（verify/run_verification.py）")
-    rc2 = v.main()
+    # 🆕 `W-G.9-7`（KL 2026-08-11 裁：驗收改「**名稱＋原因一併比對**」）：
+    #   對帳須於**每次 `run_all` 中自動發生**——⛔ 不得再造一個「檔存在於 `verify/`
+    #   卻不在任何自動流程內」之洞（見上方 F-2 段之覆蓋率洞註解；`W-G.9-6` §6 同族）。
+    #   **做法**：`run_verification.main()` 之 `results` 為函式內區域變數（`:502`）、
+    #   且只回 `0/1` ⇒ 對帳器取不到結構化結果物件。故以 **tee**（寫穿至真 stdout
+    #   ＋ 同時累積）擷取其輸出後餵給 `wv_reconcile`。
+    #   ⛔ **零修改 `run_verification.py`、⛔ 不觸 `results`、⛔ 不新增任何
+    #      `results.append`** ⇒ **PASS/FAIL 層不變**。
+    import contextlib as _ctxlib
+    import wv_reconcile as _wvr
+
+    class _Tee:
+        """寫穿 ＋ 累積；未知屬性委派真 stdout（`run_verification:497` 之 `reconfigure`）。"""
+
+        def __init__(self, real):
+            self._real, self.buf = real, []
+
+        def write(self, s):
+            self.buf.append(s)
+            return self._real.write(s)
+
+        def flush(self):
+            self._real.flush()
+
+        def __getattr__(self, n):
+            return getattr(self._real, n)
+
+    _tee = _Tee(sys.stdout)
+    with _ctxlib.redirect_stdout(_tee):
+        rc2 = v.main()
     rc = rc or rc2
+    print()
+    _rc_recon = _wvr.reconcile_text("".join(_tee.buf))
+    # 🔒 併入 `rc` 之由（`W-G.9-7` 前置登記 §3-2·已登記其代價）：若**只印不併**，
+    #   即新造一道**永遠不能使任何東西變紅**之閘 ＝ 本波所修之病灶本身（考古 65／66）。
+    #   ⚠️ 本分支為「准紅碼」、`rc` 本即為 `1` ⇒ **今日之可觀測影響為零**；
+    #      未來全綠時，`ALL GREEN` 一行將受對帳左右。**已知並接受。**
+    rc = rc or _rc_recon
 
     print("\n" + "#" * 60)
     print("W-V run_all:", "ALL GREEN" if rc == 0 else "FAIL")
