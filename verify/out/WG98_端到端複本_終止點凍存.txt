@@ -1,0 +1,53 @@
+# W-G.9-8 端到端複本終止點 期望 FAIL 名單（**名目 ＋ 失敗原因**）
+# 授權      ：KL 2026-08-11「名稱＋原因一併比對」＝是
+# 來源 log  ：（實跑 verify/wg_g1_smoke.py 等三支之 stderr）
+# 來源 hash ：git hash-object ⇒ （現場實跑·無單一來源檔）
+# 正規化    ：R1 File "…" 內 \→/；R2 File "…" 內絕對前綴→倉相對
+#             ⛔ traceback 行號**未**正規化 ⇒ 其差異一律入**類 II**、由人具名確認
+# 對帳器    ：verify/wv_reconcile.py（於 run_all 內自動執行）
+# 計數指令  ：grep -c "^🔴 FAIL" <本檔>        ← ⛔ 非 `wc -l`
+# ---------------------------------------------------------------------------
+🔴 FAIL  wg_g1_smoke.py
+    | rc=1
+    | Traceback (most recent call last):
+    |   File "verify/wg_g1_smoke.py", line 101, in <module>
+    |     sys.exit(main())
+    |              ~~~~^^
+    |   File "verify/wg_g1_smoke.py", line 58, in main
+    |     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
+    |                     params, build, winners_state, forced_map, setback)
+    |   File "verify/stepg_pipeline.py", line 1362, in run_step_g
+    |     raise RuntimeError(
+    |     ...<4 lines>...
+    |         f"｜逐界面：{_fmt_ifaces(_sd_tag2, _ifs_c)}")
+    | RuntimeError: 🔴 結構閘 理論＝實跑 破：街廓 R1 left 側 理論@k*=97.18 ≠ 實跑(階段1)=100.02（Δ=2.837 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R1·left] 628-37(1)→628-35(2): W_far=6.4600／W_near=6.6200／W_start=6.4600／Δ=+0.0000／Δ_self=+0.9120／🔄方向改變
+🔴 FAIL  wg_g2_smoke.py
+    | rc=1
+    | Traceback (most recent call last):
+    |   File "verify/wg_g2_smoke.py", line 108, in <module>
+    |     sys.exit(main())
+    |              ~~~~^^
+    |   File "verify/wg_g2_smoke.py", line 37, in main
+    |     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
+    |                     params, build, winners_state, forced_map, setback)
+    |   File "verify/stepg_pipeline.py", line 1362, in run_step_g
+    |     raise RuntimeError(
+    |     ...<4 lines>...
+    |         f"｜逐界面：{_fmt_ifaces(_sd_tag2, _ifs_c)}")
+    | RuntimeError: 🔴 結構閘 理論＝實跑 破：街廓 R1 left 側 理論@k*=97.18 ≠ 實跑(階段1)=100.02（Δ=2.837 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R1·left] 628-37(1)→628-35(2): W_far=6.4600／W_near=6.6200／W_start=6.4600／Δ=+0.0000／Δ_self=+0.9120／🔄方向改變
+🔴 FAIL  wg_g3.py
+    | rc=1
+    | Traceback (most recent call last):
+    |   File "verify/wg_g3.py", line 174, in <module>
+    |     sys.exit(main())
+    |              ~~~~^^
+    |   File "verify/wg_g3.py", line 120, in main
+    |     ctx = _seed_ctx(ns, fake_st, cb_by, cad, snapshot, temp, build, tag, setback)
+    |   File "verify/wg_g3.py", line 83, in _seed_ctx
+    |     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
+    |                     params, build, winners, forced, setback)
+    |   File "verify/stepg_pipeline.py", line 1362, in run_step_g
+    |     raise RuntimeError(
+    |     ...<4 lines>...
+    |         f"｜逐界面：{_fmt_ifaces(_sd_tag2, _ifs_c)}")
+    | RuntimeError: 🔴 結構閘 理論＝實跑 破：街廓 R1 left 側 理論@k*=97.18 ≠ 實跑(階段1)=100.02（Δ=2.837 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R1·left] 628-37(1)→628-35(2): W_far=6.4600／W_near=6.6200／W_start=6.4600／Δ=+0.0000／Δ_self=+0.9120／🔄方向改變

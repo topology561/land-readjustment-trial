@@ -124,7 +124,18 @@ def main():
                        #   之 `[G.1] '0m'`）⇒ **閘在、但為死閘**。本夾具**繞過**它、**不修**它
                        #   （上游屬另案·`W-G.9-4b` §3 明文不修）。
                        ("fixture_wf_ns_wiring.py",
-                        "🆕 W-G.9-4b app 接線清單↔引擎 ns[] 消費（AST 靜態＋_wf_ns() 實跑＋竄改自檢）")):
+                        "🆕 W-G.9-4b app 接線清單↔引擎 ns[] 消費（AST 靜態＋_wf_ns() 實跑＋竄改自檢）"),
+                       # 🆕 `W-G.9-8`：三支**真 app 路徑端到端複本**（`wg_g1_smoke`／
+                       #   `wg_g2_smoke`／`wg_g3`——後者為 `CLAUDE.md` 所訂 W-G 收官判準 ①
+                       #   之終驗工具）此前**皆不在任何自動流程內**（`W-G.9-6` §6）＝上方
+                       #   同一段註解所指之覆蓋率洞。
+                       #   🔒 **受詞非「跑不跑得通」**（⛔ 那會新增三個永紅項＝把
+                       #      `W-G.9-6`／`W-G.9-7` 剛修好的病再造一次），而是
+                       #      **「終止點 ＋ 終止原因，與凍存者相符」**（考古 65 第四層）。
+                       #   ⚠️ **設計意圖**：結構閘另案修好後三支會跑得更遠 ⇒ 終止點改變
+                       #      ⇒ 本夾具**轉紅**⇒ 逼人來看並更新凍存。**這是特性，不是缺陷。**
+                       ("fixture_e2e_termination.py",
+                        "🆕 W-G.9-8 三支端到端複本·終止點凍存對帳（沿用 wv_reconcile R1/R2＋三分類）")):
         try:
             _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
                                 capture_output=True, text=True, encoding="utf-8", timeout=600)
