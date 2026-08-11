@@ -135,7 +135,15 @@ def main():
                        #   ⚠️ **設計意圖**：結構閘另案修好後三支會跑得更遠 ⇒ 終止點改變
                        #      ⇒ 本夾具**轉紅**⇒ 逼人來看並更新凍存。**這是特性，不是缺陷。**
                        ("fixture_e2e_termination.py",
-                        "🆕 W-G.9-8/9-9 三支端到端複本·終止點凍存對帳（受詞已投影去呈現層＋wv_reconcile R1/R2 三分類）")):
+                        "🆕 W-G.9-8/9-9 三支端到端複本·終止點凍存對帳（受詞已投影去呈現層＋wv_reconcile R1/R2 三分類）"),
+                       # 🆕 `W-G.9-10`：`G3` 三項（`W-D.3 碎片`／`W-F F.3`／`W-G G.2`）之
+                       #   主判定站點共 **15 個、一個都沒登記過**（`verify/tools/wg910_g3_dissect.py`）
+                       #   ——名單上者皆為 `except` 分支之名目 ⇒ **原命題從未被正面驗證**。
+                       #   🔒 本夾具只守其中**經現查證實不依賴管線**之 3 個；
+                       #      其餘 12 個之**守備移交清單**見 `W-G.9-10` 報告。
+                       #   ⛔ 判準常數一律自 `run_verification.py` 之 AST 抽取（⛔ 不抄寫·`#20` 族）。
+                       ("fixture_g3_static_guards.py",
+                        "🆕 W-G.9-10 G3 三項中不依賴管線之主判定（F.3 靜態閘／F.3 跨區段 fixture／G.2 只寫不讀）")):
         try:
             _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
                                 capture_output=True, text=True, encoding="utf-8", timeout=600)
