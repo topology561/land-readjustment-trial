@@ -329,6 +329,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _corner_buffer_S = ns["_corner_buffer_S"]               # §3 街角 band 幾何 bisect·side 參數化·單一真相源·#20
     _acct_geom_tol_per_lot = ns["_acct_geom_tol_per_lot"]   # §N3-0 帳對幾何閘：閘寬單一真相源
     _acct_geom_tol_block = ns["_acct_geom_tol_block"]
+    # 🆕 W-G.9-4（expand）：**W 之單一產生者**（`K-9-5-6` intrinsic 直量·權威序第 1 級）。
+    #   `_mp_base_W0` 自此純委派至本名；⛔ 不得於本檔另寫第二份 W 定義（`GB-48` 族）。
+    _k956_W_from_mp = ns["k956_W_from_mp"]
 
     g_rows = []
     detail_trace = {}
@@ -799,17 +802,19 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             #   ＝(群起點 + buffer·d̂ − mp)·â_定向·取代舊 `buffer·cos_dn`（群起點 telescoping 約定·已作廢）。
             #   使 _select_pool_slot 之理論 ΣRw 與實跑（solve_G_binary KL W）同源（理論＝實跑閘·禁 #20 脫鉤）。
             def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
+                # 🔒 **W-G.9-4（expand）：改為<u>純委派</u>至 app 之單一產生者**
+                #   `k956_W_from_mp`（`grep -n "def k956_W_from_mp" app.py`）。
+                #   ⛔ **語意不變、簽章不變**——本處僅把「群起點沿 d̂ 推進 `_buf`」算成點，
+                #   再交由單一產生者量 `W = dot(P − mp, â_定向)`。
+                #   案由：`GB-48` 族（同述詞多處定義·無同步機制）⇒ **W 之定義只留一份**。
+                #   ⚠️ `_du` 於此仍需自算（因 `P` 之構成需要它）；其式**逐字同原碼**，
+                #      ⛔ 不得改為先正規化再傳（會改變 `_dn ≤ 1e-9` 之退化行為）。
                 if _gs is None or _mp is None or _adir is None or _dv is None:
                     return 0.0
-                _a = _np_d.asarray(_adir, dtype=float); _an = float(_np_d.linalg.norm(_a))
-                if _an < 1e-9:
-                    return 0.0
-                _a = _a / _an
                 _dv2 = _np_d.asarray(_dv, dtype=float); _dn = float(_np_d.linalg.norm(_dv2))
                 _du = _dv2 / _dn if _dn > 1e-9 else _dv2
-                _ao = _a if float(_np_d.dot(_du, _a)) >= 0 else -_a
                 _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
-                return float(_np_d.dot(_bp0 - _np_d.asarray(_mp, dtype=float), _ao))
+                return float(_k956_W_from_mp(_bp0, _mp, _adir, _dv))
             # 右組群起點 end_pt 於外層重算（_advance_block_with_split 內 end_pt 為其局部·此處不可見）。
             #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：與 app／wf_f4 **四處同源** `_oblique_s_max`（#20·`grep -n "_oblique_s_max" verify/stepg_pipeline.py`）。
             _end_pt_o = None; _dhr_o = None

@@ -8729,6 +8729,54 @@ def _acct_geom_tol_block(n_lots, depth, with_tol=True):
 #   → **可證落於閘內**（非靜默丟棄：仍由 ①' 覆蓋閘把關，且 T2-DIAG 印出退化帶數／面積）。
 _S_EPS = 2.0e-4
 
+def k956_W_from_mp(point, side_mid, allocation_dir, d_hat):
+    """🔒 **`W` 之單一產生者**（`K-9-5-6` 之 intrinsic 直量·**權威序第 1 級**）。
+
+    **正典逐字**（`grep -n "MP → 本宗" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+
+    > 🔒 **`W_i` 之量測不變**：仍為 **intrinsic 直量**（MP → 本宗**遠側**分配界線之垂距）
+    > ——⛔ 非以寬度累加堆出。
+
+    ⇒ `W(P) = dot(P − mp, â_定向)`；`mp` ＝ SIDE 線之中點、`P` ＝ 所量界線上之點、
+    `â_定向` ＝ `allocation_dir` 單位化後沿推進向定號（`dot(d̂, â) ≥ 0`）。
+
+    🔒 **`mp` 之定義由下位層級供給**（三級一致·見 `K-9-5-6` 節末之「`MP` 之定義指向」加註）：
+    權威序 ② `CLAUDE.md`／③《配地計算總規格_v3.md》／③′ `docs/specs/` 皆作 **SIDE 線之中點**。
+
+    ── 為何置於 module 級（⛔ 不得巢狀於 `main()`）──────────────────────────────
+    ① **合成測試可直接呼叫**——`app.py` 之族②③ 落點巢狀於 `main()`，
+       `run_all` **永不執行之**（`W-G.9-1` §3-8 已證）⇒ 巢狀者無從取證。
+    ② **`app.py` 與 `verify/stepg_pipeline.py` 共用同一份**（`GB-48` 族之預防：
+       同述詞多處定義·無同步機制）⇒ ⛔ **不得再產生第二份定義**。
+
+    ── 🔴 本函式之現況（`W-G.9-4` expand 階段）────────────────────────────────
+    🔒 **本批為 expand 側：加路、不換路。**
+    · `verify/stepg_pipeline.py` 之 `_mp_base_W0` **已改為純委派**至本函式（語意不變）。
+    · `app.py` 之族②③（`_W_prev_*`／`_select_pool_slot` 之 `'b'`）**仍取舊式**
+      `buf · _cos_dn`，本函式之值**僅入診斷**——⛔ **未進生產路徑**。
+    · 二式之差已解析定式（`W-G.9-2`）：**舊式 ＝ 本式 − `W_0`**，
+      `W_0 = dot(群起點 − mp, â)`；相等**當且僅當 `W_0 = 0`**，而正典明載其**照實可負**。
+    ⇒ 切換屬 **`W-G.9-5`**（contract 側）。
+
+    ⚠️ **零向量／缺值一律回 `0.0`**——**逐字沿用** `stepg._mp_base_W0` 之原行為，
+    ⛔ 本批不得改變之（否則即違「行為不變」）。
+    """
+    import numpy as np
+    if point is None or side_mid is None or allocation_dir is None or d_hat is None:
+        return 0.0
+    _a = np.asarray(allocation_dir, dtype=float)
+    _an = float(np.linalg.norm(_a))
+    if _an < 1e-9:
+        return 0.0
+    _a = _a / _an
+    _dv2 = np.asarray(d_hat, dtype=float)
+    _dn = float(np.linalg.norm(_dv2))
+    _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+    _ao = _a if float(np.dot(_du, _a)) >= 0 else -_a
+    return float(np.dot(np.asarray(point, dtype=float)
+                        - np.asarray(side_mid, dtype=float), _ao))
+
+
 def _strip_axis(d_hat, allocation_dir=None):
     """
     回傳 (m_hat, denom)＝`_block_strip` 之**切線座標軸**。
@@ -19570,6 +19618,64 @@ def main():
                             # 🆕 W-C §4：thread 累積 W_前（首筆=0；forced_offset 時=buffer 臨街寬）
                             _W_prev_left = (_left_buffer_S * _cos_dn) if _has_left_corner else 0.0
                             _W_prev_right = (_right_buffer_S * _cos_dn) if _has_right_corner else 0.0
+                            # ── 🆕 **W-G.9-4（expand）：併行計算 `K-9-5-6` 之正典直量** ──────────
+                            #   🔴 **⛔ 本段之值<u>不進生產路徑</u>**：上二行之 `_W_prev_*` 仍取舊式
+                            #   `buf · _cos_dn`；本段只寫診斷欄，供 `W-G.9-5`（contract 側）對拍。
+                            #   ⛔ **不得以任何條件分支讓下列 `_W_new_*` 進入生產消費**（`W-G.9-4` §2-1）。
+                            #
+                            #   正典（權威序**第 1 級**）`K-9-5-6`：`W_i` ＝ MP → 本宗**遠側**界之垂距
+                            #   ⇒ `W = dot(P − mp, â_定向)`；單一產生者見
+                            #   `grep -n "def k956_W_from_mp" app.py`。
+                            #   已證之解析恆等（`W-G.9-2`）：**舊式 ＝ 新式 − `W_0`**，
+                            #   `W_0 = dot(群起點 − mp, â)`（正典 `K-9-5-6`「首宗起點」·**照實可負**）。
+                            #
+                            #   ⚠️ 本段**只算不判**且**只寫診斷**；其失敗**不得影響分配**
+                            #   ——故以 `except` 包覆並 **loud print**（⛔ 非靜默退路：
+                            #   無任何值被替代，生產路徑自始未讀本段）。
+                            try:
+                                _du_diag = None
+                                if d_hat is not None:
+                                    _dn_diag = float(_np_d.linalg.norm(
+                                        _np_d.asarray(d_hat, dtype=float)))
+                                    if _dn_diag > 1e-9:
+                                        _du_diag = (_np_d.asarray(d_hat, dtype=float)
+                                                    / _dn_diag)
+                                _W0_l = _W0_r = _Wn_l = _Wn_r = None
+                                if _du_diag is not None and corner_pt is not None:
+                                    _gs_l = _np_d.asarray(corner_pt, dtype=float)
+                                    _W0_l = k956_W_from_mp(_gs_l, _side_mid_left,
+                                                           allocation_dir_block, d_hat)
+                                    _Wn_l = k956_W_from_mp(_gs_l + float(_left_buffer_S) * _du_diag,
+                                                           _side_mid_left,
+                                                           allocation_dir_block, d_hat)
+                                    _smax_diag = None
+                                    if blk_meta.get('vertices'):
+                                        _smax_diag = _oblique_s_max(
+                                            blk_meta['vertices'], d_hat, corner_pt,
+                                            allocation_dir_block)
+                                    if _smax_diag is not None:
+                                        _gs_r = _gs_l + float(_smax_diag) * _du_diag
+                                        _W0_r = k956_W_from_mp(_gs_r, _side_mid_right,
+                                                               allocation_dir_block, d_hat)
+                                        _Wn_r = k956_W_from_mp(
+                                            _gs_r - float(_right_buffer_S) * _du_diag,
+                                            _side_mid_right, allocation_dir_block, d_hat)
+                                _dg_slot = st.session_state.setdefault(
+                                    'f3_forced_offset_diag', {}).setdefault(blk_label, {})
+                                _dg_slot.update({
+                                    'W-G.9-4_W0_left': _W0_l,
+                                    'W-G.9-4_W0_right': _W0_r,
+                                    'W-G.9-4_W_new_left': _Wn_l,
+                                    'W-G.9-4_W_new_right': _Wn_r,
+                                    'W-G.9-4_W_old_left': _W_prev_left,
+                                    'W-G.9-4_W_old_right': _W_prev_right,
+                                })
+                                print(f"🔎 [W-G.9-4·診斷·⛔ 未進生產] 街廓 {blk_label}："
+                                      f"左 舊={_W_prev_left!r} 新={_Wn_l!r} W_0={_W0_l!r}／"
+                                      f"右 舊={_W_prev_right!r} 新={_Wn_r!r} W_0={_W0_r!r}")
+                            except Exception as _e_w94:            # noqa: BLE001
+                                print(f"🔴 [W-G.9-4·診斷] 街廓 {blk_label} 併行計算失敗："
+                                      f"{_e_w94}（⛔ **生產路徑未受影響**·本段只寫診斷）")
                             # 🆕 D-2b-23【甲】：**界面單線鏈**（與 `_W_prev` 同法 thread·⛔ 兩者不同物）。
                             #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
                             #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）
