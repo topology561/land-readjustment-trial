@@ -143,7 +143,19 @@ def main():
                        #      其餘 12 個之**守備移交清單**見 `W-G.9-10` 報告。
                        #   ⛔ 判準常數一律自 `run_verification.py` 之 AST 抽取（⛔ 不抄寫·`#20` 族）。
                        ("fixture_g3_static_guards.py",
-                        "🆕 W-G.9-10/9-12 不依賴管線之主判定（F.2/F.3/F.4 靜態閘＋F.3 跨區段 fixture＋G.2 只寫不讀）")):
+                        "🆕 W-G.9-10/9-12 不依賴管線之主判定（F.2/F.3/F.4 靜態閘＋F.3 跨區段 fixture＋G.2 只寫不讀）"),
+                       # 🆕 `W-G.9-13`：**中間層 6 項**（需 CAD 管線·⛔ 不需 `run_step_g`）。
+                       #   案由與上一列同族——該 6 個命題與**實需** `run_step_g` 之判定
+                       #   **同處一個 `try`**，上游一破即全落入 `except`（**考古 70**）
+                       #   ⇒ 自 `W-G.9-11` 全掃起確認其**不再被評估**。
+                       #   🔒 本夾具**自建管線至其所需之層**（`harvest`→`build_pipeline`
+                       #      →`build_build_parcels`），⛔ **全程不經** `run_step_g`。
+                       #   ⛔ 判準一律自 `run_verification.py` 之 AST 抽取後**就地求值**
+                       #      （⛔ 不抄常數·`#20` 族）；其判準**共四型**、碼面**第二元素皆為
+                       #      `Name`** ⇒ 須再解析其 `Assign`，⛔ 照 `G-2` 之內嵌式外推會得
+                       #      **6 個空閘**（實證見 `out/probe_WG913_gate_selfcheck.log`）。
+                       ("fixture_midlayer_6items.py",
+                        "🆕 W-G.9-13 中間層 6 項（v3 率錨三項＋reverse-test③＋F.2 跨區段 fixture＋F.4 模式二 p_avg；四型判準同源就地求值）")):
         try:
             _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
                                 capture_output=True, text=True, encoding="utf-8", timeout=600)
