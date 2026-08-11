@@ -143,7 +143,7 @@ def main():
                        #      其餘 12 個之**守備移交清單**見 `W-G.9-10` 報告。
                        #   ⛔ 判準常數一律自 `run_verification.py` 之 AST 抽取（⛔ 不抄寫·`#20` 族）。
                        ("fixture_g3_static_guards.py",
-                        "🆕 W-G.9-10 G3 三項中不依賴管線之主判定（F.3 靜態閘／F.3 跨區段 fixture／G.2 只寫不讀）")):
+                        "🆕 W-G.9-10/9-12 不依賴管線之主判定（F.2/F.3/F.4 靜態閘＋F.3 跨區段 fixture＋G.2 只寫不讀）")):
         try:
             _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
                                 capture_output=True, text=True, encoding="utf-8", timeout=600)
