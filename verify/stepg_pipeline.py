@@ -823,8 +823,11 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 if _smax_o is not None:
                     _end_pt_o = corner_pt + _smax_o * _np_d.asarray(d_hat, dtype=float)
                     _dhr_o = -_np_d.asarray(d_hat, dtype=float)
-            _b_L0 = _mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left, allocation_dir_block)
-            _b_R0 = _mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right, allocation_dir_block)
+            # 🔒 K-9-5-12（五）-1「首宗起點一律為 0」＋ K-9-5-13 裁定二「起算一律用真正的地界」
+            #    ⇒ 非 forced 之選槽起算點校回 0（施工單 W-G.9-27·影響估算見 W-G.9-23）。
+            #    ⛔ forced 側維持原式——其目標為抵費地遠側界，卡「保留區之表示法」（W-G.9-19 D3）。
+            _b_L0 = _mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left, allocation_dir_block) if _fo_left else 0.0
+            _b_R0 = _mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right, allocation_dir_block) if _fo_right else 0.0
             _slot_res = _select_pool_slot(
                 _adv_base['widths'],
                 {'has': _has_left_corner, 'F': _F_left,
