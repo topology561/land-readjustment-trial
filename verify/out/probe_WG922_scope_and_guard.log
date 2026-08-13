@@ -1,0 +1,108 @@
+======================================================================================================================
+【`W-G.9-22`】丙組（影響面）＋丁組（守備缺口）　⛔ 只列·不設計
+======================================================================================================================
+======================================================================================================================
+【丙組】四處餵入點之**下游消費者**（⛔ 只列·不評估難易·不建議作法·不排序）
+======================================================================================================================
+  🔒 母體釘於 commit **f75af82**｜`app.py` 22049 行／`verify/stepg_pipeline.py` 1444 行
+
+  ▸ ① A 之選槽｜`app.py`｜字樣 `'b': _left_buffer_S * _cos_dn`　命中 **1** 行（母體＝該檔全行·判準＝含該字樣且非註解行）
+      ↳ 下游字樣 `_select_pool_slot(`　⇒ **2** 行
+           7527 | def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
+           19899 | _slot_res = _select_pool_slot(
+      ↳ 下游字樣 `_slot_res`　⇒ **7** 行
+           19889 | _slot_res = None
+           19899 | _slot_res = _select_pool_slot(
+      ↳ 下游字樣 `_k_star`　⇒ **9** 行
+           19892 | _k_star = _N
+           19893 | _adv_final = _advance_block_with_split(_k_star, True)
+      ↳ 下游字樣 `left_group`　⇒ **6** 行
+           19598 | left_group = []; right_group = []
+           19600 | left_group = list(ordered_v2); right_group = []
+      ↳ 下游字樣 `right_group`　⇒ **6** 行
+           19598 | left_group = []; right_group = []
+           19600 | left_group = list(ordered_v2); right_group = []
+
+  ▸ ② A 之推進種子｜`app.py`｜字樣 `_W_prev_left = (_left_buffer_S`　命中 **1** 行（母體＝該檔全行·判準＝含該字樣且非註解行）
+      ↳ 下游字樣 `_W_prev=_W_prev_left`　⇒ **1** 行
+           19730 | _W_prev=_W_prev_left,
+      ↳ 下游字樣 `res.get('W_far'`　⇒ **4** 行
+           9508 | _W_prev_left = float(_res.get('W_far', _W_prev_left))
+           9513 | _W_prev_right = float(_res.get('W_far', _W_prev_right))
+      ↳ 下游字樣 `'Rw_pct'`　⇒ **7** 行
+           6351 | 'trace': [], 'W': round(W_prev, 2), 'Rw_pct': 0.0}
+           6382 | 'Rw_pct': round(Rw_pct, 2), 'G': G, 'S_after': S_new,
+      ↳ 下游字樣 `_solve_G_one(`　⇒ **3** 行
+           11912 | def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
+           12060 | _res, _ = _solve_G_one(
+
+  ▸ ③ B 之選槽｜`verify/stepg_pipeline.py`｜字樣 `'b': _b_L0`　命中 **1** 行（母體＝該檔全行·判準＝含該字樣且非註解行）
+      ↳ 下游字樣 `_select_pool_slot(`　⇒ **1** 行
+           828 | _slot_res = _select_pool_slot(
+      ↳ 下游字樣 `_slot_res`　⇒ **8** 行
+           795 | _slot_res = None
+           828 | _slot_res = _select_pool_slot(
+      ↳ 下游字樣 `_k_star`　⇒ **7** 行
+           797 | _k_star = _N
+           798 | _adv_final = _advance_block_with_split(_k_star, True)
+      ↳ 下游字樣 `left_group`　⇒ **6** 行
+           588 | left_group = []; right_group = []
+           590 | left_group = list(ordered_v2); right_group = []
+      ↳ 下游字樣 `right_group`　⇒ **6** 行
+           588 | left_group = []; right_group = []
+           590 | left_group = list(ordered_v2); right_group = []
+
+  ▸ ④ B 之推進種子｜`verify/stepg_pipeline.py`｜字樣 `_W_prev_left = 0.0`　命中 **1** 行（母體＝該檔全行·判準＝含該字樣且非註解行）
+      ↳ 下游字樣 `_W_prev=_W_prev_left`　⇒ **1** 行
+           661 | _W_prev=_W_prev_left,
+      ↳ 下游字樣 `res.get('W_far'`　⇒ **2** 行
+           668 | _W_prev_left = float(res.get('W_far', _W_prev_left))
+           759 | _W_prev_right = float(res.get('W_far', _W_prev_right))
+      ↳ 下游字樣 `'Rw_pct'`　⇒ **1** 行
+           370 | 'Rw(%)': round(_res.get('Rw_pct', 0.0), 2),
+      ↳ 下游字樣 `_solve_G_one(`　⇒ **0** 行
+
+  🔒 **判別力自檢**：以**必不命中**之下游字樣（`_this_symbol_does_not_exist_`）試 ⇒ **0** 行 ⇒ ✅ 上式非恆命中
+
+  ── 匯總（⛔ 只列·不評估）──
+     · **選槽側（①③）** 之下游 ＝ `_select_pool_slot` → `k*` → **左右群之分割**
+       → 各群之 `widths`／`ΣRw` → **落位順序與池槽位置**。
+     · **推進種子側（②④）** 之下游 ＝ `_solve_G_one(_W_prev=…)` → 該宗之 `W_far`／`Rw_pct`
+       → **該宗之側街負擔** → `G` → **分配面積**；且 `W_far` **thread 到下一宗**
+       ⇒ 🔴 **一格改動會沿該側之整條鏈傳遞**（⛔ 非只影響第 1 宗）。
+
+======================================================================================================================
+【丁組】`GB-62` 方向③：`2026-07-19` 之單邊改動，**有無既有機制原本應該抓到**
+======================================================================================================================
+  🔒 **候選母體**（⛔ 正面列舉）：`verify/fixture_*.py` ＝ **13** 檔（母體＝`git ls-tree -r f75af82 verify/`·判準＝檔名符 `fixture_*.py`）
+     其中**同時提及** `app.py` 與 `stepg` 者 ＝ **2**：['verify/fixture_n14_feed_chain.py', 'verify/fixture_wf_ns_wiring.py']
+
+  ── 逐候選之**受詞**判定（🔴 關鍵：受詞是什麼，不是它叫什麼）──
+    ▸ `verify/fixture_wf_ns_wiring.py`
+        射程　＝ app 接線清單 `_WF_NS_NAMES` ↔ 引擎 `ns[...]` 消費
+        受詞　＝ **名單是否登錄**（`ns[<字面字串>]` 與清單取差集）
+        判　　＝ 🔴 **抓不到**——`2026-07-19` 之改動**未增減任何 `ns[...]` 名**，只換了**餵進 dict 字面之運算式**（`'b': _b_L0` vs `'b': _left_buffer_S * _cos_dn`）
+    ▸ `verify/run_verification.py` 之 `W-G G.1 接線層 ctx-builder 同源`
+        射程　＝ app `_build_wf_ctx` vs native `_ctx`
+        受詞　＝ **ctx 之鍵值同源**（`cb_by`／`cad`／`gA`／`winners`／β財務／指紋…）
+        判　　＝ 🔴 **抓不到**——其受詞為**餵給引擎之 ctx**；而 A 之 `'b'` 生於 `main()` **自己的 Step-G 碼**，**根本不經 `_build_wf_ctx`**。⚠️ 併：該閘現為**死閘**（`_ctx["0m"]` 缺鍵先崩·`W-G.9-4b` 已具名）
+    ▸ `verify/fixture_n14_feed_chain.py`
+        射程　＝ N-14 餵鏈
+        受詞　＝ **（本批未逐字判其受詞）**
+        判　　＝ ⚠️ **無從判定**——⛔ 本批未讀其斷言（⛔ 非「判為抓不到」）
+
+  🔴 **丁組之判**：**無人守**。
+     受檢母體（⛔ 正面列舉）＝ 上列 3 個候選 ＋ `verify/fixture_*.py` 全 **13** 檔之檔名掃描。
+     🔒 **射程聲明**：本判之受詞為「**有無機制其斷言涵蓋『A 與 B 對同一受詞是否餵同值』**」；
+       ⛔ **不宣稱**「全倉無任何機制」——`verify/fixture_n14_feed_chain.py` 之受詞**本批未讀**，已具名為**無從判定**（⛔ 非判為抓不到）。
+
+  🔴 **結構性理由**（⛔ 非「剛好沒人寫」）：
+     依 `CLAUDE.md`，**`main()` 內之敘述從不被 `run_all` 執行**
+     ⇒ A 之 `'b'` **在執行期根本觀測不到** ⇒ 任何**動態**閘都不可能抓到
+     ⇒ 唯一可能之守備是**靜態**（比對兩處運算式），而**現無此類夾具**。
+     🔒 判別力自檢：若該類夾具存在，其**必然**含「比較兩檔之同名槽」之字樣；
+        字樣 `_left_buffer_S * _cos_dn` 於 `verify/fixture_*.py`（13 檔）⇒ **0** 檔命中
+        字樣 `_b_L0` 於 `verify/fixture_*.py`（13 檔）⇒ **0** 檔命中
+        ⇒ 皆 **0** ⇒ ✅ 該否定判**有據**（⛔ 非憑印象）
+
+======================================================================================================================
