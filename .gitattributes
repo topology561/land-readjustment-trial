@@ -18,3 +18,17 @@
 
 # 同族之文字型資產（其校驗碼亦須對 blob 計算·見 GB-17 泛化波全倉掃描）
 *.dwg -text
+
+# ── KL 繪圖系統之座標／連線匯出檔（W-G.9-34·同 GB-17 之案由與選定）────────────
+#
+# 案由（**同型**·⛔ 非新原則）：二檔**均為純 CRLF**（現查實測：`.cnt` 703 bytes／CRLF 19／
+#   lone_CR 0／lone_LF 0；`.lin` 378 bytes／CRLF 18／lone_CR 0／lone_LF 0）。本倉
+#   `core.autocrlf=true` 且此二副檔名為純 ASCII 數字表 ⇒ git 必判為文字檔並做 CRLF→LF
+#   正規化 ⇒ **working tree 位元組數 ≠ blob 位元組數**，其 PROVENANCE 所載之校驗碼因而失準
+#   （與 `*.dxf` 之 `data/V6_1.dxf` 88,405→76,081 同一病）。
+#
+# 選 `-text` 而非 `binary`（**沿用上開之選定理由**）：此二檔係**受審查之座標資產**——
+#   `git diff` 能逐行指出「只有某一點之座標變動」，具診斷價值；`binary` 之 `-diff -merge`
+#   係逾越所需之副作用。⇒ 取最小且對症者。
+*.cnt -text
+*.lin -text
