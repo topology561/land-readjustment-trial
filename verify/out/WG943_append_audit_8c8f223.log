@@ -1,0 +1,28 @@
+【`W-G.9-42` 純追加稽核】base ＝ 8c8f223a5d504ab9e146e155112bb8ddd49733cf
+==============================================================================
+  ✅ [檔] .gitattributes
+       2035 → 2035　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/specs/figures/README.md
+       83 → 823　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/specs/figures/PROVENANCE_宗地分配線邏輯.md
+       1733 → 1733　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9波_claude.ai側自誤登記.md
+       10995 → 12913　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.4_泛用阻塞項登記表.md
+       127900 → 130683　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/驗證裁定登記表.md
+       14481 → 15619　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] CLAUDE.md
+       988 → 988　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       416 → 416　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       317 → 317　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       971 → 1585　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       70 → 362　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] .claude/skills/failure-archaeology/SKILL.md
+       115804 → 117324　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+==============================================================================
+  結論：✅ 全部成立

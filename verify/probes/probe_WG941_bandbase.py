@@ -563,7 +563,11 @@ def main():                                                         # noqa: C901
         if is_frag:
             FRAG.append((lbl, gid, area, len(nring)))
             P(f"  {lbl:<5}{side:<6}{gid:<14}{kind:<6}{area:>10.4f}"
-              f"   — **上游狀態不合規**（正規化後 3 邊 ⇒ 碎片）⇒ ⛔ 不作寬度判定")
+              # 🩸 **`W-G.9-43` §G-1 修**：此處原**硬編「3 邊」**，而判準已於 `W-G.9-42`
+              #   由 `== 3` 改為 `<= 3` ⇒ 同一宗 `R6/628-53(1)` 在**同一份 log** 內
+              #   出現「3 邊」（本行）與「2 邊」（統計段·印實測 `nv`）之**自相矛盾**。
+              #   🔒 出艙了一個**未經量測之值** ⇒ 一律改以實測 `len(nring)` 格式化。
+              f"   — **上游狀態不合規**（正規化後 {len(nring)} 邊 ⇒ 碎片）⇒ ⛔ 不作寬度判定")
             continue
         try:
             a = analyse(ns, cc, dh, p1, bp, side, eps_touch, f"{lbl}/{gid}")

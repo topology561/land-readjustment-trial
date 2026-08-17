@@ -29,7 +29,9 @@ import sys
 # 🔒 段界字樣一律取**可 grep 之唯一字樣**，⛔ 不以行號為錨（`CLAUDE.md` 行號衛生第 4 款）。
 TARGETS = [
     (".gitattributes", "檔", None, None),
-    ("docs/specs/figures/README.md", "檔", None, None),
+    ("docs/specs/figures/README.md", "段",
+     "⚠️ 上節第 31–32 行之「CC 無法自對話擷取／請 KL 置於 `Downloads/`」",
+     "🔴 **權威射程（承 `PROVENANCE §四`）**"),
     ("docs/specs/figures/PROVENANCE_宗地分配線邏輯.md", "段",
      "🛑 **`.jpg` 二檔待補件**", "## §二 元資料"),
     ("docs/reports/W-G.9波_claude.ai側自誤登記.md", "檔", None, None),
@@ -48,6 +50,11 @@ TARGETS = [
     ("docs/rulings/K-6_街角地分配程序與可分配判準.md", "段",
      "⚠️ 依 **`K-9-3`**，宗地層**一律不量深度** ⇒ 本款**僅供名詞釐清**",
      "**八、參考線之身分（⛔ 禁互代）**"),
+    # ── `W-G.9-43` 追加之受詞（`K-9-6-h ②` 就地加註）────────────────────────
+    ("docs/rulings/K-6_街角地分配程序與可分配判準.md", "段",
+     "   **一條都沒有 ⇒ ⛔ 不算臨後側境界線 ⇒ 停機報錯**",
+     "③ 最小寬度之計算域"),
+    (".claude/skills/failure-archaeology/SKILL.md", "檔", None, None),
 ]
 
 # 受詞為「段」而**同一檔有多段**者：補集之檢查須把**全部段**一起挖掉再比
@@ -114,10 +121,21 @@ def main():
             old, _, _ = cut(old_all, head, tail)
             new, _, _ = cut(new_all, head, tail)
             # 補集：把**該檔全部受詞段**一併挖掉後比對（⛔ 非逐段各自比）
-            same_comp = (complement(old_all, MULTI[path]) ==
-                         complement(new_all, MULTI[path]))
-            extra = f"　補集（扣除該檔全部 {len(MULTI[path])} 段）：{'同' if same_comp else '🔴異'}"
-            if not same_comp:
+            #
+            # 🩸 **判準之更正（`W-G.9-43`·⛔ 非放寬）**：首版用**相等**，於「同批既有
+            #   **段內加註**又有**檔末追加**」時會誤報——`K-9-11` 追加於 `K-6` 檔末，
+            #   落在全部四段之外 ⇒ 補集必然改變，而該改變**正是合法之純追加**。
+            #   ⇒ 正確判準為 **新補集以舊補集為嚴格前綴**（容許檔末追加、仍擋任何刪改）。
+            #   🔒 **⛔ 不是把閘關掉**：段外之**刪除或行中竄改**仍會使 `startswith` 為 False。
+            oc, nc = complement(old_all, MULTI[path]), complement(new_all, MULTI[path])
+            same_comp = nc.startswith(oc)
+            # 判別力自檢：於舊補集行中插入一字 ⇒ 須 False
+            oc_tam = oc[: len(oc) // 2] + "中" + oc[len(oc) // 2:]
+            comp_disc = nc.startswith(oc_tam)
+            extra = (f"　補集（扣除該檔全部 {len(MULTI[path])} 段·判準＝嚴格前綴）："
+                     f"{'✅' if same_comp else '🔴異'}"
+                     f"／判別力自檢＝{comp_disc}（須 False）")
+            if (not same_comp) or comp_disc:
                 bad += 1
         ok = new.startswith(old)
         # 判別力自檢：於舊文正中插入一字 ⇒ 須 False
