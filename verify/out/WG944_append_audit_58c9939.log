@@ -1,0 +1,34 @@
+【`W-G.9-42` 純追加稽核】base ＝ 58c99399cee65d36d6209082f2299394dd892540
+==============================================================================
+  ✅ [檔] .gitattributes
+       2035 → 2035　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/specs/figures/README.md
+       823 → 823　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/specs/figures/PROVENANCE_宗地分配線邏輯.md
+       1733 → 1733　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9波_claude.ai側自誤登記.md
+       12913 → 14516　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.4_泛用阻塞項登記表.md
+       130683 → 133493　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/驗證裁定登記表.md
+       15619 → 17043　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] CLAUDE.md
+       988 → 988　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       416 → 416　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 6 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       317 → 317　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 6 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       1585 → 1585　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 6 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       362 → 362　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 6 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] .claude/skills/failure-archaeology/SKILL.md
+       117324 → 119634　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-43_K9-11入倉與平行判測.md
+       9541 → 10332　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       87 → 420　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 6 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       42 → 616　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 6 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+==============================================================================
+  結論：✅ 全部成立

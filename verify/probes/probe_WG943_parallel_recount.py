@@ -61,14 +61,33 @@ def unit(vx, vy):
     return (vx / L, vy / L, L)
 
 
+def _r3(v):
+    """捨入至小數第 3 位（＋0.0 消 `-0.0`，使 `-0.0004` 與 `+0.0004` 同格）。"""
+    return round(v, 3) + 0.0
+
+
 def parallel_judgements(f_vec, b_vec):
-    """回 `(甲判, 乙判, 明細 dict)`。
+    """回 `(甲判, 乙判, 丙判, 明細 dict)`。
+
+    🩸 **`W-G.9-44` 之更正（⛔ 具名·`W-G.9-43` 之判準錯）**：
+      `W-G.9-43` 只列**甲**（分量差 < 5e-4）與**乙**（夾角 < √2×5e-4），並以「兩讀法一致」
+      稱 `S-4` 未觸發。🔴 **二者⛔ 非獨立**——乙之門檻**由甲之最劣情形導出**
+      （該報告 §C 逐字自承）⇒ **`n` 份佐證若共用同一門檻之換算，則 `n = 1`**。
+      ⇒ 「一致」什麼也沒證。
+
+    🔒 **丙（`W-G.9-44` 新增）＝ 正典逐字之直譯**：`K-9-6-h ④` 逐字
+      「兩線之 X、Y 向量分量於**小數點後第 3 位皆相同**，即視為平行。
+        **原則性依據：KL 繪圖系統之座標顯示精度為小數點後第 3 位。**」
+      ⇒ 立則之由係「**顯示精度**」⇒ 直譯為「**在 KL 的畫面上顯示成同一個數**」
+      ＝ **各分量捨入至小數第 3 位後相等**，⛔ **非**「差值小於半格」。
+      🔴 **二者不等價之實例（本案 R1）**：`0.687378` 與 `0.687675` 差僅 `2.97e-04`
+      （< 半格 `5e-4` ⇒ 甲判平行），卻**跨格**（`0.687` vs `0.688` ⇒ 丙判不平行）。
 
     🔒 **號規之處置（⛔ 不可省）**：一條「線」之方向向量有 **±兩種**表示，
       而 `K-9-6-h ④` 之判準寫「兩線之 X、Y 向量分量**皆相同**」
       ⇒ 若二者號規相反，逐分量比會得出「不平行」而其實平行。
       ⇒ 本檔**兩種號規皆算**、取**較有利於「判平行」者**（⛔ 不預設號規），
-        並把兩者之值都印出來讓讀者自行覆核。
+        並把兩者之值都印出來讓讀者自行覆核。**丙式亦兩號規皆試。**
     """
     fx, fy, fL = unit(*f_vec)
     bx, by, bL = unit(*b_vec)
@@ -81,11 +100,16 @@ def parallel_judgements(f_vec, b_vec):
     # 夾角（取線與線之夾角 ⇒ 摺入 [0, π/2]）
     cosv = max(-1.0, min(1.0, fx * bx + fy * by))
     ang = math.acos(abs(cosv))
-    return (dmax < TH_A), (ang < TH_B), dict(
+    # 丙：各分量捨入至小數第 3 位後相等（兩號規任一相等即平行）
+    F3 = (_r3(fx), _r3(fy))
+    Bp3, Bn3 = (_r3(bx), _r3(by)), (_r3(-bx), _r3(-by))
+    c = (F3 == Bp3) or (F3 == Bn3)
+    return (dmax < TH_A), (ang < TH_B), c, dict(
         fx=fx, fy=fy, bx=bx, by=by, fL=fL, bL=bL,
         sgn=sgn, dx=dx, dy=dy, dmax=dmax, ang=ang,
         dx_pos=abs(fx - bx), dy_pos=abs(fy - by),
-        dx_neg=abs(fx + bx), dy_neg=abs(fy + by))
+        dx_neg=abs(fx + bx), dy_neg=abs(fy + by),
+        F3=F3, Bp3=Bp3, Bn3=Bn3)
 
 
 def selfcheck(P):
@@ -95,27 +119,52 @@ def selfcheck(P):
     rows, ok = [], []
     th = math.radians(23.7)                       # ⛔ 非軸向
     base = (math.cos(th), math.sin(th))
+    def _mk(x):
+        return (x, math.sqrt(max(0.0, 1.0 - x * x)))
     cases = [
-        ("人造·完全平行", base, base, True, True),
-        ("人造·反向平行", base, (-base[0], -base[1]), True, True),
-        ("人造·0.01 rad", base, (math.cos(th + 0.01), math.sin(th + 0.01)), False, False),
-        ("人造·4e-4 rad", base, (math.cos(th + 4e-4), math.sin(th + 4e-4)), True, True),
-        ("人造·1e-3 rad", base, (math.cos(th + 1e-3), math.sin(th + 1e-3)), False, False),
+        ("人造·完全平行", base, base, True, True, True),
+        ("人造·反向平行", base, (-base[0], -base[1]), True, True, True),
+        ("人造·0.01 rad", base, (math.cos(th + 0.01), math.sin(th + 0.01)), False, False, False),
+        ("人造·4e-4 rad", base, (math.cos(th + 4e-4), math.sin(th + 4e-4)), True, True, None),
+        ("人造·1e-3 rad", base, (math.cos(th + 1e-3), math.sin(th + 1e-3)), False, False, None),
+        # ── 丙之**專屬**對照物（⛔ 不與甲乙共用·**兩方向各一**，證甲丙不等價）──────
+        # 🩸 **首版之同格測資是錯的（⛔ 具名·測資之錯·非量測器之錯）**：
+        #   取 `_mk(0.6871)` / `_mk(0.6874)`，只控了 **x** 同格（0.687／0.687），
+        #   而 **y** 由 `sqrt(1−x²)` 導出、**跨格**（0.726563→0.727 vs 0.726279→0.726）
+        #   ⇒ 丙判不平行、與期望不符。依 `S-2`「**先疑測資、再疑量測器**」⇒ 換測資。
+        # 🔒 現用測資由**數值搜尋**取得（θ=0.4595 rad·dθ=1.116e−03）：
+        #   F=(0.896274360, 0.443500025)／B=(0.895778856, 0.444499991)
+        #   **兩分量皆捨入為 (0.896, 0.444)**（同格）而**分量差 max ＝ 9.9997e−04 > 5e−4**
+        #   ⇒ **甲判不平行 ∧ 丙判平行**（與跨格例**方向相反**）。
+        ("丙·同格(1e-3)", (0.896274360, 0.443500025),
+         (0.895778856, 0.444499991), False, False, True),
+        ("丙·跨格(2e-5)", _mk(0.68749), _mk(0.68751), True, True, False),
     ]
-    for tag, fv, bv, wa, wb in cases:
-        a, b, d = parallel_judgements(fv, bv)
-        good = (a == wa and b == wb)
+    for tag, fv, bv, wa, wb, wc in cases:
+        a, b, c, d = parallel_judgements(fv, bv)
+        good = (a == wa and b == wb and (wc is None or c == wc))
         ok.append(good)
-        rows.append((tag, a, b, d["dmax"], d["ang"], wa, wb, good))
-    P(f"  {'項':<16}{'甲判':>6}{'乙判':>6}{'分量差max':>14}{'夾角(rad)':>14}"
-      f"{'期望甲':>8}{'期望乙':>8}  判")
-    for tag, a, b, dm, ag, wa, wb, good in rows:
-        P(f"  {tag:<16}{('平行' if a else '不平行'):>6}{('平行' if b else '不平行'):>6}"
-          f"{dm:>14.3e}{ag:>14.3e}{('平行' if wa else '不平行'):>8}"
-          f"{('平行' if wb else '不平行'):>8}  {'✅' if good else '🔴'}")
-    P(f"  🔒 門檻（⛔ 本檔明訂之讀法·⛔ 非正典數字）：甲 分量差 < {TH_A:.1e}"
-      f"／乙 夾角 < √2×5e-4 ＝ {TH_B:.3e} rad")
-    P(f"  🔒 判別力：`4e-4` 判平行、`1e-3` 判不平行 ⇒ 該式**非恆真亦非恆假**")
+        rows.append((tag, a, b, c, d["dmax"], d["ang"], wa, wb, wc, good))
+    def _p(z):
+        return ("平行" if z else "不平行") if z is not None else "—"
+    P(f"  {'項':<16}{'甲':>6}{'乙':>6}{'丙':>6}{'分量差max':>13}{'夾角(rad)':>13}"
+      f"{'期甲':>6}{'期乙':>6}{'期丙':>6}  判")
+    for tag, a, b, c, dm, ag, wa, wb, wc, good in rows:
+        P(f"  {tag:<16}{_p(a):>6}{_p(b):>6}{_p(c):>6}"
+          f"{dm:>13.3e}{ag:>13.3e}{_p(wa):>6}{_p(wb):>6}{_p(wc):>6}  {'✅' if good else '🔴'}")
+    P(f"  🔒 門檻：甲 分量差 < {TH_A:.1e}（**CC 明訂**）"
+      f"／乙 夾角 < √2×5e-4 ＝ {TH_B:.3e} rad（**由甲導出**）"
+      f"／丙 **捨入至 3 位後相等**（**正典逐字之直譯**）")
+    P("  🔴 **甲與乙⛔ 非獨立佐證**——乙之門檻由甲之最劣情形導出")
+    P("     ⇒ `n` 份佐證若共用同一門檻之換算，則 `n = 1`")
+    P("     ⇒ `W-G.9-43` 之「兩讀法一致 ⇒ `S-4` 未觸發」**不成立**（`W-G.9-44` 更正）。")
+    P("  🔒 **丙式之判別力（⛔ 專屬對照物）**：")
+    P("     · 同格例 `(0.896274,0.443500)` vs `(0.895779,0.444500)`：差 **9.9997e-04**（**> 甲門檻**）")
+    P("       而兩分量**皆同格 (0.896, 0.444)** ⇒ **甲判不平行 ∧ 丙判平行**")
+    P("     · 跨格例 `0.68749` vs `0.68751`：差 **2.0e-05**（≪ 甲門檻）而**跨格**")
+    P("       ⇒ **甲判平行 ∧ 丙判不平行**")
+    P("     ⇒ 丙式**非恆真亦非恆假**；且二例使甲丙**各自互為相反**（兩方向各一）")
+    P("       ⇒ **甲與丙不等價**係**雙向坐實**，⛔ 非單向舉例。")
     return all(ok)
 
 
@@ -190,8 +239,8 @@ def main():                                                         # noqa: C901
                                              (cb_by.get(lbl) or {}).get("vertices"))
         fv = (float(p2[0]) - float(p1[0]), float(p2[1]) - float(p1[1]))
         bv = (float(bp[1][0]) - float(bp[0][0]), float(bp[1][1]) - float(bp[0][1]))
-        a, b, d = parallel_judgements(fv, bv)
-        PAR[lbl] = (a, b, d)
+        a, b, c, d = parallel_judgements(fv, bv)
+        PAR[lbl] = (a, b, c, d)
         P(f"  ── {lbl} ──")
         P(f"     FRONTLINE 原始向量 = ({fv[0]:+.9f}, {fv[1]:+.9f})　長 {d['fL']:.9f}")
         P(f"     BASELINE  原始向量 = ({bv[0]:+.9f}, {bv[1]:+.9f})　長 {d['bL']:.9f}")
@@ -201,9 +250,13 @@ def main():                                                         # noqa: C901
           f"　｜ 反號 |Δx|={d['dx_neg']:.6e} |Δy|={d['dy_neg']:.6e}")
         P(f"     ⇒ 採號規 {d['sgn']:+.0f}（較有利於判平行）·分量差 max ＝ **{d['dmax']:.6e}**"
           f"　夾角 ＝ **{d['ang']:.6e} rad**（＝ {math.degrees(d['ang']):.6f}°）")
+        P(f"     捨入至 3 位：F {d['F3']}　B(同號) {d['Bp3']}　B(反號) {d['Bn3']}")
         P(f"     【甲】分量差 < {TH_A:.1e} ⇒ **{'平行' if a else '不平行'}**"
           f"　｜【乙】夾角 < {TH_B:.3e} ⇒ **{'平行' if b else '不平行'}**"
-          f"　⇒ {'✅ 兩讀法一致' if a == b else '🛑 **兩讀法不一致 ⇒ `GB-65` 阻塞（S-4）**'}")
+          f"　｜【丙】捨入後相等 ⇒ **{'平行' if c else '不平行'}**")
+        _ag = (a == b == c)
+        P(f"     ⇒ {'✅ 三讀法一致' if _ag else '🛑 **三讀法不一致 ⇒ `GB-65` 阻塞·無從判定（S-4）**'}"
+          + ("" if _ag else "　🔴 甲乙非獨立（乙由甲導出）⇒ 實為「甲乙」vs「丙」之二分"))
         P("")
     for lbl in BLKS:
         if lbl in ERR:
@@ -275,9 +328,9 @@ def main():                                                         # noqa: C901
                 continue
             D1.append((lbl, gid, area, wF, wB, sh_near, sh_far, lw))
             if lbl in PAR:
-                a, b, _ = PAR[lbl]
-                cls = ("`K-9-11`：不配地·由下一投影序號遞補" if (not a and not b)
-                       else ("①②停用·改適用 `K-9-6-h ④` 之寬度式" if (a and b)
+                a, b, c, _ = PAR[lbl]
+                cls = ("`K-9-11`：不配地·由下一投影序號遞補" if not (a or b or c)
+                       else ("①②停用·改適用 `K-9-6-h ④` 之寬度式" if (a and b and c)
                              else "🛑 `GB-65` 阻塞·無從判定"))
             else:
                 cls = "⛔ 街廓未量"
@@ -436,8 +489,9 @@ def main():                                                         # noqa: C901
     P("       **皆⛔ 無從實測**——它們是**遞補實作之輸出**，⛔ 不是現況之量。")
     P("")
     P("  **靜態預測（⛔ 標明為預測·⛔ 不得下游引用為實測）**：")
-    P(f"  · 第 1 輪之候選 ＝ 現況零條合格垂線且街廓判**不平行**者 ＝ "
-      f"**{sum(1 for x in D1 if x[0] in PAR and not PAR[x[0]][0])}** 宗")
+    P(f"  · 第 1 輪之候選 ＝ 現況零條合格垂線且街廓**三讀法一致判不平行**者 ＝ "
+      f"**{sum(1 for x in D1 if x[0] in PAR and not any(PAR[x[0]][:3]))}** 宗"
+      f"　（⛔ `GB-65` 阻塞之街廓不計入）")
     P("  · **⛔ 不預測輪數**：遞補者之 G 值改變後其面寬亦改變（`K-9-11 四` 須重測），")
     P("    而新 G 值須由引擎重跑方得 ⇒ **⛔ 無從以現況之數外推**。")
     P("  · 🔒 **⛔ 不得逕以「15 宗」或「16 宗」當作最終不配地數**（§D-4(b) 明文）。")
@@ -449,13 +503,14 @@ def main():                                                         # noqa: C901
     P("=" * W)
     P("  🔒 出艙碼（⛔ 各類不得互代、不得相加）")
     for lbl in OKB:
-        a, b, _ = PAR[lbl]
+        a, b, c, _ = PAR[lbl]
         n = sum(1 for x in D1 if x[0] == lbl)
-        code = ("`K-9-11`：不配地·由下一投影序號遞補" if (not a and not b)
-                else ("`K-9-6-h ④`：①②停用·改適用其寬度式" if (a and b)
+        code = ("`K-9-11`：不配地·由下一投影序號遞補" if not (a or b or c)
+                else ("`K-9-6-h ④`：①②停用·改適用其寬度式" if (a and b and c)
                       else "🛑 `GB-65` 阻塞·無從判定"))
-        P(f"    {lbl}（{'平行' if a and b else '不平行' if not a and not b else '兩讀法不一致'}）"
-          f"：零條合格垂線 {n} 宗 ⇒ **{code}**")
+        st = ("平行(三讀法一致)" if (a and b and c)
+              else ("不平行(三讀法一致)" if not (a or b or c) else "🛑 三讀法不一致"))
+        P(f"    {lbl}（{st}）：零條合格垂線 {n} 宗 ⇒ **{code}**")
     for lbl in BLKS:
         if lbl in ERR:
             P(f"    {lbl}：**上游狀態不合規·⛔ 不作寬度判定**（`run_step_g` raise）")
