@@ -68,7 +68,7 @@ def _diameter(pst):
     return max(math.hypot(a[0] - b[0], a[1] - b[1]) for a in cs for b in cs)
 
 
-def d_max_at(pst, w, th, hi0=None, d_floor=None):
+def d_max_at(pst, w, th, hi0=None, d_floor=None, tol_conv=None):
     """固定寬 `w`、姿態 `th` 下之**最大可容納深度**（二分·判定仍用 `fits_at`）。
 
     🔒 回**下界**（`lo`）：`fits(lo)` 為真、`fits(hi)` 為偽 ⇒ `D_max ∈ [lo, hi)`。
@@ -91,12 +91,23 @@ def d_max_at(pst, w, th, hi0=None, d_floor=None):
         raise RuntimeError(
             "🔴 d_max_at：`d_floor` 未給 ⇒ 早退測試點與容差無從導出（`GB-82` (b-4)）。"
             "⛔ 禁硬編、⛔ 禁靜默回退。")
-    _tol = 10.0 * d_floor
+    # 🩸 **一量二用之拆分（`W-G.9-62` §五-D·`GB-82` 併記之待辦·自誤 42 之族）**：
+    #   `W-G.9-61` 以單一 `_tol = 10×d_floor` **同時**充當
+    #   ①**早退測試點**（＝「連這麼薄都塞不下就回 0」之高度）與
+    #   ②**收斂容差**（＝出艙值之**有效位數上限**）。二者**受詞不同**：
+    #   ① 須落在**單調區之上**（故由 `d_floor` 導出·`(b-4)`）；
+    #   ② 決定「`41.4830` 之末位有沒有意義」，**⛔ 與 `d_floor` 無關**。
+    #   ⇒ 拆為二具名量；`tol_conv` **未給即 loud raise**（⛔ 不得靜默沿用 ①）。
+    if tol_conv is None:
+        raise RuntimeError(
+            "🔴 d_max_at：`tol_conv`（收斂容差）未給。⛔ 不得靜默沿用早退測試點"
+            "——一量二用正是本函式已具名之缺陷（`W-G.9-62` §五-D）。")
+    d_early = 10.0 * d_floor                       # ① 早退測試點（由 `d_floor` 導出）
     lo = 0.0
-    if not fits_at(pst, w, lo + _tol, th, 0.0)[0]:
+    if not fits_at(pst, w, lo + d_early, th, 0.0)[0]:
         return 0.0                                 # 連極薄都塞不下
-    lo = lo + _tol
-    while hi - lo > _tol:
+    lo = lo + d_early
+    while hi - lo > tol_conv:                      # ② 收斂容差（⛔ 與 `d_floor` 無關）
         mid = 0.5 * (lo + hi)
         if fits_at(pst, w, mid, th, 0.0)[0]:
             lo = mid

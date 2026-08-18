@@ -1,0 +1,76 @@
+【`W-G.9-42` 純追加稽核】base ＝ 785ab7a
+==============================================================================
+  ✅ [檔] .gitattributes
+       2035 → 2035　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/specs/figures/README.md
+       823 → 823　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/specs/figures/PROVENANCE_宗地分配線邏輯.md
+       1733 → 1733　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9波_claude.ai側自誤登記.md
+       28948 → 30701　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.4_泛用阻塞項登記表.md
+       160233 → 163363　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/驗證裁定登記表.md
+       19573 → 21342　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] CLAUDE.md
+       988 → 988　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       416 → 416　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       317 → 317　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       1585 → 1585　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       362 → 362　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] .claude/skills/failure-archaeology/SKILL.md
+       128786 → 129788　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-43_K9-11入倉與平行判測.md
+       10332 → 10332　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       420 → 420　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       616 → 616　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       464 → 464　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-44_呈KL兩題.md
+       4535 → 4535　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-47_K9-12入倉與矩形容納實測.md
+       10742 → 10742　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       737 → 737　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       1088 → 1088　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/rulings/K-6_街角地分配程序與可分配判準.md
+       1415 → 1415　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 10 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-56_乙式裁示入倉與影響實測.md
+       677 → 677　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-56_乙式裁示入倉與影響實測.md
+       2255 → 2255　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-56_乙式裁示入倉與影響實測.md
+       1336 → 1336　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-56_乙式裁示入倉與影響實測.md
+       843 → 843　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-54_claude.ai交接文.md
+       7951 → 7951　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-57_交接文入倉與受詞結案.md
+       2073 → 2073　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-58_覆核裁決與刀鋒成因.md
+       830 → 830　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-58_覆核裁決與刀鋒成因.md
+       2761 → 2761　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-58_覆核裁決與刀鋒成因.md
+       1114 → 1114　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-58_CC交接文.md
+       594 → 594　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 1 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-59_claude.ai交接文.md
+       9297 → 9297　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [段] docs/reports/W-G.9-58_覆核裁決與刀鋒成因.md
+       1155 → 1155　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）　補集（扣除該檔全部 4 段·判準＝嚴格前綴）：✅／判別力自檢＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-59_誤判更正與刀鋒結案.md
+       9221 → 9221　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-60_儀器缺陷與D_max重測.md
+       12827 → 12827　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+  ✅ [檔] docs/reports/W-G.9-61_Z補件入倉與GB-82受詞限縮.md
+       12284 → 13325　嚴格前綴＝True　判別力自檢（行中插入）＝False（須 False）
+==============================================================================
+  結論：✅ 全部成立

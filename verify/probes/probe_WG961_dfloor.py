@@ -291,7 +291,9 @@ def run_for(P, cells, tag, grid, note):                             # noqa: C901
     for lbl, which in EIGHT:
         pst, g, poly = _eight_geom(lbl, which)
         w, dd = _WD[lbl]
-        v = d_max_at(pst, w, g["theta"], d_floor=dfloor)
+        # 🔒 `tol_conv` **沿用 `-61` 當時之值**（＝ `10×d_floor`）以保該批 log 可重現。
+        #   ⛔ 非「一量二用」——`W-G.9-62` §五-D 後為**二具名量恰取同值**。
+        v = d_max_at(pst, w, g["theta"], d_floor=dfloor, tol_conv=10.0 * dfloor)
         cls = "進" if v >= dd else "不進"
         same = (cls == PREV8[(lbl, which)])
         n_cls += 1 if same else 0
@@ -467,6 +469,12 @@ def main():                                                         # noqa: C901
     P(f"  ⇒ 8 格分類：A **{A['n_cls']}／8**、B **{B['n_cls']}／8** 與 `-60` 一致"
       f"　⇒ **土地後果 ＝ {'零' if (A['n_cls'] == 8 and B['n_cls'] == 8) else '🔴 非零'}**")
     P("")
+    # 🔒 **§七-5（`W-G.9-62`）**：探針結束時 `LOCAL_ORIGIN` 須為 `True`（⛔ 以斷言檢查）
+    if fp.LOCAL_ORIGIN is not True:
+        raise RuntimeError(
+            "🔴 探針結束時 `LOCAL_ORIGIN` ⛔ 非 `True` ⇒ 判別力反例之開關未還原，"
+            "本次一切輸出⛔ 不得採信（`W-G.9-62` §七-5）。")
+    P("  🔒 §七-5 收束斷言：`LOCAL_ORIGIN is True` ✅（⛔ 未留在 `False`）")
     P("=" * WID)
     return L, sha
 
