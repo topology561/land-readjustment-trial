@@ -298,10 +298,13 @@ def main():                                                         # noqa: C901
 
 def d_max_at_r(pst, w, th, r):
     """`D_max` 於膨脹 `r` 下之值（⛔ 膨脹一律經 `fits_at` 之 `r` 參數·不自建 buffer）。"""
-    b = pst.bounds
-    hi = max(b[2] - b[0], b[3] - b[1]) + 1.0
+    # 🩸 **`GB-81` 之修（`W-G.9-60` §B-1）**：見 `probe_WG958_dmax_robust.d_max_at` 之同註。
+    from probe_WG958_dmax_robust import _diameter
+    hi = _diameter(pst) + 1.0
     if fits_at(pst, w, hi, th, r)[0]:
-        return hi
+        # 🔒 **飽和閘（§B-2）**：回值 ＝ `hi` ⇒ **loud raise**、⛔ 不得靜默出艙。
+        raise RuntimeError(
+            f"🔴 d_max_at_r 飽和：`hi`={hi:.6f} 仍可容納 ⇒ 回值將等於上界、⛔ 非量測值（`GB-81`）。")
     lo = 1e-6
     if not fits_at(pst, w, lo, th, r)[0]:
         return 0.0

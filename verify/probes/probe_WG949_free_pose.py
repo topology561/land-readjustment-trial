@@ -70,20 +70,45 @@ def _rot(p, th):
 
 
 def fits_at(poly, w, d, th, r=0.0):
-    """`erode(rot(P, −θ), r)` 內能否置入軸對齊 `w × d` 盒。回 `(bool, 侵蝕集)`。"""
-    q = _rot(poly, -th)
+    """`erode(rot(P, −θ), r)` 內能否置入軸對齊 `w × d` 盒。回 `(bool, 侵蝕集)`。
+
+    🩸 **`GB-82` 之就地修復（`W-G.9-60` §A-2）**：判定**先平移至局部原點**再進行。
+      **案由**：本案座標為 TWD97 絕對值（`~2.17e6`〜`2.65e6`），而 `buffer(+1e−06)` 後
+      前二角之交集為一條**寬 `2e−06`** 之細條 ⇒ 細條寬／座標量級 `≈ 1e−12`
+      **已抵 `double` 之懸崖** ⇒ GEOS 於 `d = 1e−5` 回空、於 `d = 1e−4` 回非空
+      ⇒ **`fits_at` 對 `d` 不單調**（薄者判不進而厚者判進·幾何上不可能）。
+      ⇒ 一切建於其上之**二分**，其前提為偽。
+    🔒 **⛔ 未新增第二份判定原語**（`GB-8` 之受詞裁定：其所禁者為「並存兩份」，
+      ⛔ 非「修復既有之唯一原語」）——本函式**就地**修復、`MITRE` 一字未改。
+
+    🔴 **偏離施工單之一處（⛔ 具名·`W-G.9-60` CC）**：單令「判定完成後 ⛔ 不還原」。
+      **判定之布林**確實對平移嚴格不變，惟**本函式之回傳幾何有下游消費者**
+      ——`witness()` 取 `er.representative_point()` 並映射回**原框**以做逐角 `poly.covers`。
+      若不還原，**每一個見證之四角都會偏移一個形心向量** ⇒ **見證全毀**
+      （而見證正是本倉判「進」之唯一證明義務）。
+      ⇒ 🔒 **折衷**：**判定於局部原點**（＝數值修復之所在），
+      **回傳之幾何還原至原框**（＝保既有呼叫端契約·`witness` 免改）。
+    """
+    from shapely.affinity import translate as _tr
+    # ── 平移至局部原點（⇒ 判定於小座標下進行）──────────────────────────
+    _c = poly.centroid
+    _cx, _cy = float(_c.x), float(_c.y)
+    q = _rot(_tr(poly, xoff=-_cx, yoff=-_cy), -th)
     if r != 0.0:
         q = q.buffer(-r, **MITRE)
         if q.is_empty:
             return False, None
-    from shapely.affinity import translate as _tr
     cur = None
     for cx, cy in ((0.0, 0.0), (w, 0.0), (0.0, d), (w, d)):
         t = _tr(q, xoff=-cx, yoff=-cy)
         cur = t if cur is None else cur.intersection(t)
         if cur.is_empty:
             return False, None
-    return True, cur
+    # ── 回傳幾何還原至**原框**（rot(P−c) ＝ rot(P) − rot(c) ⇒ 加回 rot(c)）──
+    _co, _si = math.cos(-th), math.sin(-th)
+    _rcx = _cx * _co - _cy * _si
+    _rcy = _cx * _si + _cy * _co
+    return True, _tr(cur, xoff=_rcx, yoff=_rcy)
 
 
 def margin_ub(poly, w, d, th, tol=TOL_M):

@@ -62,16 +62,28 @@ def _perp_width(poly, S1, sn):
                for x, y in list(poly.exterior.coords))
 
 
+def _diameter(pst):
+    """多邊形之**直徑**（兩兩頂點距之 max）——**框無關** ⇒ 可安全作為 `D` 之上界。"""
+    cs = [(float(x), float(y)) for x, y in list(pst.exterior.coords)]
+    return max(math.hypot(a[0] - b[0], a[1] - b[1]) for a in cs for b in cs)
+
+
 def d_max_at(pst, w, th, hi0=None):
     """固定寬 `w`、姿態 `th` 下之**最大可容納深度**（二分·判定仍用 `fits_at`）。
 
     🔒 回**下界**（`lo`）：`fits(lo)` 為真、`fits(hi)` 為偽 ⇒ `D_max ∈ [lo, hi)`。
       ⇒ 用於「`D_max` 遠小於 `D`」之宣稱時**偏保守**（回值只會偏小）。
     """
-    b = pst.bounds
-    hi = hi0 if hi0 is not None else (max(b[2] - b[0], b[3] - b[1]) + 1.0)
+    # 🩸 **`GB-81` 之修（`W-G.9-60` §B-1）**：上界框原取**原框** bbox 長邊，
+    #   而判定發生於**轉框** ⇒ 街角帶與座標軸夾約 47.7° 時**原框 bbox 遠小於帶之真長**
+    #   ⇒ `fits_at(pst, w, hi, ...)` 恆真 ⇒ 本函式**於第一行即 return hi、從未進入二分**。
+    #   ⇒ 改取**多邊形直徑**（兩兩頂點距之 max·**框無關**）＋ 1.0。
+    hi = hi0 if hi0 is not None else (_diameter(pst) + 1.0)
     if fits_at(pst, w, hi, th, 0.0)[0]:
-        return hi                                  # 連上界都塞得下 ⇒ 回上界（⛔ 不謊報）
+        # 🔒 **飽和閘（`W-G.9-60` §B-2）**：回值 ＝ `hi` ⇒ **loud raise**，⛔ 不得靜默出艙。
+        raise RuntimeError(
+            f"🔴 d_max_at 飽和：`hi`={hi:.6f} 仍可容納 ⇒ 回值將等於上界、⛔ 非量測值"
+            "（`GB-81`）。請擴大 `hi0` 或改用掃描式。")
     lo = 0.0
     if not fits_at(pst, w, lo + TOL_D, th, 0.0)[0]:
         return 0.0                                 # 連極薄都塞不下
