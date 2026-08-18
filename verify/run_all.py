@@ -155,7 +155,18 @@ def main():
                        #      `Name`** ⇒ 須再解析其 `Assign`，⛔ 照 `G-2` 之內嵌式外推會得
                        #      **6 個空閘**（實證見 `out/probe_WG913_gate_selfcheck.log`）。
                        ("fixture_midlayer_6items.py",
-                        "🆕 W-G.9-13 中間層 6 項（v3 率錨三項＋reverse-test③＋F.2 跨區段 fixture＋F.4 模式二 p_avg；四型判準同源就地求值）")):
+                        "🆕 W-G.9-13 中間層 6 項（v3 率錨三項＋reverse-test③＋F.2 跨區段 fixture＋F.4 模式二 p_avg；四型判準同源就地求值）"),
+                       # 🆕 `W-G.9-69`：**乙式耦合斷言**（KL 裁 2026-08-19 之耦合條款·`Z-1`／`Z-2`）。
+                       #   🔒 **掛入本清單之由 ＝ 該耦合若無機械載體，豁免會<u>靜默</u>失效**——
+                       #      `K-9-5-15 二`「街角第 1 宗寬度不另量、面積夠即算過」與 `GB-84` 之結案，
+                       #      **其前提是構造為乙式**；構造若被回退，**「不設閘」本身沒有可紅之物**。
+                       #      ⇒ 本夾具即**那個可紅之物**；**其轉紅 ⇒ `GB-84` 之結案自動回復為未結**。
+                       #   ⚠️ **判別力已實證二式並試**（`W-G.9-69` §B）：變異 `A`（只改 `S1_perp`
+                       #      取值）**繞得過** `app.py` 自身之構造自檢（該自檢為閉式自證）⇒ **本夾具
+                       #      是它唯一的可紅之物**；變異 `B`（真甲式）則由生產碼自檢先行 `_stop`。
+                       #   🔒 **純加性**：⛔ 未取代任何既有閘；本清單 13 → **14** 支。
+                       ("fixture_yi_construction.py",
+                        "🆕 W-G.9-69 乙式耦合斷言（垂距＝max(_seg_P0Ps·sinθ,T)·八格×二情境＋二式變異判別力）")):
         try:
             _r = subprocess.run([sys.executable, os.path.join(HERE, _fx)],
                                 capture_output=True, text=True, encoding="utf-8", timeout=600)
