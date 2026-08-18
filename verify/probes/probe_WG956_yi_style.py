@@ -34,10 +34,14 @@
    （寬 3.5 之帶：`θ=0` ⇒ True、`θ=1e-6` ⇒ **False**）⇒ 均勻網格**永遠掃不到**
    ⇒ 不加候選角必**系統性誤判「不進」**。
    🔒 候選角**只能使「不進」翻為「進」**、⛔ 不可能反向 ⇒ 對判「不進」**保守**。
-2. **`margin_ub` 之階梯封頂於 `1e-3`**（⛔ 非靜默截斷）：實測 `margin_ub` 每次 3.18 ms
-   ⇒ `Δθ=1e-4` 之 31416 點需 100 s／格。**改以「精確 `fits_at` 細掃 `Δθ=1e-4`」**
-   （每次 0.105 ms ⇒ 3.3 s／格）補其**找解**之一半；
-   ⇒ **證書之門檻遂為 `R·1e-3/2`**（逐格印出）、⛔ 不謊稱已至 `1e-4` 之證書。
+2. **`margin_ub` 之階梯**（⛔ 非靜默截斷·逐級印出）：實測 `margin_ub` 每次 3.18 ms、
+   `fits_at` 每次 0.105 ms ⇒ 二者成本差 **30 倍**。
+   🆕 **`W-G.9-57` §F-3**：主階梯已自 `1e-3` **延伸為** `(2e-2, 5e-3, 1e-3, 2e-4, 5e-5)`
+   （⛔ **非放寬**——加細只使門檻 `R·Δθ/2` 變小、證書**變嚴格**）；
+   `C-2` 之階梯**另行封頂於 `1e-3`**（其受詞非證書·見 `STEPS_C2`）。
+   **另以「精確 `fits_at` 細掃 `Δθ=1e-4`」**補其**找解**之一半；
+   ⇒ 🔒 **細掃⛔ 不產生證書**、⛔ 不謊稱已至該級之證書。
+3. 🆕 **`W-G.9-57`：出艙碼改為<u>三態</u>**（`進`／`未證`／`不進`）——見 `_hit` 之 docstring。
 
 🔒 沿用倉內既有機具、⛔ 不另寫第二份（`GB-8`）：
   `probe_WG949_free_pose` 之 `scan`／`witness`／`fits_at`／`margin_ub`／`selfcheck`、
@@ -70,8 +74,17 @@ WID = 178
 SB = 0.0
 # 🔒 退縮之**第二情境**：⛔ 非本探針自創——係倉內 harness 既有之雙情境，出處見【C-2】。
 SB2 = 3.5
-# `margin_ub` 階梯（成本封頂·⛔ 具名揭露·見檔頭 2）
-STEPS_EPS = (2e-2, 5e-3, 1e-3)
+# `margin_ub` 階梯。
+# 🆕 **`W-G.9-57` §F-3 延伸至 `5e-5`**（原封頂 `1e-3`）——⛔ **非放寬**：
+#   加細只使門檻 `R·Δθ/2` **變小**、證書**變嚴格**。所需之級由 `Δθ < 2ε/R` 實算：
+#   乙ii `R5/left`／`R6/right`（ε≈0.00195）⇒ 需 `<5.4e-4` ⇒ `2e-4` 足；
+#   甲式 `R5/left`（真 |max m|≈0.000253）⇒ 需 `<7.0e-5` ⇒ `5e-5`。
+STEPS_EPS = (2e-2, 5e-3, 1e-3, 2e-4, 5e-5)
+# 🆕 **`W-G.9-57` §E-2**：`C-2` 之階梯**另行封頂於 `1e-3`**（⛔ 具名揭露·⛔ 非靜默）
+#   ——`C-2` 之受詞係「該欄之差異是否落在雜訊級」，⛔ 非證書之取得；
+#   其判別力門檻為 `ε > 1e-5`，而 `1e-3` 級之 ε 已足以判之。
+STEPS_C2 = (2e-2, 5e-3, 1e-3)
+DTH_C2_EPS = 1e-3          # `C-2` 判「不進」者一律於此步長印 ε／門檻（⛔ 固定·非階梯）
 # 精確 `fits_at` 之細掃步長（⛔ 只做「找解」·⛔ 不產生證書）
 DTH_FINE = 1e-4
 
@@ -133,26 +146,91 @@ def _cands_of(g, bl_ang_rad):
     return out
 
 
-def fit_search(poly, w, d, R, cands):
-    """矩形容納之三段式搜尋。回 dict（含 `pst`／`th`／`via`／`eps`／`thr`／`cert`／`wit`）。"""
+def eps_at(pst, w, d, R, dth):
+    """於**指定單一步長**求 `ε = −max m(θ)` 與門檻 `R·Δθ/2`（⛔ 非階梯·⛔ 不早停）。
+
+    🔒 `W-G.9-57` §E-2 用：其受詞係「該格之餘裕是否落在雜訊級」，⛔ 非證書之取得。
+    """
+    n = int(math.ceil(math.pi / dth))
+    best = -1e18
+    for k in range(n):
+        m = margin_ub(pst, w, d, k * dth)
+        if m > best:
+            best = m
+    return -best, R * dth / 2.0, n
+
+
+def ladder(pst, w, d, R, steps):
+    """逐級掃描並**記錄每一級**之 `(Δθ, ε, 門檻, 證書?, 點數, 命中θ)`；首個證書成立即停。
+
+    🔒 **⛔ 非另寫第二份判定**——原語仍為 `probe_WG949_free_pose` 之 `fits_at`／`margin_ub`
+      （`GB-8`）；本函式只是**把階梯之逐級結果留下來**，
+      使 `D-2` 之逐級表**直接取用**、⛔ 不必重跑一次同樣的掃描
+      （`W-G.9-56` 之 `D-2` 即重跑了一次·本批已消除該重複）。
+    """
+    recs = []
+    for dth in steps:
+        n = int(math.ceil(math.pi / dth))
+        best, hit = -1e18, None
+        for k in range(n):
+            th = k * dth
+            if fits_at(pst, w, d, th, 0.0)[0]:
+                hit = th
+                break
+            m = margin_ub(pst, w, d, th)
+            if m > best:
+                best = m
+        if hit is not None:
+            recs.append((dth, None, None, None, n, hit))
+            return hit, recs
+        eps, thr = -best, R * dth / 2.0
+        cert = eps > thr
+        recs.append((dth, eps, thr, cert, n, None))
+        if cert:
+            return None, recs
+    return None, recs
+
+
+def _hit(pst, w, d, th, via, recs, fine=0):
+    """組出「找到解」之回傳，並**以見證之逐角獨立驗證決定出艙碼**。
+
+    🩸 **`W-G.9-57` 修（CC 自誌·⛔ 具名）**：前版把 `fits_at`（侵蝕非空）之真**逕作「進」**，
+      而**見證雖已算出、其 `all_in` 卻沒有接到出艙碼上** ⇒ 出現「判進而四角驗證 False」之格
+      （`W-G.9-56`／本批 v3 之【E-2b】退縮 3.5 共 **4 格**）。
+      這與本倉紀律「**判『可以』須具名見證物並逐角獨立驗證·⛔ 不以侵蝕之非空當證明**」**直接相違**。
+    🔒 **修法 ＝ 三態**：
+      · `code="進"` ＝ 侵蝕非空 **∧** 見證四角 `poly.covers` 皆真（**已證**）
+      · `code="未證"` ＝ 侵蝕非空 **∧** 見證逐角驗證**失敗**（⇒ 刀鋒·⛔ 不得當「進」用）
+      · `code="不進"` ＝ 掃不到解（另依證書分「已證明不存在」／「未找到」）
+    ⚠️ **⛔ 「未證」不得讀作「不進」**——後者是另一個命題，本函式並未證得。
+    """
+    wit = witness(pst, w, d, th)
+    ok = bool(wit and wit["all_in"])
+    return dict(pst=pst, th=th, via=via, eps=None, thr=None, cert=None,
+                dth=(recs[-1][0] if recs else None), wit=wit, fine=fine, recs=recs,
+                proven=ok, code=("進" if ok else "未證"))
+
+
+def fit_search(poly, w, d, R, cands, steps=STEPS_EPS, fine=True):
+    """矩形容納之三段式搜尋。回 dict（含 `pst`／`th`／`via`／`code`／`proven`／`eps`／`thr`／`cert`／`wit`／`recs`）。"""
     pst = _poly_st([(float(x), float(y)) for x, y in list(poly.exterior.coords)])
     for nm, th in cands:                       # ① 具名候選角（精確·⛔ 非近似）
         if fits_at(pst, w, d, th, 0.0)[0]:
-            return dict(pst=pst, th=th, via=f"候選角:{nm}", eps=None, thr=None,
-                        cert=None, dth=None, wit=witness(pst, w, d, th), fine=0)
-    th, dth, mmax, npt, cert = scan(pst, w, d, steps=STEPS_EPS, R=R)   # ② 均勻階梯
+            return _hit(pst, w, d, th, f"候選角:{nm}", [])
+    th, recs = ladder(pst, w, d, R, steps)     # ② 均勻階梯（逐級留檔）
     if th is not None:
-        return dict(pst=pst, th=th, via="均勻網格", eps=None, thr=None,
-                    cert=None, dth=dth, wit=witness(pst, w, d, th), fine=0)
-    n = int(math.ceil(math.pi / DTH_FINE))     # ③ 細掃（僅 fits_at·⛔ 無證書）
-    for k in range(n):
-        t = k * DTH_FINE
-        if fits_at(pst, w, d, t, 0.0)[0]:
-            return dict(pst=pst, th=t, via=f"細掃 Δθ={DTH_FINE:.0e}", eps=None,
-                        thr=None, cert=None, dth=DTH_FINE,
-                        wit=witness(pst, w, d, t), fine=n)
-    return dict(pst=pst, th=None, via="未找到", eps=(-mmax if mmax is not None else float("nan")),
-                thr=R * dth / 2.0, cert=bool(cert), dth=dth, wit=None, fine=n)
+        return _hit(pst, w, d, th, "均勻網格", recs)
+    n = 0
+    if fine:                                   # ③ 細掃（僅 fits_at·⛔ 無證書）
+        n = int(math.ceil(math.pi / DTH_FINE))
+        for k in range(n):
+            t = k * DTH_FINE
+            if fits_at(pst, w, d, t, 0.0)[0]:
+                return _hit(pst, w, d, t, f"細掃 Δθ={DTH_FINE:.0e}", recs, fine=n)
+    _last = recs[-1]
+    return dict(pst=pst, th=None, via="未找到", eps=_last[1], thr=_last[2],
+                cert=bool(_last[3]), dth=_last[0], wit=None, fine=n, recs=recs,
+                proven=False, code="不進")
 
 
 def main():                                                         # noqa: C901
@@ -389,14 +467,19 @@ def main():                                                         # noqa: C901
         c = CR[(lbl, wch)]
         P(f"  {lbl:<5}{wch:<7}{pA.area:>11.4f}{pI.area:>11.4f}{pII.area:>11.4f}"
           f"{pII.area - pA.area:>12.4f}{c['wA']:>10.6f}{c['wII']:>10.6f}"
-          f"{('進' if res['A']['th'] is not None else '不進'):>8}"
-          f"{('進' if res['I']['th'] is not None else '不進'):>6}"
-          f"{('進' if res['II']['th'] is not None else '不進'):>7}"
+          f"{res['A']['code']:>8}"
+          f"{res['I']['code']:>6}"
+          f"{res['II']['code']:>7}"
           f"{res['II']['via']:>18}")
     P("-" * WID)
+    P("  🔒 **三態**（`W-G.9-57` 修）：`進` ＝ 侵蝕非空 **∧** 見證四角獨立驗證皆真（**已證**）；")
+    P("     `未證` ＝ 侵蝕非空而見證逐角驗證**失敗**（⇒ 刀鋒·⛔ 不得當「進」用、⛔ 亦非「不進」）；")
+    P("     `不進` ＝ 掃不到解（另依證書分「已證明不存在」／「未找到」）。")
     for tag, nm in (("A", "甲式"), ("I", "乙式(i)"), ("II", "乙式(ii)")):
-        n = sum(1 for k in CR if CR[k]["res"][tag]["th"] is not None)
-        P(f"  ⇒ 矩形容納：{nm} **{n}／{len(CR)}**")
+        n = sum(1 for k in CR if CR[k]["res"][tag]["code"] == "進")
+        nu = sum(1 for k in CR if CR[k]["res"][tag]["code"] == "未證")
+        P(f"  ⇒ 矩形容納：{nm} **{n}／{len(CR)}** 已證"
+          + (f"；🔴 **未證 {nu}**" if nu else "；未證 0"))
     P("")
     P("  【垂寬之閉合檢】乙式(ii) 之垂寬須 ＝ `max(_seg_P0Ps·sinθ, T)`（自**輸出幾何頂點**量得）")
     P(f"  {'街廓':<5}{'側':<7}{'乙ii垂寬(量)':>15}{'期望':>12}{'Δ':>12}  判")
@@ -424,25 +507,17 @@ def main():                                                         # noqa: C901
     else:
         P(f"  {'街廓':<5}{'側':<7}{'式':<4}{'Δθ':>9}{'ε':>12}{'門檻 R·Δθ/2':>14}"
           f"{'ε/門檻':>9}{'掃描點數':>9}{'證書':>6}")
+        P(f"  🔒 階梯 ＝ {STEPS_EPS}（`W-G.9-57` §F-3 已自 `1e-3` **延伸**至 `5e-5`）")
+        P("  🔒 本表**直接取用** `fit_search` 之逐級留檔（⛔ 未重跑一次掃描·"
+          "`W-G.9-56` 之同表曾重跑·本批已消除）")
         for lbl, wch, tag in _nofit:
             c = CR[(lbl, wch)]
-            pst = c["res"][tag]["pst"]
-            for dth in STEPS_EPS:
-                n = int(math.ceil(math.pi / dth))
-                best, hit = -1e18, None
-                for k in range(n):
-                    th = k * dth
-                    if fits_at(pst, c["w"], c["d"], th, 0.0)[0]:
-                        hit = th
-                        break
-                    m = margin_ub(pst, c["w"], c["d"], th)
-                    best = max(best, m)
+            for dth, eps, thr, cert, n, hit in c["res"][tag]["recs"]:
                 if hit is not None:
                     P(f"  {lbl:<5}{wch:<7}{tag:<4}{dth:>9.1e}   🔴 該步長下**找到解** θ={hit:.6f}")
-                    break
-                eps, thr = -best, c["R"] * dth / 2.0
+                    continue
                 P(f"  {lbl:<5}{wch:<7}{tag:<4}{dth:>9.1e}{eps:>12.6f}{thr:>14.6e}"
-                  f"{eps / thr:>9.2f}{n:>9}{('✅' if eps > thr else '—'):>6}")
+                  f"{eps / thr:>9.2f}{n:>9}{('✅' if cert else '—'):>6}")
             P(f"  {lbl:<5}{wch:<7}{tag:<4}{'細掃':>9}  Δθ={DTH_FINE:.0e}"
               f"（{int(math.ceil(math.pi / DTH_FINE))} 點·僅 `fits_at`）⇒ "
               f"{'🔴 找到解' if c['res'][tag]['th'] is not None else '仍未找到'}")
@@ -471,8 +546,9 @@ def main():                                                         # noqa: C901
     P("     本情境僅為**參數掃描**，⛔ 非本案之值。")
     P("")
     P(f"  {'街廓':<5}{'側':<7}{'退縮':>6}{'全範圍':>11}{'扣後面積':>11}{'Δ面積':>10}"
-      f"{'扣後垂寬':>10}{'閘':>4}{'扣後容納':>9}{'經由':>18}{'ε':>11}{'證書':>6}")
+      f"{'扣後垂寬':>10}{'閘':>4}{'扣後容納':>9}{'經由':>18}{'ε(1e-3)':>11}{'ε/門檻':>8}")
     _c2_gate = True
+    C2ROWS = []
     for sbv in (SB, SB2):
         for lbl, wch in TARGETS:
             g = G[(lbl, wch)]
@@ -494,23 +570,58 @@ def main():                                                         # noqa: C901
             _exp_cw = max(g["seg"] * g["sin"], sbv + w) - sbv
             _gk = abs(_cw - _exp_cw) <= 1e-6
             _c2_gate &= _gk
-            r = fit_search(cut, w, d, Rp, _cands_of(g, BLANG[lbl]))
-            _e = r["eps"]
+            r = fit_search(cut, w, d, Rp, _cands_of(g, BLANG[lbl]),
+                           steps=STEPS_C2, fine=False)
+            # 🆕 **`W-G.9-57` §E-2**：判「不進」者一律於**固定** `Δθ=1e-3` 印 ε／門檻
+            #   （⛔ 不接受「係雜訊」之未量測斷言）
+            if r["th"] is None:
+                _e, _thr, _n = eps_at(r["pst"], w, d, Rp, DTH_C2_EPS)
+            else:
+                _e, _thr, _n = None, None, 0
             _es = "—" if _e is None else ("%.6f" % _e)
+            _rt = "—" if _e is None else ("%.2f" % (_e / _thr))
+            C2ROWS.append((lbl, wch, sbv, r, _e, _thr, _cw))
             P(f"  {lbl:<5}{wch:<7}{sbv:>6.1f}{poly.area:>11.4f}{cut.area:>11.4f}"
               f"{cut.area - poly.area:>10.4f}{_cw:>10.6f}{('✅' if _gk else '🔴'):>4}"
-              f"{('進' if r['th'] is not None else '不進'):>9}{r['via']:>18}{_es:>11}"
-              f"{('—' if r['th'] is not None else ('✅' if r['cert'] else '🔴')):>6}"
+              f"{r['code']:>9}{r['via']:>18}{_es:>11}{_rt:>8}"
               + ("　（重合）" if same else ""))
     P("-" * WID)
     P(f"  ⇒ 【C-2】閘（扣後非空 ∧ 扣後垂寬 ＝ `T − setback`）："
       f"{'✅ 全過' if _c2_gate else '🔴 有格不過 ⇒ 該等格⛔ 不出艙'}")
-    P("  🔴 **邊界情形之具名（⛔ 必讀·關乎本節之可用性）**：`setback > 0` 時，")
-    P("     扣除退縮帶後之**垂寬恰為 `min_width`**（上表「扣後垂寬」欄）")
-    P("     ⇒ `W × D` 矩形之容納退化為「**寬恰好等於**」之邊界判定")
-    P("     ⇒ 其進／不進由 **~1e-9 之浮點雜訊**決定（`selfcheck` ④ 已證：少 `1e-6` 即不進）")
-    P("     ⇒ 🔒 **本節 `setback > 0` 之進／不進⛔ 不得作為土地後果之依據**；")
-    P("     其**可靠之輸出僅為**：扣後垂寬 ＝ `min_width`（＝ 乙式之構造保證）。")
+    P(f"  🔒 **階梯封頂於 {STEPS_C2}**（⛔ 具名揭露）；判「不進」者之 ε 一律"
+      f"另於**固定** `Δθ={DTH_C2_EPS:.0e}` 求得（⛔ 非階梯之早停值）。")
+    P("")
+    # ── 🆕 `W-G.9-57` §E-2：「係雜訊」之判別（⛔ 不接受未量測之斷言）──────────
+    P("  【E-2】`W-G.9-56` §C-2 之「其進／不進由 ~1e-9 之浮點雜訊決定」⇒ **實測驗之**")
+    P(f"  🔒 判別力門檻 ＝ **1e-5**（取在雜訊 ~1e-9 與公釐級 ~1e-3 **之間**·⛔ 不貼任一側）")
+    _nofit_c2 = [x for x in C2ROWS if x[3]["code"] == "不進"]
+    _fit_c2 = [x for x in C2ROWS if x[3]["code"] == "進"]
+    _unpr_c2 = [x for x in C2ROWS if x[3]["code"] == "未證"]
+    P(f"  判「不進」＝ **{len(_nofit_c2)}** 格；判「進」（已證）＝ **{len(_fit_c2)}** 格；"
+      f"🔴 **「未證」＝ {len(_unpr_c2)}** 格")
+    if _unpr_c2:
+        P("  🔴 **「未證」之逐格具名（侵蝕非空而見證逐角驗證失敗 ⇒ 刀鋒）**：")
+        for lbl, wch, sbv, r, e, thr, cw in _unpr_c2:
+            _ins = r["wit"]["inside"] if r["wit"] else []
+            P(f"      {lbl}/{wch}（退縮 {sbv}）θ ＝ {r['wit']['theta']:.9f}"
+              f"　四角在內 ＝ {_ins}　⇒ ⛔ 不得當「進」用、⛔ 亦非「不進」")
+    if _nofit_c2:
+        P(f"    {'街廓':<5}{'側':<7}{'退縮':>6}{'ε(Δθ=1e-3)':>13}{'門檻':>13}{'ε/門檻':>9}"
+          f"{'ε > 1e-5?':>11}")
+        for lbl, wch, sbv, r, e, thr, cw in _nofit_c2:
+            P(f"    {lbl:<5}{wch:<7}{sbv:>6.1f}{e:>13.6f}{thr:>13.3e}{e / thr:>9.2f}"
+              f"{('✅ 是' if e > 1e-5 else '🔴 否'):>11}")
+        _all_gt = all(x[4] > 1e-5 for x in _nofit_c2)
+        P(f"  ⇒ **{'全部 ε > 1e-5' if _all_gt else '🔴 有格 ε ≤ 1e-5'}**"
+          f" ⇒ 「係雜訊」之敘述{'**過寬**·須改述為具名之量測結論' if _all_gt else '於該等格**成立**·逐格具名'}")
+    P("  【E-2b】判「進」者之見證（⛔ 逐角獨立驗證·⛔ 非以侵蝕非空當證明）")
+    for lbl, wch, sbv, r, e, thr, cw in _fit_c2:
+        wt = r["wit"]
+        if wt is None:
+            P(f"    {lbl}/{wch}（退縮 {sbv}）🔴 無見證")
+            continue
+        P(f"    {lbl}/{wch}（退縮 {sbv}）θ ＝ {wt['theta']:.9f} rad"
+          f"　四角皆在內 ＝ {wt['all_in']}　經由 {r['via']}")
     P("")
 
     # ══════════════════════════════════════════════════════════════════
@@ -586,7 +697,7 @@ def main():                                                         # noqa: C901
         _es = "—" if r["eps"] is None else ("%.6f" % r["eps"])
         P(f"  {lbl:<5}{wch:<7}{c['wA']:>10.6f}{('✅' if c['wA'] >= w - 1e-9 else '🔴'):>8}"
           f"{c['wII']:>10.6f}{('✅' if c['wII'] >= w - 1e-9 else '🔴'):>8}"
-          f"{('進' if r['th'] is not None else '不進'):>10}{r['via']:>18}{_es:>11}"
+          f"{r['code']:>10}{r['via']:>18}{_es:>11}"
           f"{('—' if r['th'] is not None else ('✅' if r['cert'] else '🔴')):>6}")
     P("-" * WID)
     if _yi_no:
