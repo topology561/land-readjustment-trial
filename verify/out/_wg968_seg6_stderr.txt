@@ -1,0 +1,21 @@
+Traceback (most recent call last):
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg953-handoff-ready-d1e3c0\verify\stepg_pipeline.py", line 951, in run_step_g
+    offset_geoms = _pool_strips_for_block(
+        blk_poly, d_hat, corner_pt, allocation_dir_block,
+        allocated_polys, _label=blk_label, _depth=avg_depth_default)
+  File "<app.py:harvest>", line 9165, in _pool_strips_for_block
+RuntimeError: 🔴 ②-宗 圍堵閘破[R2]：宗-宗重疊 = 45.9766 > 上界 3.1129（(宗數15−1)×0.005×深度44.47）——**超出捨入量子可解釋範圍＝另有病**，停
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg953-handoff-ready-d1e3c0\verify\probes\probe_K9_seg6_w_delta.py", line 396, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg953-handoff-ready-d1e3c0\verify\probes\probe_K9_seg6_w_delta.py", line 148, in main
+    sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot, params,
+                    build_p, winners, forced, setback)
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg953-handoff-ready-d1e3c0\verify\stepg_pipeline.py", line 995, in run_step_g
+    raise RuntimeError(f"街廓 {blk_label} 抵費地計算失敗：{_eOff}")
+RuntimeError: 街廓 R2 抵費地計算失敗：🔴 ②-宗 圍堵閘破[R2]：宗-宗重疊 = 45.9766 > 上界 3.1129（(宗數15−1)×0.005×深度44.47）——**超出捨入量子可解釋範圍＝另有病**，停
+REAL_rc=1
