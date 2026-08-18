@@ -56,6 +56,9 @@ STEPS = (2e-2, 5e-3, 1e-3, 2e-4, 1e-4)
 DTHETA = STEPS[-1]     # 最細步長（＝單之建議值·作為階梯之終點）
 TOL_M = 1e-4           # `m(θ)` 二分之收斂容差（m）——回**上界** ⇒ 偏保守
 MITRE = dict(join_style=2, mitre_limit=1e7)
+# 🔒 `GB-82` 之修（`W-G.9-60`）之開關——⛔ **生產路徑恆 `True`**；
+#   置 `False` 僅供 `GB-82` (b-3) 之**判別力反例**（證限縮後之閘仍抓得到原缺陷）。
+LOCAL_ORIGIN = True
 
 
 def _short_sha():
@@ -91,8 +94,11 @@ def fits_at(poly, w, d, th, r=0.0):
     """
     from shapely.affinity import translate as _tr
     # ── 平移至局部原點（⇒ 判定於小座標下進行）──────────────────────────
+    # 🔒 **`LOCAL_ORIGIN` 係<u>判別力反例</u>之開關**（`W-G.9-61` `GB-82` (b-3)）：
+    #   置 `False` 即**暫時還原**本修，用以證「限縮後之閘仍抓得到原缺陷」。
+    #   ⚠️ **⛔ 生產路徑一律 `True`**；切換者須以 `try/finally` 還原（⛔ 不得留在 False）。
     _c = poly.centroid
-    _cx, _cy = float(_c.x), float(_c.y)
+    _cx, _cy = (float(_c.x), float(_c.y)) if LOCAL_ORIGIN else (0.0, 0.0)
     q = _rot(_tr(poly, xoff=-_cx, yoff=-_cy), -th)
     if r != 0.0:
         q = q.buffer(-r, **MITRE)

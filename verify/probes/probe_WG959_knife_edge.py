@@ -296,8 +296,17 @@ def main():                                                         # noqa: C901
     return L, sha
 
 
-def d_max_at_r(pst, w, th, r):
-    """`D_max` 於膨脹 `r` 下之值（⛔ 膨脹一律經 `fits_at` 之 `r` 參數·不自建 buffer）。"""
+def d_max_at_r(pst, w, th, r, d_floor=None):
+    """`D_max` 於膨脹 `r` 下之值（⛔ 膨脹一律經 `fits_at` 之 `r` 參數·不自建 buffer）。
+
+    🩸 **`GB-82` (b-4) 之去硬編（`W-G.9-61` §六-C）**：早退測試點原為**硬編** `lo = 1e-6`
+      ⇒ 改由**量得之 `d_floor`** 導出（`10 × d_floor`）。
+      ⛔ **`d_floor` 未給即 loud raise**——⛔ 不得靜默回退硬編值。
+    """
+    if d_floor is None:
+        raise RuntimeError(
+            "🔴 d_max_at_r：`d_floor` 未給 ⇒ 早退測試點無從導出（`GB-82` (b-4)）。"
+            "⛔ 禁硬編、⛔ 禁靜默回退。")
     # 🩸 **`GB-81` 之修（`W-G.9-60` §B-1）**：見 `probe_WG958_dmax_robust.d_max_at` 之同註。
     from probe_WG958_dmax_robust import _diameter
     hi = _diameter(pst) + 1.0
@@ -305,9 +314,11 @@ def d_max_at_r(pst, w, th, r):
         # 🔒 **飽和閘（§B-2）**：回值 ＝ `hi` ⇒ **loud raise**、⛔ 不得靜默出艙。
         raise RuntimeError(
             f"🔴 d_max_at_r 飽和：`hi`={hi:.6f} 仍可容納 ⇒ 回值將等於上界、⛔ 非量測值（`GB-81`）。")
-    lo = 1e-6
+    lo = 10.0 * d_floor          # 🔒 由量得之 `d_floor` 導出（⛔ 非硬編）
     if not fits_at(pst, w, lo, th, r)[0]:
         return 0.0
+    # ⚠️ **本 `1e-6` 係<u>收斂解析度</u>，⛔ 非早退測試點**——`GB-82` (b-4) 所指者為後者
+    #   （已於上行去硬編）。二者同值屬巧合 ⇒ **具名分辨**，⛔ 不使讀者誤認此處亦未去硬編。
     while hi - lo > 1e-6:
         mid = 0.5 * (lo + hi)
         if fits_at(pst, w, mid, th, r)[0]:

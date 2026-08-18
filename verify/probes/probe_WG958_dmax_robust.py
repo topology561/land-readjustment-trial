@@ -68,7 +68,7 @@ def _diameter(pst):
     return max(math.hypot(a[0] - b[0], a[1] - b[1]) for a in cs for b in cs)
 
 
-def d_max_at(pst, w, th, hi0=None):
+def d_max_at(pst, w, th, hi0=None, d_floor=None):
     """固定寬 `w`、姿態 `th` 下之**最大可容納深度**（二分·判定仍用 `fits_at`）。
 
     🔒 回**下界**（`lo`）：`fits(lo)` 為真、`fits(hi)` 為偽 ⇒ `D_max ∈ [lo, hi)`。
@@ -84,11 +84,19 @@ def d_max_at(pst, w, th, hi0=None):
         raise RuntimeError(
             f"🔴 d_max_at 飽和：`hi`={hi:.6f} 仍可容納 ⇒ 回值將等於上界、⛔ 非量測值"
             "（`GB-81`）。請擴大 `hi0` 或改用掃描式。")
+    # 🩸 **`GB-82` (b-4) 之去硬編（`W-G.9-61` §六-C）**：早退測試點與收斂容差
+    #   原皆為**硬編** `TOL_D = 1e-6` ⇒ 改由**量得之 `d_floor`** 導出。
+    #   ⛔ **`d_floor` 未給即 loud raise**——⛔ 不得靜默回退硬編值。
+    if d_floor is None:
+        raise RuntimeError(
+            "🔴 d_max_at：`d_floor` 未給 ⇒ 早退測試點與容差無從導出（`GB-82` (b-4)）。"
+            "⛔ 禁硬編、⛔ 禁靜默回退。")
+    _tol = 10.0 * d_floor
     lo = 0.0
-    if not fits_at(pst, w, lo + TOL_D, th, 0.0)[0]:
+    if not fits_at(pst, w, lo + _tol, th, 0.0)[0]:
         return 0.0                                 # 連極薄都塞不下
-    lo = lo + TOL_D
-    while hi - lo > TOL_D:
+    lo = lo + _tol
+    while hi - lo > _tol:
         mid = 0.5 * (lo + hi)
         if fits_at(pst, w, mid, th, 0.0)[0]:
             lo = mid
