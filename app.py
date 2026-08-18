@@ -11136,15 +11136,48 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     #      ⛔ **非垂距**；`W`（供 Rw 查表）為垂距，二者**同名不同量·禁互代**。
     _s_Ps = (Ps[0] - F1[0]) * dx + (Ps[1] - F1[1]) * dy
     _seg_P0Ps = abs(_s_Ps - t_q)
-    S1_par = max(_seg_P0Ps, T)
+    eps = _corner_range_eps(dxf_quantum)
+    # 🔴 **K-9-5-14（KL 裁 2026-08-17）＋ K-9-5-15（KL 裁 2026-08-18）：乙式落地**
+    #   內側界改為**沿 SIDELINE 法向**平移，其量為**垂距**（⛔ 不再是路平行距）：
+    #       `S1_perp = max(_seg_P0Ps · sinθ, T)`（`GB-79` 之換算式·逐字）
+    #   🔒 **等價之最小實作**：沿 `d̂` 平移 `S1_perp / sinθ` 所得之線，
+    #      與 SIDELINE 之**垂距恰為** `S1_perp`（二線平行·垂距 ＝ 位移之法向分量）
+    #      ⇒ 本處只改 `S1_par` 之取值，`_Tp` 之構造式**一字未動**
+    #      ⇒ 平移後側界**仍平行於 SIDELINE**（K-9-5-14 四：方向不變）。
+    #   ⚠️ **`S1_par` 之語意未變**（仍為路平行距·畸零地使用規則第四條第三款之量），
+    #      變的是**它由誰決定**：舊 `max(seg, T)` ⇒ 新 `max(seg, T/sinθ)`。
+    _sin_t = abs(sux * dy - suy * dx)          # ＝ |su × d̂| ＝ sinθ
+    # 🔒 **sinθ 退化之停機（⛔ 禁硬編·由 `_detect_dxf_quantum` 之 `q` 導出）**：
+    #   放大率 `1/sinθ` 會把 DXF 量化步長 `q` 放大為 `q/sinθ`；要求其不逾構造自檢之 `eps`
+    #   ⇒ **門檻 `sinθ_min = q / eps`**。⛔ `q` 取不到即停機（⛔ 不得兜底——
+    #   放大率無從認證時，`S1_perp/sinθ` 之有效位數亦無從認證）。
+    if not dxf_quantum:
+        _stop("K-9-5-14：`q`（DXF 量化步長）取不到 ⇒ `sinθ` 退化門檻無從導出"
+              "（放大率 1/sinθ 之誤差放大無界）⇒ ⛔ 禁硬編、禁兜底")
+    _sin_min = float(dxf_quantum) / eps
+    if not (_sin_min < 1.0):
+        _stop(f"K-9-5-14：`sinθ` 門檻 {_sin_min:.6g} ≥ 1 ⇒ 該閘不可滿足"
+              f"（q={float(dxf_quantum):.6g}／eps={eps:.6g}）⇒ ⛔ 不得以恆紅之閘出艙")
+    if _sin_t < _sin_min:
+        _stop(f"K-9-5-14：sinθ={_sin_t:.9f} < 門檻 {_sin_min:.9f}"
+              f"（＝q/eps·q={float(dxf_quantum):.6g}、eps={eps:.6g}）"
+              "⇒ 側界與前緣線近平行、放大率 1/sinθ 過大 ⇒ ⛔ 停機（禁靜默）")
+    S1_perp = max(_seg_P0Ps * _sin_t, T)
+    S1_par = S1_perp / _sin_t                  # ＝ max(_seg_P0Ps, T / sinθ)
     # 🔒 硬約束（GEO-1 §二(6)）：平移後之界線與 FRONT 之交點須落在 `Ps` 或其**內側**
     #   ⇒ **分配線永不切到截角**。
+    #   ⚠️ **二者須為<u>同一種距離</u>**（`W-G.9-67` §三 B-1-3）：`S1_par` 與 `_seg_P0Ps`
+    #      皆為**路平行距** ⇒ 可直接比；⛔ 不得拿垂距比路平行距。
     if S1_par + 1e-9 < _seg_P0Ps:
         _stop(f"S1_par {S1_par:.6f} < 線段 P0–Ps {_seg_P0Ps:.6f} ⇒ 分配線會切到截角（⛔ 構造矛盾）")
 
-    eps = _corner_range_eps(dxf_quantum)
-    # ── 自檢（新構造之**定義性**回代）：二側界之**路平行距**恆 ＝ `S1_par`，全深度 ──
+    # ── 自檢（新構造之**定義性**回代）：二側界之**垂距** ＝ `S1_perp`
+    #      **且** **路平行距** ＝ `S1_par`（＝`S1_perp/sinθ`），全深度 ──
     #   🔒 以**獨立實作**（shapely 線交點）覆算，⛔ 非以閉式自證（套套邏輯無鑑別力）。
+    #   🔴 **K-9-5-14 落地後改為<u>兩種距離並檢</u>**（`W-G.9-67` §三 B-2·⛔ 不得只換一種）
+    #      ——垂距係新受詞、路平行距係舊受詞，二者**同時**為真方證平移正確。
+    #   ⚠️ **`eps` 之語意具名**：此 `eps` 係**數值恆等式之容差**（「線有沒有平移對」），
+    #      ⛔ **非**「地夠不夠寬」之法律容差（`GB-80` 之加註·claude.ai 自誤 55）。
     _LBIG_CR = 1.0e5
     _Tp = (S1[0] + sigma * S1_par * dx, S1[1] + sigma * S1_par * dy)
     _Sinf_cr = _LS3([(S1[0] - sux * _LBIG_CR, S1[1] - suy * _LBIG_CR),
@@ -11163,6 +11196,11 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
         if abs(_w_ind - S1_par) > eps:
             _stop(f"構造自檢不合：深度 {_d_chk:.2f} 之路平行距 獨立覆算 {_w_ind:.6f} "
                   f"≠ S1_par {S1_par:.6f}（eps={eps:.6g}）——平移有誤")
+        # 🔴 **垂距之並檢**（K-9-5-14 之受詞·⛔ 不得只檢路平行距）
+        _p_ind = abs((_i2.x - _i1.x) * (-suy) + (_i2.y - _i1.y) * sux)
+        if abs(_p_ind - S1_perp) > eps:
+            _stop(f"構造自檢不合：深度 {_d_chk:.2f} 之垂距 獨立覆算 {_p_ind:.6f} "
+                  f"≠ S1_perp {S1_perp:.6f}（eps={eps:.6g}）——K-9-5-14 之平移有誤")
 
     blk = _SP3([(float(v[0]), float(v[1])) for v in block_vertices])
     if not blk.is_valid:
