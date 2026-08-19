@@ -1786,6 +1786,15 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
     for _lbl, _bv in result['baselines'].items():
         _bv.pop('_length', None)
 
+    # 🆕 **W-G.9-70 B-2-1：`q` 提升為<u>檔案級</u>**（`GB-85` 出路③）
+    #   🔒 **案由（⛔ 非偏好）**：`q`（DXF 坐標量化步長）係 `_detect_dxf_quantum(dxf_bytes)`
+    #      **逐檔**實測之量、**全檔唯一**；而其原本**只**存在於 `baselines[lbl]['_match']`
+    #      ——一個**街廓級**子字典 ⇒ 使用者一次**合法**之手動鎖邊（`f3_manual_baseline[lbl]`
+    #      被換成 `{'point','angle_deg','enabled'}`）即把它**抹掉**，
+    #      致 `_build_corner_range_v3` 之 `K-9-5-14` 停機在 app 內被觸發。
+    #      實證：`W-G.9-70` §C（B-1 先證紅·逐字訊息已入報告）。
+    #   🔒 **純加性**：⛔ **未改** `_match['q_detected']`（既有讀法一律保留為**回退**·B-2-2）。
+    result['dxf_quantum'] = (float(_q_detected) if _q_detected else None)
     result['diagnostics']['layers_found'] = sorted(_layers_found)
     # 🆕 W-G.5 C-11：綁定歧義 ⇒ **結構化例外**（引擎層 no-silent-fallback·禁靜默選）。
     #   UI 層以 `render_cad_binding_confirm` 攔截並渲染「圖資配對確認」頁；
@@ -10190,6 +10199,30 @@ def _corner_range_eps(dxf_quantum):
         return _CR_EPS_LEGAL
     return max(_CR_EPS_LEGAL, min(_CR_EPS_K * float(dxf_quantum), _CR_EPS_LEGAL_CEIL))
 
+
+def _cad_dxf_quantum(session_state, block_baseline):
+    """取 DXF 量化步長 `q`：**先檔案級、後回退街廓級**（`W-G.9-70` B-2·`GB-85` 出路③）。
+
+    🔒 **抽為 module 級之由**：其唯二呼叫端（`select_corner_lots_both_sides_v12` 之
+      `_q_wb`／Tab「街角規定範圍面積」段之 `_q_cr`）**皆在 `main()` 內或其下游**，
+      而 `harvest()` 以 AST 跳過 UI、`run_all` 從不執行 `main()` 內之敘述
+      （`CLAUDE.md` 之 `main()` 內敘述不得單獨以 `run_all` 驗收）
+      ⇒ **判準若內聯於呼叫端即無從被任何自動流程觸及**。抽出後方可由合成案直接餵。
+
+    🔒 **取值序（⛔ 不得對調）**：
+      1. **檔案級** `session_state['f3_cad_dxf_quantum']`——`q` 係 `_detect_dxf_quantum`
+         **逐檔**實測之量、**全檔唯一** ⇒ 其正確作用域即檔案級。
+      2. **回退**至既有之 `block_baseline['_match']['q_detected']`（**街廓級**）
+         ——🔒 **⛔ 不得刪除該讀法**（向後相容：舊 session、既有探針與夾具皆循此路）。
+    ⛔ **本函式不兜底**：二者皆無 ⇒ 回 `None`，由 `_build_corner_range_v3` 之
+      `K-9-5-14` 停機處置（該停機是**對的**——`sinθ` 門檻確需 `q`·⛔ 不得改它）。
+    """
+    _q = (session_state or {}).get('f3_cad_dxf_quantum')
+    if _q:
+        return float(_q)
+    return ((block_baseline or {}).get('_match') or {}).get('q_detected')
+
+
 def _shift_cut_block_range(side_mid, block_vertices, block_centroid,
                            alloc_dir, shift_distance, chamfer_tri=None, _who=''):
     """幾何原語：SIDE_LINE 中點 → 沿宗地分配線法向平移 `shift_distance` → 切 BLOCK
@@ -11168,6 +11201,22 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
     #   ⇒ **分配線永不切到截角**。
     #   ⚠️ **二者須為<u>同一種距離</u>**（`W-G.9-67` §三 B-1-3）：`S1_par` 與 `_seg_P0Ps`
     #      皆為**路平行距** ⇒ 可直接比；⛔ 不得拿垂距比路平行距。
+    #
+    # 🔒 **`GB-80` 之碼面標記（`W-G.9-70` D 組·`W-G.9-68` `Z-1` 所令·⛔ 不得再延）**：
+    #   本閘於**現行構造下為恆真式** ⇒ 其身分係**「防未來重構之斷言」**，
+    #   ⛔ **非**「會在本案咬到東西的閘」。⚠️ 讀者勿因其「從未紅過」而誤判為死碼。
+    #   **恆真之逐字理由**（⛔ 不得只寫結論）：
+    #       `S1_perp = max(_seg_P0Ps·sinθ, T)`（乙式·`K-9-5-14`）
+    #       `S1_par  = S1_perp / sinθ = max(_seg_P0Ps·sinθ, T) / sinθ`
+    #               `= max(_seg_P0Ps, T / sinθ)`      （`sinθ > 0` ⇒ 除法保序）
+    #               `≥ _seg_P0Ps`                      （`max` 之定義）
+    #   ⇒ `S1_par < _seg_P0Ps` **在乙式下不可能成立**（浮點餘裕另由 `+1e-9` 吸收）。
+    #   🔒 **它守的是「構造被改回甲式或其他式」之未來**——彼時 `S1_par` 不再由上式導出，
+    #      本閘即恢復其鑑別力。⚠️ **⛔ 不得因恆真而刪除**（no-silent-fallback：
+    #      刪掉它等於把「未來的錯」換成「靜默的錯」）。
+    #   ⚠️ **併看**：`K-9-5-14` 之**構造自檢**（下方 `_p_ind` / `_w_ind` 二式）對
+    #      **只改 `S1_perp` 取值**之回退**零判別力**（其為閉式自證·`W-G.9-69` §B-3）
+    #      ⇒ 該類回退之可紅之物 ＝ `verify/fixture_yi_construction.py`（乙式耦合斷言）。
     if S1_par + 1e-9 < _seg_P0Ps:
         _stop(f"S1_par {S1_par:.6f} < 線段 P0–Ps {_seg_P0Ps:.6f} ⇒ 分配線會切到截角（⛔ 構造矛盾）")
 
@@ -11449,15 +11498,18 @@ def select_corner_lots_both_sides_v12(
         _blk_cen_wb = (_blk_meta_wb.get('centroid') or (0.0, 0.0)) if _blk_meta_wb else (0.0, 0.0)
         _chamfer_left_wb = _make_chamfer_tri_wb(_blk_meta_wb, 'left') if _blk_meta_wb else None
         _chamfer_right_wb = _make_chamfer_tri_wb(_blk_meta_wb, 'right') if _blk_meta_wb else None
+        _ss_q_wb = _st_wb5.session_state
     except Exception:
         _slbs_wb = {}; _adir_wb = {}; _side_wb = {}; _alloc_wb = None
         _fl_wb = {}; _mb_wb = {}; _depth_wb = None
         _blk_verts_wb = []; _blk_cen_wb = (0.0, 0.0)
         _chamfer_left_wb = None; _chamfer_right_wb = None
+        _ss_q_wb = {}
     _fpts_wb = ([_fl_wb['p1'], _fl_wb['p2']]
                 if (_fl_wb.get('p1') and _fl_wb.get('p2')) else None)
     _bpts_wb = _baseline_pts_from_manual(_mb_wb, _blk_verts_wb)
-    _q_wb = ((_mb_wb.get('_match') or {}).get('q_detected'))
+    # 🆕 W-G.9-70 B-2-2：**先檔案級、後回退街廓級**（`GB-85` 出路③·⛔ 既有讀法保留於 helper 內）
+    _q_wb = _cad_dxf_quantum(_ss_q_wb, _mb_wb)
 
     _corner_range_left = None; _corner_range_right = None
     if _alloc_wb and len(_blk_verts_wb) >= 3:
@@ -16496,6 +16548,10 @@ def main():
                         st.session_state['f3_cad_alloc_dir'] = (
                             _cad_layers.get('alloc_dir_by_block', {}) or {}
                         )
+                        # 🆕 W-G.9-70 B-2-1：**檔案級** `q`（DXF 坐標量化步長·全檔唯一）
+                        #   ⇒ 存於檔案級 session 鍵，**⛔ 不再只倚賴街廓級 `_match`**
+                        #   （手動鎖邊會抹掉後者·`GB-85` 出路③）。取值序見 `_cad_dxf_quantum`。
+                        st.session_state['f3_cad_dxf_quantum'] = _cad_layers.get('dxf_quantum')
                         # 🚨 W-B §1-1b：未吻合 SIDE_LINE 警示
                         _sl_unmatched = (
                             _cad_layers.get('side_unmatched_warnings', []) or []
@@ -18208,7 +18264,8 @@ def main():
                         _fpts_cr = ([_fl_cr['p1'], _fl_cr['p2']]
                                     if (_fl_cr.get('p1') and _fl_cr.get('p2')) else None)
                         _bpts_cr = _baseline_pts_from_manual(_mb_cr, _blk_verts_cr)
-                        _q_cr = ((_mb_cr.get('_match') or {}).get('q_detected'))
+                        # 🆕 W-G.9-70 B-2-2：**先檔案級、後回退街廓級**（`GB-85` 出路③）
+                        _q_cr = _cad_dxf_quantum(st.session_state, _mb_cr)
                         _left_min = None; _right_min = None
                         if _alloc_cr and len(_blk_verts_cr) >= 3:
                             for _wh_cr, _has_cr in (('left', has_left), ('right', has_right)):
