@@ -1,0 +1,143 @@
+========================================================================================================================
+【`W-G.9-74`】容差 vs 欄位粒度之全倉對照（`K-8` 遷移項乙）　🔒 只量不改
+========================================================================================================================
+  🔒 **A-0 錯誤方向 ＝ 偏向「多報」**（節 98）：粒度不明／樣式不確定 ⇒ **類丙**，⛔ 不入「安全」。
+  🔒 **母體（可執行之集合定義）** ＝ `verify/` 下全部 `*.py`，扣 `__pycache__` 與**本檔自身**　⇒ **172 檔**
+     逐目錄：verify 32／verify/archive 2／verify/fixtures 3／verify/probes 117／verify/tools 18
+  🔒 **粒度映射**（`"COL": round(...,n)`）⇒ **89** 個欄名可指出出處
+     ⚠️ **本映射係<u>全倉按欄名</u>** ⇒ 跨檔同名會誤配；其方向為**多報**（A-0）⇒ 可接受·**已具名**
+     🔒 **同名多源而位數不一致者 ＝ 3**　⇒ `a分攤(㎡)`[0, 2]／`Δ面積(㎡)`[2, 3]／`面積(㎡)`[0, 2]
+        （不一致時取**最小位數 ＝ 最粗粒度** ⇒ 愈易判類乙 ⇒ **偏多報**）
+  🔒 本次採用之式 ＝ 甲／乙／丙／丁
+
+  逐式涵蓋（單位 ＝ **命中行**）
+    式 甲 ⇒ **213** 行　（**僅由本式涵蓋** ＝ 213）
+    式 乙 ⇒ **114** 行　（**僅由本式涵蓋** ＝ 114）
+    式 丙 ⇒ **4** 行　（**僅由本式涵蓋** ＝ 4）
+    式 丁 ⇒ **71** 行　（**僅由本式涵蓋** ＝ 71）
+    ⇒ **四式聯集（去重）＝ 402 行**
+
+  **判類（去重後 402 行）**：甲 **10**／乙 **23**／丙 **369**
+
+  🔴 **類乙（容差 ≥ 粒度 ⇒ 對一個粒度為盲）逐項列名**
+  檔:行                                                 式           容差被比欄                   粒度  粒度出處
+------------------------------------------------------------------------------------------------------------------------
+  verify/fixture_g3_static_guards.py:178              甲         0.01expect            0.0001  verify\wf_f3.py:229
+  verify/fixture_g3_static_guards.py:274              甲         0.01expect            0.0001  verify\wf_f3.py:229
+  verify/fixture_g3_static_guards.py:281              甲         0.01expect            0.0001  verify\wf_f3.py:229
+  verify/fixture_midlayer_6items.py:228               甲         0.01mode1_a_to_b      0.0001  verify\wf_f2.py:287
+  verify/probes/probe_WG913_midlayer.py:176           甲         0.01mode1_a_to_b      0.0001  verify\wf_f2.py:287
+  verify/probes/probe_ruling_N_recon.py:279           甲         0.01幾何面積(㎡)             0.01  verify\stepg_pipeline.py:984
+  verify/run_verification.py:1042                     甲         0.15pool_delta          0.01  verify\wf_f1.py:409
+  verify/run_verification.py:1118                     甲         0.01mode1_a_to_b      0.0001  verify\wf_f2.py:287
+  verify/run_verification.py:1187                     甲         0.01a_628_18_2          0.01  verify\wf_f3.py:204
+  verify/run_verification.py:1279                     甲         0.12配額G(㎡)              0.01  verify\wf_f4.py:803
+  verify/run_verification.py:1283                     甲         0.01配額G(㎡)              0.01  verify\wf_f4.py:803
+  verify/stepg_pipeline.py:674                        甲         0.05G                   0.01  verify\wf_f4.py:1164
+  verify/stepg_pipeline.py:765                        甲         0.05G                   0.01  verify\wf_f4.py:1164
+  verify/wf_f0.py:310                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f1.py:258                                 甲         0.05面積                  0.01  verify\fixture_end_fallback.py:72
+  verify/wf_f1.py:292                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f1.py:347                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f2.py:245                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f2.py:246                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f2.py:267                                 甲         0.01模式二a′(㎡)            0.01  verify\wf_f4.py:409
+  verify/wf_f4.py:1405                                甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f4.py:1447                                甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f4.py:1479                                甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+------------------------------------------------------------------------------------------------------------------------
+  ⇒ **類乙 ＝ 23 筆**
+
+  ⚠️ **類丙 ＝ 369 筆（須人判·⛔ 未推定為安全）**——逐項見下（前 40）
+  檔:行                                                 式           容差被比欄             
+------------------------------------------------------------------------------------------------------------------------
+  verify/archive/m_rescue.py:147                      乙         NoneNone            
+  verify/fixture_baseline_candidates.py:17            乙         NoneNone            
+  verify/fixture_baseline_candidates.py:173           甲        1e-06None            
+  verify/fixture_baseline_candidates.py:218           甲        1e-12None            
+  verify/fixture_block_depth_n19p.py:125              乙         NoneNone            
+  verify/fixture_block_depth_n19p.py:265              甲        1e-09None            
+  verify/fixture_block_depth_n19p.py:266              甲         0.01None            
+  verify/fixture_block_depth_n19p.py:278              甲         0.01None            
+  verify/fixture_block_depth_n19p.py:301              甲        5e-09None            
+  verify/fixture_block_depth_n19p.py:302              甲        5e-09None            
+  verify/fixture_corner_range_k8.py:118               甲        1e-12None            
+  verify/fixture_corner_range_k8.py:133               甲        1e-12None            
+  verify/fixture_corner_range_k8.py:152               甲        1e-09None            
+  verify/fixture_corner_range_k8.py:197               甲        1e-12None            
+  verify/fixture_corner_range_k8.py:224               甲        1e-06None            
+  verify/fixture_e2e_termination.py:131               丁         NoneNone            
+  verify/fixture_end_fallback.py:84                   甲        1e-06None            
+  verify/fixture_end_fallback.py:85                   甲        1e-06None            
+  verify/fixture_end_fallback.py:86                   甲        1e-06None            
+  verify/fixture_end_fallback.py:102                  甲        1e-06None            
+  verify/fixture_end_fallback.py:105                  甲        1e-06None            
+  verify/fixture_end_reserve.py:166                   甲        1e-06None            
+  verify/fixture_end_reserve.py:167                   甲        1e-06None            
+  verify/fixture_n14_feed_chain.py:170                甲         0.01None            
+  verify/fixture_n14_feed_chain.py:172                甲        1e-09None            
+  verify/fixture_n14_feed_chain.py:175                甲        1e-09None            
+  verify/fixture_n14_min_width.py:25                  甲         0.01None            
+  verify/fixture_n14_min_width.py:94                  甲        1e-06None            
+  verify/fixture_n14_min_width.py:217                 甲        1e-06None            
+  verify/probes/probe_D1_F_slot.py:133                甲        1e-09None            
+  verify/probes/probe_D1_F_slot.py:134                甲        1e-09None            
+  verify/probes/probe_D2b12_bridge.py:20              乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:99              乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:100             乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:101             乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:105             乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:109             乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:110             乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:111             乙         NoneNone            
+  verify/probes/probe_D2b12_bridge.py:112             乙         NoneNone            
+  …（另 329 筆未顯示·🔒 **⛔ 非靜默截斷**·總數已於上行給出）
+
+========================================================================================================================
+【A-4】注入式**一粒度**變異（⛔ 實測·⛔ 非讀常數）
+========================================================================================================================
+  🔒 **受詞**：以 `Δ = 一個粒度` 代入該行之 `abs(Δ) <op> tol` **實際求值**
+     ⇒ 測其**運算子 ＋ 容差**對「恰一個粒度」之反應（`GB-27` 之要害）。⛔ 非重跑管線。
+
+  ── **類乙**（預期：**不轉紅** ＝ 盲）　母體 23 筆·🔒 取樣規則 ＝ **依 `檔:行` 字典序取前 8 筆**
+  檔:行                                               op       容差       粒度       注入後轉紅?     判
+------------------------------------------------------------------------------------------------------------------------
+  verify/fixture_g3_static_guards.py:178             <     0.01   0.0001        False   ✅ 盲
+  verify/fixture_g3_static_guards.py:274             <     0.01   0.0001        False   ✅ 盲
+  verify/fixture_g3_static_guards.py:281             <     0.01   0.0001        False   ✅ 盲
+  verify/fixture_midlayer_6items.py:228              <     0.01   0.0001        False   ✅ 盲
+  verify/probes/probe_WG913_midlayer.py:176          <     0.01   0.0001        False   ✅ 盲
+  verify/probes/probe_ruling_N_recon.py:279          <     0.01     0.01         True 🔴 竟轉紅
+  verify/run_verification.py:1042                   <=     0.15     0.01        False   ✅ 盲
+  verify/run_verification.py:1118                    <     0.01   0.0001        False   ✅ 盲
+------------------------------------------------------------------------------------------------------------------------
+  ⇒ **類乙之注入：轉紅 1 筆／未轉紅（盲）7 筆**
+
+  ── 🔒 **判別力（類甲·⛔ 不得省）**（預期：**須全數轉紅**）　母體 10 筆
+  檔:行                                               op       容差       粒度       注入後轉紅?     判
+------------------------------------------------------------------------------------------------------------------------
+  verify/fixture_end_fallback.py:108                 <    1e-06     0.01         True   ✅ 紅
+  verify/probes/probe_D1_F_slot.py:158              <=    0.005      1.0         True   ✅ 紅
+  verify/probes/probe_D1_F_slot.py:159              <=    0.005      1.0         True   ✅ 紅
+  verify/probes/probe_K9_s62c_attribution.py:522    <=    0.005     0.01         True   ✅ 紅
+  verify/probes/probe_K9_s62c_attribution.py:528    <=    0.005     0.01         True   ✅ 紅
+  verify/probes/probe_K9_seg6_w_delta.py:361         >    1e-15     0.01         True   ✅ 紅
+  verify/run_verification.py:726                     >    1e-09   0.0001         True   ✅ 紅
+  verify/run_verification.py:1249                    <    1e-06     0.01         True   ✅ 紅
+  verify/wf_f4.py:114                                >    1e-06     0.01         True   ✅ 紅
+  verify/wf_f4.py:852                                >    1e-09   0.0001         True   ✅ 紅
+------------------------------------------------------------------------------------------------------------------------
+  ⇒ **類甲之注入：轉紅 10／10**　✅ 注入器有效
+
+  🔴 **靜態判準（A-2）vs 注入實測之不符——逐項具名**
+     🔒 靜態判準（施工單 A-2 逐字）＝ `容差 ≥ 粒度 ⇒ 類乙`，**對運算子之嚴格性為盲**：
+        · `>` ／ `<=` 之盲域 ＝ `粒度 ≤ 容差`　· `>=` ／ `<` 之盲域 ＝ `粒度 < 容差`（**嚴格**）
+        ⇒ **`粒度 == 容差` 時二者分家**。
+     🔴 verify/probes/probe_ruling_N_recon.py:279　靜態判＝乙／實測＝轉紅　（op `<`·容差 0.01·粒度 0.01）
+     🔴 verify/run_verification.py:1187　靜態判＝乙／實測＝轉紅　（op `<`·容差 0.01·粒度 0.01）
+     🔴 verify/run_verification.py:1283　靜態判＝乙／實測＝轉紅　（op `<`·容差 0.01·粒度 0.01）
+     🔴 verify/wf_f2.py:245　靜態判＝乙／實測＝轉紅　（op `<`·容差 0.01·粒度 0.01）
+     🔴 verify/wf_f2.py:246　靜態判＝乙／實測＝轉紅　（op `<`·容差 0.01·粒度 0.01）
+     🔴 verify/wf_f2.py:267　靜態判＝乙／實測＝轉紅　（op `<`·容差 0.01·粒度 0.01）
+     ⇒ **不符 ＝ 6 筆**（🔒 其方向為**把非盲多報為盲** ⇒ **偏多報**·符合 A-0 ⇒ ⛔ 本批不改判準·只具名）
+========================================================================================================================
