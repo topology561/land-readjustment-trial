@@ -61,6 +61,7 @@ RX = {
 _COL = re.compile(r"""\[\s*["']([^"']+)["']\s*\]|\.get\(\s*["']([^"']+)["']""")
 _ROUND_COL = re.compile(r"""["']([^"']+)["']\s*:\s*round\s*\([^,]*,\s*([0-9]+)\s*\)""")
 WINDOW = 8
+_ABS_ASSIGN = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*abs\s*\(")
 
 
 def py_files():
@@ -128,6 +129,23 @@ def scan(files, forms=("甲", "乙", "丙", "丁")):
                         except Exception:                           # noqa: BLE001
                             tol = None
                     hits.append((p, i, f, l.strip(), tol, op))
+            # 🩸 **跨行之甲式**（`W-G.9-75` 自誤·⛔ 首版漏之 ⇒ **少報**·違反 A-0）：
+            #   `_dC = abs(A - B)` 與其比較 `_dC < 1e-8` **不在同一行**
+            #   ⇒ 單行 regex 掃不到（實例 `run_verification.py:712`＋`:714`·v3 C 兩形等價）。
+            #   ⇒ 補一式：`名 = abs(...)` 之後 `WINDOW` 行內出現 `名 <op> 數值`。
+            ma = _ABS_ASSIGN.search(s) or _ABS_ASSIGN.search(l)
+            if ma and "甲" in forms:
+                var = re.escape(ma.group(1))
+                for j in range(i, min(len(lines), i + WINDOW)):
+                    mc = re.search(r"(?<![A-Za-z0-9_])" + var + r"\s*(<=|>=|<|>)\s*(" + _NUM + r")",
+                                   lines[j])
+                    if mc:
+                        try:
+                            _t = float(mc.group(2))
+                        except Exception:                           # noqa: BLE001
+                            _t = None
+                        hits.append((p, i, "甲", l.strip(), _t, mc.group(1)))
+                        break
     return hits
 
 
@@ -147,14 +165,35 @@ def classify(hits, gmap, all_lines):
                     break
             if col:
                 break
-        if tol is None or gran is None:
+        if tol is None or gran is None or op is None:
             k = "丙"
-        elif tol < gran:
-            k = "甲"
         else:
-            k = "乙"
+            k = "乙" if is_blind(tol, op, gran) else "甲"
         out.append((p, i, f, tol, col, gran, src, k, op))
     return out
+
+
+def is_blind(tol, op, gran):
+    """🔴 **`W-G.9-75` A-1：盲域之<u>逐運算子</u>分列**（承 `W-G.9-74` 自誤 71）。
+
+    「盲」＝ 注入**恰一個粒度**之差，該檢**不報出問題**。逐式推導（⛔ 逐字寫出）：
+
+    | 檢式 | 語意 | 報出問題之條件 | ⇒ **盲域** |
+    |---|---|---|---|
+    | `abs(Δ) < tol`  | 近似**斷言**（真＝通過） | 式為**偽** | `粒度 < tol`（**嚴格**） |
+    | `abs(Δ) <= tol` | 同上 | 式為**偽** | `粒度 ≤ tol` |
+    | `abs(Δ) > tol`  | **違規述詞**（真＝報違規） | 式為**真** | `粒度 ≤ tol` |
+    | `abs(Δ) >= tol` | 同上 | 式為**真** | `粒度 < tol`（**嚴格**） |
+
+    🔒 **其餘式**（`isclose`／`approx`／`round==`／具名容差／比對器內建）
+      ——其盲域**依賴本器取不到之參數**（`rel_tol`／`abs_tol`／被比量之位數）
+      ⇒ **推不出 ⇒ 類丙**（A-0 之「多報」方向）。
+
+    🩸 **`W-G.9-74` 之舊判準 `容差 ≥ 粒度 ⇒ 乙` 對<u>嚴格性</u>為盲**
+      ⇒ `粒度 == 容差` 時，`<`／`>=` 二式被**多報為盲**（實測 6 筆）。本函式即其修正。
+    """
+    g, t = float(gran), float(tol)
+    return {"<": g < t, "<=": g <= t, ">": g <= t, ">=": g < t}[op]
 
 
 def inject_one_granularity(tol, op, gran):
@@ -176,6 +215,121 @@ def inject_one_granularity(tol, op, gran):
     d = float(gran)
     cond = {"<": d < tol, "<=": d <= tol, ">": d > tol, ">=": d >= tol}[op]
     return cond if op in (">", ">=") else (not cond)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 🔴 `W-G.9-75` A-3：**三族之比對點**（⛔ 逐點 `檔:行`·⛔ 不以總計數頂替）
+#   🔒 **本表係 CC 現查所得**（施工單 §二 A-3 之族三⛔ 未給錨·自行以字樣
+#      `v3 財務錨` 起手搜得）。每點之「檢式」逐字取自該行。
+#   🔒 **方向（節 98）**：本表若漏列一個比對點 ⇒ **少報** ⇒ 故**寧可多列**
+#      （如把 probe／非閘之比對點亦列入並標明其身分）。
+# ══════════════════════════════════════════════════════════════════════
+FAMILIES = [
+    ("k* 六塊經驗錨", [
+        ("verify/run_verification.py", 682, "_ks == K_STAR_EXPECT[tag]", "相等（dict）", "閘",
+         "k* 六塊經驗錨"),
+        ("verify/probes/probe_jkstar_legitimacy.py", 91, "（探針·非閘）", "—", "探針", None),
+    ]),
+    ("W-D.4 清單", [
+        ("verify/wd4_tier_list.py", 432,
+         'd["mina_qu"] == MINA_QU_EXPECT and d["half_disp"] == HALF_EXPECT', "相等", "閘",
+         "W-D.4 MinA_區"),
+        ("verify/wd4_tier_list.py", 437,
+         'd["tracks"] == TRACK_EXPECT and d["tiers"] == TIER_EXPECT', "相等", "閘",
+         "F.0-pre 雙軌錨"),
+        ("verify/wd4_tier_list.py", 434,
+         'd["flagged_ct"] == FLAGGED_EXPECT and consumed == FLAGGED_EXPECT', "相等", "閘",
+         "旗標全消費"),
+    ]),
+    ("v3 財務錨", [
+        ("verify/run_verification.py", 699, 'round(_fin["B"], 6) == float(_anc["B"])',
+         "相等（先 round 6）", "閘", "v3 財務錨 B"),
+        ("verify/run_verification.py", 702, 'round(_fin["C"], 6) == float(_anc["C"])',
+         "相等（先 round 6）", "閘", "v3 財務錨 C"),
+        ("verify/run_verification.py", 705, 'round(_fin["eng"]) == _mid["工程費_元"]（三項）',
+         "相等（先 round 0）", "閘", "v3 中繼錨"),
+        ("verify/run_verification.py", 712, '_dC = abs(_fin["C"] - _fin["C_avg_form"])  … < 1e-8',
+         "🔴 **有容差** `< 1e-8`", "閘", "v3 C 兩形等價"),
+        ("verify/run_verification.py", 726, 'abs(float(_r["A 地價比"]) - _exp) > 1e-9',
+         "🔴 **有容差** `> 1e-9`", "閘", "v3 A 逐宗全查"),
+    ]),
+]
+
+RUNALL_LOG = os.path.join(VERIFY, "out", "wg973_runall_6a83e1c.log")
+_RES = re.compile(r"^\s*(✅ PASS|🔴 FAIL)\s\s(.*)$")
+_DELTA = re.compile(r"\|Δ\|=([0-9.eE+-]+)")
+
+
+def log_index(path):
+    """回 [(判, 名目全文, |Δ|或 None)]——供 A-5 判「該檢此刻有沒有跑／got 可不可得」。"""
+    out = []
+    if not os.path.exists(path):
+        return out
+    for l in io.open(path, encoding="utf-8", errors="replace").read().splitlines():
+        m = _RES.match(l)
+        if m:
+            d = _DELTA.search(m.group(2))
+            out.append((m.group(1), m.group(2), float(d.group(1)) if d else None))
+    return out
+
+
+def section_families(uniq, W):
+    """A-3 三族逐族判 ＋ A-5 盲域佔用。"""
+    L = []
+    idx = log_index(RUNALL_LOG)
+    inpop = {(os.path.relpath(r[0], REPO).replace(chr(92), "/"), r[1]): r for r in uniq}
+
+    L.append("=" * W)
+    L.append("【A-3】**三族逐族判**（⛔ 逐點 `檔:行`·⛔ 不以總計數頂替）　＋　【A-5】**盲域佔用**")
+    L.append("=" * W)
+    L.append(f"  🔒 A-5 之 `got` 來源 ＝ 最近一次 `run_all` log："
+             f"`{os.path.relpath(RUNALL_LOG, REPO).replace(chr(92), '/')}`"
+             f"（結果行 {len(idx)} 筆）")
+    L.append("  🔒 **判之三值**：🔴 佔用（`0 < |got−want| < 容差`）／✅ 未佔用（`==0`）／"
+             "⚠️ **不可得**（該檢此刻未執行·⛔ **不得推定為未佔用**）")
+    L.append("")
+    for fam, pts in FAMILIES:
+        L.append(f"  ── 族：**{fam}**（比對點 **{len(pts)}** 處）" + "─" * 52)
+        L.append(f"     {'檔:行':<46}{'身分':<6}{'檢式類型':<20}{'在母體?':<9}{'類':<4}{'A-5 判'}")
+        for path, ln, expr, kind, role, nm in pts:
+            key = (path, ln)
+            k = inpop.get(key)
+            inp = "✅ 在" if k else "🔴 不在"
+            cls = k[7] if k else "—"
+            # A-5
+            a5 = "⚠️ 不可得"
+            if nm:
+                hit = [r for r in idx if nm in r[1]]
+                if not hit:
+                    a5 = "⚠️ 不可得（該檢未執行）"
+                else:
+                    j, txt, dv = hit[0]
+                    _eq = kind.startswith("相等")
+                    _empty = ("0 列" in txt) or ("（0 " in txt)
+                    if not j.startswith("✅"):
+                        a5 = "⚠️ 不可得（該檢 FAIL）"
+                    elif _empty:
+                        # 🩸 **母體為空之假綠**（`W-G.9-75` 自誤·首版誤標「未佔用」）：
+                        #   `v3 A 逐宗全查（**0 列**…）` ⇒ 該迴圈**零次執行**
+                        #   ⇒ PASS **不蘊含** `Δ==0`（考古「空真假綠」族）。
+                        a5 = "⚠️ **不可得（母體為空·0 列）**"
+                    elif _eq:
+                        a5 = "✅ 未佔用（相等式 PASS ⇒ Δ＝0）"
+                    elif dv is None:
+                        # 🔒 容差式 PASS 而未印 Δ ⇒ **只知 `|Δ| < 容差`、⛔ 不知是否為 0**
+                        a5 = "⚠️ 不可得（容差式 PASS·未印 Δ ⇒ 只知 |Δ|<容差）"
+                    else:
+                        a5 = (f"🔴 **佔用** |Δ|={dv:g}" if dv > 0 else f"✅ 未佔用 |Δ|={dv:g}")
+            L.append(f"     {path + ':' + str(ln):<46}{role:<6}{kind:<20}{inp:<9}{cls:<4}{a5}")
+        L.append("")
+    L.append("  🔒 **不在母體者之成因（⛔ 逐族具名）**：其檢式為**相等比較**（`==`），"
+             "⛔ **無容差** ⇒ 依 A-1 之母體定義（「以容差比對之數值」）**本就不在**")
+    L.append("     ⇒ 🔒 相等式之**盲域 ＝ ∅**（任何非零差皆報出）⇒ 其「容差 vs 粒度」之問**不適用**。")
+    L.append("     🩸 **惟⛔ 不得由此推出「母體無不足」**——本器首版即漏掉**跨行**之甲式")
+    L.append("        （`_dC = abs(...)` 與 `_dC < 1e-8` 分行·實例 `run_verification.py:712`）")
+    L.append("        ⇒ 該漏之方向為**少報**（違反 A-0）⇒ 已補一式；**⛔ 不保證已窮盡**。")
+    L.append("=" * W)
+    return L
 
 
 def main(argv):                                                     # noqa: C901
@@ -252,11 +406,30 @@ def main(argv):                                                     # noqa: C901
     print(f"  {'檔:行':<52}{'式':<4}{'容差':>10}{'被比欄':<16}")
     print("-" * W)
     _c = [r for r in uniq if r[7] == "丙"]
-    for p, i, f, tol, col, gran, src, k, op in _c[:40]:
-        print(f"  {os.path.relpath(p, REPO).replace(chr(92), '/') + ':' + str(i):<52}"
-              f"{f:<4}{str(tol):>10}{str(col):<16}")
-    if len(_c) > 40:
-        print(f"  …（另 {len(_c) - 40} 筆未顯示·🔒 **⛔ 非靜默截斷**·總數已於上行給出）")
+
+    def _why(r):
+        """🔴 `W-G.9-75` A-2：**類丙之成因分型**（⛔ 「不明」二字單獨出現者視同未查）。"""
+        _p, _i, _f, _tol, _col, _gran, _src, _k, _op = r
+        if _tol is None or _op is None:
+            return "型① 無數值容差可解析（式為乙／丙／丁·⛔ 非 `abs(…)<op>數值`）"
+        if _gran is None:
+            return "型② 有容差而**被比欄查無 `round` 出處** ⇒ 粒度來源未定"
+        return "型③ 有容差有粒度而**該式之盲域推不出**（`isclose`／`approx`／`round==`）"
+
+    _types = {}
+    for r in _c:
+        _types.setdefault(_why(r), []).append(r)
+    print("  🔒 **成因分型（⛔ 三型窮盡·各型逐項全列於下）**")
+    for t_, lst in sorted(_types.items()):
+        print(f"     {t_}　⇒ **{len(lst)}** 筆")
+    print(f"     ⇒ 合計 **{sum(len(v) for v in _types.values())}** ＝ 類丙總數 **{len(_c)}**"
+          f"　{'✅ 三對齊' if sum(len(v) for v in _types.values()) == len(_c) else '🔴 不齊'}")
+    print("")
+    for t_, lst in sorted(_types.items()):
+        print(f"  ── {t_}（{len(lst)} 筆·**逐項全列**·⛔ 不截斷）")
+        for p, i, f, tol, col, gran, src, k, op in sorted(lst, key=lambda r: (r[0], r[1])):
+            print(f"     {os.path.relpath(p, REPO).replace(chr(92), '/') + ':' + str(i):<52}"
+                  f"{f:<4}{str(tol):>10}{str(col):<16}")
     print("")
 
     # ══════════════════════════════════════════════════════════════
@@ -269,12 +442,12 @@ def main(argv):                                                     # noqa: C901
     _B = [r for r in uniq if r[7] == "乙" and r[8]]
     _A = [r for r in uniq if r[7] == "甲" and r[8]]
     print(f"  ── **類乙**（預期：**不轉紅** ＝ 盲）　母體 {len(_B)} 筆"
-          + (f"·🔒 取樣規則 ＝ **依 `檔:行` 字典序取前 8 筆**" if len(_B) > 8 else "·**全取**"))
+          + (f"·🔒 取樣規則 ＝ **依 `檔:行` 字典序取前 20 筆**" if len(_B) > 20 else "·**全取**"))
     print(f"  {'檔:行':<48}{'op':>4}{'容差':>9}{'粒度':>9}{'注入後轉紅?':>13}{'判':>6}")
     print("-" * W)
     _bad_b = 0
-    for p, i, f, tol, col, gran, src, k, op in (sorted(_B, key=lambda r: (r[0], r[1]))[:8]
-                                                if len(_B) > 8 else _B):
+    for p, i, f, tol, col, gran, src, k, op in (sorted(_B, key=lambda r: (r[0], r[1]))[:20]
+                                                if len(_B) > 20 else sorted(_B, key=lambda r: (r[0], r[1]))):
         red = inject_one_granularity(tol, op, gran)
         if red:
             _bad_b += 1
@@ -282,7 +455,8 @@ def main(argv):                                                     # noqa: C901
               f"{op:>4}{tol:>9}{gran:>9}{str(red):>13}"
               f"{('🔴 竟轉紅' if red else '✅ 盲'):>6}")
     print("-" * W)
-    print(f"  ⇒ **類乙之注入：轉紅 {_bad_b} 筆／未轉紅（盲）{min(len(_B), 8) - _bad_b} 筆**")
+    print(f"  ⇒ **類乙之注入：轉紅 {_bad_b} 筆／未轉紅（盲）{min(len(_B), 20) - _bad_b} 筆**"
+          f"（母體 {len(_B)} 筆·⛔ 非取樣）")
     print("")
     print(f"  ── 🔒 **判別力（類甲·⛔ 不得省）**（預期：**須全數轉紅**）　母體 {len(_A)} 筆")
     print(f"  {'檔:行':<48}{'op':>4}{'容差':>9}{'粒度':>9}{'注入後轉紅?':>13}{'判':>6}")
@@ -317,6 +491,9 @@ def main(argv):                                                     # noqa: C901
     print(f"     ⇒ **不符 ＝ {len(_dis)} 筆**"
           + ("（🔒 其方向為**把非盲多報為盲** ⇒ **偏多報**·符合 A-0 ⇒ ⛔ 本批不改判準·只具名）"
              if _dis else ""))
+    print("")
+    for _l in section_families(uniq, W):
+        print(_l)
     print("=" * W)
     return 0
 

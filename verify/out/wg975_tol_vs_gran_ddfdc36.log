@@ -1,0 +1,530 @@
+========================================================================================================================
+【`W-G.9-74`】容差 vs 欄位粒度之全倉對照（`K-8` 遷移項乙）　🔒 只量不改
+========================================================================================================================
+  🔒 **A-0 錯誤方向 ＝ 偏向「多報」**（節 98）：粒度不明／樣式不確定 ⇒ **類丙**，⛔ 不入「安全」。
+  🔒 **母體（可執行之集合定義）** ＝ `verify/` 下全部 `*.py`，扣 `__pycache__` 與**本檔自身**　⇒ **172 檔**
+     逐目錄：verify 32／verify/archive 2／verify/fixtures 3／verify/probes 117／verify/tools 18
+  🔒 **粒度映射**（`"COL": round(...,n)`）⇒ **89** 個欄名可指出出處
+     ⚠️ **本映射係<u>全倉按欄名</u>** ⇒ 跨檔同名會誤配；其方向為**多報**（A-0）⇒ 可接受·**已具名**
+     🔒 **同名多源而位數不一致者 ＝ 3**　⇒ `a分攤(㎡)`[0, 2]／`Δ面積(㎡)`[2, 3]／`面積(㎡)`[0, 2]
+        （不一致時取**最小位數 ＝ 最粗粒度** ⇒ 愈易判類乙 ⇒ **偏多報**）
+  🔒 本次採用之式 ＝ 甲／乙／丙／丁
+
+  逐式涵蓋（單位 ＝ **命中行**）
+    式 甲 ⇒ **230** 行　（**僅由本式涵蓋** ＝ 230）
+    式 乙 ⇒ **114** 行　（**僅由本式涵蓋** ＝ 114）
+    式 丙 ⇒ **4** 行　（**僅由本式涵蓋** ＝ 4）
+    式 丁 ⇒ **71** 行　（**僅由本式涵蓋** ＝ 71）
+    ⇒ **四式聯集（去重）＝ 419 行**
+
+  **判類（去重後 419 行）**：甲 **16**／乙 **17**／丙 **386**
+
+  🔴 **類乙（容差 ≥ 粒度 ⇒ 對一個粒度為盲）逐項列名**
+  檔:行                                                 式           容差被比欄                   粒度  粒度出處
+------------------------------------------------------------------------------------------------------------------------
+  verify/fixture_g3_static_guards.py:178              甲         0.01expect            0.0001  verify\wf_f3.py:229
+  verify/fixture_g3_static_guards.py:274              甲         0.01expect            0.0001  verify\wf_f3.py:229
+  verify/fixture_g3_static_guards.py:281              甲         0.01expect            0.0001  verify\wf_f3.py:229
+  verify/fixture_midlayer_6items.py:228               甲         0.01mode1_a_to_b      0.0001  verify\wf_f2.py:287
+  verify/probes/probe_WG913_midlayer.py:176           甲         0.01mode1_a_to_b      0.0001  verify\wf_f2.py:287
+  verify/run_verification.py:1042                     甲         0.15pool_delta          0.01  verify\wf_f1.py:409
+  verify/run_verification.py:1118                     甲         0.01mode1_a_to_b      0.0001  verify\wf_f2.py:287
+  verify/run_verification.py:1279                     甲         0.12配額G(㎡)              0.01  verify\wf_f4.py:803
+  verify/stepg_pipeline.py:674                        甲         0.05G                   0.01  verify\wf_f4.py:1164
+  verify/stepg_pipeline.py:765                        甲         0.05G                   0.01  verify\wf_f4.py:1164
+  verify/wf_f0.py:310                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f1.py:258                                 甲         0.05面積                  0.01  verify\fixture_end_fallback.py:72
+  verify/wf_f1.py:292                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f1.py:347                                 甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f4.py:1405                                甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f4.py:1447                                甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+  verify/wf_f4.py:1479                                甲         0.01G(㎡)                0.01  verify\wd4_tier_list.py:347
+------------------------------------------------------------------------------------------------------------------------
+  ⇒ **類乙 ＝ 17 筆**
+
+  ⚠️ **類丙 ＝ 386 筆（須人判·⛔ 未推定為安全）**——逐項見下（前 40）
+  檔:行                                                 式           容差被比欄             
+------------------------------------------------------------------------------------------------------------------------
+  🔒 **成因分型（⛔ 三型窮盡·各型逐項全列於下）**
+     型① 無數值容差可解析（式為乙／丙／丁·⛔ 非 `abs(…)<op>數值`）　⇒ **189** 筆
+     型② 有容差而**被比欄查無 `round` 出處** ⇒ 粒度來源未定　⇒ **197** 筆
+     ⇒ 合計 **386** ＝ 類丙總數 **386**　✅ 三對齊
+
+  ── 型① 無數值容差可解析（式為乙／丙／丁·⛔ 非 `abs(…)<op>數值`）（189 筆·**逐項全列**·⛔ 不截斷）
+     verify/archive/m_rescue.py:147                      乙         NoneNone            
+     verify/fixture_baseline_candidates.py:17            乙         NoneNone            
+     verify/fixture_block_depth_n19p.py:125              乙         NoneNone            
+     verify/fixture_e2e_termination.py:131               丁         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:20              乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:99              乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:100             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:101             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:105             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:109             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:110             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:111             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:112             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:113             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:115             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:116             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:117             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:118             乙         NoneNone            
+     verify/probes/probe_D2b12_bridge.py:197             乙         NoneNone            
+     verify/probes/probe_D2b13_partition.py:24           乙         NoneNone            
+     verify/probes/probe_D2b13_partition.py:86           乙         NoneNone            
+     verify/probes/probe_D2b13_partition.py:137          乙         NoneNone            
+     verify/probes/probe_D2b13_partition.py:265          乙         NoneNone            
+     verify/probes/probe_D2b24C_pool.py:226              乙         NoneNone            
+     verify/probes/probe_D2b2_exposure.py:53             乙         NoneNone            
+     verify/probes/probe_D2b2_exposure.py:54             乙         NoneNone            
+     verify/probes/probe_D2b2_exposure.py:190            乙         NoneNone            
+     verify/probes/probe_D2b2_exposure.py:298            乙         NoneNone            
+     verify/probes/probe_D2b2_exposure.py:299            乙         NoneNone            
+     verify/probes/probe_D2b7_dirscope.py:46             乙         NoneNone            
+     verify/probes/probe_D2b7_dirscope.py:89             乙         NoneNone            
+     verify/probes/probe_D2b7_dirscope.py:111            乙         NoneNone            
+     verify/probes/probe_D2b7_dirscope.py:182            乙         NoneNone            
+     verify/probes/probe_D2b_expect.py:7                 丁         NoneNone            
+     verify/probes/probe_D2b_expect.py:72                丁         NoneNone            
+     verify/probes/probe_K9_geo2_W1_calibre.py:24        丁         NoneNone            
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:64  乙         NoneNone            
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:289 乙         NoneNone            
+     verify/probes/probe_WG949_free_pose.py:120          乙         NoneNone            
+     verify/probes/probe_WG94b_f3_parity.py:43           丁         NoneNone            
+     verify/probes/probe_WG94b_f3_parity.py:102          丁         NoneNone            
+     verify/probes/probe_WG94b_f3_parity.py:108          丁         NoneNone            
+     verify/probes/probe_WG959_knife_edge.py:10          乙         NoneNone            
+     verify/probes/probe_WG959_knife_edge.py:62          乙         NoneNone            
+     verify/probes/probe_WG959_knife_edge.py:234         乙         NoneNone            
+     verify/probes/probe_WG961_dfloor.py:214             丙         NoneNone            
+     verify/probes/probe_WG962_gate_power.py:364         丙         NoneNone            
+     verify/probes/probe_WG963_eps_tolerance.py:85       乙         NoneNone            
+     verify/probes/probe_WG963_eps_tolerance.py:326      丙         NoneNone            
+     verify/probes/probe_WG971_wrap.py:138               丁         NoneNone            
+     verify/probes/probe_WG971_wrap.py:232               丁         NoneNone            
+     verify/probes/probe_WG971_wrap.py:253               丁         NoneNone            
+     verify/probes/probe_ruling_K8_baseline_pairing.py:90乙         NoneNone            
+     verify/probes/probe_ruling_K8_baseline_pairing.py:240乙         NoneNone            
+     verify/probes/probe_ruling_K8_baseline_pairing.py:252乙         NoneNone            
+     verify/probes/probe_ruling_K8_baseline_pairing.py:258乙         NoneNone            
+     verify/probes/probe_ruling_K8_sideline_pairing.py:13乙         NoneNone            
+     verify/probes/probe_ruling_K8_sideline_pairing.py:88乙         NoneNone            
+     verify/probes/probe_ruling_K8_sideline_pairing.py:224乙         NoneNone            
+     verify/probes/probe_ruling_K8_sideline_pairing.py:228乙         NoneNone            
+     verify/probes/probe_ruling_K9_corner_width.py:1111  乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:20      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:21      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:23      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:53      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:54      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:85      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:87      乙         NoneNone            
+     verify/probes/probe_ruling_N_c7_sideline.py:154     乙         NoneNone            
+     verify/probes/probe_stage_order.py:20               丁         NoneNone            
+     verify/probes/probe_stage_order.py:21               丁         NoneNone            
+     verify/probes/probe_stage_order.py:238              丁         NoneNone            
+     verify/probes/probe_stage_order.py:243              乙         NoneNone            
+     verify/probes/probe_stage_order.py:247              乙         NoneNone            
+     verify/run_all.py:352                               丁         NoneNone            
+     verify/run_verification.py:298                      丁         NoneNone            
+     verify/run_verification.py:397                      丁         NoneNone            
+     verify/run_verification.py:434                      丁         NoneNone            
+     verify/run_verification.py:442                      丁         NoneNone            
+     verify/run_verification.py:467                      丁         NoneNone            
+     verify/run_verification.py:511                      丁         NoneNone            
+     verify/run_verification.py:517                      丁         NoneNone            
+     verify/run_verification.py:597                      丁         NoneNone            
+     verify/run_verification.py:605                      丁         NoneNone            
+     verify/run_verification.py:626                      丁         NoneG估(㎡)           
+     verify/run_verification.py:636                      丁         NoneNone            
+     verify/run_verification.py:643                      丁         NoneNone            
+     verify/run_verification.py:668                      丁         NoneNone            
+     verify/run_verification.py:672                      丁         NoneNone            
+     verify/run_verification.py:676                      丁         NoneNone            
+     verify/run_verification.py:752                      丙         NoneNone            
+     verify/run_verification.py:798                      丁         NoneNone            
+     verify/run_verification.py:801                      丁         NoneNone            
+     verify/run_verification.py:818                      丁         NoneNone            
+     verify/run_verification.py:822                      丁         NoneNone            
+     verify/run_verification.py:826                      丁         NoneNone            
+     verify/run_verification.py:955                      丁         NoneNone            
+     verify/run_verification.py:958                      丁         NoneNone            
+     verify/run_verification.py:961                      丁         NoneNone            
+     verify/run_verification.py:964                      丁         NoneNone            
+     verify/run_verification.py:967                      丁         NoneNone            
+     verify/run_verification.py:970                      丁         NoneNone            
+     verify/run_verification.py:1026                     丁         NoneNone            
+     verify/run_verification.py:1029                     丁         NoneNone            
+     verify/run_verification.py:1032                     丁         NoneNone            
+     verify/run_verification.py:1086                     丁         NoneNone            
+     verify/run_verification.py:1089                     丁         NoneNone            
+     verify/run_verification.py:1092                     丁         NoneNone            
+     verify/run_verification.py:1101                     乙         Nonecons_resid      
+     verify/run_verification.py:1102                     乙         Nonecons_resid      
+     verify/run_verification.py:1103                     乙         Nonecons_resid      
+     verify/run_verification.py:1104                     乙         Nonecons_resid      
+     verify/run_verification.py:1148                     丁         NoneNone            
+     verify/run_verification.py:1151                     丁         NoneNone            
+     verify/run_verification.py:1154                     丁         NoneNone            
+     verify/run_verification.py:1157                     丁         NoneNone            
+     verify/run_verification.py:1166                     乙         Nonecons_resid      
+     verify/run_verification.py:1168                     乙         Nonecons_resid      
+     verify/run_verification.py:1169                     乙         Nonecons_resid      
+     verify/run_verification.py:1221                     丁         NoneNone            
+     verify/run_verification.py:1227                     乙         Nonecons_resid      
+     verify/run_verification.py:1229                     乙         Nonecons_resid      
+     verify/run_verification.py:1230                     乙         Nonecons_resid      
+     verify/stepg_pipeline.py:223                        乙         NoneNone            
+     verify/stepg_pipeline.py:229                        乙         NoneNone            
+     verify/stepg_pipeline.py:232                        乙         NoneNone            
+     verify/stepg_pipeline.py:1053                       乙         NoneNone            
+     verify/stepg_pipeline.py:1054                       乙         NoneNone            
+     verify/stepg_pipeline.py:1065                       乙         NoneNone            
+     verify/stepg_pipeline.py:1144                       乙         NoneNone            
+     verify/stepg_pipeline.py:1159                       乙         NoneNone            
+     verify/stepg_pipeline.py:1182                       乙         NoneNone            
+     verify/stepg_pipeline.py:1196                       乙         NoneNone            
+     verify/stepg_pipeline.py:1242                       乙         NoneNone            
+     verify/stepg_pipeline.py:1248                       乙         NoneNone            
+     verify/stepg_pipeline.py:1252                       乙         NoneNone            
+     verify/stepg_pipeline.py:1256                       乙         NoneNone            
+     verify/stepg_pipeline.py:1276                       乙         NoneNone            
+     verify/stepg_pipeline.py:1283                       乙         NoneNone            
+     verify/stepg_pipeline.py:1286                       乙         NoneNone            
+     verify/stepg_pipeline.py:1291                       乙         NoneNone            
+     verify/stepg_pipeline.py:1355                       乙         NoneNone            
+     verify/stepg_pipeline.py:1362                       乙         NoneNone            
+     verify/stepg_pipeline.py:1364                       乙         NoneNone            
+     verify/stepg_pipeline.py:1368                       乙         NoneNone            
+     verify/tools/k8_seg3_A_runall.py:2                  丁         NoneNone            
+     verify/tools/k8_seg3_A_runall.py:5                  丁         NoneNone            
+     verify/tools/k8_seg3_A_runall.py:32                 丁         NoneNone            
+     verify/tools/k8_seg3_A_runall.py:44                 丁         NoneNone            
+     verify/tools/nameset_diff.py:49                     丁         NoneNone            
+     verify/tools/nameset_diff.py:70                     丁         NoneNone            
+     verify/tools/nameset_diff.py:74                     丁         NoneNone            
+     verify/tools/wg911_baseline_trace.py:7              丁         NoneNone            
+     verify/tools/wg911_baseline_trace.py:42             丁         NoneNone            
+     verify/tools/wg911_baseline_trace.py:48             丁         NoneNone            
+     verify/tools/wg911_baseline_trace.py:77             丁         NoneNone            
+     verify/tools/y_dump_diff.py:70                      乙         NoneNone            
+     verify/tools/y_dump_diff.py:89                      乙         NoneNone            
+     verify/tools/y_dump_diff.py:148                     乙         NoneNone            
+     verify/tools/y_dump_diff.py:269                     乙         NoneNone            
+     verify/wd3_fragment_geom.py:50                      乙         NoneNone            
+     verify/wd3_fragment_geom.py:64                      乙         NoneNone            
+     verify/wd3_fragment_geom.py:71                      乙         NoneNone            
+     verify/wd3_fragment_geom.py:74                      乙         NoneNone            
+     verify/wd3_fragment_geom.py:163                     乙         NoneNone            
+     verify/wd3_fragment_geom.py:256                     乙         NoneNone            
+     verify/wf_f1.py:32                                  乙         NoneNone            
+     verify/wf_f1.py:94                                  乙         NoneNone            
+     verify/wf_f1.py:97                                  乙         NoneNone            
+     verify/wf_f1.py:108                                 乙         NoneNone            
+     verify/wf_f1.py:167                                 乙         NoneNone            
+     verify/wf_f2.py:232                                 乙         NoneNone            
+     verify/wf_f2.py:262                                 乙         NoneNone            
+     verify/wf_f3.py:210                                 乙         NoneG(㎡)            
+     verify/wf_f4.py:223                                 乙         NoneNone            
+     verify/wf_f4.py:907                                 乙         NoneNone            
+     verify/wf_f4.py:908                                 乙         NoneNone            
+     verify/wf_f4.py:911                                 乙         NoneNone            
+     verify/wf_f4.py:990                                 乙         NoneG(㎡)            
+     verify/wf_f4.py:1019                                乙         NoneNone            
+     verify/wg_g3.py:134                                 丁         NoneNone            
+     verify/wv_reconcile.py:45                           丁         NoneNone            
+     verify/wv_reconcile.py:80                           丁         NoneNone            
+     verify/wv_reconcile.py:139                          丁         NoneNone            
+     verify/wv_reconcile.py:213                          丁         NoneNone            
+     verify/wv_reconcile.py:214                          丁         NoneNone            
+     verify/wv_reconcile.py:282                          丁         NoneNone            
+     verify/wv_reconcile.py:314                          丁         NoneNone            
+     verify/wv_reconcile.py:326                          丁         NoneNone            
+  ── 型② 有容差而**被比欄查無 `round` 出處** ⇒ 粒度來源未定（197 筆·**逐項全列**·⛔ 不截斷）
+     verify/fixture_baseline_candidates.py:173           甲        1e-06None            
+     verify/fixture_baseline_candidates.py:218           甲        1e-12None            
+     verify/fixture_block_depth_n19p.py:265              甲        1e-09None            
+     verify/fixture_block_depth_n19p.py:266              甲         0.01None            
+     verify/fixture_block_depth_n19p.py:278              甲         0.01None            
+     verify/fixture_block_depth_n19p.py:301              甲        5e-09None            
+     verify/fixture_block_depth_n19p.py:302              甲        5e-09None            
+     verify/fixture_corner_range_k8.py:118               甲        1e-12None            
+     verify/fixture_corner_range_k8.py:133               甲        1e-12None            
+     verify/fixture_corner_range_k8.py:152               甲        1e-09None            
+     verify/fixture_corner_range_k8.py:197               甲        1e-12None            
+     verify/fixture_corner_range_k8.py:224               甲        1e-06None            
+     verify/fixture_end_fallback.py:84                   甲        1e-06None            
+     verify/fixture_end_fallback.py:85                   甲        1e-06None            
+     verify/fixture_end_fallback.py:86                   甲        1e-06None            
+     verify/fixture_end_fallback.py:102                  甲        1e-06None            
+     verify/fixture_end_fallback.py:105                  甲        1e-06None            
+     verify/fixture_end_reserve.py:158                   甲        1e-06None            
+     verify/fixture_end_reserve.py:166                   甲        1e-06None            
+     verify/fixture_end_reserve.py:167                   甲        1e-06None            
+     verify/fixture_n14_feed_chain.py:170                甲         0.01None            
+     verify/fixture_n14_feed_chain.py:172                甲        1e-09None            
+     verify/fixture_n14_feed_chain.py:175                甲        1e-09None            
+     verify/fixture_n14_min_width.py:25                  甲         0.01None            
+     verify/fixture_n14_min_width.py:94                  甲        1e-06None            
+     verify/fixture_n14_min_width.py:217                 甲        1e-06None            
+     verify/probes/probe_D1_F_slot.py:133                甲        1e-09None            
+     verify/probes/probe_D1_F_slot.py:134                甲        1e-09None            
+     verify/probes/probe_D2b11_twoline.py:91             甲        1e-06None            
+     verify/probes/probe_D2b11_twoline.py:124            甲        1e-09None            
+     verify/probes/probe_D2b12_bridge.py:214             甲        1e-12None            
+     verify/probes/probe_D2b17_dual.py:60                甲        1e-15None            
+     verify/probes/probe_D2b17_dual.py:625               甲        5e-05None            
+     verify/probes/probe_D2b17_operands.py:63            甲        1e-15None            
+     verify/probes/probe_D2b22_attrib.py:355             甲        0.001None            
+     verify/probes/probe_D2b24C_pool.py:197              甲       0.0005None            
+     verify/probes/probe_D2b2_exposure.py:286            甲         0.01None            
+     verify/probes/probe_D2b30_forced_band_width.py:174  甲         0.05None            
+     verify/probes/probe_D2b30_forced_band_width.py:175  甲          1.0None            
+     verify/probes/probe_D2b30_forced_band_width.py:329  甲        0.001None            
+     verify/probes/probe_D2b5_attrib.py:142              甲        1e-09None            
+     verify/probes/probe_D2b5_attrib.py:146              甲        1e-09None            
+     verify/probes/probe_D2b5_attrib.py:147              甲        1e-09None            
+     verify/probes/probe_E17_intersection.py:173         甲        0.001None            
+     verify/probes/probe_K9_6_measure_object.py:130      甲        1e-12None            
+     verify/probes/probe_K9_6_measure_object.py:260      甲        1e-12None            
+     verify/probes/probe_K9_6_parcel_band.py:313         甲        1e-12None            
+     verify/probes/probe_K9_6_parcel_band.py:375         甲         0.01None            
+     verify/probes/probe_K9_7d_layer2.py:216             甲        1e-09None            
+     verify/probes/probe_K9_7d_layer2.py:300             甲          5.0None            
+     verify/probes/probe_K9_7d_layer2.py:334             甲        1e-12None            
+     verify/probes/probe_K9_7d_pk_impact.py:115          甲        1e-12None            
+     verify/probes/probe_K9_7d_stageA.py:177             甲        1e-09None            
+     verify/probes/probe_K9_7d_stageA.py:178             甲         0.05None            
+     verify/probes/probe_K9_7d_stageA.py:180             甲        1e-09None            
+     verify/probes/probe_K9_geo1_S1_construction.py:124  甲        1e-12None            
+     verify/probes/probe_K9_geo1_S1_construction.py:196  甲        1e-12None            
+     verify/probes/probe_K9_geo1_S1_construction.py:523  甲        0.001None            
+     verify/probes/probe_K9_geo1_S1_construction.py:549  甲        1e-12None            
+     verify/probes/probe_K9_s62_chord_vs_linedist.py:179 甲        1e-07None            
+     verify/probes/probe_K9_s62_chord_vs_linedist.py:240 甲        1e-09None            
+     verify/probes/probe_K9_s62_chord_vs_linedist.py:322 甲        1e-06None            
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:82  甲        0.001None            
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:274 甲        1e-12None            
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:308 甲        1e-06None            
+     verify/probes/probe_K9_s62c_attribution.py:68       甲        0.001None            
+     verify/probes/probe_K9_s62c_attribution.py:256      甲        1e-12None            
+     verify/probes/probe_K9_s62c_attribution.py:302      甲        1e-09None            
+     verify/probes/probe_K9_s62c_attribution.py:305      甲        0.001None            
+     verify/probes/probe_K9_s62c_attribution.py:363      甲        0.015None            
+     verify/probes/probe_K9_s62c_attribution.py:364      甲        0.015None            
+     verify/probes/probe_K9_s62c_attribution.py:434      甲          0.1None            
+     verify/probes/probe_K9_seg6_recon.py:62             甲        0.001None            
+     verify/probes/probe_K9_seg6_w_delta.py:82           甲        0.001None            
+     verify/probes/probe_WG913_midlayer.py:159           甲       0.0005None            
+     verify/probes/probe_WG913_midlayer.py:166           甲       0.0005None            
+     verify/probes/probe_WG914_gate_decomp.py:123        甲        1e-09None            
+     verify/probes/probe_WG914_gate_decomp.py:128        甲        1e-09None            
+     verify/probes/probe_WG914_gate_decomp.py:205        甲       0.0005None            
+     verify/probes/probe_WG914_gate_decomp.py:267        甲         0.05None            
+     verify/probes/probe_WG914_gate_decomp.py:289        甲        1e-09None            
+     verify/probes/probe_WG914_gate_decomp.py:293        甲        1e-09None            
+     verify/probes/probe_WG914_gate_decomp.py:297        甲         0.05None            
+     verify/probes/probe_WG914_gate_decomp.py:312        甲         0.05None            
+     verify/probes/probe_WG914_gate_decomp.py:313        甲         0.05None            
+     verify/probes/probe_WG916_isolate.py:238            甲        1e-09None            
+     verify/probes/probe_WG916_isolate.py:247            甲        1e-06None            
+     verify/probes/probe_WG916_isolate.py:287            甲        1e-06None            
+     verify/probes/probe_WG916_isolate.py:303            甲         0.01None            
+     verify/probes/probe_WG916_isolate.py:334            甲          0.1None            
+     verify/probes/probe_WG919_lowerbound.py:74          甲        1e-06None            
+     verify/probes/probe_WG91_buf_metric_and_candidates.py:161甲         0.05None            
+     verify/probes/probe_WG91_buf_metric_and_candidates.py:162甲          1.0None            
+     verify/probes/probe_WG91_buf_metric_and_candidates.py:289甲        1e-09None            
+     verify/probes/probe_WG91_buf_metric_and_candidates.py:388甲        1e-09None            
+     verify/probes/probe_WG920_pp_lowerbound.py:139      甲        1e-09None            
+     verify/probes/probe_WG920_pp_lowerbound.py:200      甲        1e-12None            
+     verify/probes/probe_WG920_pp_lowerbound.py:201      甲        1e-12None            
+     verify/probes/probe_WG920_pp_lowerbound.py:208      甲        1e-12None            
+     verify/probes/probe_WG920_pp_lowerbound.py:241      甲        1e-06None            
+     verify/probes/probe_WG920_pp_lowerbound.py:243      甲        1e-06None            
+     verify/probes/probe_WG920_pp_lowerbound.py:244      甲        1e-09None            
+     verify/probes/probe_WG921_b_slot_divergence.py:328  甲        1e-06None            
+     verify/probes/probe_WG921_b_slot_divergence.py:351  甲         0.05None            
+     verify/probes/probe_WG921_b_slot_divergence.py:354  甲         0.05None            
+     verify/probes/probe_WG922_three_vs_target.py:80     甲        1e-06None            
+     verify/probes/probe_WG922_three_vs_target.py:290    甲        1e-09None            
+     verify/probes/probe_WG922_three_vs_target.py:292    甲        1e-09None            
+     verify/probes/probe_WG92_W_origin_conformance.py:171甲        1e-09None            
+     verify/probes/probe_WG92_W_origin_conformance.py:177甲        1e-09None            
+     verify/probes/probe_WG92_W_origin_conformance.py:228甲        1e-12None            
+     verify/probes/probe_WG92_W_origin_conformance.py:229甲        1e-12None            
+     verify/probes/probe_WG937_adjacency.py:168          甲        1e-09None            
+     verify/probes/probe_WG937_adjacency.py:173          甲        1e-09None            
+     verify/probes/probe_WG937_adjacency.py:178          甲        1e-09None            
+     verify/probes/probe_WG937_adjacency.py:182          甲        1e-09None            
+     verify/probes/probe_WG938_adjacency3.py:282         甲        1e-06None            
+     verify/probes/probe_WG940_startperp.py:51           甲        1e-12None            
+     verify/probes/probe_WG941_bandbase.py:272           甲        1e-09None            
+     verify/probes/probe_WG941_bandbase.py:612           甲        1e-06None            
+     verify/probes/probe_WG943_parallel_recount.py:391   甲       0.0005None            
+     verify/probes/probe_WG943_parallel_recount.py:397   甲       0.0005None            
+     verify/probes/probe_WG943_parallel_recount.py:398   甲       0.0005None            
+     verify/probes/probe_WG949_free_pose.py:462          甲        1e-06None            
+     verify/probes/probe_WG94_expand_conformance.py:210  甲        5e-06None            
+     verify/probes/probe_WG953_corner_and_sets.py:159    甲        1e-09None            
+     verify/probes/probe_WG956_yi_style.py:313           甲        1e-12None            
+     verify/probes/probe_WG956_yi_style.py:360           甲        1e-09None            
+     verify/probes/probe_WG956_yi_style.py:361           甲        1e-06None            
+     verify/probes/probe_WG956_yi_style.py:491           甲        1e-09None            
+     verify/probes/probe_WG956_yi_style.py:571           甲        1e-06None            
+     verify/probes/probe_WG958_dmax_robust.py:226        甲        1e-09None            
+     verify/probes/probe_WG958_dmax_robust.py:227        甲        1e-06None            
+     verify/probes/probe_WG959_knife_edge.py:175         甲        1e-09None            
+     verify/probes/probe_WG960_fitcore.py:245            甲       0.0005None            
+     verify/probes/probe_WG960_fitcore.py:267            甲        1e-09None            
+     verify/probes/probe_WG960_fitcore.py:315            甲       0.0005None            
+     verify/probes/probe_WG960_fitcore.py:316            甲       0.0005None            
+     verify/probes/probe_WG961_dfloor.py:397             甲        1e-18None            
+     verify/probes/probe_WG962_gate_power.py:267         甲        1e-18None            
+     verify/probes/probe_WG965_jia_width.py:139          甲        2e-09None            
+     verify/probes/probe_WG965_jia_width.py:157          甲          0.0None            
+     verify/probes/probe_WG967_yi_landing.py:174         甲          0.0None            
+     verify/probes/probe_WG969_attrib.py:130             甲        0.005None            
+     verify/probes/probe_WG969_attrib.py:132             甲        0.005None            
+     verify/probes/probe_WG969_attrib.py:134             甲        0.005None            
+     verify/probes/probe_capacity_decomp.py:160          甲         0.01None            
+     verify/probes/probe_f2_stepg_invalidate.py:114      甲         0.01None            
+     verify/probes/probe_k94_gate_discrimination.py:112  甲         0.01None            
+     verify/probes/probe_k97_r5_attribution.py:16        甲         0.01None            
+     verify/probes/probe_k97_r5_attribution.py:17        甲         0.01None            
+     verify/probes/probe_k97_r5_attribution.py:175       甲         0.01None            
+     verify/probes/probe_k97_r5_attribution.py:185       甲        1e-12None            
+     verify/probes/probe_k98_virtual_block.py:60         甲        1e-06None            
+     verify/probes/probe_ruling_K4_s_origin.py:59        甲        1e-12None            
+     verify/probes/probe_ruling_K4_s_origin.py:166       甲        1e-06None            
+     verify/probes/probe_ruling_K4_s_origin.py:179       甲        0.001None            
+     verify/probes/probe_ruling_K4_s_origin.py:180       甲        0.001None            
+     verify/probes/probe_ruling_K4_s_origin.py:183       甲        0.001None            
+     verify/probes/probe_ruling_K4_s_origin.py:221       甲        1e-09None            
+     verify/probes/probe_ruling_K8_baseline_pairing.py:193甲         10.0None            
+     verify/probes/probe_ruling_K8_baseline_pairing.py:194甲         10.0None            
+     verify/probes/probe_ruling_K9_7_alloc_t.py:168      甲        5e-05None            
+     verify/probes/probe_ruling_K9_7_alloc_t.py:169      甲        5e-05None            
+     verify/probes/probe_ruling_K9_7_alloc_t.py:200      甲        1e-06None            
+     verify/probes/probe_ruling_K9_corner_width.py:230   甲        1e-06None            
+     verify/probes/probe_ruling_K9_corner_width.py:255   甲        1e-12None            
+     verify/probes/probe_ruling_K9_corner_width.py:274   甲        1e-06None            
+     verify/probes/probe_ruling_K9_corner_width.py:473   甲        1e-09None            
+     verify/probes/probe_ruling_K9_corner_width.py:480   甲        1e-12None            
+     verify/probes/probe_ruling_K9_corner_width.py:501   甲        1e-06None            
+     verify/probes/probe_ruling_K9_corner_width.py:504   甲        1e-09None            
+     verify/probes/probe_ruling_N_depth.py:82            甲        1e-12None            
+     verify/probes/probe_ruling_N_depth.py:160           甲         10.0None            
+     verify/probes/probe_ruling_N_e1_touch.py:250        甲       0.0005None            
+     verify/probes/probe_ruling_N_e1_touch.py:287        甲       0.0005None            
+     verify/probes/probe_ruling_N_recon.py:177           甲        1e-06None            
+     verify/probes/probe_ruling_N_recon.py:308           甲        1e-09None            
+     verify/probes/probe_ruling_N_recon.py:309           甲        1e-09None            
+     verify/probes/probe_stage_order.py:78               甲         0.01None            
+     verify/run_verification.py:574                      甲         0.01None            
+     verify/run_verification.py:575                      甲         0.05None            
+     verify/run_verification.py:712                      甲        1e-08None            
+     verify/run_verification.py:772                      甲       0.0005None            
+     verify/run_verification.py:986                      甲         0.01None            
+     verify/run_verification.py:1377                     甲        1e-06None            
+     verify/stepg_pipeline.py:142                        甲        1e-09None            
+     verify/stepg_pipeline.py:170                        甲        1e-08None            
+     verify/stepg_pipeline.py:446                        甲         0.15None            
+     verify/wd4_tier_list.py:283                         甲         0.01None            
+     verify/wf_f1.py:312                                 甲         0.01None            
+     verify/wf_f2.py:289                                 甲          1.0None            
+     verify/wf_f3.py:230                                 甲          1.0None            
+     verify/wf_f4.py:411                                 甲         0.01None            
+     verify/wf_f4.py:1459                                甲         0.01None            
+     verify/wg_g3.py:150                                 甲        1e-09None            
+     verify/wg_g3.py:151                                 甲        1e-09None            
+
+========================================================================================================================
+【A-4】注入式**一粒度**變異（⛔ 實測·⛔ 非讀常數）
+========================================================================================================================
+  🔒 **受詞**：以 `Δ = 一個粒度` 代入該行之 `abs(Δ) <op> tol` **實際求值**
+     ⇒ 測其**運算子 ＋ 容差**對「恰一個粒度」之反應（`GB-27` 之要害）。⛔ 非重跑管線。
+
+  ── **類乙**（預期：**不轉紅** ＝ 盲）　母體 17 筆·**全取**
+  檔:行                                               op       容差       粒度       注入後轉紅?     判
+------------------------------------------------------------------------------------------------------------------------
+  verify/fixture_g3_static_guards.py:178             <     0.01   0.0001        False   ✅ 盲
+  verify/fixture_g3_static_guards.py:274             <     0.01   0.0001        False   ✅ 盲
+  verify/fixture_g3_static_guards.py:281             <     0.01   0.0001        False   ✅ 盲
+  verify/fixture_midlayer_6items.py:228              <     0.01   0.0001        False   ✅ 盲
+  verify/probes/probe_WG913_midlayer.py:176          <     0.01   0.0001        False   ✅ 盲
+  verify/run_verification.py:1042                   <=     0.15     0.01        False   ✅ 盲
+  verify/run_verification.py:1118                    <     0.01   0.0001        False   ✅ 盲
+  verify/run_verification.py:1279                    >     0.12     0.01        False   ✅ 盲
+  verify/stepg_pipeline.py:674                       <     0.05     0.01        False   ✅ 盲
+  verify/stepg_pipeline.py:765                       <     0.05     0.01        False   ✅ 盲
+  verify/wf_f0.py:310                                >     0.01     0.01        False   ✅ 盲
+  verify/wf_f1.py:258                                >     0.05     0.01        False   ✅ 盲
+  verify/wf_f1.py:292                                >     0.01     0.01        False   ✅ 盲
+  verify/wf_f1.py:347                                >     0.01     0.01        False   ✅ 盲
+  verify/wf_f4.py:1405                               >     0.01     0.01        False   ✅ 盲
+  verify/wf_f4.py:1447                               >     0.01     0.01        False   ✅ 盲
+  verify/wf_f4.py:1479                               >     0.01     0.01        False   ✅ 盲
+------------------------------------------------------------------------------------------------------------------------
+  ⇒ **類乙之注入：轉紅 0 筆／未轉紅（盲）17 筆**（母體 17 筆·⛔ 非取樣）
+
+  ── 🔒 **判別力（類甲·⛔ 不得省）**（預期：**須全數轉紅**）　母體 16 筆
+  檔:行                                               op       容差       粒度       注入後轉紅?     判
+------------------------------------------------------------------------------------------------------------------------
+  verify/fixture_end_fallback.py:108                 <    1e-06     0.01         True   ✅ 紅
+  verify/probes/probe_D1_F_slot.py:158              <=    0.005      1.0         True   ✅ 紅
+  verify/probes/probe_D1_F_slot.py:159              <=    0.005      1.0         True   ✅ 紅
+  verify/probes/probe_K9_s62c_attribution.py:522    <=    0.005     0.01         True   ✅ 紅
+  verify/probes/probe_K9_s62c_attribution.py:528    <=    0.005     0.01         True   ✅ 紅
+  verify/probes/probe_K9_seg6_w_delta.py:361         >    1e-15     0.01         True   ✅ 紅
+  verify/probes/probe_ruling_N_recon.py:279          <     0.01     0.01         True   ✅ 紅
+  verify/run_verification.py:726                     >    1e-09   0.0001         True   ✅ 紅
+  verify/run_verification.py:1187                    <     0.01     0.01         True   ✅ 紅
+  verify/run_verification.py:1249                    <    1e-06     0.01         True   ✅ 紅
+  verify/run_verification.py:1283                    <     0.01     0.01         True   ✅ 紅
+  verify/wf_f2.py:245                                <     0.01     0.01         True   ✅ 紅
+  verify/wf_f2.py:246                                <     0.01     0.01         True   ✅ 紅
+  verify/wf_f2.py:267                                <     0.01     0.01         True   ✅ 紅
+  verify/wf_f4.py:114                                >    1e-06     0.01         True   ✅ 紅
+  verify/wf_f4.py:852                                >    1e-09   0.0001         True   ✅ 紅
+------------------------------------------------------------------------------------------------------------------------
+  ⇒ **類甲之注入：轉紅 16／16**　✅ 注入器有效
+
+  🔴 **靜態判準（A-2）vs 注入實測之不符——逐項具名**
+     🔒 靜態判準（施工單 A-2 逐字）＝ `容差 ≥ 粒度 ⇒ 類乙`，**對運算子之嚴格性為盲**：
+        · `>` ／ `<=` 之盲域 ＝ `粒度 ≤ 容差`　· `>=` ／ `<` 之盲域 ＝ `粒度 < 容差`（**嚴格**）
+        ⇒ **`粒度 == 容差` 時二者分家**。
+     ⇒ **不符 ＝ 0 筆**
+
+========================================================================================================================
+【A-3】**三族逐族判**（⛔ 逐點 `檔:行`·⛔ 不以總計數頂替）　＋　【A-5】**盲域佔用**
+========================================================================================================================
+  🔒 A-5 之 `got` 來源 ＝ 最近一次 `run_all` log：`verify/out/wg973_runall_6a83e1c.log`（結果行 34 筆）
+  🔒 **判之三值**：🔴 佔用（`0 < |got−want| < 容差`）／✅ 未佔用（`==0`）／⚠️ **不可得**（該檢此刻未執行·⛔ **不得推定為未佔用**）
+
+  ── 族：**k* 六塊經驗錨**（比對點 **2** 處）────────────────────────────────────────────────────
+     檔:行                                           身分    檢式類型                在母體?     類   A-5 判
+     verify/run_verification.py:682                閘     相等（dict）            🔴 不在     —   ⚠️ 不可得（該檢未執行）
+     verify/probes/probe_jkstar_legitimacy.py:91   探針    —                   🔴 不在     —   ⚠️ 不可得
+
+  ── 族：**W-D.4 清單**（比對點 **3** 處）────────────────────────────────────────────────────
+     檔:行                                           身分    檢式類型                在母體?     類   A-5 判
+     verify/wd4_tier_list.py:432                   閘     相等                  🔴 不在     —   ⚠️ 不可得（該檢未執行）
+     verify/wd4_tier_list.py:437                   閘     相等                  🔴 不在     —   ⚠️ 不可得（該檢未執行）
+     verify/wd4_tier_list.py:434                   閘     相等                  🔴 不在     —   ⚠️ 不可得（該檢未執行）
+
+  ── 族：**v3 財務錨**（比對點 **5** 處）────────────────────────────────────────────────────
+     檔:行                                           身分    檢式類型                在母體?     類   A-5 判
+     verify/run_verification.py:699                閘     相等（先 round 6）       🔴 不在     —   ✅ 未佔用（相等式 PASS ⇒ Δ＝0）
+     verify/run_verification.py:702                閘     相等（先 round 6）       🔴 不在     —   ✅ 未佔用（相等式 PASS ⇒ Δ＝0）
+     verify/run_verification.py:705                閘     相等（先 round 0）       🔴 不在     —   ✅ 未佔用（相等式 PASS ⇒ Δ＝0）
+     verify/run_verification.py:712                閘     🔴 **有容差** `< 1e-8`  ✅ 在      丙   🔴 **佔用** |Δ|=2.92e-10
+     verify/run_verification.py:726                閘     🔴 **有容差** `> 1e-9`  ✅ 在      甲   ⚠️ **不可得（母體為空·0 列）**
+
+  🔒 **不在母體者之成因（⛔ 逐族具名）**：其檢式為**相等比較**（`==`），⛔ **無容差** ⇒ 依 A-1 之母體定義（「以容差比對之數值」）**本就不在**
+     ⇒ 🔒 相等式之**盲域 ＝ ∅**（任何非零差皆報出）⇒ 其「容差 vs 粒度」之問**不適用**。
+     🩸 **惟⛔ 不得由此推出「母體無不足」**——本器首版即漏掉**跨行**之甲式
+        （`_dC = abs(...)` 與 `_dC < 1e-8` 分行·實例 `run_verification.py:712`）
+        ⇒ 該漏之方向為**少報**（違反 A-0）⇒ 已補一式；**⛔ 不保證已窮盡**。
+========================================================================================================================
+========================================================================================================================

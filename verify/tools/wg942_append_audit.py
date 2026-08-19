@@ -223,6 +223,10 @@ TARGETS = [
     #     （⛔ 未為此放寬任何判準·同 `W-G.9-64`／`W-G.9-68` 之家法）。
     ("docs/reports/W-G.9-69_重烤與乙式耦合斷言.md", "檔", None, None),
     ("verify/fixture_yi_construction.py", "檔", None, None),
+    # ── `W-G.9-75` 之追加（**先現查**·命中 **0** ⇒ ⛔ 只補未在列者）──────────────
+    #   ⚠️ 於基座 `ddfdc36` 為**新檔** ⇒「不適用嚴格前綴·略過」、自下一批起生效。
+    #   🔒 `verify/tools/wg974_tol_vs_granularity.py` 本批**就地擴充** ⇒ ⛔ 不登檔級。
+    ("docs/reports/W-G.9-75_遷移項乙之逐族判與盲域佔用.md", "檔", None, None),
     # ── `W-G.9-74` 之追加（**先現查**·命中 **0** ⇒ ⛔ 只補未在列者）──────────────
     #   ⚠️ 於基座 `4bab9b9` 為**新檔** ⇒「不適用嚴格前綴·略過」、自下一批起生效。
     #   🔒 **本批有變更之碼檔⛔ 不登檔級**：`verify/tools/wg974_tol_vs_granularity.py`
