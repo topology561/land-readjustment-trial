@@ -129,7 +129,55 @@ def parse_list(text):
     return out
 
 
-def render_list(items, src_rel, src_hash, batch="W-G.9-7"):
+_TB_LINE = re.compile(r'", line \d+, in ')
+
+
+def assert_list_integrity(items, src_rel, src_text=None):
+    """🆕 `W-G.9-71` B 組：**名單產生端**之完整性自檢（🔒 ⛔ **不置於比對路徑**）。
+
+    🔒 **落點之由**：本函式只由 `render_list` 呼叫，而 `render_list` **只**由
+      `main(argv)` 之 `--freeze` 分支呼叫；`run_all` 走 `reconcile_text` → `classify`
+      ⇒ **本自檢在 `run_all` 路徑上不會被觸發**（施工單 B-3-3）。
+
+    🔴 **受詞（⛔ 非「token 數相等」）**：凡明細行**具 traceback 行之形狀**
+      （含 `", line <N>, in `）卻**不含 `File "`** ⇒ 該行係**被截斷之 traceback 行**
+      ⇒ `_FILE_TOKEN` 匹配 0 次 ⇒ `R1`／`R2` **無從施力** ⇒ 其絕對路徑前綴永不被移除
+      ⇒ 該行必落**類 III** 而恆紅，且**其殘存字串隨路徑長度而異** ⇒ **不可比對**。
+
+    ⚠️ **為何⛔ 不用施工單原訂之「token 數 ＝ 來源 log 之 token 數」**（`W-G.9-71` §C）：
+      實測**明細內** token 數 ＝ **凍存 8／來源 log 8**（相等）——`render_list` **未遺失
+      任何 token**，截斷發生在**更上游**（`run_verification` 之 `traceback.format_exc()[-300:]`）
+      ⇒ 該式**恆綠、永不會咬**。🔑 **一個從未紅過的自檢，跟一段註解證據力相同。**
+      🔒 惟**仍併算**該二數並列於訊息中（供人核對），只是**⛔ 不以其為判準**。
+
+    `src_text` 給定時另列來源 log 之同類行數（診斷用·⛔ 不入判準）。
+    """
+    bad = []
+    for nm, det in items:
+        for d in det:
+            if _TB_LINE.search(d) and 'File "' not in d:
+                bad.append((nm, d))
+    if not bad:
+        return
+    n_tok = sum(len(_FILE_TOKEN.findall(d)) for _n, dd in items for d in dd)
+    n_src = (sum(len(_FILE_TOKEN.findall(x)) for x in src_text.split("\n"))
+             if src_text else None)
+    det = "；".join(f"[{nm}] {d.strip()[:70]}" for nm, d in bad[:3])
+    raise RuntimeError(
+        f"🔴 名單完整性自檢破：**{len(bad)} 行**具 traceback 形狀（`\", line N, in `）"
+        f"卻不含 `File \"` ⇒ 係**被截斷之 traceback 行** ⇒ `_FILE_TOKEN` 匹配 0 次 ⇒ "
+        f"`R1`／`R2` 無從施力 ⇒ 該行恆紅且不可比對（`GB-86`）。"
+        f"｜來源 log ＝ {src_rel}"
+        f"｜明細內 `File \"` token：名單 {n_tok}"
+        + (f"／來源 log 全檔 {n_src}" if n_src is not None else "")
+        + f"｜受影響列（前 3）：{det}{'…' if len(bad) > 3 else ''}"
+        f"｜🔒 修法 ＝ **修餵料**（令來源 log 不截斷 traceback），"
+        f"⛔ **非**增列正規化規則（`W-G.9-7` §2 已封）。")
+
+
+def render_list(items, src_rel, src_hash, batch="W-G.9-7", _src_text=None):
+    # 🆕 `W-G.9-71` B 組：**生成期**之完整性自檢（⛔ 不在比對路徑上·見其 docstring）
+    assert_list_integrity(items, src_rel, _src_text)
     L = [f"# {batch} 期望 FAIL 名單（**名目 ＋ 失敗原因**）",
          f"# 授權      ：KL 2026-08-11「名稱＋原因一併比對」＝是",
          f"# 來源 log  ：{src_rel}",
@@ -261,12 +309,14 @@ def main(argv):
     sys.stdout.reconfigure(encoding="utf-8")
     if len(argv) >= 4 and argv[1] == "--freeze":
         log, out = argv[2], argv[3]
-        items = parse_log(open(log, encoding="utf-8").read())
+        _src_text = open(log, encoding="utf-8").read()
+        items = parse_log(_src_text)
         items = [(nm, [normalize(x) for x in det]) for nm, det in items]
         os.makedirs(os.path.dirname(out), exist_ok=True)
         with open(out, "w", encoding="utf-8") as f:
+            # 🆕 `W-G.9-71` B 組：`_src_text` 供完整性自檢並列來源之 token 數（診斷用）
             f.write(render_list(items, os.path.relpath(log, REPO).replace("\\", "/"),
-                                _hash_object(log)))
+                                _hash_object(log), _src_text=_src_text))
         print(f"✅ 已產生名單：{os.path.relpath(out, REPO)}（{len(items)} 名目）")
         return 0
     if len(argv) < 3:
