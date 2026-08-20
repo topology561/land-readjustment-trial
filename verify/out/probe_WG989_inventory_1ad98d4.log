@@ -1,0 +1,301 @@
+==================================================================================================================================================================================================================
+【W-G.9-89 §二 A 組】權威源之回溯重判／`far_side_dir_and_pt` 使用點全查／落地介面清單／影響母體
+==================================================================================================================================================================================================================
+  產生於 commit：1ad98d4
+  環境：shapely 2.1.2 | GEOS (3, 13, 1) | numpy 2.4.4
+  🔒 A-0 **事前選定：偏向<u>多列</u>**（⛔ 清單寧長勿短·不確定者列入並具名）
+  🔴 **權威源 ＝ 解算面**（`faces_of(...)[1]`·`VR-047` 二·⛔ 非 `w40.far_side_dir_and_pt`）
+  🩸 **自身污染之排除（逐字）**：掃 `verify/probes/` 之母體**排除** `verify/probes/probe_WG989_inventory.py`
+  🔒 情境母體 ＝ **僅 0m**（⛔ 不擴·具名）
+
+【0】量測器自檢（⛔ 先自檢後量測·每項皆附**已知真／已知偽**對照）
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  ① **`w88.s_star_of` 原樣**：已知【相交於 s*=5】⇒ **5.000000**（期望 5）／已知【平行】⇒ `sin_a` ＝ 0.000e+00·`s*` ＝ **nan**（期望 nan）⇒ PASS
+  ② **`w82.pred_chord` 原樣**：`λ` ＝ [-0.000000, 10.000000]；`s*=5` ⇒ **True**／`s*=1e6` ⇒ **False** ⇒ PASS
+  ③ **生產判定器 `evaluate_parcel_width_n14` 之判別力（常設 8）**：
+     已知【寬 20m ≥ 3.5】⇒ 判 **合格**（實測寬 20.0）／已知【窄 1m < 3.5】⇒ 判 **不合格**（實測寬 1.0）⇒ PASS
+     🔒 ⇒ **該判定器⛔ 非恆真**（⛔ 亦非恆偽）——`P6` 之前置成立
+  ④ **第十五法之判別力（常設 8）**：合成案 ＝ 元組內含**註解**（其中有一個 `.py` 誘餌）
+     ⇒ **第十五法 ＝ 2**（期望 2·名單 ['a.py', 'b.py']）／**第十四法 ＝ 3**（期望 3·名單 ['a.py', 'decoy_in_comment.py', 'b.py']）⇒ PASS
+     🔒 ⇒ **二法之受詞確實不同**（⑭ ＝ **原始碼切片**·含註解／⑮ ＝ **`unparse` 重生之文本**·註解已正規化）
+  ⑤ **常設 9**：`PAR_TOL = 1.0e-06` 施於 `|sin|` ∈ [0,1]（`ulp(1.0) = 2.220e-16`）⇒ 門檻/ulp ＝ 4.504e+09；`TOL_85 = 1.0e-09` 係 **`-85` 該批所用之門檻**（⛔ 本批未另立·僅供對帳）
+  ⇒ 量測器自檢：PASS
+
+【驅動】`0m` × R1–R6——攔截 **6 格**；`g_rows` 取得之街廓 ＝ **3**（raise 者 **3**·⛔ 逐項具名）
+     ⚠️ R2 raise：RuntimeError: 街廓 R2 抵費地計算失敗：🔴 ②-宗 圍堵閘破[R2]：宗-宗重疊 = 45.9766 > 上界 3.1129（(宗數15−1)×0.005×深度44.47）——**超出捨入量子可解釋範圍＝另有病**，停
+     ⚠️ R4 raise：RuntimeError: 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.42（Δ=2.415 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：
+     ⚠️ R5 raise：RuntimeError: 街廓 R5 抵費地計算失敗：🔴 ②-宗 圍堵閘破[R5]：宗-宗重疊 = 56.3293 > 上界 2.5141（(宗數12−1)×0.005×深度45.71）——**超出捨入量子可解釋範圍＝另有病**，停
+
+【C／A-1】🛑 **以權威源重判歷批一切名單**（⛔ 只換<u>源</u>·⛔ 不換判準）
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  🔒 **節 110 ②（`自誤 92` 修法）：每一份名單須逐字寫出「產生批次 ＋ 產生指令 ＋ 所用之源」**
+  🔴 ⛔ **本節之產物⛔ 不得作為土地結論**——`-40`／`-83`／`-85`／`-87` 之**判準**（起算垂線端點）已由 `K-9-15` 廢止；本節只量「**源之影響**」。
+
+  批                            原載                     源甲(w40)    源乙(權威)     交集       甲∖乙      乙∖甲     
+  `-40`／`-83`                  35 宗·`5758.9877 ㎡`     35         36         35       0        1       
+  `-85`（門檻 `1e-9`）             8 宗                    8          5          3        5        2       
+  `-85`／`-86`（正典容差 `1e-6`）     3 宗                    3          4          1        2        3       
+  `-87`                        25 宗                   25         25         18       7        7       
+  `-88`                        2 宗·`4.7950 ㎡`         2          2          2        0        0       
+  POPULATION=5 PRINTED=5 SUPPRESSED=0  # A-1 逐批（全列）
+
+  🔒 **逐批之「產生批次 ＋ 產生指令 ＋ 所用之源」（節 110 ②）**：
+     `-40`／`-83`                  產生指令 ＝ `probe_WG940_startperp.py` 之 `eval_lot`（舊形）·全體
+     `-85`（門檻 `1e-9`）             產生指令 ＝ 舊形 ∩ `K-9-14` 受詞內（`|sin| > 1e-9`）
+     `-85`／`-86`（正典容差 `1e-6`）     產生指令 ＝ 舊形 ∩ `K-9-14` 受詞內（`|sin| > _PAR_TOL`）
+     `-87`                        產生指令 ＝ `w87.eval_exact(..., True, True, True)`（正典逐字·組⑦）·全體
+     `-88`                        產生指令 ＝ `K-9-15` 不交叉（`w82.pred_chord`）·**已為權威源**
+
+  🔴 **偏移之宗逐宗具名**：
+     `-40`／`-83`                  甲∖乙 ＝ []
+                                  乙∖甲 ＝ ['R2左1']
+     `-85`（門檻 `1e-9`）             甲∖乙 ＝ ['R1右4', 'R2右9', 'R3右9', 'R5右8', 'R6右8']
+                                  乙∖甲 ＝ ['R1右3', 'R2左1']
+     `-85`／`-86`（正典容差 `1e-6`）     甲∖乙 ＝ ['R1右4', 'R3右9']
+                                  乙∖甲 ＝ ['R1右3', 'R2左1', 'R3右8']
+     `-87`                        甲∖乙 ＝ ['R1右4', 'R2右11', 'R2右14', 'R2右9', 'R3右12', 'R5右8', 'R6右9']
+                                  乙∖甲 ＝ ['R1右3', 'R2右10', 'R2右13', 'R2左1', 'R3右8', 'R5右10', 'R6右7']
+     `-88`                        甲∖乙 ＝ []
+                                  乙∖甲 ＝ []
+
+     `-40`／`-83`                  面積：源甲 **5758.9879 ㎡**／源乙（權威）**5762.7961 ㎡**
+     `-85`（門檻 `1e-9`）             面積：源甲 **1684.7351 ㎡**／源乙（權威）**178.9485 ㎡**
+     `-85`／`-86`（正典容差 `1e-6`）     面積：源甲 **623.1843 ㎡**／源乙（權威）**178.6924 ㎡**
+     `-87`                        面積：源甲 **4056.9663 ㎡**／源乙（權威）**1591.0528 ㎡**
+     `-88`                        面積：源甲 **4.7950 ㎡**／源乙（權威）**4.7950 ㎡**
+
+  🔴 **必答 2（自洽之判別力）**：`-88` 之 **2 宗**於本檔重跑 ⇒ 源甲 **2** ／ 源乙 **2**
+     名單 ＝ ['R2左1', 'R5左1']
+     🔒 **與 `-88` log 之對拍**（【倉】`verify/out/probe_WG988_nocross_7505c80.log`）：舊 log 解析所得 ＝ **2** ⇒ 名單 ['R2左1', 'R5左1']
+     🔒 **逐宗相同 ＝ True**（期望 True·⇒ 自洽）
+
+  🔴 **必答 3：`5758.9877 ㎡` 之權威源版本**
+     源甲（`w40`·原載之源）＝ **35 宗／5758.9879 ㎡**；🔴 **源乙（權威）＝ 36 宗／5762.7961 ㎡**
+     ⚠️ 🔒 **該數之判準（起算垂線端點）已由 `K-9-15` 廢止** ⇒ 二者**皆⛔ 非現行有效之土地結論**；現行有效者 ＝ `-88` 之 **2 宗／4.7950 ㎡**
+
+【D／A-2】🔴 **`far_side_dir_and_pt` 之使用點全查**（⛔ 只列不改）
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  🛑 **A-2-1：`app.py` 之命中 ＝ 0**（停機條款②·期望 0）⇒ ✅ **該缺陷⛔ 從未進入生產碼**
+     🔒 **判別力（常設 8·會使它為否之輸入）**：同法掃**已知在 `app.py` 內**之 `parcel_min_width_n14` ⇒ 命中 **32**（須 > 0）⇒ ✅ 該掃描式非恆 0
+
+  🔴 **A-2-2：`verify/**.py` 之逐檔逐處**（🩸 母體**已排除本檔** `verify/probes/probe_WG989_inventory.py`）
+  檔                                              行       逐字（節錄）                                                     **受正典限**? 
+  probe_WG940_startperp.py                       :62     def far_side_dir_and_pt(poly, d_hat):                      🔴 **是（呼叫）**
+  probe_WG940_startperp.py                       :271    u_far, p_far = far_side_dir_and_pt(biz[i], d_hat)          🔴 **是（呼叫）**
+  probe_WG983_k99prep.py                         :22     `eval_lot`／`far_side_dir_and_pt`／`line_isect`／`s_of`（⛔ 未重寫 否（註解/import/字串）
+  probe_WG983_k99prep.py                         :356    u_far, p_far = w40.far_side_dir_and_pt(biz[i], d_hat)      🔴 **是（呼叫）**
+  probe_WG983_k99prep.py                         :402    P("  🔒 **遠側界之二源對拍**（`w40.far_side_dir_and_pt`＝**多邊形之邊** vs 否（註解/import/字串）
+  probe_WG983_k99prep.py                         :428    "**恆 ∥ SIDELINE**，而 `w40.far_side_dir_and_pt` 係自**多邊形之邊**取 否（註解/import/字串）
+  probe_WG984_gap.py                             :26     - `K-9-9 二` 判定式：**原樣 import** `probe_WG940_startperp` 之 `e 否（註解/import/字串）
+  probe_WG984_gap.py                             :341    P("     **源甲 `w40`** ＝ `far_side_dir_and_pt(biz[i], d̂)`—— 🔴 **是（呼叫）**
+  probe_WG984_gap.py                             :357    uf, pf = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG984_gap.py                             :417    ua, pa = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG984_gap.py                             :477    ua, _pa = w40.far_side_dir_and_pt(rec["biz"][i], d_)       🔴 **是（呼叫）**
+  probe_WG984_gap.py                             :609    _uf, _pf = w40.far_side_dir_and_pt(rec["biz"][_i2], d_)    🔴 **是（呼叫）**
+  probe_WG984_gap.py                             :670    uf, pf = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG985_grouphead.py                       :24     - `K-9-9 二` 判定式：**原樣 import** `probe_WG940_startperp` 之 `e 否（註解/import/字串）
+  probe_WG985_grouphead.py                       :325    ua, pa = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG986_oldjudge.py                        :17     `w40.eval_lot`／`far_side_dir_and_pt`／`line_isect`／`s_of`、` 否（註解/import/字串）
+  probe_WG986_oldjudge.py                        :367    ua, pa = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG987_exact.py                           :21     `w40.eval_lot`／`far_side_dir_and_pt`／`line_isect`／`s_of`、` 否（註解/import/字串）
+  probe_WG987_exact.py                           :436    ua, pa = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG988_nocross.py                         :23     (丙) 二源（`w82.uj_of` 之解算面 vs `w40.far_side_dir_and_pt` 之多邊形邊 否（註解/import/字串）
+  probe_WG988_nocross.py                         :37     `w40.far_side_dir_and_pt`／`line_isect`／`s_of`、`w86.PAR_TOL 否（註解/import/字串）
+  probe_WG988_nocross.py                         :358    ua, pa = w40.far_side_dir_and_pt(rec["biz"][i], d_)        🔴 **是（呼叫）**
+  probe_WG988_nocross.py                         :578    P("  🔒 **遠側界之二源對拍（A-0 丙）**：源乙 ＝ `w82.uj_of`（解算面）／源甲 ＝ `w40 否（註解/import/字串）
+  probe_WG988_nocross.py                         :631    P("        ⚠️ 🔒 **`W-G.9-86` §F-1 已證**：`w40.far_side_dir_a 否（註解/import/字串）
+  POPULATION=24 PRINTED=24 SUPPRESSED=0  # A-2-2 `verify/**.py` 之逐處（全列）
+     🔒 **命中檔 ＝ 7**（claude.ai 現查稱 **7**·⛔ CC 獨立重查）⇒ ✅ 相符
+     🔒 逐檔：['probe_WG940_startperp.py', 'probe_WG983_k99prep.py', 'probe_WG984_gap.py', 'probe_WG985_grouphead.py', 'probe_WG986_oldjudge.py', 'probe_WG987_exact.py', 'probe_WG988_nocross.py']
+
+  **A-2-3：`docs/reports/` 之引用**（⛔ 只列筆數與檔名·⛔ 不修史）
+     W-G.4_泛用阻塞項登記表.md                                        x1
+     W-G.9-83_K99落地備料.md                                      x2
+     W-G.9-84_充要約束與正典下限之差.md                                  x4
+     W-G.9-85_組首與推進向及母體重界.md                                  x3
+     W-G.9-86_舊判準之中間量與座標框正當性.md                               x3
+     W-G.9-87_K99二之精確實作與消融.md                                 x3
+     W-G.9-88_不交叉判準之重判.md                                     x4
+  POPULATION=7 PRINTED=7 SUPPRESSED=0  # A-2-3 `docs/reports/` 之引用檔（全列）
+
+【E／A-3】🔴 **落地介面清單**（⛔ **只列不建**·三態：`【已有】`／`【缺】`／`【部分】`）
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  🔒 **「碼面」＝ 生產碼 9 檔（正面列舉·⛔ 探針不計入）**
+  🔒 **三態之判準（🩸 修 2）**：`【已有】` ⟺ **全部**受詞字樣皆有**可執行**（⛔ 非註解／⛔ 非 docstring）之命中；`【部分】` ⟺ 部分；`【缺】` ⟺ **零可執行命中**
+  #      款             所需之物                               **三態**      可執行     證據（檔×可執行／註解／doc）                              
+  甲-1    `K-9-12`      現行判定入口 `parcel_min_width_n14` 之呼叫點 【已有】        17      app.py×17(parcel_min_wid)                     
+  甲-2    `K-9-12`      **矩形容納之判定式**（`W × D` 能否完整容納）       【缺】         0       —（僅註解/doc：0）                                  
+  甲-3    `K-9-12`      `W × D` 之**取值來源**（法定最小寬／深）         【已有】        20      app.py×1(法定最小寬_m)／app.py×9(get_min_lot_si)／ste
+  甲-4    `K-9-12-c`    **可旋轉可平移**之搜尋（自由位姿）                【部分】        8       app.py×8(rotate)                              
+  甲-5    `K-9-5-14 三`  **受測區域**（規定範圍扣除退縮帶）                【缺】         0       —（僅註解/doc：0）                                  
+  甲-6    `K-9-12-e`    **第 0 宗之例外分支**（街角 ⇒ 街角最小規定範圍）      【已有】        18      app.py×6(WIDTH_VERDICT_)／app.py×8(corner_min_a
+  甲-7    `K-9-13`      不得建築者之後果：**合併**                    【部分】        38      app.py×31(合併)／run_verification.py×5(合併)／wf_f0.
+  甲-8    `K-9-13`      不得建築者之後果：**調配**                    【已有】        76      app.py×38(調配)／app.py×16(_tier)／stepg_pipeline.
+  甲-9    `K-9-13`      不得建築者之後果：🔴 **遞補**（下一投影序號）          【已有】        11      run_verification.py×11(遞補)                    
+  甲-10   `K-9-13`      不得建築者之後果：**入調配池**                  【部分】        266     app.py×92(pool)／stepg_pipeline.py×25(pool)／sel
+  乙-1    `②-宗` 錨點      現行**起算垂線之錨**於碼面之位置                 【缺】         0       —（僅註解/doc：0）                                  
+  乙-2    `②-宗` 錨點      🔴 **`S_req` 之計算入口**                【缺】         0       —（僅註解/doc：0）                                  
+  乙-3    `②-宗` 錨點      🔴 **`S_req` 與 `K-9-9 二` 判定之接點**    【缺】         0       —（僅註解/doc：0）                                  
+  POPULATION=13 PRINTED=13 SUPPRESSED=0  # A-3 落地介面清單（全列）
+     🔒 **三態計數**：`【已有】` **5**／`【部分】` **3**／`【缺】` **5**（合計 13 ＝ 13）⇒ ✅ 三態之外⛔ 無第四類
+     ⚠️ 🔒 **A-0（偏向多列）之落實**：判為 `【部分】` 者係「**部分字樣有可執行命中**」，⛔ **不代表該介面可用**——其「缺之部分」＝ 無可執行命中之字樣。
+     🔴 **「字在倉內、但只在<u>註解／docstring</u>」之逐項具名（🩸 修 2 之受詞）**：
+        甲-4    **可旋轉可平移**之搜尋（自由位姿）                ⇒ app.py:旋轉 註解7·doc2
+        甲-7    不得建築者之後果：**合併**                    ⇒ wf_f2.py:合併 註解0·doc1／wf_f4.py:合併 註解2·doc0
+        甲-8    不得建築者之後果：**調配**                    ⇒ stepg_pipeline.py:_tier 註解1·doc0／wf_f0.py:_tier 註解3·doc1／wf_f2.py:調配 註解0·doc1
+        甲-9    不得建築者之後果：🔴 **遞補**（下一投影序號）          ⇒ app.py:遞補 註解2·doc1／stepg_pipeline.py:遞補 註解3·doc0／wf_f0.py:遞補 註解0·doc1
+        甲-10   不得建築者之後果：**入調配池**                  ⇒ app.py:調配池 註解1·doc1／wf_f0.py:調配池 註解0·doc1／wf_f2.py:調配池 註解0·doc1
+        🔒 **僅見於註解／doc 之項 ＝ 5**（⛔ 該類**不得**判為 `【已有】`）
+     🔒 **`【已有】`／`【部分】` 之<u>可執行命中逐處樣本</u>（🩸 修 6·至多 3 處／項）**——⛔ 只給計數者，讀者無從分辨「字是**資料欄名**」與「字是**介面**」：
+        甲-1    parcel_min_width_n14(  app.py                       :6600   def parcel_min_width_n14(cut_coords, d_hat, front_pt, min_depth, _
+        甲-1    parcel_min_width_n14(  app.py                       :6681   raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：cut_coords 不
+        甲-1    parcel_min_width_n14(  app.py                       :6684   raise RuntimeError(f"🔴 parcel_min_width_n14[{_label}]：法定最小深度缺／≤0"
+        甲-3    法定最小寬_m                app.py                       :12627  "法定最小寬_m": float(_need_blk(mw_by, lbl, "f3_min_width_by_label", "法
+        甲-3    get_min_lot_size       app.py                       :6088   _md = float(get_min_lot_size(_cat, _fw).get('min_depth', 0.0) or 0
+        甲-3    get_min_lot_size       app.py                       :9921   def get_min_lot_size(category: str, front_road_width_m: float) -> 
+        甲-3    get_min_lot_size       app.py                       :11463  f"get_min_lot_size(分區,正面路寬)['min_width'] 設之·no-silent-fallback 禁 3
+        甲-3    get_min_lot_size       stepg_pipeline.py            :279    b["label"]: float(ns["get_min_lot_size"](
+        甲-3    get_min_lot_size       selection_pipeline.py        :324    ns["get_min_lot_size"](b.get('category', ''), float(_row.get('正面路寬
+        甲-3    法定最小寬_m                run_verification.py          :205    legal_w = float(snapshot["global"]["法定最小寬_m"])
+        甲-3    法定最小深_m                run_verification.py          :206    legal_d = float(snapshot["global"]["法定最小深_m"])
+        甲-3    get_min_lot_size       wf_f0.py                     :187    mw = float(ns["get_min_lot_size"](
+        甲-3    法定最小深_m                wf_f4.py                     :943    min_depth = float(snap["global"]["法定最小深_m"])
+        甲-3    get_min_lot_size       wf_f4.py                     :781    _mw_e1 = {b: float(ns["get_min_lot_size"](cb_by[b]["category"],
+        甲-3    get_min_lot_size       wf_f4.py                     :1078   mw_by = {b: float(ns["get_min_lot_size"](cb_by[b]["category"],
+        甲-3    get_min_lot_size       wf_f4.py                     :1293   gm = ns["get_min_lot_size"]
+        甲-3    get_min_lot_size       app_harvest.py               :150    "get_min_lot_size", "_estimate_G_for_qualification",
+        甲-4    rotate                 app.py                       :4007   mbr = poly.minimum_rotated_rectangle
+        甲-4    rotate                 app.py                       :4027   mbr = poly.minimum_rotated_rectangle
+        甲-4    rotate                 app.py                       :4759   mrr = poly.minimum_rotated_rectangle
+        甲-6    WIDTH_VERDICT_CORNER_K app.py                       :6945   WIDTH_VERDICT_CORNER_K4 = '合格（K-4 面積門檻蘊含）'
+        甲-6    WIDTH_VERDICT_CORNER_K app.py                       :7001   return {'寬度判定': WIDTH_VERDICT_CORNER_K4,
+        甲-6    WIDTH_VERDICT_CORNER_K app.py                       :7067   return WIDTH_VERDICT_CORNER_K4
+        甲-6    corner_min_area        app.py                       :6952   corner_min_area=None, _label='', baseline_pts=None,
+        甲-6    corner_min_area        app.py                       :7004   '_width_k4_threshold': (round(float(corner_min_area), 2)
+        甲-6    corner_min_area        app.py                       :7005   if corner_min_area is not None else None),
+        甲-6    corner_min_area        selection_pipeline.py        :585    'left_corner_min_area': (_fo_min_area(_r_pk.get('【左】最小面積(㎡)'))
+        甲-6    corner_min_area        selection_pipeline.py        :587    'right_corner_min_area': (_fo_min_area(_r_pk.get('【右】最小面積(㎡)'))
+        甲-6    corner_min_area        wf_f4.py                     :1318   float(fo.get("left_corner_min_area", 0.0) or 0.0),
+        甲-6    corner_min_area        wf_f4.py                     :1329   float(fo.get("right_corner_min_area", 0.0) or 0.0),
+        甲-7    合併                     app.py                       :10072  r['合併來源'] = ''
+        甲-7    合併                     app.py                       :10074  r['合併後G(㎡)'] = r['G(㎡)']
+        甲-7    合併                     app.py                       :10109  r_out['合併來源'] = ''
+        甲-7    合併                     run_verification.py          :927    print("… W-F F.0（級0/0' 合併＋梯3 釋池；trunk B 終態）")
+        甲-7    合併                     run_verification.py          :952    ("逐槽J表", d["slot_tab"]), ("合併決策", d["dec_rows"]),
+        甲-7    合併                     run_verification.py          :964    ok_dc, v_dc = diff_rows(d["dec_rows"], os.path.join(F0DIR, f"F.0_合
+        甲-7    合併                     wf_f0.py                     :379    f"🔴 停機#4：{d['gid']} 合併後 G(Σa)={G:.2f}<MinA 且無下一級可走（§7 全鏈窮盡）")
+        甲-7    合併                     wf_f0.py                     :389    cat = "因合併脫旗"
+        甲-8    調配                     app.py                       :2230   '雙向夾擠分配後剩餘空地（含未調配孤立公設地保留額度）', ''),
+        甲-8    調配                     app.py                       :10136  p_out['是否達最小'] = '⚠️ 仍未達（需跨街廓調配）'
+        甲-8    調配                     app.py                       :12352  '備註': f'{method}：兩側皆無土地 → 標記為調配至他街廓'
+        甲-8    _tier                  app.py                       :3790   match_tiers = {}       # parcel_no → 1（contained）/2（boundary neare
+        甲-8    _tier                  app.py                       :3802   match_tiers[opar_items[oi]['parcel']] = 1 if cost < 0 else 2
+        甲-8    _tier                  app.py                       :3806   st.session_state['f3_dxf_match_tiers'] = match_tiers
+        甲-8    調配                     stepg_pipeline.py            :571    _res['_畸零旗標'] = ('⚠️移出/第1調配順位'
+        甲-8    調配                     run_verification.py          :1083   for nm, rows in (("跨街廓調配", d2["conv_rows"]), ("G值", d2["g_tab"]),
+        甲-8    調配                     run_verification.py          :1086   ok_c, v_c = diff_rows(d2["conv_rows"], os.path.join(F2DIR, f"F.2_跨
+        甲-8    調配                     run_verification.py          :1087   ["情境", "歸戶", "源宗"], f"F.2·調配{tag}")
+        甲-8    _tier                  run_verification.py          :811    import wd4_tier_list as _w4
+        甲-8    _tier                  run_verification.py          :1072   _forbid = [f"{n}(" for n in ("calc_a_prime", "_allocate_three_tier
+        甲-8    _tier                  run_verification.py          :1073   "_allocate_tier2_tier3_geometric", "_inflate_a_for_orphan")]
+        甲-8    調配                     wf_f0.py                     :334    f"（如 **K-6 §二 段三**之跨街廓同歸戶集中——K-6 起一律歸七級調配 F.0／F.2；"
+        甲-8    調配                     wf_f3.py                     :176    "處置": "轉 7-4（歸戶於 trunk C 無建地；F.4 調配）"}
+        甲-8    調配                     wf_f4.py                     :458    f"非④進池調配）。禁靜默續跑——查 wf_f3 五則派工。")
+        甲-9    遞補                     run_verification.py          :809    print("… W-D.4 四梯分級清單（Gxxx 群組·31 旗標消費·遞補錨·fixture·v3 半實算）")
+        甲-9    遞補                     run_verification.py          :816    _dump_csv(_d4["frag"], os.path.join(OUTDIR, f"got_W-D.4_遞補_退縮{tag}
+        甲-9    遞補                     run_verification.py          :823    os.path.join(V3RUN, f"W-D.4_碎片遞補對照_退縮{tag}.csv"),
+        甲-10   pool                   app.py                       :7547   def _select_pool_slot(widths, left_side, right_side, rw_func=None)
+        甲-10   pool                   app.py                       :9003   def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocatio
+        甲-10   pool                   app.py                       :9035   raise RuntimeError(f"🔴 _pool_strips_for_block[{_label}]：block_poly
+        甲-10   pool                   stepg_pipeline.py            :324    _select_pool_slot = ns["_select_pool_slot"]
+        甲-10   pool                   stepg_pipeline.py            :324    _select_pool_slot = ns["_select_pool_slot"]
+        甲-10   pool                   stepg_pipeline.py            :327    _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2
+        甲-10   pool                   selection_pipeline.py        :334    _candidates_pool = _all_in_blk   # Patch D-1：候選池一律全自動 PK
+        甲-10   pool                   selection_pipeline.py        :342    for r in _candidates_pool:
+        甲-10   pool                   run_verification.py          :665    "poolA": _sg["pool_diag"]}   # F.0 trunk A 之池（釋池量對照）
+        甲-10   pool                   run_verification.py          :665    "poolA": _sg["pool_diag"]}   # F.0 trunk A 之池（釋池量對照）
+        甲-10   pool                   run_verification.py          :681    _ks = {lbl: int(d["k*"]) for lbl, d in _sg["pool_diag"].items()}
+        甲-10   pool                   wf_f0.py                     :422    poolB = {lbl: round(float(v["池總=幾何剩餘(㎡)"]), 2)
+        甲-10   pool                   wf_f0.py                     :423    for lbl, v in sgB["pool_diag"].items()}
+        甲-10   pool                   wf_f0.py                     :424    poolA = {lbl: round(float(v["池總=幾何剩餘(㎡)"]), 2)
+        甲-10   pool                   wf_f2.py                     :130    poolB = {l: float(v["池總=幾何剩餘(㎡)"]) for l, v in f0_out[tag]["poolB_
+        甲-10   pool                   wf_f2.py                     :130    poolB = {l: float(v["池總=幾何剩餘(㎡)"]) for l, v in f0_out[tag]["poolB_
+        甲-10   pool                   wf_f2.py                     :189    poolC = {l: float(v["池總=幾何剩餘(㎡)"]) for l, v in sgC["pool_diag"].it
+        甲-10   pool                   wf_f3.py                     :62     pool1 = same if same else cs
+        甲-10   pool                   wf_f3.py                     :63     dmin = min(pub_poly.distance(_poly_of(temp, b["暫編地號"])) for b in p
+        甲-10   pool                   wf_f3.py                     :64     near = [b for b in pool1 if pub_poly.distance(_poly_of(temp, b["暫編
+        甲-10   pool                   wf_f4.py                     :175    def pool(self, blk):
+        甲-10   pool                   wf_f4.py                     :176    return float(self.sg()["pool_diag"][blk]["池總=幾何剩餘(㎡)"])
+        甲-10   pool                   wf_f4.py                     :294    def _cur_pool_anchor(eng, blk):
+  POPULATION=80 PRINTED=80 SUPPRESSED=0  # A-3 可執行命中之逐處樣本（全列·至多 3 處／(項,檔,字樣)）
+
+【F／A-4】🔴 **落地之影響母體**（12 格·⛔ **只數不算後果**）
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  街廓    側      宗數       第 0 宗?     `K-9-12` 射程    錨點更正射程         交集        
+  R1    左      2        ✅ 有        1              1              1         
+  R1    右      3        ✅ 有        2              2              2         
+  R2    左      8        ✅ 有        7              7              7         
+  R2    右      7        ⛔ 無        7              0              0         
+  R3    左      7        ⛔ 無        7              0              0         
+  R3    右      7        ✅ 有        6              6              6         
+  R4    左      1        ✅ 有        0              0              0         
+  R4    右      1        ✅ 有        0              0              0         
+  R5    左      7        ✅ 有        6              6              6         
+  R5    右      5        ⛔ 無        5              0              0         
+  R6    左      6        ⛔ 無        6              0              0         
+  R6    右      5        ✅ 有        4              4              4         
+  POPULATION=12 PRINTED=12 SUPPRESSED=0  # A-4 逐 (街廓, 側)（全列）
+     🔒 **合計**：全部宗 **59**／`K-9-12` 射程 **51**／錨點更正射程 **26**／交集 **26**
+     🔒 **`P5` 之判**：`K-9-12` 射程（**51**） > 錨點更正射程（**26**）⇒ ✅ 成立
+
+  🔴 **A-4-4：現況基線**——現行 `evaluate_parcel_width_n14`（**生產判定器·原樣**）之判定
+     🔒 入參：`legal_min_width` ＝ **3.50 m**／`min_depth` ＝ **14.00 m**（皆自 `snapshot['global']`·⛔ 不硬編）；`baseline_pts` ＝ `None`（＝ **現行生產路徑**）
+     `g_rows` 總列數 ＝ **35**（來自 3 街廓）
+       不合格              ＝ **16**
+       不適用（非配地列）        ＝ **5**
+       合格               ＝ **10**
+       合格（K-4 面積門檻蘊含）   ＝ **4**
+  POPULATION=35 PRINTED=35 SUPPRESSED=0  # A-4-4 現況基線（全列·依判定分組）
+     🔴🔴 **母體之限制（🩸 修 4·⛔ 就地具名）**：`g_rows` 僅得 **3 ／ 6 街廓**（**3 街廓 raise**·見【驅動】段之逐項）⇒ 本節之 **35 列 ⛔ 非全部 59 宗**；⛔ **不得以部分母體充作全體**
+     🔴 **判為<u>不合格</u>（`不合格`）之宗數 ＝ 16**
+       R1·628-34(3)
+       R3·628(4)
+       R3·628-47(1)
+       R3·628-46(1)
+       R3·628-48(1)
+       R3·628-49(2)
+       R3·628-42(2)
+       R3·628-27(2)
+       R3·628-28(1)
+       R3·628-29(1)
+       R6·628(2)
+       R6·628-1(2)
+       R6·628-23(1)
+       R6·628-22(1)
+       R6·628-53(1)
+       R6·628-38(1)
+  POPULATION=16 PRINTED=16 SUPPRESSED=0  # A-4-4 判為不合格之宗（全列·🩸 修 3：首版 `[:12]` 靜默截斷）
+     🔒 **`P6` 之判**：判定器**非恆真** ⇒ 自檢 ③ 已證（已知寬 ⇒ 合格·已知窄 ⇒ 不合格）；**於本案之實資料**判為不合格者 ＝ **16** ⇒ ✅ **本案母體內亦有反例**
+     ⚠️ 🔒 **⛔ 只出艙現況·⛔ 不算「改後會怎樣」**（施工單 A-4-4 明令）
+
+【G／P7】`run_all` 清單筆數之**第十五法**（🔒 `ast.unparse` 之**往返法**·⛔ 與十四法不同族）
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  母體 ＝ `run_all.py` 之 AST；受詞 ＝ **`ast.unparse(For.iter)` 所<u>重新生成</u>之文本**（長度 1184 字元）
+  🔒 **⛔ 未 `compile`／⛔ 未 `exec`**（僅 `ast.parse`／`ast.unparse`）⇒ ⛔ 未執行 `run_all`（閘 7）
+     fixture_cad_binding_order.py
+     fixture_baseline_candidates.py
+     fixture_n14_min_width.py
+     fixture_n14_feed_chain.py
+     fixture_block_depth_n19p.py
+     fixture_corner_range_k8.py
+     fixture_end_reserve.py
+     fixture_end_fallback.py
+     fixture_end_winner.py
+     fixture_wf_ns_wiring.py
+     fixture_e2e_termination.py
+     fixture_g3_static_guards.py
+     fixture_midlayer_6items.py
+     fixture_yi_construction.py
+     tools/wg973_gb_integrity.py
+  POPULATION=15 PRINTED=15 SUPPRESSED=0  # 第十五法之逐項（全列）
+  ⇒ **第十五法所得 ＝ 15**（施工單 `P7` 期望 **15**）⇒ ✅ 相符
