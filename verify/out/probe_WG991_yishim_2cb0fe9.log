@@ -1,0 +1,650 @@
+==================================================================================================================================================================================================================
+【W-G.9-91 §二 A 組】「乙」之 shim ＋ 藍影定式對圖驗證 ＋ 遞補同構實證 ＋ 容差閘普查
+==================================================================================================================================================================================================================
+  產生於 commit：2cb0fe9
+  環境：shapely 2.1.2 | GEOS (3, 13, 1) | numpy 2.4.4
+  🛑 生產路徑不動：`run_verification.py::V6DXF` ＝ data/V6.dxf
+  🔒 **A-0 事前選定：偏向<u>多報後果</u>**（不確定者一律判違反／入池／列入·並具名）
+  🔒 情境母體 ＝ **僅 0m**（同 `-88`／`-90`·⛔ 不擴·具名）
+  🔴 ⛔ **不移任何線**（`VR-050` 四·`K-9-9 四` 明禁超配）；⛔ 不建任何介面。
+
+==================================================================================================================================================================================================================
+【D／A-2-1】🛑 **藍影定式之對圖驗證**（🔒 先辦·其判定決定 A-2-2 辦不辦）
+==================================================================================================================================================================================================================
+  🔒 圖證：docs/specs/figures/宗地分配線邏輯.cnt（**29 點**）／docs/specs/figures/宗地分配線邏輯.lin（**28 線**）——`PROVENANCE §三` 稱 **29 點／28 線** ⇒ ✅ 相符
+  群（方向原樣引 §三）                  實得     §三 判
+  正街(FRONTLINE)                 7      7 ✅
+  最小深度垂線                        5      5 ✅
+  後側境界線(BASELINE)               6      5 🔴 具名
+  ALLOCLINE                     5      5 ✅
+  SIDELINE                      3      3 ✅
+  截角斜邊                          1      1 ✅
+  (未歸類)                         1      — —
+     ⚠️ 未歸類段 3–4 (183.089, 255.861) → (123.419, 268.435)　單位 (-0.978510, 0.206197)　長 60.9804
+        🔒 該向與 BASELINE **正交**（`(0.2059,0.9786)` 旋 90° ＝ `(-0.9786,0.2059)`）⇒ **街廓之右緣**·⛔ 不屬六群之一·⛔ 不影響下判。
+     ⚠️ **BASELINE 段數 6 ≠ §三 所載 5**（具名·⛔ 不影響下判）：多出者為 BASELINE 之**延伸段**：
+        段  6–2   (104.777, 179.85) → (120.773, 255.861)  長  77.6759
+        段  2–24  (120.773, 255.861) → (123.419, 268.435)  長  12.8494
+        段 10–6   (94.212, 129.642) → (104.777, 179.85)  長  51.3075
+        段 18–10  (82.221, 72.662) → (94.212, 129.642)  長  58.2280
+        段 20–18  (78.486, 54.913) → (82.221, 72.662)  長  18.1377
+        段 23–20  (72.289, 25.461) → (78.486, 54.913)  長  30.0969
+
+  🔒 **KL `.jpg` 之逐字（⛔ 原樣引用·⛔ 不改寫不濃縮）**：
+     條件 2：「交於FRONTLINE及BASELINE的點要在前一宗土地的遠側境界線的交點後（例如：要在P1及B1後）」
+     條件 3：「後側境界線交於BASELINE的點一定要在前一宗土地的遠側境界線於FRONTLINE上的交點
+              （例如P1）沿FRONTLINE法向往BASELINE方向交於的點開始往後分配（例如B2後）」
+     藍字  ：「此種方向的宗地分配線／第2宗土地至少要從B2開始／
+              B1~B2範圍內的ALLOCLINE（藍色虛線）都不能為第2宗土地的遠側境界線」
+
+  ① 街角第 1 宗之**遠側界** ＝ ∥SIDELINE 且自 FRONTLINE 連至 BASELINE 之段（`K-9-14`）
+     候選 ＝ 1 段（須 1）✅
+     ⇒ **P1 ＝ pt19 (183.089, 72.662)**（FRONTLINE 上）　**B1 ＝ pt20 (78.486, 54.913)**（BASELINE 上）
+
+  ② 依**條件 3** 求 `B2` ＝ `P1` 沿 FRONTLINE **法向**（＝ 水平·因正街為鉛直）交 BASELINE 之點
+     BASELINE 上與 `P1` 同 y（72.662）之點 ＝ [(18, (82.221, 72.662))]
+     ⇒ **B2 ＝ pt18 (82.221, 72.662)**
+     🔒 佐證：`最小深度垂線` 群確有段 15–29  (183.089, 72.662) → (109.905, 72.662)
+     🔒 佐證：`最小深度垂線` 群確有段 29–16  (109.905, 72.662) → (82.221, 72.662)
+
+  ③ 🛑 **判：`B1` 與 `B2` 是否同一點？**
+     ‖B1−B2‖ ＝ **18.137729**（圖面單位·🔒 **僅用於判「是否同點」**·⛔ 非度量·PROVENANCE §四）
+     🔒 佐證（**拓樸**·⛔ 非度量）：`.lin` 中有一段 BASELINE **直接連接** B1 與 B2 ＝ [(20, 18)]
+     ⇒ **🔴 **B1 ≠ B2 ⇒ 二者為 BASELINE 上之相鄰<u>相異</u>點****
+
+  ④ 🛑 **停機條款 ④ 之判定**
+     claude.ai 之定式（施工單 A-2-1 逐字）：藍影 ＝ `block` ∩ {第 0 宗遠側界之外側}
+                                        ∩ {**通過 `B1`** 之 ∥ALLOCLINE 之內側}
+     KL 圖之逐字                        ：第 2 宗**至少要從 `B2` 開始**；
+                                        **`B1~B2` 範圍內之 ALLOCLINE 都<u>不能</u>**為其遠側界
+     ⇒ 下限線之**通過點**：claude.ai ＝ `B1` ／ KL 圖 ＝ `B2` ⇒ **🔴 **不符****
+     ⇒ 🛑 **停機上呈**（施工單 §一 停機④／§七-6）：⛔ **不得以自定式續算** ⇒ **A-2-2 ⛔ 不辦**
+     🔒 **方向之具名**：`B1` 較 `B2` **在前** ⇒ 以 `B1` 為界之藍影**較小**
+        ⇒ 其瑕**恰落在 A-0 所禁之方向**（使後果看起來更小）⇒ ⛔ 尤不得續算。
+
+==================================================================================================================================================================================================================
+【驅動】`0m` × R1–R6
+==================================================================================================================================================================================================================
+  攔截 **6 格**；宗數合計 ＝ **59**
+
+==================================================================================================================================================================================================================
+【C／A-1】🛑 「乙」之 shim 量測（⛔ 不移線·判準 ＝ 不交叉·原樣 import `w88`）
+==================================================================================================================================================================================================================
+  **A-1-1 違反宗之確認**：母體 ＝ **47 列**；違反 ＝ **2 宗**
+  鍵                  i      前                  s*            面積(㎡) 情形            
+  R2|左|1|0           1      0             10.0407       3.80822376 在內            
+  R5|左|1|0           1      0              5.1067       0.98672881 在內            
+  POPULATION=47 PRINTED=2 SUPPRESSED=45  # A-1-1 違反宗（全列）
+     面積合計（帶號）＝ **4.7950 ㎡** ／（絕對值）＝ **4.7950 ㎡**
+     🔒 **與 `-88`／`-90` 之逐位對拍**（倉內錨 ＝ 2 宗·`R2左第1宗 3.80822376`／`R5左第1宗 0.98672881`）：
+        R2|左|1|0           錨     3.80822376 ／ 本批 3.80822376 ⇒ ✅ 逐位相同（8dp）
+        R5|左|1|0           錨     0.98672881 ／ 本批 0.98672881 ⇒ ✅ 逐位相同（8dp）
+     ⇒ **名單對稱差 ＝ 0**（A-0(丁)）
+
+  **A-1-2 第一輪處置**（`K-9-9 四`·⛔ 無遞補·⛔ 不移線）
+     不配地之宗 ＝ {'R2': [1], 'R5': [1]}
+     其面積**入調配池** ＝ **4.7950 ㎡**（🔒 ＝ A-1-1 之合計·⛔ 非另算）
+     🔴 **其餘各宗之位置與面積**（🔒 應**逐位不變**——⛔ 未遞補 ⇒ 幾何不動）：
+     街廓     i                   s_lo               s_hi              面積(㎡) 街角?     
+     R1     0            0.260267915        8.838507535      208.163597295 是（第 0 宗）
+     R1     1            6.479599420       27.093538666      599.908674384 否       
+     R1     2           80.264585869       90.396481033      227.731732458 是（第 0 宗）
+     R1     3           77.870140409       83.348280576       85.995708917 否       
+     R1     4           59.875134154       80.551446252      596.255030821 否       
+     R2     0            0.017054082        4.271506030      175.946302970 是（第 0 宗）
+     R2     2            1.634926967        5.461180251       29.085315003 否       
+     R2     3            2.282613775       11.991323191      293.219343740 否       
+     R2     4            8.817252609       11.997368149        0.271241088 否       
+     R2     5            8.823301729       13.928935414       86.652428777 否       
+     R2     6           10.756198845       19.053578407      229.721671018 否       
+     R2     7           15.884370069       27.788696616      390.978789353 否       
+     R2     8           95.573762089      100.027404484       58.954799284 否       
+     R2     9           85.762839776       98.688143375      432.114640366 否       
+     R2     10          84.278624932       88.883971069       65.452588690 否       
+     R2     11          80.943070915       87.400777379      147.173170028 否       
+     R2     12          77.623448605       84.067518254      146.577586631 否       
+     R2     13          76.002844899       80.750179876       71.596500023 否       
+     R2     14          66.123430960       79.130691161      437.013836972 否       
+     R3     0           -4.052009789        1.026535493       44.892886940 否       
+     R3     1           -3.026620063        6.743460564      250.247171264 否       
+     R3     2            2.683924063       10.014958968      143.380510040 否       
+     R3     3            5.951770985       11.674211230       72.769598385 否       
+     R3     4            7.609171274       14.941651315      143.396616055 否       
+     R3     5           10.872964406       16.741727751       79.054048506 否       
+     R3     6           12.671031688       26.322310885      421.407591454 否       
+     R3     7           88.281138001       93.346073341      189.544340165 是（第 0 宗）
+     R3     8           84.626006289       89.042201894       87.901691875 否       
+     R3     9           84.047476393       88.777104617       25.942492490 否       
+     R3     10          82.630478883       88.197928273       63.524069574 否       
+     R3     11          81.208648330       86.779347415       63.716372692 否       
+     R3     12          71.262523256       85.355928113      445.032415035 否       
+     R3     13          62.730343981       75.398689270      380.814794485 否       
+     R4     0            0.344054899       49.217294468     1521.049879486 是（第 0 宗）
+     R4     1           84.542783566       98.701661573      458.485789252 是（第 0 宗）
+     R5     0           -0.738738024        4.849829863      205.498956553 是（第 0 宗）
+     R5     2            1.194539630        6.410099160       51.227549734 否       
+     R5     3            2.363178111       11.961362031      243.157672726 否       
+     R5     4            7.890164800       18.555923005      290.746367386 否       
+     R5     5           14.455887153       18.903430203       15.378102230 否       
+     R5     6           14.801874671       29.457441068      469.757354135 否       
+     R5     7           85.269023246       92.799547299      148.718235712 否       
+     R5     8           76.370645745       89.680091613      423.545902257 否       
+     R5     9           65.328068655       80.742629772      520.364275362 否       
+     R5     10          65.260899205       69.651550373        3.147493031 否       
+     R5     11          65.032296792       69.584085895       10.710470367 否       
+     R6     0           -0.000000000        3.986117395        7.377181397 否       
+     R6     1            0.155240040        7.047440235      145.817472378 否       
+     R6     2            3.228927199        8.542352731       71.034637355 否       
+     R6     3            4.729877468       23.232246937      692.048908843 否       
+     R6     4           19.479102410       26.494514782      152.214320667 否       
+     R6     5           22.754546167       31.024653978      210.484188752 否       
+     R6     6           78.633784178       89.341088040      307.786281508 是（第 0 宗）
+     R6     7           78.627909834       82.148973134        0.256131125 否       
+     R6     8           75.931894455       82.143120348      117.732455014 否       
+     R6     9           69.032608147       79.457950052      302.936909603 否       
+     R6     10          61.354754274       72.586417049      339.914793279 否       
+     POPULATION=57 PRINTED=57 SUPPRESSED=0  # A-1-2 其餘各宗（全列·⛔ 無切片）
+     🔒 **母體 ＝ 其餘各宗 ＝ 57 宗**（全部 59 − 不配地 2）
+     🔒 **本 shim 之構造保證**：移除 ＝ 自**破量對之母體**剔除該宗（同 `w83` A-2-4），
+        ⛔ **未觸及任何宗之幾何** ⇒ 其餘各宗之 `s_lo`／`s_hi`／面積**構造上不可能變**。
+        🔒 **判別力（⛔ 不以構造代替量測）**：下方負對照（移除集 ＝ ∅）之破量須回到倉內錨；
+           若構造有誤（隱含移線），負對照必不相符。
+
+  **A-1-3 第一輪後之 `②-宗` 破量**（重跑弦區間閉式·`d ≥ 2`）
+     🔒 **負對照（判別力·常設 8）＝ 移除集 ＝ ∅** ⇒ 須得倉內錨 `R2 45.9766`／`R5 56.3293`：
+        R2   倉內錨    45.9766 ／ 負對照實得 45.9765888243 ⇒ ✅ 相符
+        R5   倉內錨    56.3293 ／ 負對照實得 56.3292619405 ⇒ ✅ 相符
+     ⇒ 負對照判 ＝ **✅ 通過（同源可比）**
+
+     街廓     移除之宗（不配地）                      移除前                    **移除後**                判           
+     R2     [1]                            2 對 / 45.9766 ㎡        **2 對 / 45.9766 ㎡**    🔴 **仍 > 0** 
+        🔴 殘餘破量對：(j=0, k=2) 重疊 19.814184 ㎡
+        🔴 殘餘破量對：(j=0, k=3) 重疊 26.162405 ㎡
+     R5     [1]                            2 對 / 56.3293 ㎡        **2 對 / 56.3293 ㎡**    🔴 **仍 > 0** 
+        🔴 殘餘破量對：(j=0, k=2) 重疊 36.133656 ㎡
+        🔴 殘餘破量對：(j=0, k=3) 重疊 20.195606 ㎡
+     POPULATION=2 PRINTED=2 SUPPRESSED=0  # A-1-3 破閘格（全列）
+     🔴 **第一輪後之殘餘合計 ＝ 4 對 ／ 102.3059 ㎡**（帶號）／ 102.3059 ㎡（絕對值）
+     ⇒ **`P2` 之判**：第一輪之 `②-宗` 破量**仍 > 0**？⇒ **✅ 是（`P2` 成立）**
+     ⛔ **本數係<u>第一輪</u>**（⛔ 無遞補）——⛔ 不得充作「乙」之最終土地後果（施工單 A-5）。
+
+==================================================================================================================================================================================================================
+【D／A-2-2】藍影面積 vs `G₁`
+==================================================================================================================================================================================================================
+  🛑 **⛔ 不辦**——A-2-1 已判**不符** ⇒ 停機條款④ 觸發。
+     施工單 §一 停機④／§七-6 逐字：「⛔ **不得以自定式續算**」「⛔ **不得另立藍影之第二定式**」。
+     ⇒ 🔒 本節之**唯一正確處置 ＝ 不算**；⛔ 不得以 `B2` 版自行改式（那即是「第二定式」）。
+     ⇒ **`P4` ⛔ 無法判**（其受詞 ＝ 藍影面積·而藍影未定義）⇒ 具名為**未答**、⛔ 非否證。
+
+==================================================================================================================================================================================================================
+【E／A-3】🔴 **遞補介面之同構實證**（⛔ 只證不建）
+==================================================================================================================================================================================================================
+  🔒 母體 ＝ `verify/run_verification.py`（**1463 行**）；`遞補` 之**全部**命中 ＝ **17 行**（⛔ 全列·無切片）
+     🔒 產生指令（節 105／修法 113）：`len([i for i,l in enumerate(open('verify/run_verification.py',encoding='utf-8'),1) if '遞補' in l])`
+
+  行      層          受詞（逐字節錄）                                                         是否為「位次遞補」
+  :39    註解         F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 ⛔ 否
+  :808   註解         #   旗標消費(v3=31)/MinA_區推導/R6 遞補錨(v3 重錨)/fixture 查封自成一群/三 CSV 對拍 v ⛔ 否
+  :809   字串         print("… W-D.4 四梯分級清單（Gxxx 群組·31 旗標消費·遞補錨·fixture·v3 半實算）")      ⛔ 否
+  :816   字串         _dump_csv(_d4["frag"], os.path.join(OUTDIR, f"got_W-D.4_遞補_退縮{ta ⛔ 否
+  :823   字串         os.path.join(V3RUN, f"W-D.4_碎片遞補對照_退縮{tag}.csv"),                ⛔ 否
+  :824   字串         ["情境", "碎片"], f"W-D.4遞補{tag}")                                   ⛔ 否
+  :825   字串         results.append((f"W-D.4 碎片遞補{tag}", ok_r, v_r))                  ⛔ 否
+  :900   註解         # 遞補錨（v3 重錨）：v2 之標的 628-1(2) 於 v3 自身入畸零旗標（寬<3.5m）→ 續往內遞補。        ⛔ 否
+  :903   字串         _ok_anc = (bool(_r6) and _r6[0]["遞補標的宗"] == "628-4(1)"           ⛔ 否
+  :905   字串         results.append(("W-D.4 遞補錨 R6 85.66→628-4(1)（跳過 628(2);628-1(2); ⛔ 否
+  :1012  註解         # ── 🆕 W-F F.1：S=0 碎片遞補形狀調整（KL 縮圍 R1；等 G 幾何重切＋後續宗前移）──           ⛔ 否
+  :1013  註解         #   R3/R6 楔形＝標記制待 F.4 終態遞補整形（裁示 1(b) F.1 段）。停機斷言於 wf_f1 內 raise。 ⛔ 否
+  :1023  字串         for nm, rows in (("遞補整形", d1["reshape_rows"]), ("碎片處置", d1["frag ⛔ 否
+  :1026  字串         ok_r, v_r = diff_rows(d1["reshape_rows"], os.path.join(F1DIR, f" ⛔ 否
+  :1028  字串         results.append((f"F.1·遞補整形{tag}", ok_r, v_r))                    ⛔ 否
+  :1056  字串         results.append((f"F.1 標記制{tag}（{len(_marks)} 片待 F.4 終態遞補整形，期 {_e ⛔ 否
+  :1197  註解         #   →E3 終態遞補整形→E4 全域斷言→E5 33 群總決算。六表對拍＋F.4 專屬閘。                  ⛔ 否
+  POPULATION=17 PRINTED=17 SUPPRESSED=0  # A-3 `遞補` 之全部命中（全列）
+     ⇒ 分層：可執行 **0**／註解 **6**／字串（**含 f-string**）**11**（合計 17 ／ 17 ⇒ ✅）
+     🔴 **與 `W-G.9-89` 之「`run_verification.py`×11」對帳（同名不同量·⛔ 不得互代）**：
+        `-89` 之 **11** ＝ **非註解**之行（17 總 − 6 註解 ＝ 11）✅ 複現
+        本批之 **0** ＝ **可執行層**（⛔ 另扣 11 個「字樣落在字串／f-string 內」之行）
+        ⇒ 🔒 **二數皆對、母體不同**；而**判「介面是否存在」之受詞應為可執行層**（`-89` ⑯：⛔ 只在註解／字串裡的字⛔ 不得判為 `【已有】`）。
+     🔴 **判為「位次遞補」者 ＝ 0 ／ 17**
+     🔒 判準（正面列舉·⛔ 非啟發法）：含 `投影序號`／`位次`／`下一位`／`次一位` 任一者
+        ——即 `K-9-9 四` 之逐字「**投影序號中下一位之土地遞補該位次**」之語意。
+
+  🔒 **判別力之陽性對照（⛔ 不可省·本批自補）**：上開判準對全母體**皆判「否」**
+     ⇒ **⛔ 無從與「判準恆否」區辨** ⇒ 餵一個**已知為真**之合成句：
+     合成句 ＝ results.append(("投影序號中下一位之土地遞補該位次", ok, v))
+     ⇒ 判 ＝ **✅ 是**（須「✅ 是」）✅
+     🔒 ⇒ 該判準**非恆否** ⇒ 「0 ／ 17」係**真 0**、⛔ 非量測器壞掉。
+
+  🔒 **判別力之陰性對照（施工單 A-3 所令）**：對已知⛔ 非位次遞補之 `F.1 遞補整形` 同法判定
+     :39  F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形 baseline（R1 縮圍）
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+     :1013  #   R3/R6 楔形＝標記制待 F.4 終態遞補整形（裁示 1(b) F.1 段）。停機斷言於 wf_f1 內 raise。
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+     :1023  for nm, rows in (("遞補整形", d1["reshape_rows"]), ("碎片處置", d1["frag_rows"]),
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+     :1026  ok_r, v_r = diff_rows(d1["reshape_rows"], os.path.join(F1DIR, f"F.1_遞補整形_退縮{tag}.csv"),
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+     :1028  results.append((f"F.1·遞補整形{tag}", ok_r, v_r))
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+     :1056  results.append((f"F.1 標記制{tag}（{len(_marks)} 片待 F.4 終態遞補整形，期 {_exp_m}）",
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+     :1197  #   →E3 終態遞補整形→E4 全域斷言→E5 33 群總決算。六表對拍＋F.4 專屬閘。
+        ⇒ 判 ＝ ⛔ 否（須「⛔ 否」）✅
+
+  🔒 **母體之擴掃（CC 自補·⛔ 施工單未令）**：`遞補` 於 `verify/**.py` ＋ `app.py` 之**可執行層**
+     由：「`verify/run_verification.py` 可執行層 ＝ 0」⛔ **不蘊含**「全倉無遞補介面」
+     ⇒ 母體 ＝ **189 檔**；`遞補` 之命中 ＝ **71 行**；**可執行層 ＝ 0 行**
+     檔                                              行       節錄
+     POPULATION=0 PRINTED=0 SUPPRESSED=0  # A-3 擴掃·可執行層
+     🔴 **其中判為「位次遞補」者 ＝ 0 ／ 0**
+
+  🔒 **以既有實例對拍**（施工單 A-3-2）：`W-D.4 遞補錨` 之逐字
+     :808   #   旗標消費(v3=31)/MinA_區推導/R6 遞補錨(v3 重錨)/fixture 查封自成一群/三 CSV 對拍 v3 baseline。
+     :809   print("… W-D.4 四梯分級清單（Gxxx 群組·31 旗標消費·遞補錨·fixture·v3 半實算）")
+     :900   # 遞補錨（v3 重錨）：v2 之標的 628-1(2) 於 v3 自身入畸零旗標（寬<3.5m）→ 續往內遞補。
+     :905   results.append(("W-D.4 遞補錨 R6 85.66→628-4(1)（跳過 628(2);628-1(2);628-23(1)）", _ok_anc,
+     POPULATION=4 PRINTED=4 SUPPRESSED=0  # `遞補錨` 全列
+
+  🔒 **與 `K-9-9 四` 之逐項對照**（⛔ 解釋不出即具名為未答）：
+     | 項 | `K-9-9 四`（正典逐字） | `W-D.4 遞補錨`（倉內實例） | 判 |
+     | 觸發 | 依該宗 `G` 值算出之**遠側界位置**在起算垂線之前 ⇒ 不配地 | `W-D.4` 之**碎片**（面積過小·`R6 85.66`） | ⛔ **不同**（幾何位置 vs 面積門檻） |
+     | 受詞 | **投影序號中下一位之土地** | `628-4(1)`（**跳過** `628(2)`;`628-1(2)`;`628-23(1)`） | ⚠️ **形式相近**（皆為「順序中之下一位」）·**惟跳過規則之依據未載** |
+     | 結果 | 該宗**遞補該位次** | 該地號成為遞補標的 | ⚠️ 形式相近 |
+     | 🔴 **跳過之依據** | 正典**未規定跳過** | 跳過 3 筆·**其規則於本檔內查無** | 🔴 **不同構之關鍵** |
+     🔴 **必答（A-3-3）**：`W-D.4 遞補錨` 是否即 `K-9-9 四` 所指之機制？
+        ⇒ 🛑 **未答·具名**——二者之**觸發條件不同**（面積門檻 vs 遠側界位置），
+           且 `W-D.4` 之**跳過規則**於 `verify/run_verification.py` 內**查無其依據** ⇒ ⛔ 不得判為同構。
+        🔒 ⛔ **本判⛔ 非裁定題**（`K-9-11` 三：遞補之機制⛔ 不另訂）——係**實證之結果**。
+
+==================================================================================================================================================================================================================
+【F／A-4】🔴 **容差級分類閘之全倉普查**（⛔ 只列不改·⛔ 不重驗）
+==================================================================================================================================================================================================================
+  🔒 起因已坐實（`W-G.9-90`）：`|sin(源甲,源乙)| ≤ 1e-12` 之宗於換圖後 **8 ⇒ 9**（新入列 ＝ `R1|1`）。
+  🔒 母體 ＝ `git ls-files` 之 `verify/**.py` ＋ `app.py`，**扣除本探針自身**
+     ⇒ **189 檔**；🔒 自身污染之排除逐字：['verify/probes/probe_WG991_yishim.py', 'docs/reports/W-G.9-91_乙之shim與藍影對G.md'] ⇒ 其於母體內者 ＝ **0 筆**
+     🔒 產生指令（修法 113）：`git ls-files -z` → 篩 `verify/**.py` ∪ `app.py` → 扣 SELF
+     ⇒ **命中 ＝ 530 處**（`<op> <tol>` 或 `<tol> <op>` 之字面·⛔ 未含以具名常數表示者）
+     ⇒ 其中**可執行層 ＝ 342**（註解 16／字串（**含 f-string**）172）
+     🔒 **分層失敗之檔 ＝ 0**（⛔ 不得靜默：其行一律落入「可執行」⇒ 偏向多報·符 A-0）
+
+  🔒 **容差值之分布（可執行層·全列）**：
+     1e-9            138
+     1e-6             76
+     1e-12            63
+     1e-15            26
+     1e-3             15
+     5e-4              8
+     1e-5              3
+     1e-18             2
+     5e-5              2
+     5e-9              2
+     1e-09             1
+     1e-10             1
+     1e-20             1
+     1e-4              1
+     1e-7              1
+     1e-8              1
+     2e-9              1
+     POPULATION=17 PRINTED=17 SUPPRESSED=0
+
+  🔒 **「分類結果是否入判定鏈」之判準（正面列舉·⛔ 非啟發法）**：該行含 ['raise', 'assert', 'return', 'if ', 'elif ', 'while ', 'continue', 'break', 'not ', ' and ', ' or '] 任一者。
+     ⚠️ **A-0（偏向多報）**：不確定者一律**列入**並具名。
+     ⇒ 🔴 **入判定鏈者 ＝ 279 ／ 342（可執行層）**
+
+  🔴 **標記「波末換圖後須重驗」者（＝ 入判定鏈者）逐處全列**：
+  檔                                              行       容差       層      節錄
+  app.py                                         :1262   1e-6     可執行    if _L > 1e-6:
+  app.py                                         :1413   1e-6     可執行    if _L_al > 1e-6:
+  app.py                                         :1635   1e-12    可執行    if abs(_det) < 1e-12:
+  app.py                                         :1706   1e-9     可執行    if _len_seg <= 1e-9:
+  app.py                                         :4721   1e-9     可執行    if abs(denom) < 1e-9:
+  app.py                                         :4865   1e-9     可執行    if abs(denom) < 1e-9:
+  app.py                                         :5259   1e-9     可執行    if _L < 1e-9:
+  app.py                                         :5267   1e-9     可執行    if _L < 1e-9:
+  app.py                                         :5276   1e-9     可執行    if _Lseg < 1e-9:
+  app.py                                         :5442   1e-9     可執行    if _L < 1e-9:
+  app.py                                         :5450   1e-12    可執行    if _L2 < 1e-12:
+  app.py                                         :5603   1e-12    可執行    if _L2 < 1e-12:
+  app.py                                         :5633   1e-9     可執行    if _m_bl.hypot(_bx - _ax, _by - _ay) < 1e-9:
+  app.py                                         :5763   1e-9     可執行    if n < 1e-9:
+  app.py                                         :5801   1e-9     可執行    if _blen < 1e-9:
+  app.py                                         :5894   1e-9     可執行    if nrm >= 1e-9:
+  app.py                                         :5900   1e-6     可執行    if W_block > 1e-6:
+  app.py                                         :5918   1e-9     可執行    if w0 <= w <= w1 and (w1 - w0) > 1e-9:
+  app.py                                         :5924   1e-6     可執行    if w_hi - w_lo > 1e-6:
+  app.py                                         :6505   1e-9     可執行    if _nd < 1e-9:
+  app.py                                         :6536   1e-12    可執行    if abs(_bdn0) < 1e-12:
+  app.py                                         :6542   1e-12    可執行    if abs(_bdn - _idn) > 1e-12:
+  app.py                                         :6688   1e-9     可執行    if _n_d < 1e-9:
+  app.py                                         :6854   1e-12    可執行    if abs(_n14_band[0] - _t_lo) > 1e-12:
+  app.py                                         :7335   1e-6     可執行    if edge_len < 1e-6:
+  app.py                                         :7459   1e-6     可執行    if seg_len < 1e-6:
+  app.py                                         :7780   1e-6     可執行    if seg_len < 1e-6:
+  app.py                                         :7828   1e-6     可執行    if perim < 1e-6:
+  app.py                                         :8040   1e-6     可執行    if ((m2[0] - m1[0]) ** 2 + (m2[1] - m1[1]) ** 2) < 1e-6:
+  app.py                                         :8096   1e-9     可執行    if d_norm < 1e-9:
+  app.py                                         :8141   1e-9     可執行    if dn < 1e-9:
+  app.py                                         :8352   1e-9     可執行    if f_n < 1e-9:
+  app.py                                         :8373   1e-6     可執行    if L < 1e-6:
+  app.py                                         :8423   1e-9     可執行    if _wn < 1e-9:
+  app.py                                         :8473   1e-9     可執行    if ad_n < 1e-9:
+  app.py                                         :8482   1e-9     可執行    if not np.any(np.isfinite(n_hat)) or float(np.linalg.norm(n_hat)) < 1e-9:
+  app.py                                         :8500   1e-9     可執行    if not np.all(np.isfinite(_m)) or _mn < 1e-9:
+  app.py                                         :8511   1e-9     可執行    if _dhn < 1e-9:
+  app.py                                         :8610   1e-9     可執行    if _dhn < 1e-9:
+  app.py                                         :8625   1e-9     可執行    if not np.all(np.isfinite(_g)) or _gn < 1e-9:
+  app.py                                         :8789   1e-9     可執行    if _an < 1e-9:
+  app.py                                         :8794   1e-9     可執行    _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+  app.py                                         :8831   1e-9     可執行    if ad_n < 1e-9:
+  app.py                                         :8838   1e-9     可執行    if not np.any(np.isfinite(n_hat)) or float(np.linalg.norm(n_hat)) < 1e-9:
+  app.py                                         :8844   1e-9     可執行    if abs(denom) < 1e-9:
+  app.py                                         :8944   1e-9     可執行    if float(np.linalg.norm(_ad)) < 1e-9:
+  app.py                                         :8948   1e-6     可執行    if abs(float(np.linalg.norm(_d)) - 1.0) > 1e-6:
+  app.py                                         :8992   1e-12    可執行    if (b_hi - b_lo) < 1e-12:
+  app.py                                         :9159   1e-6     可執行    if pool_x > 1e-6:
+  app.py                                         :9392   1e-3     可執行    if _unfront <= 1e-3:                             # 條件2 不成立（末端邊∥ALLOCLINE）→ 無末端區
+  app.py                                         :9602   1e-9     可執行    if _n < 1e-9:
+  app.py                                         :9702   1e-9     可執行    if _nn > 1e-9:
+  app.py                                         :9719   1e-9     可執行    if (not np.all(np.isfinite(_nd))) or float(np.linalg.norm(_nd)) < 1e-9:
+  app.py                                         :9724   1e-9     可執行    if (not np.all(np.isfinite(_ad_f))) or float(np.linalg.norm(_ad_f)) < 1e-9:
+  app.py                                         :9768   1e-9     可執行    _dhu = (_dh / _dhn) if _dhn > 1e-9 else _dh
+  app.py                                         :10352  1e-12    可執行    if n < 1e-12:
+  app.py                                         :10585  1e-12    可執行    if n < 1e-12:
+  app.py                                         :10616  1e-9     可執行    if abs(den_s) < 1e-9:
+  app.py                                         :10619  1e-9     可執行    if abs(den_a) < 1e-9:
+  app.py                                         :10645  1e-12    可執行    if abs(c) < 1e-12:
+  app.py                                         :10670  1e-12    可執行    if abs(_den3) < 1e-12:
+  app.py                                         :10683  1e-15    可執行    _switch = ([] if k >= 0 else ([0.0] if abs(m) > 1e-15 else []))
+  app.py                                         :10759  1e-9     可執行    if abs(_h) < 1e-9:
+  app.py                                         :10778  1e-12    可執行    if _m97.hypot(_jx, _jy) < 1e-12:
+  app.py                                         :10781  1e-12    可執行    if abs(_dj) < 1e-12:
+  app.py                                         :10785  1e-9     可執行    if not (-1e-9 <= _sj <= 1.0 + 1e-9):
+  app.py                                         :10800  1e-12    可執行    if _nv < 1e-12:
+  app.py                                         :10805  1e-12    可執行    if abs(_e) < 1e-12:
+  app.py                                         :10835  1e-15    可執行    if abs(_BP - _BQ) > 1e-15:
+  app.py                                         :10848  1e-12    可執行    if abs(_slp) < 1e-12:
+  app.py                                         :10879  1e-6     可執行    if _m97.hypot(_pe[0] - _pb[0][0], _pe[1] - _pb[0][1]) > 1e-6:
+  app.py                                         :10905  1e-9     可執行    if (_l2_ts[-1] - _l2_ts[0]) > 1e-9:
+  app.py                                         :11057  1e-12    可執行    if n < 1e-12:
+  app.py                                         :11096  1e-9     可執行    if abs(den_s) < 1e-9:
+  app.py                                         :11099  1e-9     可執行    if abs(den_a) < 1e-9:
+  app.py                                         :11156  1e-9     可執行    _cv = [c for c in _cv if _m3.hypot(c[0] - Q0[0], c[1] - Q0[1]) > 1e-9]
+  app.py                                         :11220  1e-9     可執行    if S1_par + 1e-9 < _seg_P0Ps:
+  app.py                                         :11417  1e-9     可執行    if _fl_len > 1e-9:
+  app.py                                         :11590  1e-6     可執行    if _rng_cw is not None and (_cham_cw is None or _cutden_cw < 1e-6):
+  app.py                                         :11912  1e-6     可執行    if L < 1e-6:
+  app.py                                         :11999  1e-6     可執行    if float(np.linalg.norm(np.asarray(_md, dtype=float)[:2] - _m)) < 1e-6:
+  app.py                                         :12004  1e-9     可執行    if _n < 1e-9:
+  app.py                                         :12145  1e-9     可執行    if abs(_d_p2 - float(s_max_left)) > 1e-9:
+  app.py                                         :12676  1e-9     可執行    if abs(float(setback) - 0.0) < 1e-9:
+  app.py                                         :12678  1e-9     可執行    if abs(float(setback) - 3.5) < 1e-9:
+  app.py                                         :13313  1e-6     可執行    if _val is not None and (cur is None or abs(float(cur) - float(_val)) > 1e-6):
+  app.py                                         :17376  1e-6     可執行    if _seg < 1e-6:
+  app.py                                         :19044  1e-6     可執行    if _seg_len < 1e-6:
+  app.py                                         :19500  1e-6     可執行    if _fL > 1e-6:
+  app.py                                         :19506  1e-9     可執行    if _an > 1e-9:
+  app.py                                         :19681  1e-9     可執行    if _dl0 > 1e-9:
+  app.py                                         :19759  1e-9     可執行    if _dn_diag > 1e-9:
+  app.py                                         :20613  1e-9     可執行    if abs(_yd_setback - 0.0) < 1e-9:
+  app.py                                         :20615  1e-9     可執行    elif abs(_yd_setback - 3.5) < 1e-9:
+  app.py                                         :21102  1e-9     可執行    if abs(_p7_sb - 0.0) < 1e-9:
+  app.py                                         :21104  1e-9     可執行    elif abs(_p7_sb - 3.5) < 1e-9:
+  app.py                                         :22013  1e-6     可執行    elif abs(float(_lv) - float(_sv)) < 1e-6:
+  verify/archive/m_rescue.py                     :99     1e-6     可執行    if float(amount) - _rem > 1e-6:
+  verify/archive/m_rescue.py                     :122    1e-6     可執行    return {p for p in self._as_source if self.remaining(p) <= 1e-6}
+  verify/archive/m_rescue.py                     :216    1e-6     可執行    return not reg.is_target(spid) and reg.remaining(spid) > 1e-6
+  verify/archive/m_rescue.py                     :319    1e-6     可執行    if _need_left <= 1e-6:
+  verify/archive/m_rescue.py                     :329    1e-6     可執行    if _need_left > 1e-6:
+  verify/archive/m_rescue.py                     :366    1e-6     可執行    if _rem_src <= 1e-6:
+  verify/archive/m_rescue.py                     :403    1e-6     可執行    if reg.remaining(pid) <= 1e-6:
+  verify/archive/probe_ruling_K4_3_source.py     :89     1e-6     可執行    elif reg.remaining(spid) <= 1e-6:
+  verify/fixture_corner_range_k8.py              :115    1e-12    可執行    if _nv < 1e-12:
+  verify/fixture_corner_range_k8.py              :118    1e-12    可執行    if abs(_den) < 1e-12:
+  verify/fixture_corner_range_k8.py              :121    1e-9     可執行    if -1e-9 <= _t <= 1.0 + 1e-9:                  # 交點須落在該**邊**上
+  verify/fixture_corner_range_k8.py              :133    1e-12    可執行    if abs(den) < 1e-12:
+  verify/fixture_corner_range_k8.py              :152    1e-9     可執行    if abs(_h) < 1e-9:
+  verify/fixture_corner_range_k8.py              :197    1e-12    可執行    if abs(den) < 1e-12:
+  verify/fixture_corner_range_k8.py              :222    1e-9     可執行    if n < 1e-9:
+  verify/fixture_corner_range_k8.py              :224    1e-6     可執行    if abs(abs((v / n) @ au) - 1.0) < 1e-6 and n > blen:
+  verify/fixture_end_fallback.py                 :102    1e-6     可執行    ok_abate = (abs(end_abate_area - area_rend_expect) < 1e-6) and (abate_key in new_abate
+  verify/probes/probe_D2b11_twoline.py           :127    1e-9     可執行    if _dsum > 1e-9:
+  verify/probes/probe_D2b12_bridge.py            :214    1e-12    可執行    if abs(_den) < 1e-12:
+  verify/probes/probe_D2b17_adjacent.py          :186    1e-9     可執行    if a > 1e-9 or b > 1e-9:
+  verify/probes/probe_D2b17_dual.py              :60     1e-15    可執行    if len(r) >= 2 and abs(r[0, 0] - r[-1, 0]) < 1e-15 and abs(r[0, 1] - r[-1, 1]) < 1e-15
+  verify/probes/probe_D2b17_operands.py          :63     1e-15    可執行    if len(r) >= 2 and abs(r[0, 0] - r[-1, 0]) < 1e-15 and abs(r[0, 1] - r[-1, 1]) < 1e-15
+  verify/probes/probe_D2b22_attrib.py            :355    1e-3     可執行    if max(abs(vA), abs(vB)) >= 1e-3:
+  verify/probes/probe_D2b22_attrib.py            :367    1e-9     可執行    if v > 1e-9:
+  verify/probes/probe_D2b22_attrib.py            :379    1e-3     可執行    if max(vA, vB) < 1e-3:
+  verify/probes/probe_D2b23A_pre.py              :244    1e-3     可執行    if v < 1e-3:
+  verify/probes/probe_D2b23A_pre.py              :252    1e-9     可執行    if v <= 1e-9:
+  verify/probes/probe_D2b23A_pre.py              :263    1e-3     可執行    if th is None and meas < 1e-3:
+  verify/probes/probe_D2b24A_sidecount.py        :157    1e-9     可執行    if _n > 1e-9:
+  verify/probes/probe_D2b30_forced_band_width.py :82     1e-12    可執行    if n < 1e-12:
+  verify/probes/probe_D2b30_forced_band_width.py :164    1e-9     可執行    if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_D2b30_forced_band_width.py :329    1e-3     可執行    if abs(_r6i[0][1]) < 1e-3 else
+  verify/probes/probe_D2b5_attrib.py             :142    1e-9     可執行    if abs(_st) <= 1e-9:
+  verify/probes/probe_D2b5_attrib.py             :146    1e-9     可執行    if abs(_st - round(_prev, 2)) < 1e-9 else
+  verify/probes/probe_D2b7_dirscope.py           :51     1e-12    可執行    return (v[0] / n, v[1] / n) if n > 1e-12 else (0.0, 0.0)
+  verify/probes/probe_D2b_expect.py              :104    1e-6     可執行    if math.hypot(float(_md[0]) - _m[0], float(_md[1]) - _m[1]) < 1e-6:
+  verify/probes/probe_E17_intersection.py        :137    1e-9     可執行    if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_K9_6_measure_object.py     :130    1e-12    可執行    if abs(dt) < 1e-12:
+  verify/probes/probe_K9_6_measure_object.py     :260    1e-12    可執行    if abs(t_lo - _t_lo_h) > 1e-12:
+  verify/probes/probe_K9_6_measure_object.py     :272    1e-12    可執行    if _an > 1e-12:
+  verify/probes/probe_K9_6_measure_object.py     :278    1e-12    可執行    if _un > 1e-12:
+  verify/probes/probe_K9_6_measure_object.py     :324    1e-9     可執行    _nonpar = [d for d in _dat if not (d[8] == d[8] and d[8] < 1e-9)]
+  verify/probes/probe_K9_6_parcel_band.py        :316    1e-12    可執行    _ok2 = (_dv < 1e-12) and (_dep0 <= _EPS)
+  verify/probes/probe_K9_7d_layer2.py            :216    1e-9     可執行    if abs(_dt_cm) > 1e-9:
+  verify/probes/probe_K9_7d_pk_impact.py         :115    1e-12    可執行    MOVED = {(l, s) for (l, s, _sb), d in DT.items() if abs(d) > 1e-12}
+  verify/probes/probe_K9_geo1_S1_construction.py :124    1e-12    可執行    if abs(b[1] - a[1]) < 1e-12:
+  verify/probes/probe_K9_geo1_S1_construction.py :175    1e-9     可執行    if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_K9_geo1_S1_construction.py :521    1e-9     可執行    if _n < 1e-9:
+  verify/probes/probe_K9_geo1_S1_construction.py :523    1e-3     可執行    if abs((_dx / _n) * _auh[1] - (_dy / _n) * _auh[0]) < 1e-3:
+  verify/probes/probe_K9_s62_chord_vs_linedist.py :177    1e-9     可執行    if _n < 1e-9:
+  verify/probes/probe_K9_s62_chord_vs_linedist.py :179    1e-7     可執行    if abs((_ex / _n) * auy - (_ey / _n) * aux) > 1e-7:
+  verify/probes/probe_K9_s62_chord_vs_linedist.py :240    1e-9     可執行    _coll = any(abs(_rst[_i][1] - _d) < 1e-9 and abs(_rst[_i + 1][1] - _d) < 1e-9
+  verify/probes/probe_K9_s62_chord_vs_linedist.py :261    1e-6     可執行    if _pick[0][1] <= 1e-6
+  verify/probes/probe_K9_s62_chord_vs_linedist.py :384    1e-4     可執行    _g2bad = [x for x in _gate2 if (not x[3]) and x[6] > 1e-4]
+  verify/probes/probe_K9_s62_k98_line_vs_chord.py :80     1e-9     可執行    if _n < 1e-9:
+  verify/probes/probe_K9_s62_k98_line_vs_chord.py :82     1e-3     可執行    if abs((_dx / _n) * auh[1] - (_dy / _n) * auh[0]) < 1e-3:
+  verify/probes/probe_K9_s62_k98_line_vs_chord.py :274    1e-12    可執行    if abs(_b[1] - _a[1]) < 1e-12:
+  verify/probes/probe_K9_s62c_attribution.py     :66     1e-9     可執行    if _n < 1e-9:
+  verify/probes/probe_K9_s62c_attribution.py     :68     1e-3     可執行    if abs((_dx / _n) * auh[1] - (_dy / _n) * auh[0]) < 1e-3:
+  verify/probes/probe_K9_s62c_attribution.py     :256    1e-12    可執行    if abs(_b[1] - _a[1]) < 1e-12:
+  verify/probes/probe_K9_seg6_recon.py           :60     1e-9     可執行    if _n < 1e-9:
+  verify/probes/probe_K9_seg6_recon.py           :62     1e-3     可執行    if abs((_dx / _n) * auh[1] - (_dy / _n) * auh[0]) < 1e-3:
+  verify/probes/probe_K9_seg6_w_delta.py         :80     1e-9     可執行    if _n < 1e-9:
+  verify/probes/probe_K9_seg6_w_delta.py         :82     1e-3     可執行    if abs((_dx / _n) * auh[1] - (_dy / _n) * auh[0]) < 1e-3:
+  verify/probes/probe_WG919_lowerbound.py        :62     1e-12    可執行    if nu < 1e-12:
+  verify/probes/probe_WG919_lowerbound.py        :72     1e-9     可執行    if ne < 1e-9:
+  verify/probes/probe_WG919_lowerbound.py        :74     1e-6     可執行    if abs(float(np.cross(e / ne, u))) > 1e-6:   # ⛔ 非 ∥SIDELINE ⇒ 跳過
+  verify/probes/probe_WG91_buf_metric_and_candidates.py :72     1e-12    可執行    if n < 1e-12:
+  verify/probes/probe_WG91_buf_metric_and_candidates.py :158    1e-9     可執行    if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9],
+  verify/probes/probe_WG91_buf_metric_and_candidates.py :266    1e-6     可執行    if [x for x in g1 if not (x[2] < 1e-6)] or [x for x in g2 if not x[4]]:
+  verify/probes/probe_WG920_pp_lowerbound.py     :139    1e-9     可執行    if (abs(float(oL or 0.0) - bL) < 1e-9) and (abs(float(oR or 0.0) - bR) < 1e-9):
+  verify/probes/probe_WG920_pp_lowerbound.py     :244    1e-9     可執行    if abs(float(w0)) > 1e-9 and not bad:
+  verify/probes/probe_WG921_b_slot_divergence.py :300    1e-5     可執行    if mx >= 1e-5:
+  verify/probes/probe_WG922_three_vs_target.py   :70     1e-12    可執行    if nu < 1e-12:
+  verify/probes/probe_WG922_three_vs_target.py   :80     1e-9     可執行    if ne < 1e-9 or abs(float(np.cross(e / ne, u))) > 1e-6:
+  verify/probes/probe_WG92_W_origin_conformance.py :56     1e-12    可執行    if n < 1e-12:
+  verify/probes/probe_WG937_adjacency.py         :168    1e-9     可執行    _ok1 = (abs(_iv[0] - 0.0) < 1e-9 and abs(_iv[1] - 10.0) < 1e-9)
+  verify/probes/probe_WG937_adjacency.py         :173    1e-9     可執行    _ok2 = (abs(_iv2[0] - 7.0) < 1e-9 and abs(_iv2[1] - 17.0) < 1e-9)
+  verify/probes/probe_WG937_adjacency.py         :178    1e-9     可執行    _ok3 = abs(_a_sl - 40.0) < 1e-9 and abs(_a_gr - 40.0) < 0.05
+  verify/probes/probe_WG937_adjacency.py         :182    1e-9     可執行    _ok4 = abs(_bw - 10.0) < 1e-9 and abs(_bh - 4.0) < 1e-9
+  verify/probes/probe_WG938_adjacency3.py        :278    1e-9     可執行    _s4 = (_opp1 < 1e-9 and _opp2 < 1e-9)
+  verify/probes/probe_WG938_adjacency3.py        :297    1e-9     可執行    if u is None or ln < 1e-9:
+  verify/probes/probe_WG938_adjacency3.py        :369    1e-12    可執行    rel = (tip_t - lo_t) / span if span > 1e-12 else 0.5
+  verify/probes/probe_WG938_adjacency3.py        :370    1e-9     可執行    if span < 1e-9:
+  verify/probes/probe_WG940_startperp.py         :51     1e-12    可執行    if abs(den) < 1e-12:
+  verify/probes/probe_WG941_bandbase.py          :100    1e-9     可執行    if _nd < 1e-9:
+  verify/probes/probe_WG941_bandbase.py          :272    1e-9     可執行    if abs(_r[2] - s) <= 1e-9:
+  verify/probes/probe_WG941_bandbase.py          :612    1e-6     可執行    if abs(dt) > 1e-6:
+  verify/probes/probe_WG941_bandbase.py          :638    1e-9     可執行    bad = [x for x in cmpable if x[4] > 1e-9]
+  verify/probes/probe_WG947_rect_fit.py          :328    1e-6     可執行    if fit and ar_er <= 1e-6:
+  verify/probes/probe_WG949_free_pose.py         :457    1e-9     可執行    if ln < 1e-9:
+  verify/probes/probe_WG94_expand_conformance.py :51     1e-9     可執行    if _an < 1e-9:
+  verify/probes/probe_WG94_expand_conformance.py :55     1e-9     可執行    _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+  verify/probes/probe_WG94_expand_conformance.py :64     1e-12    可執行    if n < 1e-12:
+  verify/probes/probe_WG956_yi_style.py          :313    1e-12    可執行    if abs(den_s) < 1e-12:
+  verify/probes/probe_WG956_yi_style.py          :325    1e-9     可執行    cv = [c for c in cv if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_WG958_dmax_robust.py       :200    1e-9     可執行    cv = [c for c in cv if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_WG959_knife_edge.py        :150    1e-9     可執行    cv = [c for c in cv if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_WG960_fitcore.py           :117    1e-9     可執行    cv = [c for c in cv if math.hypot(c[0] - P0[0], c[1] - P0[1]) > 1e-9]
+  verify/probes/probe_WG960_fitcore.py           :267    1e-9     可執行    if abs(v - nh) < 1e-9:
+  verify/probes/probe_WG962_gate_power.py        :202    1e-09    可執行    bad_pop = tuple(d for d in GRID_B if d != 1e-09)
+  verify/probes/probe_WG976_biz_overlap.py       :106    1e-15    可執行    if len(c) >= 2 and abs(c[0, 0] - c[-1, 0]) < 1e-15 and abs(c[0, 1] - c[-1, 1]) < 1e-15
+  verify/probes/probe_WG976_biz_overlap.py       :156    1e-12    可執行    r1 = (abs(a1 - 20.0) < 1e-12) and (abs(s1 - 20.0) < 1e-12) and (abs(a0) < 1e-15)
+  verify/probes/probe_WG976_biz_overlap.py       :168    1e-9     可執行    r2 = abs(sh - H0) < 1e-9 and abs(lo - W0) < 1e-9
+  verify/probes/probe_WG976_biz_overlap.py       :189    1e-12    可執行    r3 = abs(d_lo - DELTA) < 1e-12 and abs(d_hi - DELTA) < 1e-12
+  verify/probes/probe_WG976_biz_overlap.py       :195    1e-15    可執行    r3b = abs(b0[0] - base[0]) < 1e-15 and abs(b0[1] - base[1]) < 1e-15
+  verify/probes/probe_WG977_zong0.py             :82     1e-12    可執行    if na < 1e-12 or nb < 1e-12:
+  verify/probes/probe_WG977_zong0.py             :103    1e-12    可執行    if n < 1e-12:
+  verify/probes/probe_WG977_zong0.py             :120    1e-9     可執行    r1 = abs(a1 - 90) < 1e-9 and abs(a2) < 1e-9 and abs(a3) < 1e-9
+  verify/probes/probe_WG977_zong0.py             :129    1e-12    可執行    r2 = rv_ is not None and abs(rv_[0]) < 1e-12 and abs(rv_[1] + 1) < 1e-12 \
+  verify/probes/probe_WG977_zong0.py             :140    1e-12    可執行    r3 = abs(ix - 20) < 1e-12 and abs(sd - 40) < 1e-12 and (not A.contains(B))
+  verify/probes/probe_WG978_interface.py         :86     1e-15    可執行    return None if n < 1e-15 else a / n
+  verify/probes/probe_WG978_interface.py         :126    1e-15    可執行    if abs(den) < 1e-15:
+  verify/probes/probe_WG978_interface.py         :171    1e-12    可執行    r1 = abs(a - 90) < 1e-12 and abs(b) < 1e-12 and abs(c) < 1e-12
+  verify/probes/probe_WG978_interface.py         :192    1e-12    可執行    r3 = abs(d1 - 5) < 1e-12 and abs(d0) < 1e-12
+  verify/probes/probe_WG978_interface.py         :198    1e-12    可執行    r4 = x is not None and abs(x[0] - 3) < 1e-12 and abs(x[1]) < 1e-12 \
+  verify/probes/probe_WG978_interface.py         :619    1e-9     可執行    bad0 = [x for x in z if x[5] > 1e-9]
+  verify/probes/probe_WG979_crosspoint.py        :89     1e-15    可執行    return None if n < 1e-15 else a / n
+  verify/probes/probe_WG979_crosspoint.py        :110    1e-15    可執行    if abs(den) < 1e-15:
+  verify/probes/probe_WG979_crosspoint.py        :147    1e-12    可執行    r2 = (x is not None and abs(x[0] - 3) < 1e-12 and abs(x[1]) < 1e-12
+  verify/probes/probe_WG980_closedform.py        :84     1e-15    可執行    return None if n < 1e-15 else a / n
+  verify/probes/probe_WG980_closedform.py        :109    1e-15    可執行    if abs(den) < 1e-15:
+  verify/probes/probe_WG980_closedform.py        :149    1e-12    可執行    r2 = X is not None and float(np.linalg.norm(X - Xp)) < 1e-12
+  verify/probes/probe_WG980_closedform.py        :281    1e-15    可執行    if abs(sin_a) < 1e-15:
+  verify/probes/probe_WG981_scope.py             :80     1e-15    可執行    return None if n < 1e-15 else a / n
+  verify/probes/probe_WG981_scope.py             :105    1e-15    可執行    if abs(den) < 1e-15:
+  verify/probes/probe_WG981_scope.py             :274    1e-15    可執行    if abs(sin_a) < 1e-15:
+  verify/probes/probe_WG982_chord.py             :169    1e-15    可執行    if len(pts) >= 2 and abs(pts[0][0] - pts[-1][0]) < 1e-15 and abs(pts[0][1] - pts[-1][1
+  verify/probes/probe_WG983_k99prep.py           :437    1e-5     可執行    _hit = [x for x in FAR_BAD if x[4] > 1e-5 and (x[0], x[1], x[2]) in _bad_set]
+  verify/probes/probe_WG983_k99prep.py           :494    5e-4     可執行    eq = (abs(o_[0] - n_[0]) <= 5e-4 and abs(o_[1] - n_[1]) <= 5e-4
+  verify/probes/probe_WG984_gap.py               :196    1e-18    可執行    r3 = (w83.D_MIN == 2 and abs(w83.TOL_PAR - 1e-9) < 1e-18)
+  verify/probes/probe_WG984_gap.py               :645    1e-15    可執行    if abs(sin_a) < 1e-15:
+  verify/probes/probe_WG984_gap.py               :651    1e-15    可執行    if abs(c_k) < 1e-15:
+  verify/probes/probe_WG984_gap.py               :705    1e-15    可執行    if abs(sin_a) < 1e-15:
+  verify/probes/probe_WG985_grouphead.py         :193    1e-15    可執行    r3 = (D_MIN == 2 and abs(EPS_SHIM - 1e-6) < 1e-15)
+  verify/probes/probe_WG985_grouphead.py         :527    1e-9     可執行    p4a = all(x <= 1e-9 for x in sins_out) if sins_out else False
+  verify/probes/probe_WG985_grouphead.py         :528    1e-3     可執行    p4b = all(x > 1e-3 for x in sins_in) if sins_in else False
+  verify/probes/probe_WG985_grouphead.py         :735    5e-4     可執行    if math.isfinite(lo) and abs(lo - 0.2677) < 5e-4 and abs(hi - 7.4487) < 5e-4:
+  verify/probes/probe_WG985_grouphead.py         :819    1e-15    可執行    if abs(sa) < 1e-15:
+  verify/probes/probe_WG987_exact.py             :763    1e-15    可執行    if abs(un) < 1e-15:
+  verify/probes/probe_WG987_exact.py             :813    1e-15    可執行    if abs(ud) < 1e-15 or abs(un) < 1e-15:
+  verify/probes/probe_WG988_nocross.py           :629    1e-6     可執行    if perp <= 1e-6 else
+  verify/probes/probe_k97_r5_attribution.py      :185    1e-12    可執行    if abs(abs(d) - 0.01) < 1e-12 else
+  verify/probes/probe_k98_virtual_block.py       :58     1e-9     可執行    if n < 1e-9:
+  verify/probes/probe_k98_virtual_block.py       :60     1e-6     可執行    if abs(abs((vx / n) * au[0] + (vy / n) * au[1]) - 1.0) < 1e-6:
+  verify/probes/probe_ruling_K4_s_origin.py      :59     1e-12    可執行    if abs(det) < 1e-12:
+  verify/probes/probe_ruling_K4_s_origin.py      :166    1e-6     可執行    if abs(_s_p2 - Lf) > 1e-6:
+  verify/probes/probe_ruling_K4_s_origin.py      :180    1e-3     可執行    if abs(_d_right) >= 1e-3:
+  verify/probes/probe_ruling_K4_s_origin.py      :221    1e-9     可執行    if abs(_dp2 - float(s_max_left)) > 1e-9:
+  verify/probes/probe_ruling_K8_baseline_pairing.py :124    1e-9     可執行    if L < 1e-9:
+  verify/probes/probe_ruling_K9_7_alloc_t.py     :172    5e-5     可執行    _ok = (_dc < 5e-5) and (_dk < 5e-5) and (_dm is None or _dm < 5e-5) and _okb
+  verify/probes/probe_ruling_K9_7_alloc_t.py     :200    1e-6     可執行    if _dt_cm is not None and abs(_dt_cm) > 1e-6:
+  verify/probes/probe_ruling_K9_corner_width.py  :157    1e-12    可執行    if n < 1e-12:
+  verify/probes/probe_ruling_K9_corner_width.py  :228    1e-9     可執行    if n < 1e-9:
+  verify/probes/probe_ruling_K9_corner_width.py  :230    1e-6     可執行    if abs(abs(float(np.dot(v / n, au))) - 1.0) < 1e-6 and n > blen:
+  verify/probes/probe_ruling_K9_corner_width.py  :255    1e-12    可執行    if abs(den) < 1e-12:
+  verify/probes/probe_ruling_K9_corner_width.py  :272    1e-6     可執行    if L < 1e-6:                      # 零長邊 ⇒ 濾除（非靜默：見 docstring）
+  verify/probes/probe_ruling_K9_corner_width.py  :274    1e-6     可執行    if abs(abs(float(np.dot(v / L, au))) - 1.0) >= 1e-6:
+  verify/probes/probe_ruling_K9_corner_width.py  :352    1e-9     可執行    if L < 1e-9:
+  verify/probes/probe_ruling_K9_corner_width.py  :480    1e-12    可執行    if abs(dtau) <= 1e-12:
+  verify/probes/probe_ruling_K9_corner_width.py  :1145   1e-6     可執行    if _el < 1e-6:
+  verify/probes/probe_ruling_N_c7_sideline.py    :68     1e-9     可執行    if L < 1e-9:
+  verify/probes/probe_ruling_N_c7_sideline.py    :77     1e-9     可執行    if L < 1e-9:
+  verify/probes/probe_ruling_N_depth.py          :82     1e-12    可執行    if abs(det) < 1e-12:
+  verify/probes/probe_ruling_N_depth.py          :313    1e-9     可執行    if _len > 1e-9:
+  verify/probes/probe_ruling_N_p8.py             :82     1e-6     可執行    if c > 1e-6:
+  verify/probes/probe_ruling_N_recon.py          :127    1e-10    可執行    if hi - lo < 1e-10:
+  verify/run_verification.py                     :1377   1e-6     可執行    elif abs(float(_rate_seed) - _rate_anchor) > 1e-6:
+  verify/stepg_pipeline.py                       :142    1e-9     可執行    if abs(got - exp) > 1e-9:
+  verify/stepg_pipeline.py                       :170    1e-8     可執行    if abs(C_for_calc - _C_avg_form) > 1e-8:
+  verify/stepg_pipeline.py                       :445    1e-9     可執行    if _n_ua > 1e-9:
+  verify/stepg_pipeline.py                       :561    1e-9     可執行    if _dl0 > 1e-9:
+  verify/stepg_pipeline.py                       :815    1e-9     可執行    _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+  verify/stepg_pipeline.py                       :1063   1e-12    可執行    if _nu < 1e-12 or _nv < 1e-12:
+  verify/stepg_pipeline.py                       :1156   1e-12    可執行    if _nv < 1e-12 or _na < 1e-12:
+  verify/stepg_pipeline.py                       :1307   1e-9     可執行    if float(_Wf1_z) + 1e-9 < _first_floor:
+  verify/stepg_pipeline.py                       :1324   1e-9     可執行    if _nrm_a < 1e-9:
+  verify/wd3_fragment_geom.py                    :160    1e-6     可執行    if elen < 1e-6:
+  verify/wf_f1.py                                :105    1e-6     可執行    if Point(a).distance(Point(b)) < 1e-6:
+  verify/wf_f4.py                                :114    1e-6     可執行    if abs(w - SNAP_WAVG) > 1e-6:
+  verify/wf_f4.py                                :255    1e-6     可執行    gw = ((mw + WIDTH_MARGIN) * G / width) if width > 1e-6 else mina
+  verify/wf_f4.py                                :1366   1e-3     可執行    _end_gate = _cond1 and (_unfront_area > 1e-3)                 # ε＝1e-3㎡
+  POPULATION=279 PRINTED=279 SUPPRESSED=0  # A-4 入判定鏈之容差閘（全列）
+
+  🔒 **判別力（施工單 A-4 所令）**：`_PAR_TOL`（正典 `K-6:1010` ＝ `1e-6`）為**已知**之一支
+     🔒 **三個數之標籤（⛔ 不得互代·同名不同量）**：
+     ① `_PAR_TOL\s*=` 之**字樣命中**（含註解／docstring 之引述）＝ **7 處**（全列）：
+        app.py:8399  #   **與 `verify/stepg_pipeline.py` 之 `_PAR_TOL`（`grep -n "_PAR_TOL = " verify/stepg_pipeline.py`）
+        verify/probes/probe_WG986_oldjudge.py:6  - **A-2** `_PAR_TOL = 1e-6` 之**射程現查** ＋ 以之重判（⛔ **不另立門檻**·`K-6:1010`）。
+        verify/probes/probe_WG986_oldjudge.py:14  (乙) 受詞內／外之切分沿用**正典之 `_PAR_TOL = 1e-6`**（⛔ 不另立·⛔ 不取 A-0 式之保守 `1e-9`）。
+        verify/probes/probe_WG986_oldjudge.py:292  P("  🔴 **門檻 ＝ 正典之 `_PAR_TOL = %.1e`**（`K-6:1010`·自 `stepg_pipeline` 取·⛔ 不另立）" % PAR_TOL)
+        verify/probes/probe_WG986_oldjudge.py:549  P("【D／A-2】`_PAR_TOL = %.1e` 之**射程現查** ＋ 以之重判（⛔ 不另立門檻）" % PAR_TOL)
+        verify/probes/probe_WG987_exact.py:360  P("  🔴 **門檻 ＝ 正典之 `_PAR_TOL = %.1e`**（`K-6:1010`·原樣自 `w86` 取·⛔ 不另立）" % PAR_TOL)
+        verify/stepg_pipeline.py:1054  _PAR_TOL = 1e-6                  # 方向平行判定（|cross| of unit vectors）
+     ② 其中**真定義行**（行首即 `_PAR_TOL =`·⛔ 非引述）＝ **1 處**：
+        verify/stepg_pipeline.py:1054  _PAR_TOL = 1e-6                  # 方向平行判定（|cross| of unit vectors）
+     ③ **本普查器（比較運算元 ＋ 容差字面）對含 `_PAR_TOL` 之行之命中 ＝ 1 處**
+        verify/probes/probe_WG986_oldjudge.py:711  "`sign = +1` 之側（%d 宗）中 `> 1e-5` 者 ＝ **%d**（期望 0·皆 ≤ `_PAR_TOL`）⇒ %s"
+
+     🔴 **具名之限制（依施工單「⛔ 未命中即普查器有誤·具名」）**：
+        本普查器之樣式為「**比較運算元 ＋ 容差<u>字面</u>**」
+        ⇒ **⛔ 抓不到「先定義為具名常數、再於他處比較」之閘**——`_PAR_TOL` 正是此形。
+        ⇒ 🔴 **本普查器之射程為<u>下界</u>**（⛔ 非全集）·⛔ 不得以其數宣稱「全倉只有這些」。
+
+     🔒 **補掃（具名常數之<u>比較</u>·樣式 ＝ 比較運算元 ＋ 全大寫識別字 ∧ 含 `TOL`）**
+        ⇒ **69 處**（可執行層·⛔ 已扣註解與字串）
+        app.py:1508  if _dmin_all > _TOL_SL:
+        app.py:1623  if _d > _BL_PARALLEL_TOL_DEG:
+        app.py:1629  return _off <= _BL_PERP_TOL_M
+        app.py:4262  if my_poly.distance(other_poly) <= ADJ_TOL:
+        app.py:4515  if uncovered.is_empty or float(uncovered.area) < UNCOVERED_TOL:
+        app.py:4524  if sub_area < UNCOVERED_TOL:
+        app.py:4585  if residue.is_empty or float(residue.area) < UNCOVERED_TOL:
+        app.py:4594  if res_area < UNCOVERED_TOL:
+        app.py:8507  if abs(float(_nh[0] * _m[1] - _nh[1] * _m[0])) <= _STRIP_PARALLEL_TOL:
+        app.py:8666  if abs(_resid) > _PARTITION_TILE_TOL:
+        app.py:8672  if _max_chain > _PARTITION_TILE_TOL:
+        app.py:8679  if _max_both > _PARTITION_TILE_TOL or _max_gap > _PARTITION_TILE_TOL:
+        app.py:10837  if _lo - _TOL2 <= _teq <= _hi + _TOL2:
+        verify/fixture_yi_construction.py:94  abs(got - want) <= TOL))
+        verify/fixtures/test_D2b16_mutation.py:131  if not (s1 > TOL):
+        verify/fixtures/test_D2b16_mutation.py:174  if abs(s3) > TOL:
+        verify/probes/probe_D2_corner_range.py:126  if _do <= TOL and _dn > TOL:
+        verify/probes/probe_D2_corner_range.py:129  elif _dn <= TOL and _do > TOL:
+        verify/probes/probe_D2b13_partition.py:137  if _ra > TILE_TOL or _xa > TILE_TOL:
+        verify/probes/probe_D2b14_guard.py:169  _clean_a = (a_ov <= TOL and a_ch <= TOL)
+        …（另 49 處·**未列**·🔒 母體 ＝ 69）
+     🔒 **判別力之結論**：`_PAR_TOL` 之**消費點**（＝ 真正之分類閘）由補掃命中 **2 處**：
+        verify/stepg_pipeline.py:1065  return abs(float(_np_d.cross(_u / _nu, _v / _nv))) <= _PAR_TOL
+        verify/stepg_pipeline.py:1159  return (_c <= _PAR_TOL), _c, float(_np_d.degrees(_np_d.arcsin(min(1.0, _c))))
+        ⇒ **✅ 已命中 ⇒ 施工單所令之判別力對照**成立**（惟係由**補掃**、⛔ 非主樣式）**
+
+==================================================================================================================================================================================================================
+【G／A-5】「乙」之土地後果彙整（⛔ 不含建議）
+==================================================================================================================================================================================================================
+  項                                            狀態
+  第一輪不配地之宗數／面積（A-1-2）                          **2 宗 ／ 4.7950 ㎡**（🔒 <u>第一輪</u>·⛔ 無遞補）
+  第一輪後 `②-宗` 破量之殘餘（A-1-3）                      **4 對 ／ 102.3059 ㎡**（🔒 <u>第一輪</u>）
+  `G₁` vs 藍影之逐宗差（A-2-2）                        🛑 **⛔ 未量**（A-2-1 不符 ⇒ 停機④）
+  遞補後之宗數／面積／破量                                 🔴 **⛔ 未量**（遞補介面同構性 ⇒ A-3 判為**未答**）
+  「乙」之射程宗數                                     見下（🔒 **本批複驗**·修法 114）
+
+  🔒 **「乙」之射程之複驗（施工單載 `26`·標 `【未複驗】`·修法 114）**
+     定義（`W-G.9-89` A-4 逐字）＝「**有第 0 宗之組中，第 1 宗以後**」
+     本批現算：全部宗 ＝ **59**；街角宗（第 0 宗）＝ **8**；
+     **有街角宗之組中，扣除該組之第 0 宗後之宗數合計 ＝ 26**
+     ⇒ 與施工單所載 **26** ✅ 相符
+
+==================================================================================================================================================================================================================
+【判】本批之必答與停機
+==================================================================================================================================================================================================================
+  A-2-1 藍影定式與 KL 圖說相符?                           🛑 **否 ⇒ 停機上呈**
+  A-1-1 違反宗與倉內錨逐位相同?                             ✅ 是
+  A-1-3 負對照（移除集 ∅）與倉內錨相符?                        ✅ 是
+  A-1-3 第一輪後破量仍 > 0?                             ✅ 是
+  A-3 `W-D.4 遞補錨` 與 `K-9-9 四` 同構?                🛑 **未答·具名**
+  A-4 容差級分類閘                                     279 支（入判定鏈）
