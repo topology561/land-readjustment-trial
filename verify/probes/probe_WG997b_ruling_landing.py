@@ -299,9 +299,12 @@ def main():                                                          # noqa: C90
                              "blob", ":%s" % rel],
                             cwd=REPO, stdout=subprocess.PIPE).stdout
         pre = bool(p1) and p1.startswith(p0) and len(p1) > len(p0)
-        _rc, ns_out = sh(["git", "-c", "core.quotePath=false", "diff", "--cached",
-                          "--numstat", "--", rel])
-        dele = ns_out.strip().split("\t")[1] if ns_out.strip() else "(未 stage)"
+        # 🔒 刪除列取 **基座 → 工作區**（`git diff --numstat <基座> -- <檔>`）——
+        #   ⛔ 非 `--cached`：入倉後 index 已清空 ⇒ `--cached` 為空 ⇒ 該檢**隨倉態失效**
+        #   （本檔第二次自捕·同「探針須可重跑」之族）。本式於入倉前後**同值**。
+        _rc, ns_out = sh(["git", "-c", "core.quotePath=false", "diff", "--numstat",
+                          BASE_SHORT, "--", rel])
+        dele = ns_out.strip().split("\t")[1] if ns_out.strip() else "0"
         say("  %-52s %7d → %7d      %-10s  %s"
             % (rel, len(p0), len(p1), pre, dele))
         n_app += 1
