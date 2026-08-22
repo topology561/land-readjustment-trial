@@ -524,3 +524,20 @@ BASELINE（屁股線，不平移）。詳見上「CAD 圖層規範」。
 🔒 **⇒ 既有檔之<u>純附加</u>（`deletions ＝ 0`）亦滿足 `②`**——判準在**有無刪除／改寫**，⛔ 不在「是不是新檔」。
 🔒 **驗法**：`git diff --cached --numstat` 之刪除欄逐列為 `0`；並以 `verify/tools/wg942_append_audit.py`
 （`嚴格前綴 ＝ True`）機械證明既有檔未被改寫。
+
+### 🔧 常規一 `②` 之補款③（`W-G.9-97 補正③`·2026-08-22·⛔ 上文一字不刪）
+
+🩸 **緣由**：上款之驗法逐字寫 `git diff --cached --numstat`，而 **index 於入倉後即清空** ⇒ 該檢**恆綠**、驗不到其欲保證之性質（CC 於 `W-G.9-97 補正②b`／`0f34f97` 自捕；claude.ai 自誤 `105`）。
+
+> **(1) 受詞之時點基準**：`②` 所稱「**既有檔**」＝ **本批<u>基座</u>（batch base）已存在之檔**。
+> 同批內新增之檔於同批內再修改（含 `deletions > 0`），⛔ **不使本批喪失 `②` 之資格**，惟須**逐 commit 逐檔**回報 `git show --numstat`。
+>
+> **(2) 🔒 例外（正典檔·恆以基座為時點·`deletions` 恆須 ＝ `0`）**：
+> `docs/rulings/**`、`.claude/skills/**`、`CLAUDE.md`、`docs/reports/W-G.9波_claude.ai側自誤登記.md`，
+> 以及**基座已存在之** `docs/reports/**`。
+>
+> **(3) 驗法之更正**：⛔ **不得**以 `--cached` 為之。改取
+> `git diff --numstat <基座> -- <檔>`，或 `git cat-file blob <基座>:<檔>` 對工作區逐位比對；
+> 並以 `verify/tools/wg942_append_audit.py`（`嚴格前綴 ＝ True`）機械證明既有檔未被改寫。
+
+🔒 **一般式（併記·考古節 `123`）**：凡驗收判準之比較端繫於**倉態**（`HEAD`／`index`／`--cached`／`git status`）者，⛔ 不得作為驗收判準——其值**隨入倉而變**，故「**入倉一次即失效**」。比較端須為**具名 `commit` 之 blob**。
