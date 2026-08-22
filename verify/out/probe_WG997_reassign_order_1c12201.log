@@ -1,0 +1,319 @@
+
+======================================================================================================================================================
+【W-G.9-97】重排後遞補之入裁覆核 ＋ 二項現查（⛔ 零生產碼·⛔ 未跑管線）
+======================================================================================================================================================
+  產生於 commit：1c12201（1c12201d3eb70d4cbda7c755b2fc4c50ceb9b941）
+  `app.py` blob：a9e5671d64d254907a0396f898f046d9d85e8283（HEAD）／a9e5671d64d254907a0396f898f046d9d85e8283（工作區）
+  母體（`git ls-files -z`·遞迴）＝ **1320** 檔；載入為文字者 ＝ **1288** 檔
+  🔒 SELF ＝ ['verify/probes/probe_WG997_reassign_order.py', 'docs/reports/W-G.9-97_重排後遞補之入裁與現查.md']
+  🔒 索引內含 `.claude/worktrees` 者 ＝ **0**
+  🛑 呼叫護欄已裝（`run_step_g`／`run_corner_pk`／`run_verification.main` ⇒ raise 版）
+
+======================================================================================================================================================
+【§A】`A-0` 先驗錨（施工單 §一·七項）
+======================================================================================================================================================
+  A-1   本機 HEAD                      ✅  期望＝1c12201  現查＝1c12201
+  A-2   app.py blob（絕對值）             ✅  期望＝a9e5671d64d254907a0396f898f046d9d85e8283  現查＝a9e5671d64d254907a0396f898f046d9d85e8283
+  A-3   origin/wip/s1-endpart      現查＝1c12201d3eb70d4cbda7c755b2fc4c50ceb9b941；本機 ahead／behind ＝ 0 ／ 0
+  A-4a  考古節：最大                       ✅  期望＝121  現查＝121
+        窄樣式 `^##\s*(\d+)\.\s` ⇒ 命中 ＝ **121**／相異 ＝ **121**／最大 ＝ **121**
+  A-5   自誤登記最大序號                     ✅  期望＝100  現查＝100
+        最大者於行 **2652**
+  A-6   K-6 最大裁定號            主序列 `K-9-nn` 佔用 ＝ [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] ⇒ 最大 ＝ **K-9-16**
+        子序列 `K-9-5-nn` 佔用最大 ＝ **K-9-5-15**
+  A-7   行數計法（`\n 計` ／ `splitlines()`）
+        .claude/skills/failure-archaeology/SKILL.md              4715 ／ 4715   sha256=f202dfec88c4f6bf7be338985da728a4fe346ddb4d26d27e3008834463acfe89
+        docs/reports/W-G.9波_claude.ai側自誤登記.md                    2657 ／ 2657   sha256=0f83a67fb557867ec3dc3a3e78b6f5ce0728246d260d1e129c6d86a27e51b19b
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                        2888 ／ 2888   sha256=91d155bee23c67adad7fdf36f8183969da5915eceed100f8e0eae17902718d23
+
+  ⇒ `A-0`：✅ **全綠**
+
+======================================================================================================================================================
+【§B】`§三` 四項「重申」之逐字覆核（⛔ 不符即不入倉·⛔ 不得逕行調和）
+======================================================================================================================================================
+  🔒 判準：施工單所指之**正典錨**須於倉內**現查得到**，且其逐字須承載該段之受詞。
+  🔒 每一 0 命中皆附**同法非 0 對照**（節 92）。
+
+  **#1 段四（第 2 宗以後 ∥ALLOCLINE）→ 施工單指 `K-9-15 一`**
+     檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2821
+     逐字 ＝ > 所以，兩條平行 ⇒ 永不相交 ⇒「該款恆真」，**對於第 1 宗後續的土地而言是對的**，
+     檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2821
+     逐字 ＝ > 所以，兩條平行 ⇒ 永不相交 ⇒「該款恆真」，**對於第 1 宗後續的土地而言是對的**，
+     ⚠️ **併具名（⛔ 不逕行調和）**：`K-9-15` **三-3**（claude.ai 之整理·⛔ 非 KL 逐字）作：
+        行 ＝ 2839 ／ 逐字 ＝ 第 1 宗以後之二界皆 ∥ALLOCLINE ⇒ 平行 ⇒ 永不相交 ⇒ 該款（剩餘作用）恆真。
+        而同節 **三-4** 之「第 1 宗以後」係**含第 1 宗**之用法
+        行 ＝ 2842 ／ 逐字 ＝ - **第 1 宗以後** ⇒ **內接最小矩形**（`K-9-12`·⛔ 其落地狀態見 `K-9-12-b`：**已裁定·生產碼未實作**）
+        ⇒ 三-3 若同讀為**含**第 1 宗，與段四之「第 2 宗以後」**不一致**（第 1 宗之近側界 ＝ 第 0 宗遠側界 ＝ ∥SIDELINE）；**KL 逐字層⛔ 無此問題**。
+
+  **#2 段五（迭代重算 `G`）→ 施工單指 `K-9-15 一`「往街廓內移動迭代計算」**
+     字樣 `往街廓內移動迭代計算` 於 `K-6` 命中 ＝ **0**
+     全母體（1288 檔）命中 ＝ **1 檔**：
+        層 ＝ 二·文件報告 ／ 檔 ＝ docs/reports/W-G.9-93_合成對照與投影序號現查.md ／ 行 ＝ 208【引述】
+        逐字 ＝ | **丙·KL 圖說／既有報告原詞** | `docs/`（含 `figures`）**391 檔** | 「投影序號中下一位之土地遞補該位次」**5**（3 檔）・`遠側境界線` 58・`第 0 宗` 68・`第 1 宗` 446・`藍
+     `K-9-15` 全段（行 2808–2854·共 47 行）之 `迭代` 命中 ＝ **0**
+     非 0 對照（同法·同段·已知存在字樣 `不交叉`）＝ **2** ⇒ 搜法有判別力
+     `K-6` 全檔 `迭代` 命中 ＝ **5**（皆他脈絡）：
+        行 ＝ 348 ／ 逐字 ＝ （斜率與 `t` 無關）⇒ `t* = (T − min(W(0,0), W(D,0))) / k`，**一次除法**。禁二分／取樣／迭代。
+        行 ＝ 1417 ／ 逐字 ＝ 🔴 **禁二分／禁取樣／禁迭代兜底**（同 K-8 §四 既有鐵律）。
+        行 ＝ 1426 ／ 逐字 ＝ ⇒ **仍為解析解、仍禁二分／禁取樣／禁迭代兜底**。
+        行 ＝ 1608 ／ 逐字 ＝ | **K-9-7** ✅**已實作**（段三(c)·`0429772`） | **ALLOC_LINE 之分段線性解析定位**（四支·每支一次除法·**禁二分／取樣／迭代**）；斜率由 `c
+        行 ＝ 1707 ／ 逐字 ＝ 經 `G`／`S` 反覆迭代至**小數點後兩位相符**（第三位四捨五入）方止；
+
+  **#3 段六（街角 winner 非畸零）→ 施工單指 `K-9-5-14 乙式`**
+     [構成] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2608
+     逐字 ＝ **一、構造變更**：街角最小規定範圍之**遠側境界線** ＝ **SIDELINE 沿其法向平移
+     [結論之錨] `K-9-5-14` 內是否載「一定符合非畸零」之斷言？——`K-9-5-14` 段內 `不另設寬度閘` 命中 ＝ 0
+     [結論] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2645 ／ 逐字 ＝ ### 🔒 K-9-5-15 乙式之確認 ＋ **街角第 1 宗⛔ 不另設寬度閘** ＋ 截角前量測（KL 裁 2026-08-18·canonical·**逐字**）
+     [結論] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2673 ／ 逐字 ＝ ⇒ 🔴 **街角第 1 宗⛔ 不另設寬度閘、⛔ 不另跑矩形容納測試。**
+     [結論] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2720 ／ 逐字 ＝ `K-9-5-15 二` 原載「**面積夠 ⇒ 街角第 1 宗寬度合格**」為真、街角第 1 宗⛔ 不另設寬度閘。
+     [結論] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2672 ／ 逐字 ＝ ⇒ 🔒 **「面積夠 ⇒ 街角第 1 宗寬度合格」為真**
+     [結論] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2720 ／ 逐字 ＝ `K-9-5-15 二` 原載「**面積夠 ⇒ 街角第 1 宗寬度合格**」為真、街角第 1 宗⛔ 不另設寬度閘。
+     [限縮] 檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2723 ／ 逐字 ＝ > 🔒 **該蘊含<u>僅於「街角最小規定範圍係以 SIDELINE 法向平移方式產生」（＝乙式·`K-9-5-14`）之情形下成立</u>。**
+     🔒 **段六之三個要素與其各自之錨**：
+        (甲) 構成「SIDELINE 沿法向平移 退縮＋畸零寬」⇒ `K-9-5-14 一`（行 2608）
+        (乙) 「一定符合非畸零」⇒ `K-9-5-15 二`（行 2672·「面積夠 ⇒ 街角第 1 宗寬度合格」為真）
+        (丙) 該蘊含**以乙式為前提** ⇒ `K-9-5-15` 之 **2026-08-19 就地加註 一**（行 2723）
+        ⇒ KL 段六之括號「（街角地最小規定範圍的構成係以sideline 沿法向平移 退縮+畸零寬）」**即 (丙) 所要求之前提** ⇒ 三要素**齊備且自洽**。
+
+  **#4 段七（中間必有配餘地）→ 施工單指 `K-9-11 三` 守恆式**
+     檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 2348 ／ 逐字 ＝ **一律沿用 `K-9-9 四`**：走**合併／調配機制**；**騰出之地入調配池**；
+     「中間／居中」之錨於 `K-6` 命中 ＝ **0**（`調配池居中`）
+     檔 ＝ CLAUDE.md ／ 行 ＝ 335 ／ 逐字 ＝ - 推進方向一律由 FRONT_LINE 定；**兩端往中間排、調配池居中**是三街廓通則。
+     檔 ＝ CLAUDE.md ／ 行 ＝ 355 ／ 逐字 ＝ **調配池必然存在、必 > 0**。原位次分配時不判斷要不要留池（必留）。
+
+  ── `§三` 覆核總表 ──
+  #   段   施工單所指之正典錨                          倉內現查得到?  判
+  #1  段四   K-9-15 一                                   ✅ 是           ✅ 相符（KL 逐字「對於第 1 宗後續的土地而言是對的」＝ 段四之「第 2 宗以後」）
+  #2  段五   K-9-15 一「往街廓內移動迭代計算」                       🔴 否           🛑 **不符**——該字樣於 `K-6` 命中 0、`K-9-15` 全段無「迭代」二字
+  #3  段六   K-9-5-14 乙式                                ✅ 是           ✅ 相符（重申成立）·**惟錨須補**——`K-9-5-14` 只承載**構成**；「非畸零」之斷言錨 ＝ `K-9-5-15 二` ＋ 其 2026-08-19 就地加註 一（乙式前提）
+  #4  段七   K-9-11 三 守恆式                               ✅ 是           ⚠️ **部分相符·錨不足**——「必有池」之錨 ＝ `CLAUDE.md:355`／`:363`（經 `K-9-11 三` 之表轉引）；「**居中**」之錨 ＝ `CLAUDE.md:335`，⛔ 不在 `K-9-11 三`
+  POPULATION=4 PRINTED=4 SUPPRESSED=0  # B `§三` 四項重申（全列）
+
+  🛑 **不符項數 ＝ 1** ⇒ 依施工單 §三 ⚠️ 與 §十-1：**⛔ 本裁不入倉、回報**
+  🔒 若入倉，續編之裁定號 ＝ **K-9-17**（現查 `K-6` 主序列最大 ＝ K-9-16）
+
+======================================================================================================================================================
+【§C】`C-1`　生產式與本裁之差異清單（決定遞補／位次之處·全倉窮舉）
+======================================================================================================================================================
+  🔒 母體 ＝ 生產路徑 **10** 檔（施工單 -96 §零 A 之清單）之**全部行**；字樣 ＝ 下列 6 個（涵蓋「投影序號 ＋ 1」及任何等價式之識別字）
+  🔒 命中母體（未分層）＝ **126** 行
+  🔒 §Z-8 報數：母體 ＝ 126 ／ 納入（`碼` 層）＝ 71 ／ 略過 ＝ 55
+     略過之逐項理由：層別 ＝ `註解`／`字串`／`空` ⇒ **⛔ 非可執行消費**（註解 ＝ 36、字串 ＝ 19）
+
+  層     檔                              行     所用之序列                     與本裁主文相符?
+  一·碼面   app.py                           7518   重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ def _projection_order(parcels, front_line_p1, front_line_p2) -> list:
+  一·碼面   app.py                           7656   重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ pre_seq = _projection_order(parcels_in_block, front_line_p1, front_line_p2)
+  一·碼面   app.py                           7658   `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ {'tp': tp, 'pre_position': i + 1,
+  一·碼面   app.py                           11819  `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ float(c.get('_pre_position_rank', float('inf'))),             # 2: §2 正典原位次（投影序 rank）
+  一·碼面   app.py                           12499  重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ "_select_pool_slot", "_projection_order", "_spatial_order_parcels_v2",
+  一·碼面   app.py                           18461  重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ _projection_order(_all_in_blk, _fl_p1_lstep, _fl_p2_lstep))
+  一·碼面   app.py                           18505  `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ '_pre_position_rank': _rank_by_tpid.get(
+  一·碼面   app.py                           18672  `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
+  一·碼面   app.py                           19552  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2 = []
+  一·碼面   app.py                           19555  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2.append({
+  一·碼面   app.py                           19557  `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ 'pre_position': 0,
+  一·碼面   app.py                           19562  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2.sort(key=lambda e: (not e['is_corner_winner'],))
+  一·碼面   app.py                           19592  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2 = list(_v2_res.get('ordered', []) or [])
+  一·碼面   app.py                           19596  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ for _i_ov2, _e_ov2 in enumerate(ordered_v2):
+  一·碼面   app.py                           19707  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ _N_f = len(ordered_v2)
+  一·碼面   app.py                           19711  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ left_group = list(ordered_v2); right_group = []
+  一·碼面   app.py                           19713  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ left_group = []; right_group = list(reversed(ordered_v2))
+  一·碼面   app.py                           19715  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ left_group = list(ordered_v2[:_k_split])
+  一·碼面   app.py                           19716  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ right_group = list(reversed(ordered_v2[_k_split:]))
+  一·碼面   app.py                           19998  重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ _N = len(ordered_v2)
+  一·碼面   verify/stepg_pipeline.py         465    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2 = []
+  一·碼面   verify/stepg_pipeline.py         468    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2.append({
+  一·碼面   verify/stepg_pipeline.py         469    `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ 'tp': tp, 'pre_position': 0,
+  一·碼面   verify/stepg_pipeline.py         474    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2.sort(key=lambda e: (not e['is_corner_winner'],))
+  一·碼面   verify/stepg_pipeline.py         480    （遞補字樣）                         【資料不足】
+         逐字 ＝ parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗（遞補宗改走 _place_pool_parcels）
+  一·碼面   verify/stepg_pipeline.py         487    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ ordered_v2 = list(_v2_res.get('ordered', []) or [])
+  一·碼面   verify/stepg_pipeline.py         488    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ for _i_ov2, _e_ov2 in enumerate(ordered_v2):
+  一·碼面   verify/stepg_pipeline.py         498    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ _proj_rank = {tp['暫編地號']: _i + 1 for _i, tp in enumerate(
+  一·碼面   verify/stepg_pipeline.py         499    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ ns["_projection_order"](_stage1_parcels, _cad_fl_blk.get('p1'),
+  一·碼面   verify/stepg_pipeline.py         501    `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ _pos_bad = [(e['tp']['暫編地號'], e.get('pre_position'),
+  一·碼面   verify/stepg_pipeline.py         502    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ _proj_rank.get(e['tp']['暫編地號']))
+  一·碼面   verify/stepg_pipeline.py         503    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ for e in ordered_v2
+  一·碼面   verify/stepg_pipeline.py         504    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ if e.get('pre_position') != _proj_rank.get(e['tp']['暫編地號'])]
+  一·碼面   verify/stepg_pipeline.py         507    `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ f"🔴 結構閘 位次＝投影序 破：街廓 {blk_label} {len(_pos_bad)} 筆 pre_position "
+  一·碼面   verify/stepg_pipeline.py         508    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ f"≠ _projection_order 排名（暫編, pre_position, 投影排名）={_pos_bad[:3]}")
+  一·碼面   verify/stepg_pipeline.py         586    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ _N_f = len(ordered_v2)
+  一·碼面   verify/stepg_pipeline.py         590    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ left_group = list(ordered_v2); right_group = []
+  一·碼面   verify/stepg_pipeline.py         592    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ left_group = []; right_group = list(reversed(ordered_v2))
+  一·碼面   verify/stepg_pipeline.py         594    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ left_group = list(ordered_v2[:_k_split])
+  一·碼面   verify/stepg_pipeline.py         595    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ right_group = list(reversed(ordered_v2[_k_split:]))
+  一·碼面   verify/stepg_pipeline.py         793    重排**後**序列（`ordered_v2`）        是
+         逐字 ＝ _N = len(ordered_v2)
+  一·碼面   verify/selection_pipeline.py     339    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ ns["_projection_order"](_all_in_blk, _fl_p1_lstep, _fl_p2_lstep))
+  一·碼面   verify/selection_pipeline.py     374    `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ '_pre_position_rank': _rank_by_tpid.get(r.get('暫編地號', ''), float('inf')),
+  一·碼面   verify/selection_pipeline.py     505    `pre_position`（＝重排**前**投影序之排名） 否
+         逐字 ＝ '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
+  一·碼面   verify/run_verification.py       39     （遞補字樣）                         【資料不足】
+         逐字 ＝ F1DIR = os.path.join(HERE, "baselines", "wf", "f1")  # 🆕 W-F F.1 遞補整形 baseline（R1 縮圍）
+  一·碼面   verify/run_verification.py       666    （投影序字樣）                        【資料不足】
+         逐字 ＝ results.append((f"結構不變量永久閘{tag}（守恆/⊥/位次=投影序/J(k*)≥J(naive)/理論=實跑/telescoping）",
+  一·碼面   verify/run_verification.py       809    （遞補字樣）                         【資料不足】
+         逐字 ＝ print("… W-D.4 四梯分級清單（Gxxx 群組·31 旗標消費·遞補錨·fixture·v3 半實算）")
+  一·碼面   verify/run_verification.py       816    （遞補字樣）                         【資料不足】
+         逐字 ＝ _dump_csv(_d4["frag"], os.path.join(OUTDIR, f"got_W-D.4_遞補_退縮{tag}.csv"))
+  一·碼面   verify/run_verification.py       823    （遞補字樣）                         【資料不足】
+         逐字 ＝ os.path.join(V3RUN, f"W-D.4_碎片遞補對照_退縮{tag}.csv"),
+  一·碼面   verify/run_verification.py       824    （遞補字樣）                         【資料不足】
+         逐字 ＝ ["情境", "碎片"], f"W-D.4遞補{tag}")
+  一·碼面   verify/run_verification.py       825    （遞補字樣）                         【資料不足】
+         逐字 ＝ results.append((f"W-D.4 碎片遞補{tag}", ok_r, v_r))
+  一·碼面   verify/run_verification.py       903    （遞補字樣）                         【資料不足】
+         逐字 ＝ _ok_anc = (bool(_r6) and _r6[0]["遞補標的宗"] == "628-4(1)"
+  一·碼面   verify/run_verification.py       905    （遞補字樣）                         【資料不足】
+         逐字 ＝ results.append(("W-D.4 遞補錨 R6 85.66→628-4(1)（跳過 628(2);628-1(2);628-23(1)）", _ok_anc,
+  一·碼面   verify/run_verification.py       977    （投影序字樣）                        【資料不足】
+         逐字 ＝ results.append((f"F.0 位次序不變{tag}（投影序∖移除宗）", not d["pos_viol"],
+  一·碼面   verify/run_verification.py       1023   （遞補字樣）                         【資料不足】
+         逐字 ＝ for nm, rows in (("遞補整形", d1["reshape_rows"]), ("碎片處置", d1["frag_rows"]),
+  一·碼面   verify/run_verification.py       1026   （遞補字樣）                         【資料不足】
+         逐字 ＝ ok_r, v_r = diff_rows(d1["reshape_rows"], os.path.join(F1DIR, f"F.1_遞補整形_退縮{tag}.csv"),
+  一·碼面   verify/run_verification.py       1028   （遞補字樣）                         【資料不足】
+         逐字 ＝ results.append((f"F.1·遞補整形{tag}", ok_r, v_r))
+  一·碼面   verify/run_verification.py       1056   （遞補字樣）                         【資料不足】
+         逐字 ＝ results.append((f"F.1 標記制{tag}（{len(_marks)} 片待 F.4 終態遞補整形，期 {_exp_m}）",
+  一·碼面   verify/run_verification.py       1105   （投影序字樣）                        【資料不足】
+         逐字 ＝ results.append((f"F.2 位次序不變{tag}（投影序∖移除宗）", not _a2["pos_viol"],
+  一·碼面   verify/wd4_tier_list.py          364    （遞補字樣）                         【資料不足】
+         逐字 ＝ continue   # 池主體/forced角落鎖定 不遞補
+  一·碼面   verify/wd4_tier_list.py          382    （遞補字樣）                         【資料不足】
+         逐字 ＝ "遞補標的宗": target, "跳過失格筆": ";".join(skipped),
+  一·碼面   verify/wd4_tier_list.py          425    （遞補字樣）                         【資料不足】
+         逐字 ＝ _write(os.path.join(OUTDIR, f"W-D.4_碎片遞補對照_退縮{tag}.csv"), d["frag"])
+  一·碼面   verify/wf_f0.py                  256    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [tp["暫編地號"] for tp in ns["_projection_order"](pib, fl.get("p1"), fl.get("p2"))]
+  一·碼面   verify/wf_f1.py                  253    （遞補字樣）                         【資料不足】
+         逐字 ＝ "處置": "標記·待 F.4 終態遞補整形（角落失格業主未離場，KL 裁定 2026-07-11）",
+  一·碼面   verify/wf_f1.py                  376    重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [tp["暫編地號"] for tp in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
+  一·碼面   verify/wf_f2.py                  95     重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [x["暫編地號"] for x in ns["_projection_order"](pib, fl.get("p1"), fl.get("p2"))]
+  一·碼面   verify/wf_f3.py                  78     重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [x["暫編地號"] for x in ns["_projection_order"](pib, fl.get("p1"), fl.get("p2"))]
+  一·碼面   verify/wf_f4.py                  501    （投影序字樣）                        【資料不足】
+         逐字 ＝ cen_t = (pool_cen[blk][0][0] - 1.2 * float(d_off[blk][0]),   # 錨點前置防投影序 tie
+  一·碼面   verify/wf_f4.py                  1043   重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [x["暫編地號"] for x in ns["_projection_order"](pib, fl.get("p1"), fl.get("p2"))]
+  一·碼面   verify/wf_f4.py                  1433   重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [t["暫編地號"] for t in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
+  一·碼面   verify/wf_f4.py                  1503   重排**前**投影序（`_projection_order` 原序） 否
+         逐字 ＝ return [t["暫編地號"] for t in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
+  POPULATION=126 PRINTED=71 SUPPRESSED=55  # C-1 `碼` 層逐行（全列·未切片）
+
+  🔒 **判別力（常設 8·預宣覆驗）**：`stepg_pipeline.py:491-509` 之結構閘須被命中且判 `否`
+     ⇒ 實測命中 ＝ **8** 行 ⇒ ✅ 如預宣
+  🔒 **量測器自證（`-94` 之處置形）**：上列非 0；且對已知**不存在**之字樣（執行期組出之角色字樣）同法命中 ＝ **0**（須 0）
+
+  ⚠️ **母體之性質具名（⛔ 不得誤讀）**：本表母體係**字樣驅動**、故**過度涵蓋**——如 `app.py:7518`（`def` 行）／`:12499`（符號匯出清單）並⛔ 非「決定遞補位次之處」。
+     「與本裁主文相符?」欄之受詞 ＝ **該行所用之序列**，⛔ 非「該行是否決定遞補」。
+     🔴 併具名之**土地相關**格：`wf_f0:256`／`wf_f1:376`／`wf_f2:95`／`wf_f3:78`／`wf_f4:1043,1433,1503`／`run_verification.py:977,1105` 之「位次序不變」閘係以**重排前投影序**為母體 ⇒ 落地時須逐格判其受詞是否改變。
+
+  🔴 **本裁主文之受詞**：「下一位」＝ **重排後序列（`ordered_v2`）之下一位**
+     ⇒ 上表凡「所用之序列 ＝ 重排前投影序」者，落地時**皆須改**；
+     ⇒ 🛑 惟**遞補本身於生產路徑⛔ 尚未實作**（`-95`／`-96` 已證：`I-A`／`I-B` 皆 `【查無】`）
+        ⇒ 「決定遞補位次之處」之**可執行**母體 ＝ **0** ⇒ 本裁之落地係**從零實作**、⛔ 非改既有遞補碼。
+
+======================================================================================================================================================
+【§D】`C-2`　`G` 值重算之現況
+======================================================================================================================================================
+  **問 1：現行碼於<u>重排後</u>是否重算 `G`？**
+     檔 ＝ verify/stepg_pipeline.py ／ 行 ＝ 590
+     逐字 ＝ left_group = list(ordered_v2); right_group = []
+     檔 ＝ verify/stepg_pipeline.py ／ 行 ＝ 594
+     逐字 ＝ left_group = list(ordered_v2[:_k_split])
+     檔 ＝ verify/stepg_pipeline.py ／ 行 ＝ 630
+     逐字 ＝ for entry in left_group:
+     檔 ＝ verify/stepg_pipeline.py ／ 行 ＝ 652
+     逐字 ＝ S_remain = max(0.1, S_block_max - left_cum_S - right_cum_S)
+     檔 ＝ verify/stepg_pipeline.py ／ 行 ＝ 655
+     逐字 ＝ res, solver_label = _solve_one(
+     檔 ＝ verify/stepg_pipeline.py ／ 行 ＝ 729
+     逐字 ＝ res, solver_label = _solve_one(
+     ⇒ **答：是**——推進迴圈之母體即 `ordered_v2`（重排**後**序列），`G` 由 `_solve_one`→`solve_G_binary` 於該序列上**逐宗現算**；
+        且其輸入 `baseline_pt = corner_pt + left_cum_S * d_hat`／`S_remain` 皆**位置相依**⇒ 序列一變、`G` 必變。
+        🔒 精確措辭：⛔ 非「重排後再算一次」，而係 **`G` 之唯一算處即在重排後之序列上**。
+
+  **問 2：現行碼於<u>遞補後</u>是否重算其後各宗之 `G`？**
+     ⇒ **答：`【查無】`**——**遞補於生產路徑尚未實作**（`-96` §F：`I-A`／`I-B` 之碼側皆 `【查無】`）⇒ ⛔ 無「遞補後」之受詞可量。
+     🔒 **結構觀察（⛔ 非「已實作」之宣稱）**：現行推進迴圈以 `left_cum_S` **累加**推進（逐字見上），故**若**某宗於建 `left_group` 之前被移除，其後各宗之 `baseline_pt`／`S_remain`自動改變 ⇒ `G` 隨之改變。
+        ⇒ 本裁五段之「後面的宗也會整體往前分配，所以也要重算 G」在**該前提下**由現行結構滿足；**⛔ 惟移除／遞補之決策本身仍缺**。
+
+  🔴 **落地批之必修項（具名·⛔ 本批不改·⛔ 不估土地後果）**：
+     (a) 不配地之判定（`I-A` 交叉／`I-B` 零合格垂線）——`【查無】`；
+     (b) 遞補之執行：自 `ordered_v2` 移除該宗、由**其後之下一元素**遞補該位次；
+     (c) 遞補宗與其後各宗之 `G` 重算（依上 (b) 之移除時點，現行結構即滿足）；
+     (d) 騰出面積入調配池之記帳（守恆式）。
+  POPULATION=4 PRINTED=4 SUPPRESSED=0  # D 落地必修項（全列）
+
+======================================================================================================================================================
+【§E】`§七`　七來源 `#5` 與其餘六者之差異（供欄名提案）
+======================================================================================================================================================
+  #  來源                              性質                                     在乙甲下游?
+  1  未通過寬深雙檢                          不配地之**判定**                               甲
+  2  未達街廓最小建築面積                       不配地之**判定**                               甲
+  3  零合格垂線                            不配地之**判定**                               乙
+  4  不得建築者                            不配地之**判定**                               —
+  5  跨街廓同歸戶「小往較大集中」                   **歸戶之移轉**（⛔ 非不配地判定）                      🔴 非乙甲
+  6  末趟新產生之不合格宗                       不配地之**判定**（迭代產物）                         —
+  7  池內遞補合成宗                          **池內落位之產物**                              —
+  POPULATION=7 PRINTED=7 SUPPRESSED=0  # E 七來源之性質（全列）
+
+  🔒 **`#5` 與其餘六者之差（逐字）**：
+     檔 ＝ docs/rulings/K-6_街角地分配程序與可分配判準.md ／ 行 ＝ 109 ／ 逐字 ＝ - 跨街廓同歸戶「小往較大集中」一律歸七級調配（F.0／F.2）；**街角不再有專屬救援機制**
+     ① **觸發者不同**：其餘六者皆由「該宗**自身**不合格／落位」觸發；`#5` 由「**同歸戶跨街廓之相對大小**」觸發——該宗**自身合格**亦會被移轉。
+     ② **受詞不同**：其餘六者之受詞 ＝ **一宗**；`#5` 之受詞 ＝ **一歸戶群跨街廓之集合**。
+     ③ **落地狀態不同**：`#5` 與 `#7` **已實作**，其餘五者 `【查無】`。
+     ④ **與乙甲之關係**：`#5` ⛔ **非**乙甲之下游（`-95` §C-2·`-96` §F 已二度複驗）。
+
+======================================================================================================================================================
+【§Z】略過與護欄
+======================================================================================================================================================
+  略過（節 119）＝ **0** 筆
+  POPULATION=0 PRINTED=0 SUPPRESSED=0  # Z 略過清單
+  🛑 呼叫護欄終檢：{'run_step_g': 0, 'run_corner_pk': 0, 'run_all_main': 0}
+  ⇒ ✅ `run_step_g`／`run_corner_pk`／`run_verification.main` 呼叫數 ＝ 0／0／0
