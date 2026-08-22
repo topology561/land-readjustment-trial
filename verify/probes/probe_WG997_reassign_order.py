@@ -30,6 +30,10 @@ r"""**W-G.9-97**：`§三` 四項「重申」之逐字覆核 ＋ `§五` 二項�
     python verify/probes/probe_WG997_reassign_order.py
 
 rc **恆為 0**；唯缺件／取不到資料時 loud raise（`no-silent-fallback`）。
+
+🔒 **可重跑性**：`A-1` 之判準 ＝「**基座 `1c12201` 為 `HEAD` 之祖先或等於 `HEAD`**」，
+⛔ 非「`HEAD` 逐位等於基座」——本批入倉後 `HEAD` 前移係**預期**，⛔ 不得因此判紅
+（否則本檔之「重跑 rc ＝ 0」與其自身之閘**互相矛盾**）。log 檔名綁**基座**、⛔ 不綁 `HEAD`。
 """
 import hashlib
 import io
@@ -49,6 +53,7 @@ WIDTH = 150
 
 SELF = [
     "verify/probes/probe_WG997_reassign_order.py",
+    "verify/out/probe_WG997_reassign_order_1c12201.log",
     "docs/reports/W-G.9-97_重排後遞補之入裁與現查.md",
 ]
 
@@ -61,6 +66,9 @@ PROD_FILES = [
     "verify/wf_f0.py", "verify/wf_f1.py", "verify/wf_f2.py",
     "verify/wf_f3.py", "verify/wf_f4.py",
 ]
+
+# 🔒 本批之**基座** commit（施工單 `W-G.9-97` §一 `A-0` #1）——⛔ 非「執行時之 HEAD」
+BASE_SHORT = "1c12201"
 
 K6 = "docs/rulings/K-6_街角地分配程序與可分配判準.md"
 SK = ".claude/skills/failure-archaeology/SKILL.md"
@@ -223,14 +231,20 @@ def main():                                                          # noqa: C90
     head = git1(["rev-parse", "HEAD"])
     head_s = git1(["rev-parse", "--short", "HEAD"])
     app_blob = git1(["rev-parse", "HEAD:app.py"])
-    log_path = os.path.join(OUTDIR, "probe_WG997_reassign_order_%s.log" % head_s)
+    # 🔒 **基座**（本批 `A-0` 之錨）與 **HEAD** 分列：入倉後 HEAD 前移，探針仍須可重跑
+    #   ⇒ log 檔名一律綁**基座**、⛔ 不綁 HEAD（否則每次入倉多生一份 log）。
+    base_ok = subprocess.run(["git", "merge-base", "--is-ancestor", BASE_SHORT, "HEAD"],
+                             cwd=REPO, stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL).returncode == 0
+    log_path = os.path.join(OUTDIR, "probe_WG997_reassign_order_%s.log" % BASE_SHORT)
 
     files = tracked_files()
     load_text([p for p in files
                if p.endswith((".py", ".md", ".log", ".csv", ".txt", ".json"))])
 
     hdr("【W-G.9-97】重排後遞補之入裁覆核 ＋ 二項現查（⛔ 零生產碼·⛔ 未跑管線）")
-    say("  產生於 commit：%s（%s）" % (head_s, head))
+    say("  基座（本批 `A-0` 之錨）＝ **%s**；產生於 HEAD ＝ **%s**（%s）"
+        % (BASE_SHORT, head_s, head))
     say("  `app.py` blob：%s（HEAD）／%s（工作區）" % (app_blob, git1(["hash-object", "app.py"])))
     say("  母體（`git ls-files -z`·遞迴）＝ **%d** 檔；載入為文字者 ＝ **%d** 檔"
         % (len(files), len(TEXT)))
@@ -258,7 +272,11 @@ def main():                                                          # noqa: C90
             % (gid, item, "✅" if good else "🔴", expect, got))
         return good
 
-    gate("A-1", "本機 HEAD", "1c12201", head_s)
+    # `A-1`：判準 ＝ **基座為 HEAD 之祖先或等於 HEAD**（⛔ 非「HEAD 逐位等於基座」）
+    #   ——入倉後 HEAD 前移屬**預期**，⛔ 不得因此判紅（否則探針⛔ 不可重跑·與自身 docstring 相矛盾）。
+    gate("A-1", "基座 %s ⊆ HEAD 之祖先" % BASE_SHORT, True, base_ok)
+    say("        現查：基座 ＝ %s ／ HEAD ＝ %s ／ 二者%s"
+        % (BASE_SHORT, head_s, "相同" if head_s == BASE_SHORT else "相異（HEAD 已前移·屬預期）"))
     gate("A-2", "app.py blob（絕對值）",
          "a9e5671d64d254907a0396f898f046d9d85e8283", app_blob)
     _origin = git1(["rev-parse", "origin/wip/s1-endpart"])
@@ -327,13 +345,24 @@ def main():                                                          # noqa: C90
     say("  **#2 段五（迭代重算 `G`）→ 施工單指 `K-9-15 一`「往街廓內移動迭代計算」**")
     p2 = "往街廓內移動迭代計算"
     n_k6 = count_hits(K6, p2)
-    all_hits = [(rel, hit_lines(rel, p2)) for rel in TEXT if count_hits(rel, p2)]
+    # 🔒 **自誌之扣除（節 72）**：本批自身之產物（`SELF`）會複述該字樣 ⇒ ⛔ 不得計入母體，
+    #   否則「入倉一次、命中就多幾筆」＝ 量測器量到自己。扣除後**併具名**其筆數。
+    _hits_all = [(rel, hit_lines(rel, p2)) for rel in TEXT if count_hits(rel, p2)]
+    all_hits = [(rel, hs) for rel, hs in _hits_all if rel not in SELF]
+    self_hits = [(rel, hs) for rel, hs in _hits_all if rel in SELF]
     say("     字樣 `%s` 於 `K-6` 命中 ＝ **%d**" % (p2, n_k6))
-    say("     全母體（%d 檔）命中 ＝ **%d 檔**：" % (len(TEXT), len(all_hits)))
+    say("     全母體（%d 檔·**已扣 SELF %d 檔**）命中 ＝ **%d 檔**："
+        % (len(TEXT) - len([r for r in SELF if r in TEXT]),
+           len([r for r in SELF if r in TEXT]), len(all_hits)))
     for rel, hs in all_hits:
         for n_, t_ in hs:
             say("        層 ＝ %s ／ 檔 ＝ %s ／ 行 ＝ %d【引述】" % (tier_of(rel), rel, n_))
             say("        逐字 ＝ %s" % t_.strip()[:120])
+    say("     🔒 自誌（`SELF`）之命中 ＝ **%d 檔**（⛔ 已扣除·⛔ 非證據）：" % len(self_hits))
+    for rel, _hs in self_hits:
+        say("        %s" % rel)
+    say("     ⚠️ **其行數⛔ 不印**——本檔之 log 亦屬 `SELF`，印其行數即**自我指涉**"
+        "⇒ log 無不動點、二跑不逐位相同；⛔ 此係**具名之不印**、⛔ 非略過未具名（節 119）。")
     # K-9-15 全段之「迭代」
     i15 = next(i for i, l in enumerate(k6) if l.startswith("### 🔒 K-9-15"))
     i16 = next(i for i, l in enumerate(k6) if l.startswith("### 🔒 K-9-16"))
