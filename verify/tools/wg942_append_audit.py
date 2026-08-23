@@ -454,11 +454,41 @@ for _p, _k, _h, _t in TARGETS:
         MULTI.setdefault(_p, []).append((_h, _t))
 
 
+def _git(args):
+    """🔒 `GB-92` 修①：子行程一律 `check=True`（`VR-067 一`）
+    ⇒ 呼叫失敗即**響亮拋出**、⛔ 不以哨兵值吞掉、⛔ 不使量測母體靜默歸零。"""
+    return subprocess.run(["git"] + args, capture_output=True, check=True)
+
+
+def exists_at(ref, path):
+    """🔒 `GB-92` 修②：存在性以 `ls-tree` 之**輸出**判定，⛔ **非以 `rc` 判定**。
+
+    🔑 **要害**：`git ls-tree <ref> -- <path>` 於該路徑**不存在**時 `rc` 仍為 `0`、
+      輸出為**空** ⇒ 「**受詞不存在**」與「**呼叫失敗**」⛔ **不共用任何哨兵**
+      （`VR-068 三`）——前者由**輸出**承載、後者由 `check=True` **拋出**。
+    ⚠️ `-z` ＋ `core.quotepath=false`：CJK 路徑⛔ 不被八進位轉義（`GB-88` 之 `quotepath` 族）。
+    """
+    r = _git(["-c", "core.quotepath=false", "ls-tree", "-r", "--name-only", "-z",
+              ref, "--", path])
+    names = [x for x in r.stdout.decode("utf-8").split("\0") if x]
+    return (len(names) > 0), names
+
+
 def blob(ref, path):
-    r = subprocess.run(["git", "show", f"{ref}:{path}"], capture_output=True)
-    if r.returncode != 0:
-        return None
-    return r.stdout.decode("utf-8").replace("\r\n", "\n")
+    """回 `(state, text)`；`state` ∈ `{"EXISTS", "ABSENT"}`。
+
+    🩸 `GB-92` 之案由：首版回 `None`，而 `None` **同時**表示「於基座不存在」與
+      「子行程呼叫失敗」；`main()` 逕以前者解之並 `continue` ⇒ 該筆⛔ 不進 `bad`
+      ⇒ **跳過幾筆都印 `✅ 全部成立`·`rc 0`**（實測：Windows `MAX_PATH` 下
+      `62` 相異路徑中 `24` 筆被跳過而閘仍綠）。
+    🔒 **修③**：⛔ **不再回 `None`**——二支各有其出口：
+      「不存在」回 `("ABSENT", None)`；「呼叫失敗」由 `_git` 之 `check=True` **拋出**。
+    """
+    ok, _ = exists_at(ref, path)
+    if not ok:
+        return "ABSENT", None
+    r = _git(["show", f"{ref}:{path}"])
+    return "EXISTS", r.stdout.decode("utf-8").replace("\r\n", "\n")
 
 
 def work(path):
@@ -493,15 +523,38 @@ def complement(s, segs):
 
 
 def main():
-    base = sys.argv[1] if len(sys.argv) > 1 else "HEAD"
+    argv = sys.argv[1:]
+    # 🔒 `GB-92` 修④：**具名宣告之新檔**（家法同 `wg9103` 之具名排除集）。
+    #   用法：`wg942_append_audit.py <base> [--new <path>] …`
+    #   🔒 **已具名宣告**者 ⇒ 其「不適用」之**因已被施工單確定** ⇒ ⛔ 非 `VR-068 二`
+    #      所稱之「跳過」（該款之定義要件係「**其因未被確定**」·見 `VR-072`）。
+    #   🔴 **⛔ 未宣告**而於基座不存在者 ⇒ **判紅**（跳過須顯形且⛔ 不得印綠）。
+    declared_new = [argv[i + 1] for i, a in enumerate(argv)
+                    if a == "--new" and i + 1 < len(argv)]
+    pos = [a for i, a in enumerate(argv)
+           if not a.startswith("--") and (i == 0 or argv[i - 1] != "--new")]
+    base = pos[0] if pos else "HEAD"
     bad = 0
+    checked, na_declared, na_undeclared = 0, [], []
     print(f"【`W-G.9-42` 純追加稽核】base ＝ {base}")
+    print(f"  🔒 母體 ＝ `TARGETS` **{len(TARGETS)}** 筆（相異路徑 "
+          f"**{len({t[0] for t in TARGETS})}**）；具名宣告之新檔 ＝ "
+          f"**{len(declared_new)}** 筆{'　' + str(declared_new) if declared_new else ''}")
     print("=" * 78)
     for path, kind, head, tail in TARGETS:
-        old_all = blob(base, path)
-        if old_all is None:
-            print(f"  ⛔ {path}：{base} 無此檔（新檔）⇒ 不適用嚴格前綴")
+        state, old_all = blob(base, path)
+        if state == "ABSENT":
+            if path in declared_new:
+                na_declared.append(path)
+                print(f"  ⚠️ [不適用·**已具名宣告**] {path}：{base} ⛔ 無此檔 "
+                      f"⇒ 嚴格前綴不適用（⛔ **不計為成立**）")
+            else:
+                na_undeclared.append(path)
+                bad += 1
+                print(f"  🔴 [不適用·**⛔ 未宣告**] {path}：{base} ⛔ 無此檔 ⇒ **判紅**"
+                      f"（`VR-068 二`；若確為本批新增，請以 `--new {path}` 具名）")
             continue
+        checked += 1
         new_all = work(path)
         if kind == "檔":
             old, new = old_all, new_all
@@ -536,7 +589,32 @@ def main():
         print(f"       {len(old)} → {len(new)}　嚴格前綴＝{ok}"
               f"　判別力自檢（行中插入）＝{disc}（須 False）{extra}")
     print("=" * 78)
-    print(f"  結論：{'✅ 全部成立' if bad == 0 else f'🔴 {bad} 項不成立 ⇒ S-5 觸發'}")
+    # 🔒 `GB-92` 修⑤（`VR-067 三`·綠之舉證責任倒置）：
+    #   受檢筆數與不適用筆數**須同時印出**，⛔ 不得只印一個判決字。
+    print(f"  🔒 受檢 ＝ **{checked}** 筆／不適用（已具名宣告）＝ **{len(na_declared)}** 筆"
+          f"／不適用（⛔ 未宣告·已判紅）＝ **{len(na_undeclared)}** 筆"
+          f"／合計 ＝ **{checked + len(na_declared) + len(na_undeclared)}**"
+          f"（須 ＝ `TARGETS` {len(TARGETS)}）")
+    if checked == 0:
+        print("  🔴 **受檢筆數 ＝ 0** ⇒ 本閘⛔ 未檢任何受詞，其綠⛔ 無證據力（`VR-067 三`）")
+        bad += 1
+    if na_declared:
+        print("  ⚠️ **不適用之逐項列名（已具名宣告）**：")
+        for _p in na_declared:
+            print(f"      ⚠️ {_p}")
+    if na_undeclared:
+        print("  🔴 **不適用之逐項列名（⛔ 未宣告）**：")
+        for _p in na_undeclared:
+            print(f"      🔴 {_p}")
+    if bad:
+        _v = f"🔴 {bad} 項不成立 ⇒ S-5 觸發"
+    elif na_declared:
+        # 🔒 `VR-072`：具名宣告者⛔ 非跳過，惟其判決字⛔ 不得為 `✅`。
+        _v = (f"⚠️ 受檢 {checked} 筆全部成立；另有 {len(na_declared)} 筆已具名宣告之"
+              f"不適用（⛔ **非**「全部成立」）")
+    else:
+        _v = "✅ 全部成立"
+    print(f"  結論：{_v}")
     return 1 if bad else 0
 
 
