@@ -6239,11 +6239,38 @@ def k94_partition_land_rows(g_rows):
     """
     _land, _no = [], []
     for _r in (g_rows or []):
+        # 🔒 **K-9-4 之「宗」⛔ 不含「無地主之未覆蓋殘餘」**（KL 裁 2026-08-24·逐字：
+        #   「R4 街廓內的碎片是重劃範圍邊界的細碎塊? 如果是就不算一宗土地。
+        #     但如果是有地主的地…若這筆碎塊土地是有地主的，無法分配土地就是要給補償」）。
+        #
+        #   🔑 **判準綁三個性質之合取，⛔ 不綁名稱、⛔ 不綁 `_is_ghost_sliver`**
+        #     （後者於 `:19340-19374` 新建 g_row 時**未傳遞**，K-9-4 側讀不到 ⇒ 綁之即恆假）：
+        #       ① `原地號 == '_GHOST'`      ——依構造係 `residue.difference(全部宗地)` 之殘餘
+        #                                     （`grep -n "從 residue 扣除已歸屬部分" app.py`）⇒ ⛔ 無地主
+        #       ② `G(㎡) == 0`              ——其上⛔ 未分配任何土地
+        #       ③ `重劃前區段 == ''`         ——⛔ 無地價區段 ⇒ ⛔ 非任何地主之權利標的
+        #   🛑 **三者須<u>同時</u>成立**；任一不成立 ⇒ **照舊嚴查**（落 `_land`）。
+        #
+        #   🔒 **⛔ 不放寬 K-9-4 之射程**：其正典逐字「每宗必須配到 BASELINE」，
+        #     立法目的為「其上**分配之土地**無法成為合法建築基地」——
+        #     `G == 0` 者其上**⛔ 無分配之土地** ⇒ 該目的於其**⛔ 不適用**。
+        #   🔒 **有地主而無法配地者⛔ 不走本條**：依 KL 裁應走 `💰 現金補償`，
+        #     而該側別**已在 `K94_NO_LAND_SIDES` 內** ⇒ 本就⛔ 不受 K-9-4 拘束。
+        #   ⚠️ **⛔ 不得**以 `cut_coords is None` 反面篩（`:6229` 之禁令）——本判準
+        #     **⛔ 不看幾何有無**，只看上開三個**權利屬性**。
+        if (str(_r.get('原地號', '')) == '_GHOST'
+                and float(_r.get('G(㎡)', 0) or 0) == 0.0
+                and str(_r.get('重劃前區段', '')) == ''):
+            _no.append(_r)
+            continue
         (_no if str(_r.get('推進側別', '')) in K94_NO_LAND_SIDES else _land).append(_r)
     _bad_land = [str(_r.get('暫編地號', '')) for _r in _land
                  if not (_r.get('cut_coords') or [])]
     _bad_no = [str(_r.get('暫編地號', '')) for _r in _no
-               if (_r.get('cut_coords') or [])]
+               if (_r.get('cut_coords') or [])
+               and not (str(_r.get('原地號', '')) == '_GHOST'
+                        and float(_r.get('G(㎡)', 0) or 0) == 0.0
+                        and str(_r.get('重劃前區段', '')) == '')]
     if _bad_land:
         raise RuntimeError(
             f"🔴 K-9-4 母體界定：下列宗之推進側別非「無地宗」、卻無幾何（`cut_coords` 空）"
