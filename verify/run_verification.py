@@ -30,7 +30,14 @@ from stepg_pipeline import (  # noqa: E402
     run_step_g, build_step_g_tables, compute_total_burden_rate)
 
 SNAPSHOT = os.path.join(HERE, "case_params_UC9898.json")
-V6DXF = os.path.join(REPO, "data", "V6.dxf")
+V6DXF = os.path.join(REPO, "data", os.environ.get("WV_K9_DXF_NAME", "V6_1.dxf"))
+# 🔒 **K-9-20（KL 裁 2026-08-24）**：圖資之權威版本 ＝ KL 最後一次依裁定修改後所
+#   交付者；生產與驗證須讀**同一份**。`data/V6_1.dxf` 係其現行實例
+#   （`20db5bf`·2026-08-02·commit 訊息逐字「入庫 KL 新版 V6_1」）。
+# 🔒 **`data/V6.dxf` 保留⛔ 不刪**（`verify/baselines/PROVENANCE.md:47` 明令·K-9-20 三）
+#   ——留作**溯源基準**，惟⛔ 不再為生產或驗證之輸入。
+# 🔒 **溯源用法**：`WV_K9_DXF_NAME=V6.dxf python verify/run_verification.py`
+#   ⇒ 可重跑舊態以與既有 baseline 對拍，⛔ 不需改碼。
 ANON_XLSX = os.path.join(REPO, "data", "地籍資料來源_匿名版.xlsx")
 BASELINES = os.path.join(HERE, "baselines")
 # baselines/v2/＝財務半中間態期（C=0、A=1）之歷史錨，**凍存不刪、不再對拍**（見 v3/PROVENANCE_v3.md）
