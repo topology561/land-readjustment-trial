@@ -6264,6 +6264,25 @@ def k94_partition_land_rows(g_rows):
             _no.append(_r)
             continue
         (_no if str(_r.get('推進側別', '')) in K94_NO_LAND_SIDES else _land).append(_r)
+    _no_ids = {id(_x) for _x in _no}
+    _ghost_diag = []
+    for _r in (g_rows or []):
+        _pid = str(_r.get('暫編地號', ''))
+        if not _pid.startswith('_GHOST_'):
+            continue
+        _c1 = (str(_r.get('原地號', '')) == '_GHOST')
+        _c2 = (float(_r.get('G(㎡)', 0) or 0) == 0.0)
+        _c3 = (str(_r.get('重劃前區段', '')) == '')
+        _ghost_diag.append(
+            f"{_pid}｜①原地號={_r.get('原地號', '')!r}→{_c1}"
+            f"｜②G(㎡)={_r.get('G(㎡)', '<缺鍵>')!r}→{_c2}"
+            f"｜③重劃前區段={_r.get('重劃前區段', '<缺鍵>')!r}→{_c3}"
+            f"｜推進側別={_r.get('推進側別', '<缺鍵>')!r}"
+            f"｜三條件皆成立={_c1 and _c2 and _c3}"
+            f"｜落={'_no' if (id(_r) in _no_ids) else '_land'}")
+    if _ghost_diag:
+        st.warning("🔍 **K-9-4 ghost 判準診斷**（`W-G.9-120`·⛔ 零行為變更）\n\n"
+                   + "\n\n".join("- " + _x for _x in _ghost_diag))
     _bad_land = [str(_r.get('暫編地號', '')) for _r in _land
                  if not (_r.get('cut_coords') or [])]
     _bad_no = [str(_r.get('暫編地號', '')) for _r in _no
