@@ -6248,7 +6248,7 @@ def k94_partition_land_rows(g_rows):
         #       ① `原地號 == '_GHOST'`      ——依構造係 `residue.difference(全部宗地)` 之殘餘
         #                                     （`grep -n "從 residue 扣除已歸屬部分" app.py`）⇒ ⛔ 無地主
         #       ② `G(㎡) == 0`              ——其上⛔ 未分配任何土地
-        #       ③ `重劃前區段 == ''`         ——⛔ 無地價區段 ⇒ ⛔ 非任何地主之權利標的
+        #       ③ `a 面積(㎡) == 0`          ——重劃前⛔ 無面積 ⇒ ⛔ 無地主（W-G.9-124 更正）
         #   🛑 **三者須<u>同時</u>成立**；任一不成立 ⇒ **照舊嚴查**（落 `_land`）。
         #
         #   🔒 **⛔ 不放寬 K-9-4 之射程**：其正典逐字「每宗必須配到 BASELINE」，
@@ -6258,9 +6258,18 @@ def k94_partition_land_rows(g_rows):
         #     而該側別**已在 `K94_NO_LAND_SIDES` 內** ⇒ 本就⛔ 不受 K-9-4 拘束。
         #   ⚠️ **⛔ 不得**以 `cut_coords is None` 反面篩（`:6229` 之禁令）——本判準
         #     **⛔ 不看幾何有無**，只看上開三個**權利屬性**。
+        # 🩸 **`W-G.9-124` 更正**：第三條原綁 `重劃前區段 == ''`，**綁錯欄位**——
+        #   `:19392` 逐字 `'重劃前區段': _zone,` 而 `_zone` 係 `_build_g_row`（`:19380`）之
+        #   **參數**、由呼叫端（`:19908`／`:20012`）填入之**街廓層級**區段 ⇒ ghost 亦被填 `'b'`
+        #   （KL 於 `4214b3a` 態實跑之診斷框逐字：`③重劃前區段='b'→False`）。
+        #   ⇒ 該欄⛔ **不能表達「有無地主」**。
+        # 🔒 **改綁 `a 面積(㎡)`**（`:19393` 逐字 `'a 面積(㎡)': _a_m2,`）——係**該筆自身之
+        #   重劃前面積**。🔑 KL 裁逐字「若這筆碎塊土地是**有地主**的…就是要給補償」
+        #   ⇒ **有地主 ⇔ 重劃前有面積**；`residue` 之殘餘依構造⛔ 無原有土地 ⇒ `a 面積 == 0`。
+        # 🔒 三條件今皆為**該筆自身之屬性**，⛔ 無一由上游填入。
         if (str(_r.get('原地號', '')) == '_GHOST'
                 and float(_r.get('G(㎡)', 0) or 0) == 0.0
-                and str(_r.get('重劃前區段', '')) == ''):
+                and float(_r.get('a 面積(㎡)', 0) or 0) == 0.0):
             _no.append(_r)
             continue
         (_no if str(_r.get('推進側別', '')) in K94_NO_LAND_SIDES else _land).append(_r)
@@ -6272,11 +6281,12 @@ def k94_partition_land_rows(g_rows):
             continue
         _c1 = (str(_r.get('原地號', '')) == '_GHOST')
         _c2 = (float(_r.get('G(㎡)', 0) or 0) == 0.0)
-        _c3 = (str(_r.get('重劃前區段', '')) == '')
+        _c3 = (float(_r.get('a 面積(㎡)', 0) or 0) == 0.0)
         _ghost_diag.append(
             f"{_pid}｜①原地號={_r.get('原地號', '')!r}→{_c1}"
             f"｜②G(㎡)={_r.get('G(㎡)', '<缺鍵>')!r}→{_c2}"
-            f"｜③重劃前區段={_r.get('重劃前區段', '<缺鍵>')!r}→{_c3}"
+            f"｜③a面積(㎡)={_r.get('a 面積(㎡)', '<缺鍵>')!r}→{_c3}"
+            f"｜（併呈·⛔ 非判準）重劃前區段={_r.get('重劃前區段', '<缺鍵>')!r}"
             f"｜推進側別={_r.get('推進側別', '<缺鍵>')!r}"
             f"｜三條件皆成立={_c1 and _c2 and _c3}"
             f"｜落={'_no' if (id(_r) in _no_ids) else '_land'}")
@@ -6289,7 +6299,7 @@ def k94_partition_land_rows(g_rows):
                if (_r.get('cut_coords') or [])
                and not (str(_r.get('原地號', '')) == '_GHOST'
                         and float(_r.get('G(㎡)', 0) or 0) == 0.0
-                        and str(_r.get('重劃前區段', '')) == '')]
+                        and float(_r.get('a 面積(㎡)', 0) or 0) == 0.0)]
     if _bad_land:
         raise RuntimeError(
             f"🔴 K-9-4 母體界定：下列宗之推進側別非「無地宗」、卻無幾何（`cut_coords` 空）"
