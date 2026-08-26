@@ -4277,6 +4277,25 @@ def _annotate_temp_parcel_cut_type(temp_parcels: list) -> list:
             tp['cut_type'] = 'cut_非分割'
         else:
             tp['cut_type'] = 'cut_整筆'
+
+    # 🆕 K-6 §二 步驟 0（W-G.9-136）：同街廓相鄰合併。
+    #   🔒 **置於本函式尾之由**：本函式係 app `main()` 與 harness
+    #      `verify/selection_pipeline.build_build_parcels` **共用之最後一道 app 側轉換**
+    #      （`grep -n "_annotate_temp_parcel_cut_type" app.py verify/selection_pipeline.py`
+    #       ⇒ 恰二呼叫點）⇒ 二路徑皆執行、`verify/` 零動。
+    #   🔒 app 側之時序：`main()` 之呼叫在寫入 `st.session_state['f3_temp_parcels']`
+    #      **之前**（`grep -n "st.session_state\['f3_temp_parcels'\] = temp_parcels" app.py`）
+    #      ⇒ 引擎接線 `_build_wf_ctx` 讀到的是**合併後**之 `temp_parcels`。
+    if not k6_step0_enabled():
+        return temp_parcels
+    _ss_k6 = st.session_state
+    temp_parcels, _diag_k6 = k6_step0_merge(
+        temp_parcels,
+        _ss_k6.get('t8_ownership_map', {}) or {},
+        _ss_k6.get('f3_cad_front_lines', {}) or {},
+        _ss_k6.get('f3_cad_side_lines_by_side', {}) or {},
+    )
+    _ss_k6['f3_k6_step0_diag'] = _diag_k6
     return temp_parcels
 
 
@@ -11256,6 +11275,178 @@ def k6_merge_selftest():
 
     return _log
 
+
+# ══════════ 🆕 K-6 §二 步驟 0：同街廓相鄰合併（W-G.9-136）══════════
+#   正典：`grep -n "^### 步驟 0：同街廓相鄰合併" docs/rulings/K-6_街角地分配程序與可分配判準.md`
+#   例外：`grep -n "^### 🔒 K-9-21　" docs/rulings/K-6_街角地分配程序與可分配判準.md`
+K6_STEP0_ENV = "WV_K6_STEP0"
+
+
+def k6_step0_enabled():
+    # 🔒 可停用之出口。預設 `on`；設為 `off` ⇒ 逐位回到未落地前之行為（供零行為變更對照）。
+    import os as _os_k6
+    return str(_os_k6.environ.get(K6_STEP0_ENV, "on")).strip().lower() \
+        not in ("0", "off", "false", "no")
+
+
+def k6_step0_block_locked(side_lines_by_side, label):
+    # 🔒 **K-9-21 之保守替代**（⛔ 非正典本文·**待 KL 裁循環依賴之解**）。
+    #
+    #   正典 K-9-21 之判準 ＝ 群中存在二筆以上同時滿足
+    #     (a) 係街角第 1 宗　(b) 街角側別相異　(c) G ≥ 該側街角規定面積（已達標）。
+    #   🛑 (a)(b)(c) **三者皆係段一街角 PK 之產物**
+    #      （`grep -n "_v13 = select_corner_lots_both_sides_v12" app.py`），
+    #      而正典 K-6 §二 令段一「只取…**步驟 0 後**…之土地」⇒ **循環依賴**
+    #      ⇒ 於步驟 0 之時點，該三欄尚未存在、**求不到值**。
+    #
+    #   🔒 **保守替代之構造**：(a)∧(b) 蘊含「該街廓左右兩側**皆**有街角」，
+    #      而「有無街角」＝「該側有無 SIDE_LINE」（K-9-18）。
+    #      ⇒ 以「兩側皆有 SIDE_LINE」為判準，其所擋之群恆為正典判準所擋者之**超集**
+    #      （⛔ 不可能漏擋；至多多擋）。
+    #   ⚠️ 本案實測：本判準與 winner 讀法、跨占讀法**同解**（皆只擋 R4 之群）。
+    _sl = ((side_lines_by_side or {}).get(label) or {})
+    return bool(_sl.get("left")) and bool(_sl.get("right"))
+
+
+def k6_step0_merge(temp_parcels, own_map, front_lines_by_label, side_lines_by_side,
+                   category_burden=None, min_len=None):
+    # 🔒 K-6 §二 步驟 0：**同街廓 ∧ 同歸戶 ∧ 相鄰 ⇒ 視為同一筆**
+    #    ——面積相加、幾何取聯集、佔單一原位次；命名 `{投影序在前者之暫編地號}+`。
+    #
+    # 參數
+    #   temp_parcels          : `overlay_polygons_to_blocks` 之下游（已具四欄面積）
+    #   own_map               : `st.session_state['t8_ownership_map']`（原地號 -> gid）
+    #   front_lines_by_label  : `f3_cad_front_lines`（`{label: {'p1','p2', …}}`）
+    #   side_lines_by_side    : `f3_cad_side_lines_by_side`（`{label: {'left','right'}}`）
+    #   category_burden       : 預設取 `F3_CATEGORY_BURDEN`（**資料驅動**·⛔ 不硬編街廓名）
+    # 回傳
+    #   (新 temp_parcels, diag)　diag 之計數器供「反靜默退路」自證 patch 有咬到。
+    #
+    # 🔒 射程（KL 裁 2026-08-24）：**僅可建築街廓**；共同負擔／非共同負擔之街廓⛔ 不進步驟 0。
+    _cb = category_burden if category_burden is not None else F3_CATEGORY_BURDEN
+    _diag = {
+        "enabled": True, "own_map_size": len(own_map or {}),
+        "blocks_total": 0, "blocks_buildable": 0,
+        "blocks_locked_k921": [], "blocks_no_front_line": [],
+        "groups_found": 0, "groups_merged": 0,
+        "parcels_in": len(temp_parcels or []), "parcels_absorbed": 0,
+        "parcels_out": 0, "merged": [], "anomalies": [],
+    }
+    if not temp_parcels:
+        return temp_parcels, _diag
+
+    from shapely.geometry import Polygon as _Poly_k6
+    from shapely.ops import unary_union as _uu_k6
+
+    # ── 逐街廓分組（⛔ 非全域一次）────────────────────────────────
+    _idx_by_blk = {}
+    for _i, _tp in enumerate(temp_parcels):
+        _idx_by_blk.setdefault(str(_tp.get("所屬街廓", "") or ""), []).append(_i)
+    _diag["blocks_total"] = len(_idx_by_blk)
+
+    _absorbed = {}          # 被併入者之索引 -> 併入後之代表索引
+    _merged_at = {}         # 代表索引 -> 合併後之 dict
+    for _lbl in sorted(_idx_by_blk):
+        _idxs = _idx_by_blk[_lbl]
+        _cat = str(temp_parcels[_idxs[0]].get("街廓分類", "") or "")
+        if _cb.get(_cat, "") != "可建築土地":
+            continue
+        _diag["blocks_buildable"] += 1
+
+        # 🔒 K-9-21 之保守替代（見 `k6_step0_block_locked` 之逐字說明）
+        if k6_step0_block_locked(side_lines_by_side, _lbl):
+            _diag["blocks_locked_k921"].append(_lbl)
+            continue
+
+        _fl = ((front_lines_by_label or {}).get(_lbl) or {})
+        _p1, _p2 = _fl.get("p1"), _fl.get("p2")
+        if _p1 is None or _p2 is None:
+            # ⛔ 無 FRONT_LINE ⇒ `{投影序在前者}+` 之命名無從導出（K-6 命名規則）
+            #    ⇒ **⛔ 不合併**（保守·無土地變動）並具名記錄，⛔ 不靜默編造位次。
+            _diag["blocks_no_front_line"].append(_lbl)
+            continue
+
+        _pk = []
+        for _i in _idxs:
+            _tp = temp_parcels[_i]
+            _cs = _tp.get("polygon_coords") or []
+            _d = dict(_tp)
+            _d["polygon"] = _Poly_k6(_cs) if len(_cs) >= 3 else None
+            _d["_k6_src_index"] = _i
+            _pk.append(_d)
+
+        for _g in k6_merge_groups(_pk, own_map, min_len):
+            if len(_g) < 2:
+                continue
+            _diag["groups_found"] += 1
+            _mem = [_pk[_j] for _j in _g]
+            _polys = [_m.get("polygon") for _m in _mem if _m.get("polygon") is not None]
+            _union = _uu_k6(_polys) if _polys else None
+            if _union is None or _union.geom_type != "Polygon":
+                # 🔴 k6_shares_segment 已保證共用線段 ⇒ 聯集應恆為單一 Polygon。
+                #    非 Polygon ＝ 前提破 ⇒ **⛔ 不合併**並具名記錄（⛔ 不與正常跳過共用出艙碼）。
+                _diag["anomalies"].append(
+                    "%s：聯集非 Polygon（%s）⇒ ⛔ 不合併　成員 %r"
+                    % (_lbl, (_union.geom_type if _union is not None else "None"),
+                       sorted(str(_m.get("暫編地號", "")) for _m in _mem)))
+                continue
+
+            # 🔒 命名與位次：位次由**聯集幾何**依 `_projection_order` 導出（⛔ 不另訂）；
+            #    命名取「投影序在前者之暫編地號」＋`+`。
+            _ordered = _projection_order(_mem, _p1, _p2)
+            _name = str(_ordered[0].get("暫編地號", "")) + "+"
+            _rep_i = min(_m["_k6_src_index"] for _m in _mem)
+
+            _new = dict(temp_parcels[_ordered[0]["_k6_src_index"]])
+            _new["暫編地號"] = _name
+            _new["polygon_coords"] = [(float(_x), float(_y))
+                                      for _x, _y in _union.exterior.coords]
+            _rp = _union.representative_point()
+            _new["centroid_x"], _new["centroid_y"] = float(_rp.x), float(_rp.y)
+            # 面積相加：`幾何面積_m2` 為 S-4 所定之面積源；其餘可加欄一併累加。
+            #   ⚠️ `面積_m2` 係 a′ 累加器（本階段恆 0），累加係為其語意正確、⛔ 非面積源。
+            for _k in ("幾何面積_m2", "登記面積_m2", "分攤登記面積_m2", "面積_m2", "面積_坪"):
+                if any(_k in _m for _m in _mem):
+                    _new[_k] = round(sum(float(_m.get(_k, 0) or 0) for _m in _mem), 6)
+            # 🔒 清冊二欄（K-6 §二 步驟 0）
+            _ids = sorted(str(_m.get("暫編地號", "")) for _m in _mem)
+            _new["合併組成"] = "＋".join(_ids)
+            _gid = str((own_map or {}).get(str(_mem[0].get("原地號", "")), "") or "")
+            _pairs = []
+            for _a in range(len(_mem)):
+                for _b in range(_a + 1, len(_mem)):
+                    _ok, _L = k6_shares_segment(_mem[_a].get("polygon"),
+                                                _mem[_b].get("polygon"), min_len)
+                    if _ok:
+                        _pairs.append("%s|%s=%.6f" % (_mem[_a].get("暫編地號"),
+                                                      _mem[_b].get("暫編地號"), _L))
+            _new["合併依據"] = "%s｜%s" % (_gid, "；".join(_pairs))
+            _new.pop("polygon", None)
+            _new.pop("_k6_src_index", None)
+
+            _merged_at[_rep_i] = _new
+            for _m in _mem:
+                if _m["_k6_src_index"] != _rep_i:
+                    _absorbed[_m["_k6_src_index"]] = _rep_i
+            _diag["groups_merged"] += 1
+            _diag["parcels_absorbed"] += len(_mem) - 1
+            _diag["merged"].append({
+                "街廓": _lbl, "命名": _name, "成員": _ids, "gid": _gid,
+                "Σ幾何面積_m2": round(float(_new.get("幾何面積_m2", 0) or 0), 4),
+                "聯集 geom_type": _union.geom_type,
+            })
+
+    # ── 產出：保持原順序，代表位置換成合併後之片，被併者移除 ────────
+    _out = []
+    for _i, _tp in enumerate(temp_parcels):
+        if _i in _merged_at:
+            _out.append(_merged_at[_i])
+        elif _i in _absorbed:
+            continue
+        else:
+            _out.append(_tp)
+    _diag["parcels_out"] = len(_out)
+    return _out, _diag
 
 def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
                            side_line_pts, alloc_dir, block_depth, setback, min_width,
