@@ -4,7 +4,9 @@ W-V 驗證熔爐 — headless 重現 app.py 街角選位管線，雙情境（退
 逐格對拍 verify/baselines/。**additive-only：app.py 一字不改**（全走 app_harvest 真函式）。
 
 管線階段（全部真函式；幾何半已證 cell-exact）：
-  1. harvest → parse_block_dxf(V6.dxf) → classified_blocks（+分類）
+  1. harvest → parse_block_dxf(**V6DXF**) → classified_blocks（+分類）
+     🔒 W-G.9-132 更正：`V6DXF` 之預設自 `W-G.9-123` 起為 `data/V6_1.dxf`（K-9-20·KL 裁 2026-08-24）；
+        原文「V6.dxf」已不再為真。溯源：`WV_K9_DXF_NAME=V6.dxf` 可重讀舊圖（⛔ 不需改碼）。
   2. parse_cad_precision_layers → front/side/alloc lines
   3. _annotate_block_corner_flags → has_corner/corner_sides
   4. _rebuild_corners_topology post-pass → geom_restore.theoretical_corners（含 side）
