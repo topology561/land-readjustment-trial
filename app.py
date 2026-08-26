@@ -11052,6 +11052,211 @@ def k97_solve_alloc_t(block_centroid, front_pts, baseline_pts, side_line_pts,
     }
 
 
+# ═══════════════════════════════════════════════════════════════════
+# 🔒 K-6 §一「合併群」之幾何連通判定（W-G.9-131·丙案·⛔ 零接線）
+#
+#   正典逐字（`grep -n "^## 一、合併群述詞" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+#     **合併群 ＝ 同歸戶 ∧ 幾何連通**
+#     - 幾何連通 ＝ 重劃前地籍上共用**線段**（兩端完全共點；**單點相接不算**）
+#     - 連通路徑得經 RD 片或其他使用分區之片（公園、市場、廣場等公設），
+#       但**路徑上每一片皆須同歸戶**
+#     - 街廓分配線兩側算**兩個街廓**
+#     - **母地號不作判準**
+#
+#   🛑 **本函式⛔ 零接線**（W-G.9-131 §零 閘四）——迄 W-G.9-132（乙案）方接入。
+#   🔒 **泛用**：⛔ 不綁 UC9898、⛔ 不綁塊名、⛔ 不綁 gid 值；全 data-driven。
+# ═══════════════════════════════════════════════════════════════════
+
+K6_SHARE_MIN_LEN = 0.01   # 共用線段之最小長度（m）＝ 辦法 §3 長度粒度 2dp
+                          #   🔒 立此下限之由：兩端完全共點於浮點下不可判；
+                          #      交集若為 Point 或長度 < 本值 ⇒ 視為「單點相接」⇒ ⛔ 不連通。
+                          #   ⛔ 非容差：本值係**長度門檻**，⛔ 不用於座標比較。
+
+
+def k6_shares_segment(poly_a, poly_b, min_len=None):
+    # 🔒 K-6 §一：二片之邊界是否**共用線段**（⛔ 單點相接不算）。
+    #
+    # 參數
+    #   poly_a / poly_b : shapely Polygon（重劃前地籍片·cad_data['parcel_polygons'] 之 'polygon'）
+    #   min_len         : 共用線段之最小長度；None ⇒ 用 K6_SHARE_MIN_LEN
+    # 回傳
+    #   (bool, float)   : (是否共用線段, 共用長度 m)
+    #
+    # 🔒 判法：取二片**邊界**（exterior + interiors）之交集，只計其**線性**部分之總長。
+    #   - 交集含 LineString／MultiLineString ⇒ 累加其 length
+    #   - 交集僅 Point／MultiPoint ⇒ 長度 0 ⇒ **⛔ 不連通**（正典「單點相接不算」）
+    #   - GeometryCollection ⇒ 逐元素分流（⛔ 不整體取 length·Point 之 length 恆 0 但混入易誤讀）
+    # ⛔ **不以面積交集判**：二片若重疊（上游 bug），面積交集非 0 而邊界未必共線。
+    _ml = float(K6_SHARE_MIN_LEN if min_len is None else min_len)
+    if poly_a is None or poly_b is None:
+        return (False, 0.0)
+    try:
+        _ba = poly_a.boundary
+        _bb = poly_b.boundary
+        _it = _ba.intersection(_bb)
+    except Exception:
+        return (False, 0.0)          # ⛔ 幾何不可運算 ⇒ 判不連通（loud 由呼叫端負責）
+    _tot = 0.0
+    _stack = [_it]
+    while _stack:
+        _g = _stack.pop()
+        if _g is None or _g.is_empty:
+            continue
+        _gt = _g.geom_type
+        if _gt in ('LineString', 'LinearRing'):
+            _tot += float(_g.length)
+        elif _gt in ('MultiLineString', 'GeometryCollection', 'MultiPolygon', 'MultiPoint'):
+            _stack.extend(list(_g.geoms))
+        elif _gt == 'Polygon':
+            _tot += float(_g.exterior.length)   # 邊界交集為面 ⇒ 二片邊界重疊一段閉環
+        # Point ⇒ 長度 0 ⇒ ⛔ 不累加
+    return (_tot >= _ml, _tot)
+
+
+def k6_merge_groups(parcels, own_map, min_len=None):
+    # 🔒 K-6 §一：依「同歸戶 ∧ 幾何連通」求**合併群**（連通分量）。
+    #
+    # 參數
+    #   parcels  : list[dict]，每筆須有 'polygon'（shapely）與 '原地號'（供查 own_map）
+    #              ⚠️ **⛔ 不以 '原地號' 本身為判準**（正典：母地號不作判準）——
+    #                 它只是查 own_map 之鍵；判準係其查得之 **gid**。
+    #   own_map  : dict{原地號 -> gid}（st.session_state['t8_ownership_map']）
+    #   min_len  : 傳予 k6_shares_segment
+    # 回傳
+    #   list[list[int]] : 每個合併群之 parcels 索引 list（升冪·群間依其最小索引升冪）
+    #                     🔒 **決定性**：⛔ 無隨機、⛔ 不依 dict 迭代序。
+    #
+    # 🔒 演算法：對**同 gid** 之片建圖（邊 ＝ k6_shares_segment 為真），取連通分量。
+    #   ⇒ 「路徑上每一片皆須同歸戶」自動滿足（圖只在同 gid 內建）。
+    #   ⇒ 「得經 RD 片或其他使用分區」自動滿足（⛔ 不濾使用分區）。
+    #   ⇒ 「街廓分配線兩側算兩個街廓」⛔ 不影響本判定（本判定係地籍層·⛔ 非街廓層）。
+    # ⚠️ **gid 為空字串者⛔ 不入任何群**（無歸戶 ⇒ 無合併群）；其索引⛔ 不出現於回傳。
+    _by_gid = {}
+    for _i, _p in enumerate(parcels or []):
+        _gid = str((own_map or {}).get(str((_p or {}).get('原地號', '')), '') or '')
+        if not _gid:
+            continue
+        _by_gid.setdefault(_gid, []).append(_i)
+    _out = []
+    for _gid in sorted(_by_gid.keys()):
+        _idx = sorted(_by_gid[_gid])
+        _adj = {i: set() for i in _idx}
+        for _a in range(len(_idx)):
+            for _b in range(_a + 1, len(_idx)):
+                _ia, _ib = _idx[_a], _idx[_b]
+                _ok, _ = k6_shares_segment(parcels[_ia].get('polygon'),
+                                           parcels[_ib].get('polygon'), min_len)
+                if _ok:
+                    _adj[_ia].add(_ib)
+                    _adj[_ib].add(_ia)
+        _seen = set()
+        for _s in _idx:                      # 升冪走訪 ⇒ 決定性
+            if _s in _seen:
+                continue
+            _comp, _stk = [], [_s]
+            _seen.add(_s)
+            while _stk:
+                _u = _stk.pop()
+                _comp.append(_u)
+                for _v in sorted(_adj[_u]):
+                    if _v not in _seen:
+                        _seen.add(_v)
+                        _stk.append(_v)
+            _out.append(sorted(_comp))
+    _out.sort(key=lambda c: c[0])
+    return _out
+
+
+def k6_merge_selftest():
+    # 🔒 K-6 §一 幾何連通判定之自檢（W-G.9-131 §三·CC 撰）。
+    #   ⛔ **不於 import 時自動執行**——唯一呼叫者係施工單之 `V-5`。
+    #   ⛔ 不讀 DXF：全部幾何以 `shapely.geometry.Polygon` 就地合成。
+    #   不符即 `raise AssertionError`（⛔ 不靜默、⛔ 不回傳布林由呼叫端決定）。
+    from shapely.geometry import Polygon as _P
+
+    def _sq(x0, y0, x1, y1):
+        return _P([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+
+    def _pk(poly, ono):
+        return {'polygon': poly, '原地號': ono}
+
+    _log = []
+
+    def _eq(got, exp, tag):
+        if got != exp:
+            raise AssertionError("🔴 k6_merge_selftest %s：實得 %r ≠ 期望 %r" % (tag, got, exp))
+        _log.append("%s ⇒ %r ✅" % (tag, got))
+
+    def _close(got, exp, tag, tol=1e-9):
+        if abs(float(got) - float(exp)) > tol:
+            raise AssertionError("🔴 k6_merge_selftest %s：實得 %.12f ≠ 期望 %.12f（tol %g）"
+                                 % (tag, got, exp, tol))
+        _log.append("%s ⇒ %.12f ✅" % (tag, got))
+
+    # ── S-1：二共邊單位正方形·同 gid ──
+    _a, _b = _sq(0, 0, 1, 1), _sq(1, 0, 2, 1)
+    _ok, _len = k6_shares_segment(_a, _b)
+    _eq(_ok, True, "S-1 shares.bool")
+    _close(_len, 1.0, "S-1 shares.len")
+    _eq(k6_merge_groups([_pk(_a, 'A'), _pk(_b, 'B')], {'A': 'G1', 'B': 'G1'}),
+        [[0, 1]], "S-1 groups")
+
+    # ── S-2：僅角點相接·同 gid ⇒ 正典「單點相接不算」──
+    _a2, _b2 = _sq(0, 0, 1, 1), _sq(1, 1, 2, 2)
+    _ok2, _len2 = k6_shares_segment(_a2, _b2)
+    _eq(_ok2, False, "S-2 shares.bool")
+    _close(_len2, 0.0, "S-2 shares.len")
+    _eq(k6_merge_groups([_pk(_a2, 'A'), _pk(_b2, 'B')], {'A': 'G1', 'B': 'G1'}),
+        [[0], [1]], "S-2 groups")
+
+    # ── S-3：同 S-1 之幾何但**不同 gid** ⇒ 證「同歸戶」為必要條件 ──
+    _eq(k6_merge_groups([_pk(_a, 'A'), _pk(_b, 'B')], {'A': 'G1', 'B': 'G2'}),
+        [[0], [1]], "S-3 groups")
+
+    # ── S-4：三片鏈 A-B 共邊、B-C 共邊、A-C ⛔ 不相鄰 ⇒ 證連通分量 ──
+    _A, _B, _C = _sq(0, 0, 1, 1), _sq(1, 0, 2, 1), _sq(2, 0, 3, 1)
+    _eq(k6_shares_segment(_A, _C)[0], False, "S-4 前提 A-C ⛔ 不相鄰")
+    _g4 = k6_merge_groups([_pk(_A, 'A'), _pk(_B, 'B'), _pk(_C, 'C')],
+                          {'A': 'G1', 'B': 'G1', 'C': 'G1'})
+    _eq(_g4, [[0, 1, 2]], "S-4 groups")
+    _eq((len(_g4), len(_g4[0])), (1, 3), "S-4 群數／片數")
+
+    # ── S-5：共用長度 0.005 < K6_SHARE_MIN_LEN ⇒ 證長度門檻有效 ──
+    _a5 = _sq(0, 0, 1, 1)
+    _b5 = _sq(1, 0.995, 2, 2)
+    _ok5, _len5 = k6_shares_segment(_a5, _b5)
+    _close(_len5, 0.005, "S-5 shares.len")
+    _eq(_ok5, False, "S-5 shares.bool")
+    _eq(k6_merge_groups([_pk(_a5, 'A'), _pk(_b5, 'B')], {'A': 'G1', 'B': 'G1'}),
+        [[0], [1]], "S-5 groups（2 群）")
+
+    # ── S-6：gid 為空字串 ⇒ ⛔ 不入任何群 ──
+    _eq(k6_merge_groups([_pk(_a, 'A'), _pk(_b, 'B')], {'A': '', 'B': ''}),
+        [], "S-6 groups（空 gid）")
+    _eq(k6_merge_groups([_pk(_a, 'A'), _pk(_b, 'B')], {}),
+        [], "S-6' groups（own_map 查無）")
+
+    # ── S-7：決定性——S-4 之順序打亂為 [C, A, B] 後重跑 ──
+    #   🔒 **比對法**：索引隨順序而變 ⇒ ⛔ 不可直接比索引 list；
+    #      改把各群之索引映回其 `原地號`，取 `frozenset of frozenset` 比對
+    #      ⇒ **分組結構**相同即等價（⛔ 不要求索引相同）。
+    _shuf = [_pk(_C, 'C'), _pk(_A, 'A'), _pk(_B, 'B')]
+    _g7 = k6_merge_groups(_shuf, {'A': 'G1', 'B': 'G1', 'C': 'G1'})
+    _orig = [_pk(_A, 'A'), _pk(_B, 'B'), _pk(_C, 'C')]
+
+    def _struct(groups, parcels):
+        return frozenset(frozenset(parcels[i]['原地號'] for i in g) for g in groups)
+    _eq(_struct(_g7, _shuf), _struct(_g4, _orig), "S-7 分組結構等價")
+    _eq(_g7, [[0, 1, 2]], "S-7 groups（打亂後之索引）")
+    # 🔒 判別力自檢：若把 S-3（異 gid）之結構拿來比，須**不等**（⇒ 上式非恆真）
+    _g3 = k6_merge_groups([_pk(_a, 'A'), _pk(_b, 'B')], {'A': 'G1', 'B': 'G2'})
+    if _struct(_g3, [_pk(_a, 'A'), _pk(_b, 'B')]) == _struct(_g4, _orig):
+        raise AssertionError("🔴 k6_merge_selftest S-7 判別力：異結構竟判等價 ⇒ 比對法無鑑別力")
+    _log.append("S-7 判別力自檢（異結構須不等）⇒ 不等 ✅")
+
+    return _log
+
+
 def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
                            side_line_pts, alloc_dir, block_depth, setback, min_width,
                            chamfer_tri=None, dxf_quantum=None, _label='', _side='',
