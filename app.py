@@ -7646,17 +7646,17 @@ def _projection_order(parcels, front_line_p1, front_line_p2) -> list:
 _PROJ_POP_DECL = {
     # ── 類 POP_SYNC（4 呼叫點 ＋ 2 透傳呼叫端）──────────────────────────────
     "app:v2/pre_seq": {
-        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "passthrough"},
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "passthrough+no_ghost"},
     "app:main/v2_caller": {
-        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1"},
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1+no_ghost"},
     "stepg:v2_caller": {
-        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1"},
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1+no_ghost"},
     "app:main/_rank_by_tpid": {
-        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "identity"},
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "identity+no_ghost"},
     "sp:_rank_by_tpid": {
-        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "identity"},
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "identity+no_ghost"},
     "stepg:_proj_rank": {
-        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1"},
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1+no_ghost"},
     # ── 類 ORDER_INVARIANCE（7 呼叫點）·`removed`／`added` 之**宣告值**──────────
     #    `empty` ＝ 該側差集須為 ∅；`set` ＝ 由呼叫端傳入之具名集合；
     #    `prefix:<s>` ＝ 該側差集之每一元素須以 `<s>` 起首。
@@ -7727,15 +7727,66 @@ def _proj_pop_ids(seq):
     return _out
 
 
+def _proj_pop_ghost3(x):
+    """🆕 `W-G.9-169` `L-1`：`VR-074` 之 ghost 述詞——**投影序層之唯一定義處**。
+
+    三判準**全寫**（忠於 `K-9-19 一` 之正典文字）：
+      ① `原地號 == '_GHOST'`　② `G(㎡) == 0`　③ `a 面積(㎡) == 0`
+    🛑 ⛔ **不綁 `_is_ghost_sliver`**（`VR-074` 落地拘束逐字·`K-6:3106`：於 `g_row` 層恆假）、
+    🛑 ⛔ **不綁名稱**。
+    ⚠️ `g_row` 層另有 **3** 處各自 inline 實作（`grep -n "'_GHOST'" app.py` ⇒ `:6289`／`:6301`／`:6319`）
+       ——本函式係**第 4 份**，已鑄 `GB-116`；本批⛔ 不重構該三處（其係 `K-9-4` 之受詞、
+       與投影序母體**正交**），代償 ＝ `verify/probes/probe_WG9169_ghost3_equiv.py` 之等價自檢。
+    """
+    return (str(x.get("原地號", "")) == "_GHOST"
+            and float(x.get("G(㎡)", 0) or 0) == 0.0
+            and float(x.get("a 面積(㎡)", 0) or 0) == 0.0)
+
+
+#: 🆕 `W-G.9-169` `L-2`：`g_row` 專屬之二欄——其於 parcel 層之**存在數實測皆 `0`**
+#:   （`W-G.9-167R §三 M-1 e`／`W-G.9-168R A-2`）⇒ `_proj_pop_ghost3` 之②③於該層**恆真**。
+_PROJ_POP_GROW_KEYS = ("G(㎡)", "a 面積(㎡)")
+
+
+def _proj_pop_key_guard(tag, seq, layer):
+    """🆕 `W-G.9-169` `L-2`：守護斷言——把 `VR-079 一` 之「靜默的空轉」換成「**有守衛的空轉**」。
+
+    日後 schema 若把 `G(㎡)`／`a 面積(㎡)` 加進投影序母體之元素，②③即不再恆真，
+    本斷言即響，逼人重新檢視 `VR-079 一`。🛑 ⛔ **不得以環境變數關閉**。
+    """
+    for _x in (seq or []):
+        for _k in _PROJ_POP_GROW_KEYS:
+            if _k in _x:
+                raise RuntimeError(
+                    "🔴 [_proj_pop] `g_row` 之欄現身於投影序母體：tag=%s／層=%s／鍵=%r／"
+                    "暫編地號=%r ⇒ `_proj_pop_ghost3` 之②③已非恆真，"
+                    "須重新檢視 `VR-079 一`（`W-G.9-169 L-2`）"
+                    % (tag, layer, _k, str(_x.get("暫編地號", ""))))
+
+
 def _proj_pop_filter(fname, base):
-    """🔒 濾式之**唯一定義處**（`L-1′`）。⛔ 其內容與既有碼面**逐字相同**。"""
-    if fname == "identity":
-        return list(base or [])
-    if fname == "stage1":
-        return [tp for tp in (base or []) if '配地階段' not in tp]
-    if fname == "no_ghost":
-        return [tp for tp in (base or []) if not tp.get("_is_ghost_sliver")]
-    raise RuntimeError("🔴 [_proj_pop] 未知濾式 %r（`L-2′`）" % (fname,))
+    """🔒 濾式之**唯一定義處**（`L-1′`）。
+
+    🆕 `W-G.9-169` `L-4`（編碼形式 ＝ **複合原子名**·常規三提案**甲**·發單側已核可）：
+    `fname` 得為 `"a+b"` 之複合值 ⇒ 依序套用其原子。原子集 ＝
+    `identity`／`stage1`／`no_ghost`／`passthrough`；⛔ 未知原子仍 **loud**。
+    🔒 `passthrough` 於本函式係**恆等原子**——其點走 `_proj_pop_assert_passthrough`、
+       **⛔ 不執行本函式**（其宣告之更新係**宣告層**之誠實化·`W-G.9-169 L-4` 逐字）。
+    🆕 `L-3` **述詞換源**：`no_ghost` 之名**留**，其述詞由 `_is_ghost_sliver`
+       換為 `_proj_pop_ghost3`（`VR-074` 拘束：⛔ 不綁旗標、⛔ 不綁名稱）。
+       外部錨 ＝ `W-G.9-167R §三 M-1 d`：二層之對稱差為**空** ⇒ 換源**零變化**。
+    """
+    _out = list(base or [])
+    for _atom in str(fname).split("+"):
+        if _atom == "identity" or _atom == "passthrough":
+            _out = list(_out)
+        elif _atom == "stage1":
+            _out = [tp for tp in _out if '配地階段' not in tp]
+        elif _atom == "no_ghost":
+            _out = [tp for tp in _out if not _proj_pop_ghost3(tp)]
+        else:
+            raise RuntimeError("🔴 [_proj_pop] 未知濾式 %r（`L-2′`）" % (fname,))
+    return _out
 
 
 def _proj_pop_assert_seq(tag, actual, base, blk=None):
@@ -7744,6 +7795,7 @@ def _proj_pop_assert_seq(tag, actual, base, blk=None):
     _d = _proj_pop_decl_of(tag)
     if _d["kind"] != "POP_SYNC":
         raise RuntimeError("🔴 [_proj_pop] %s 之受詞類為 %s，⛔ 非 POP_SYNC" % (tag, _d["kind"]))
+    _proj_pop_key_guard(tag, base, _d["source"])          # 🆕 W-G.9-169 `L-2`
     _got = _proj_pop_ids(actual)
     _exp = _proj_pop_ids(_proj_pop_filter(_d["filter"], base))
     if _got != _exp:
@@ -7758,7 +7810,8 @@ def _proj_pop_assert_passthrough(tag, blk=None):
     """`POP_SYNC` 之**透傳被呼叫端**：只斷言「已收到一個帶宣告之母體」（`L-3′`）。"""
     _proj_pop_note(tag)
     _d = _proj_pop_decl_of(tag)
-    if _d["kind"] != "POP_SYNC" or _d["filter"] != "passthrough":
+    # 🆕 W-G.9-169 `L-4`：`filter` 得為複合原子名 ⇒ 比其**首原子**（⛔ 非整串等值）
+    if _d["kind"] != "POP_SYNC" or str(_d["filter"]).split("+")[0] != "passthrough":
         raise RuntimeError(
             "🔴 [_proj_pop] %s 應宣告為 POP_SYNC/passthrough，實為 (%s, %s)"
             % (tag, _d["kind"], _d["filter"]))
@@ -11606,6 +11659,19 @@ def k6_step0_merge(temp_parcels, own_map, front_lines_by_label, side_lines_by_si
                 "app:k6step0/_ordered", _mem,
                 [_tp_pp for _tp_pp in temp_parcels
                  if str(_tp_pp.get("所屬街廓", "") or "") == _lbl], blk=_lbl)
+            # 🆕 W-G.9-169 `L-6`：本點採 **loud 斷言**、🛑 ⛔ **不加濾**——加濾會在無人檢視處
+            #   靜默改變下方 `_name`（＝**合併宗之暫編地號**·有土地後果）；加斷言則保住
+            #   `VR-074` 之保證，且日後若真有 ghost 落入 `_mem`，斷言即響（同 `VR-079 一` 之形）。
+            #   外部錨（`W-G.9-168R A-2`）：`8` 次呼叫之 `ghost3` 命中**皆 `0`**。
+            #   🛑 ⛔ 不得以環境變數關閉。
+            _proj_pop_key_guard("app:k6step0/_ordered", _mem, "TEMP_LAYER")
+            _gh3_mem = [str(_m_g3.get("暫編地號", "")) for _m_g3 in _mem
+                        if _proj_pop_ghost3(_m_g3)]
+            if _gh3_mem:
+                raise RuntimeError(
+                    "🔴 [_proj_pop] `VR-074` 破：ghost 落入合併群之投影序母體："
+                    "tag=app:k6step0/_ordered／街廓=%s／|_mem|=%d／命中=%r"
+                    % (_lbl, len(_mem), _gh3_mem))
             _ordered = _projection_order(_mem, _p1, _p2)
             _name = str(_ordered[0].get("暫編地號", "")) + "+"
             _rep_i = min(_m["_k6_src_index"] for _m in _mem)
@@ -13211,6 +13277,11 @@ _WF_NS_NAMES = [
     #   夾具逐字「ns 解包段拋 KeyError ⇒ app 生產路徑必崩」）。
     #   ⛔ 禁改為 `ns.get(...)` 加自算 fallback（`no-silent-fallback`／`GB-60` 病灶族）。
     "_proj_pop_assert_seq", "_proj_pop_assert_diff",
+    # 🆕 W-G.9-169 `L-4`（同批補列·`W-G.9-163` 之戒第四度施行）：`verify/` 側之實參同步
+    #   須呼叫 `ns["_proj_pop_ghost3"]`（`selection_pipeline.py:333`／`stepg_pipeline.py:416`）
+    #   ⇒ 漏列則 app 生產路徑（`_build_wf_ctx` → `_wf_ns()` → wf_f0.compute → run_step_g）
+    #   **必 KeyError**。⛔ 禁改為 `ns.get(...)` 加自算 fallback。
+    "_proj_pop_ghost3",
 ]
 
 
@@ -19116,7 +19187,9 @@ def main():
                             _param_dict_for_pk = (
                                 st.session_state.get('f3_g_iter_params', {}) or {}
                             )
-                            _all_in_blk = by_blk.get(_lbl, [])
+                            # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`identity+no_ghost`）
+                            _all_in_blk = [tp for tp in by_blk.get(_lbl, [])
+                                           if not _proj_pop_ghost3(tp)]
                             # 🚨 Patch D-1（Hotfix Fix A 補套用）：候選池一律全自動 PK
                             # 廢除「使用者人工標記覆寫」之分支，避免候選池被使用者誤勾選縮減而漏挑
                             _user_marked_in_blk = [
@@ -20080,7 +20153,9 @@ def main():
                         #   `_place_pool_parcels` 於池範圍內落位。**資料驅動**（禁名稱前綴判別）。
                         #   ⚠️ app live 路徑之合成宗僅存在於 wf_f4 引擎路徑 → 此處過濾**實為 no-op**；
                         #      但**必須**與 stepg 同構——否則 app 走舊單階段、harness 走新兩階段＝無聲分岔。
-                        _stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp]
+                        # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`stage1+no_ghost`）
+                        _stage1_parcels = [tp for tp in parcels_in_blk
+                                           if '配地階段' not in tp and not _proj_pop_ghost3(tp)]
                         _stage2_parcels = [tp for tp in parcels_in_blk if '配地階段' in tp]
 
                         sb_row = sb_rows_by_label.get(blk_label, {})

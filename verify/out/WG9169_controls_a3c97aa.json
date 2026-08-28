@@ -1,0 +1,147 @@
+{
+ "D1": {
+  "正對照未raise": true,
+  "負對照raise": true
+ },
+ "D2": {
+  "正對照未raise": true,
+  "負對照raise": true
+ },
+ "D4": true,
+ "D5": true,
+ "D6": {
+  "rows": [
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#1(①=0②=0③=0)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#2(①=0②=0③=1)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#3(①=0②=1③=0)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#4(①=0②=1③=1)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#5(①=1②=0③=0)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#6(①=1②=0③=1)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "真值表#7(①=1②=1③=0)"
+   },
+   {
+    "6289": true,
+    "6301": true,
+    "6319": true,
+    "L-1": true,
+    "同值": true,
+    "樣本": "真值表#8(①=1②=1③=1)"
+   },
+   {
+    "6289": false,
+    "6301": false,
+    "6319": false,
+    "L-1": false,
+    "同值": true,
+    "樣本": "缺鍵·無 原地號"
+   },
+   {
+    "6289": true,
+    "6301": true,
+    "6319": true,
+    "L-1": true,
+    "同值": true,
+    "樣本": "缺鍵·無 G(㎡)"
+   },
+   {
+    "6289": true,
+    "6301": true,
+    "6319": true,
+    "L-1": true,
+    "同值": true,
+    "樣本": "缺鍵·無 a 面積(㎡)"
+   },
+   {
+    "6289": true,
+    "6301": true,
+    "6319": true,
+    "L-1": true,
+    "同值": true,
+    "樣本": "三鍵全缺（＝parcel 層之實態）"
+   },
+   {
+    "6289": true,
+    "6301": true,
+    "6319": true,
+    "L-1": true,
+    "同值": true,
+    "樣本": "空字串 G"
+   },
+   {
+    "6289": true,
+    "6301": true,
+    "6319": true,
+    "L-1": true,
+    "同值": true,
+    "樣本": "None G"
+   }
+  ],
+  "樣本數": 14,
+  "逐樣本同值": true
+ },
+ "DECL_filters": {
+  "app:k6step0/_ordered": "group_members",
+  "app:main/_rank_by_tpid": "identity+no_ghost",
+  "app:main/v2_caller": "stage1+no_ghost",
+  "app:v2/pre_seq": "passthrough+no_ghost",
+  "sp:_rank_by_tpid": "identity+no_ghost",
+  "stepg:_proj_rank": "stage1+no_ghost",
+  "stepg:v2_caller": "stage1+no_ghost",
+  "wf_f0:_proj_order": "no_ghost",
+  "wf_f1:_order": "pseudo_of",
+  "wf_f2:_proj_order": "no_ghost",
+  "wf_f3:_proj_order": "no_ghost",
+  "wf_f4:_order": "pseudo_of",
+  "wf_f4:_order_fb": "pseudo_of",
+  "wf_f4:_proj_order": "no_ghost"
+ },
+ "base": "a3c97aa"
+}

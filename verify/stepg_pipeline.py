@@ -413,7 +413,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         #   **資料驅動**（禁 `74·` 名稱前綴／塊名／側別判別·泛用紀律）。
         #   ⚠️ B-2（reviewer 活抓）：`_proj_rank`（下方 :~410）母體**必須同步過濾**，否則
         #     `pre_position`(1,2,3,4) 與投影排名(1,2,4,9) 對不上 → 位次閘必 raise。兩處共用本清單。
-        _stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp]
+        # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`stage1+no_ghost`）
+        _stage1_parcels = [tp for tp in parcels_in_blk
+                           if '配地階段' not in tp and not ns["_proj_pop_ghost3"](tp)]
         _stage2_parcels = [tp for tp in parcels_in_blk if '配地階段' in tp]
 
         sb_row = sb_rows_by_label.get(blk_label, {})

@@ -1,0 +1,74 @@
+====================================================================================================
+【W-G.9-169 D-1／D-2／D-4／D-5／D-6】落地後之判別力對照（⛔ 只讀）
+====================================================================================================
+  HEAD = a3c97aa0ada17389c465550e04d90388c346f670
+  app.py blob（工作區·⛔ 已含本批之生產碼變更） = 60b550b7f4d651cca5418fdf9807a0cc3248278d
+
+====================================================================================================
+§`D-6`　`L-1` vs `g_row` 層既有三式之等價自檢（`GB-116` 之代償）
+====================================================================================================
+  樣本                             L-1      :6289    :6301    :6319    四式同值
+  真值表#1(①=0②=0③=0)               False    False    False    False    ✅
+  真值表#2(①=0②=0③=1)               False    False    False    False    ✅
+  真值表#3(①=0②=1③=0)               False    False    False    False    ✅
+  真值表#4(①=0②=1③=1)               False    False    False    False    ✅
+  真值表#5(①=1②=0③=0)               False    False    False    False    ✅
+  真值表#6(①=1②=0③=1)               False    False    False    False    ✅
+  真值表#7(①=1②=1③=0)               False    False    False    False    ✅
+  真值表#8(①=1②=1③=1)               True     True     True     True     ✅
+  缺鍵·無 原地號                       False    False    False    False    ✅
+  缺鍵·無 G(㎡)                      True     True     True     True     ✅
+  缺鍵·無 a 面積(㎡)                   True     True     True     True     ✅
+  三鍵全缺（＝parcel 層之實態）             True     True     True     True     ✅
+  空字串 G                          True     True     True     True     ✅
+  None G                         True     True     True     True     ✅
+  ⇒ 樣本數 = **14**（須 ≥ 11）／**逐樣本同值 = True**
+
+====================================================================================================
+§`D-5`　`L-3` 換源之零變化（`no_ghost` 新舊述詞·二層）
+====================================================================================================
+  TEMP_LAYER   入 114 ⇒ 新述詞出 106 ／ 舊述詞出 106 ⇒ **逐位相同 = True**
+  BUILD_LAYER  入  49 ⇒ 新述詞出  47 ／ 舊述詞出  47 ⇒ **逐位相同 = True**
+  🔒 外部錨 ＝ `W-G.9-167R §三 M-1 d`（二層之對稱差為**空**）
+  🔒 **判別力**：同層以 `identity` 濾 ⇒ 出 114／49（⛔ 未濾 ⇒ 證上表之 `no_ghost` 確有作用）
+
+====================================================================================================
+§`D-1`　改宣告而**不**改實參 ⇒ 須 `raise`
+====================================================================================================
+  ① 正對照（實參已同步）⇒ **未 raise** ✅
+  ② 負對照（實參未濾）⇒ **raise** ✅
+     逐字（首 150）：🔴 [_proj_pop] 母體同步破：tag=sp:_rank_by_tpid／街廓=R1／宣告=(POP_SYNC, BUILD_LAYER, identity+no_ghost)／對稱差=['_GHOST_(R1)']／實得(6)=['628-37(1)', '628-36(1)', '628
+
+====================================================================================================
+§`D-2`　人造注入 `G(㎡)` 鍵 ⇒ `L-2` 守護斷言須 `raise`
+====================================================================================================
+  ① 正對照（未注入）⇒ **未 raise** ✅
+  ② 負對照（注入 `G(㎡)`）⇒ **raise** ✅
+     逐字（首 150）：🔴 [_proj_pop] `g_row` 之欄現身於投影序母體：tag=sp:_rank_by_tpid／層=BUILD_LAYER／鍵='G(㎡)'／暫編地號='628-37(1)' ⇒ `_proj_pop_ghost3` 之②③已非恆真，須重新檢視 `VR-079 一`（`W-G.9-169
+
+====================================================================================================
+§`D-4`　人造 `_mem` 含 `ghost3` 為真之成員 ⇒ `L-6` 之斷言須 `raise`
+====================================================================================================
+  🔒 `L-6` 之斷言係 inline 於 `k6_step0_merge`（`app.py`）⇒ 此處以**同式**重演其判：
+  ① 正對照（真實 `_mem`·`R2` 前二筆）：`ghost3` 命中 = **0** ⇒ ⛔ 不 raise ✅
+  ② 負對照（注入 `_GHOST_(R4)`）：`ghost3` 命中 = **1** ⇒ 條件 `if _gh3_mem:` 成立 ⇒ **raise** ✅
+
+====================================================================================================
+§ 落地後之 `_PROJ_POP_DECL`（`14` tag·`filter` 欄）
+====================================================================================================
+  app:v2/pre_seq             POP_SYNC           BUILD_LAYER    passthrough+no_ghost
+  app:main/v2_caller         POP_SYNC           BUILD_LAYER    stage1+no_ghost
+  stepg:v2_caller            POP_SYNC           BUILD_LAYER    stage1+no_ghost
+  app:main/_rank_by_tpid     POP_SYNC           BUILD_LAYER    identity+no_ghost
+  sp:_rank_by_tpid           POP_SYNC           BUILD_LAYER    identity+no_ghost
+  stepg:_proj_rank           POP_SYNC           BUILD_LAYER    stage1+no_ghost
+  wf_f0:_proj_order          ORDER_INVARIANCE   BUILD_LAYER    no_ghost
+  wf_f2:_proj_order          ORDER_INVARIANCE   BUILD_LAYER    no_ghost
+  wf_f3:_proj_order          ORDER_INVARIANCE   BUILD_LAYER    no_ghost
+  wf_f4:_proj_order          ORDER_INVARIANCE   BUILD_LAYER    no_ghost
+  wf_f1:_order               ORDER_INVARIANCE   RESHAPE        pseudo_of
+  wf_f4:_order_fb            ORDER_INVARIANCE   RESHAPE        pseudo_of
+  wf_f4:_order               ORDER_INVARIANCE   RESHAPE        pseudo_of
+  app:k6step0/_ordered       NAME_DERIVATION    TEMP_LAYER     group_members
+
+🔒 **總判**：`D-6` True／`D-5` True／`D-1` True／`D-2` True／`D-4` True

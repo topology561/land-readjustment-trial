@@ -330,7 +330,9 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         _cad_fl_lstep = (ss.get('f3_cad_front_lines', {}) or {}).get(_lbl, {})
         _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
         _fl_p2_lstep = _cad_fl_lstep.get('p2') if _cad_fl_lstep else None
-        _all_in_blk = by_blk.get(_lbl, [])
+        # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`identity+no_ghost`）
+        _all_in_blk = [tp for tp in by_blk.get(_lbl, [])
+                       if not ns["_proj_pop_ghost3"](tp)]
         _candidates_pool = _all_in_blk   # Patch D-1：候選池一律全自動 PK
         # 🆕 W-D.2 v2（鏡射 app tiebreaker 換源）：§2 正典原位次 rank（投影序）
         # 🆕 W-G.9-161 `L-3′` `POP_SYNC`：實參 ≡ identity(BUILD_LAYER)
