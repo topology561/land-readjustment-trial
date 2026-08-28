@@ -251,6 +251,9 @@ def compute(ctx_by_tag, f0_out):
             oB = _proj_order(ns, cad, f0_parcels, blk)
             oC = _proj_order(ns, cad, f2_parcels, blk)
             exp = [x for x in oB if x not in remove2]
+            # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（⛔ 不動下方序對拍一字）
+            ns["_proj_pop_assert_diff"]("wf_f2:_proj_order", oB, oC,
+                                        set(oB) & set(remove2), set(), blk=blk)
             if oC != exp:
                 pos_viol.append((blk, exp, oC))
 

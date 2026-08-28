@@ -190,6 +190,9 @@ def compute(ctx_by_tag, f2_out):
         for blk in sorted({t["所屬街廓"] for t in bldC}):
             oC = _proj_order(ns, cad, f2_parcels, blk)
             oD = _proj_order(ns, cad, f3_parcels, blk)
+            # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（removed ＝ added ＝ ∅）
+            ns["_proj_pop_assert_diff"]("wf_f3:_proj_order", oC, oD,
+                                        set(), set(), blk=blk)
             if oC != oD:
                 pos_viol.append((blk, oC, oD))
 

@@ -408,6 +408,9 @@ def compute(ctx_by_tag):
             oA = _proj_order(ns, cad, c["build"], blk)
             oB = _proj_order(ns, cad, f0_parcels, blk)
             exp = [x for x in oA if x not in removed]   # 約簡序
+            # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（⛔ 不動下方序對拍一字）
+            ns["_proj_pop_assert_diff"]("wf_f0:_proj_order", oA, oB,
+                                        set(oA) & set(removed), set(), blk=blk)
             if oB != exp:
                 pos_viol.append((blk, exp, oB))
             for d in decisions:

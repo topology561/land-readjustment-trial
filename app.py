@@ -7619,6 +7619,211 @@ def _projection_order(parcels, front_line_p1, front_line_p2) -> list:
     return sorted(parcels, key=_proj_of)
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  🆕 W-G.9-161 §三：`_projection_order` **十二呼叫點之母體宣告表**與**三類不變式**
+#
+#  正典：`VR-076`（`grep -n "^## .VR-076." docs/驗證裁定登記表.md`）
+#        ＋ 其就地更正（`grep -n "VR-076 三 S-B. 之更正" docs/驗證裁定登記表.md`）
+#  阻塞：`GB-105`（`grep -n "GB-105. 之加註三" docs/reports/W-G.4_泛用阻塞項登記表.md`）
+#
+#  **三受詞類**（`VR-076 二`·⛔ 禁互代）
+#    `POP_SYNC`         母體同步——實參之暫編地號序列 ≡ `filter(source)` 之序列（逐位相同）
+#    `ORDER_INVARIANCE` 序不變——前後二次呼叫之**宣告式差集**（`VR-076 S-B 更正`）
+#    `NAME_DERIVATION`  命名導出——`_mem` 之暫編地號集合 ⊆ `TEMP_LAYER(該街廓)`
+#
+#  **三母體層**（`VR-076 一`·🔴 `TEMP_LAYER` 與 `BUILD_LAYER` 之 id 空間**不相交**）
+#    `TEMP_LAYER`   `temp_parcels`（K-6 §二 步驟 0 合併**前**）
+#    `BUILD_LAYER`  `by_blk[blk]`／`build_parcels`（合併**後**）
+#    `RESHAPE`      呼叫端就地構造之合成 dict（`{"暫編地號","polygon_coords"}`·幾何為重整**後**）
+#
+#  🛑 `L-4′`：一律 loud `raise`；⛔ 不得 warn、⛔ 不得 log-only、
+#     ⛔ 不得以環境變數關閉、⛔ 不得設「僅 harness 態啟用」之分支。
+#  🛑 `L-5′`：本區**⛔ 不改任何濾式之結果**——係把既已隱含之母體**顯式化**。
+# ══════════════════════════════════════════════════════════════════════════
+
+#: 🔒 `L-2′` 宣告表——**一處**。次批 `VR-074`（ghost ⛔ 不入母體）之落地應為本表之
+#:   `BUILD_LAYER`／`no_ghost` 一處修改；若須改多處，即本表之抽象不成立 ⇒ **停機回報**。
+_PROJ_POP_DECL = {
+    # ── 類 POP_SYNC（4 呼叫點 ＋ 2 透傳呼叫端）──────────────────────────────
+    "app:v2/pre_seq": {
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "passthrough"},
+    "app:main/v2_caller": {
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1"},
+    "stepg:v2_caller": {
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1"},
+    "app:main/_rank_by_tpid": {
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "identity"},
+    "sp:_rank_by_tpid": {
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "identity"},
+    "stepg:_proj_rank": {
+        "kind": "POP_SYNC", "source": "BUILD_LAYER", "filter": "stage1"},
+    # ── 類 ORDER_INVARIANCE（7 呼叫點）·`removed`／`added` 之**宣告值**──────────
+    #    `empty` ＝ 該側差集須為 ∅；`set` ＝ 由呼叫端傳入之具名集合；
+    #    `prefix:<s>` ＝ 該側差集之每一元素須以 `<s>` 起首。
+    "wf_f0:_proj_order": {
+        "kind": "ORDER_INVARIANCE", "source": "BUILD_LAYER", "filter": "no_ghost",
+        "before": 'c["build"]', "after": "f0_parcels",
+        "removed": "set", "added": "empty"},
+    "wf_f2:_proj_order": {
+        "kind": "ORDER_INVARIANCE", "source": "BUILD_LAYER", "filter": "no_ghost",
+        "before": "f0_parcels", "after": "f2_parcels",
+        "removed": "set", "added": "empty"},
+    "wf_f3:_proj_order": {
+        "kind": "ORDER_INVARIANCE", "source": "BUILD_LAYER", "filter": "no_ghost",
+        "before": "f2_parcels", "after": "f3_parcels",
+        "removed": "empty", "added": "empty"},
+    "wf_f4:_proj_order": {
+        "kind": "ORDER_INVARIANCE", "source": "BUILD_LAYER", "filter": "no_ghost",
+        "before": "f3_parcels", "after": "eng.parcels",
+        "removed": "set", "added": "prefix:74·"},
+    "wf_f1:_order": {
+        "kind": "ORDER_INVARIANCE", "source": "RESHAPE", "filter": "pseudo_of",
+        "before": "r1_lots 之 polys", "after": "new_polys",
+        "removed": "empty", "added": "empty"},
+    "wf_f4:_order_fb": {
+        "kind": "ORDER_INVARIANCE", "source": "RESHAPE", "filter": "pseudo_of",
+        "before": "lots 之 polys", "after": "fb_polys",
+        "removed": "empty", "added": "set"},          # ＝ {_abate_key}（VR-076 S-B 更正）
+    "wf_f4:_order": {
+        "kind": "ORDER_INVARIANCE", "source": "RESHAPE", "filter": "pseudo_of",
+        "before": "lots 之 polys", "after": "new_polys",
+        "removed": "empty", "added": "empty"},
+    # ── 類 NAME_DERIVATION（1 呼叫點）───────────────────────────────────────
+    "app:k6step0/_ordered": {
+        "kind": "NAME_DERIVATION", "source": "TEMP_LAYER", "filter": "group_members"},
+}
+
+#: `L-6′` 觀測計數之環境變數。⚠️ **僅影響<u>記錄</u>**，🛑 ⛔ 不影響斷言之執行。
+_PROJ_POP_COUNT_ENV = "WV_PROJ_POP_COUNT"
+
+
+def _proj_pop_note(tag):
+    """`L-6′`：把該點之一次執行記入檔案（跨 process 可讀）。⛔ 記錄失敗不得影響斷言。"""
+    import os as _os_pp
+    _p = _os_pp.environ.get(_PROJ_POP_COUNT_ENV)
+    if not _p:
+        return
+    try:
+        with open(_p, "a", encoding="utf-8", newline="") as _f:
+            _f.write(str(tag) + "\n")
+    except Exception:                                            # noqa: BLE001
+        pass
+
+
+def _proj_pop_decl_of(tag):
+    """取宣告；**未宣告者 loud**（⇒ 新增呼叫點必被逼入 `L-2′` 表）。"""
+    _d = _PROJ_POP_DECL.get(tag)
+    if _d is None:
+        raise RuntimeError(
+            "🔴 [_proj_pop] 呼叫點 %r ⛔ 未宣告於 `_PROJ_POP_DECL`（`L-2′`）" % (tag,))
+    return _d
+
+
+def _proj_pop_ids(seq):
+    """取暫編地號序列（元素得為 dict 或已為字串）。"""
+    _out = []
+    for _tp in (seq or []):
+        _out.append(str(_tp.get("暫編地號", "")) if isinstance(_tp, dict) else str(_tp))
+    return _out
+
+
+def _proj_pop_filter(fname, base):
+    """🔒 濾式之**唯一定義處**（`L-1′`）。⛔ 其內容與既有碼面**逐字相同**。"""
+    if fname == "identity":
+        return list(base or [])
+    if fname == "stage1":
+        return [tp for tp in (base or []) if '配地階段' not in tp]
+    if fname == "no_ghost":
+        return [tp for tp in (base or []) if not tp.get("_is_ghost_sliver")]
+    raise RuntimeError("🔴 [_proj_pop] 未知濾式 %r（`L-2′`）" % (fname,))
+
+
+def _proj_pop_assert_seq(tag, actual, base, blk=None):
+    """`POP_SYNC`：實參之暫編地號序列 ≡ `filter(source)` 之序列（**逐位相同**·含重複含順序）。"""
+    _proj_pop_note(tag)
+    _d = _proj_pop_decl_of(tag)
+    if _d["kind"] != "POP_SYNC":
+        raise RuntimeError("🔴 [_proj_pop] %s 之受詞類為 %s，⛔ 非 POP_SYNC" % (tag, _d["kind"]))
+    _got = _proj_pop_ids(actual)
+    _exp = _proj_pop_ids(_proj_pop_filter(_d["filter"], base))
+    if _got != _exp:
+        raise RuntimeError(
+            "🔴 [_proj_pop] 母體同步破：tag=%s／街廓=%s／宣告=(%s, %s, %s)／"
+            "對稱差=%r／實得(%d)=%r／期望(%d)=%r"
+            % (tag, blk, _d["kind"], _d["source"], _d["filter"],
+               sorted(set(_got) ^ set(_exp)), len(_got), _got, len(_exp), _exp))
+
+
+def _proj_pop_assert_passthrough(tag, blk=None):
+    """`POP_SYNC` 之**透傳被呼叫端**：只斷言「已收到一個帶宣告之母體」（`L-3′`）。"""
+    _proj_pop_note(tag)
+    _d = _proj_pop_decl_of(tag)
+    if _d["kind"] != "POP_SYNC" or _d["filter"] != "passthrough":
+        raise RuntimeError(
+            "🔴 [_proj_pop] %s 應宣告為 POP_SYNC/passthrough，實為 (%s, %s)"
+            % (tag, _d["kind"], _d["filter"]))
+
+
+def _proj_pop_assert_diff(tag, before, after, removed, added, blk=None):
+    """`ORDER_INVARIANCE`：**宣告式差集**（`VR-076 三 S-B` 更正後之式）。
+
+    `set(前) − set(後) ≡ declared_removed` ∧ `set(後) − set(前) ≡ declared_added`
+    """
+    _proj_pop_note(tag)
+    _d = _proj_pop_decl_of(tag)
+    if _d["kind"] != "ORDER_INVARIANCE":
+        raise RuntimeError("🔴 [_proj_pop] %s 之受詞類為 %s，⛔ 非 ORDER_INVARIANCE"
+                           % (tag, _d["kind"]))
+    _b, _a = set(_proj_pop_ids(before)), set(_proj_pop_ids(after))
+    _rm, _ad = set(_proj_pop_ids(removed)), set(_proj_pop_ids(added))
+    # ① 宣告值之型別自檢——`empty` 宣告而傳入非空 ⇒ loud（⇒ ∅ 之宣告⛔ 非空轉）
+    for _side, _val, _kind in (("removed", _rm, _d["removed"]), ("added", _ad, _d["added"])):
+        if _kind == "empty" and _val:
+            raise RuntimeError(
+                "🔴 [_proj_pop] 宣告值違型：tag=%s／街廓=%s／%s 宣告為 `empty` 而實傳 %r"
+                % (tag, blk, _side, sorted(_val)))
+        if isinstance(_kind, str) and _kind.startswith("prefix:"):
+            _pfx = _kind[len("prefix:"):]
+            _bad = sorted(x for x in _val if not x.startswith(_pfx))
+            if _bad:
+                raise RuntimeError(
+                    "🔴 [_proj_pop] 宣告值違型：tag=%s／街廓=%s／%s 宣告為 `%s` 而實傳含 %r"
+                    % (tag, blk, _side, _kind, _bad))
+    # ② 差集之對拍
+    _got_rm, _got_ad = _b - _a, _a - _b
+    if _got_rm != _rm or _got_ad != _ad:
+        raise RuntimeError(
+            "🔴 [_proj_pop] 宣告式差集破：tag=%s／街廓=%s／宣告=(%s, %s, %s)／"
+            "removed 實得=%r 宣告=%r（對稱差 %r）／added 實得=%r 宣告=%r（對稱差 %r）"
+            % (tag, blk, _d["kind"], _d["source"], _d["filter"],
+               sorted(_got_rm), sorted(_rm), sorted(_got_rm ^ _rm),
+               sorted(_got_ad), sorted(_ad), sorted(_got_ad ^ _ad)))
+
+
+def _proj_pop_assert_subset(tag, actual, base, blk=None):
+    """`NAME_DERIVATION`：`_mem` 之暫編地號集合 ⊆ `TEMP_LAYER(該街廓)`（**非空真斷言**）。
+
+    🔒 一律以**暫編地號**為鍵——`_pk` 之元素係 `dict(_tp)` 之**複本**
+    （`grep -n "_d = dict(_tp)" app.py`）⇒ ⛔ 不得以物件同一性為判。
+    """
+    _proj_pop_note(tag)
+    _d = _proj_pop_decl_of(tag)
+    if _d["kind"] != "NAME_DERIVATION":
+        raise RuntimeError("🔴 [_proj_pop] %s 之受詞類為 %s，⛔ 非 NAME_DERIVATION"
+                           % (tag, _d["kind"]))
+    _got, _bs = set(_proj_pop_ids(actual)), set(_proj_pop_ids(base))
+    if not _got:
+        raise RuntimeError(
+            "🔴 [_proj_pop] 母體為空：tag=%s／街廓=%s（⊆ 之空真⛔ 不得作為通過）" % (tag, blk))
+    if not _got <= _bs:
+        raise RuntimeError(
+            "🔴 [_proj_pop] ⊆ 破：tag=%s／街廓=%s／宣告=(%s, %s, %s)／"
+            "只在實參=%r／|實參|=%d／|%s|=%d"
+            % (tag, blk, _d["kind"], _d["source"], _d["filter"],
+               sorted(_got - _bs), len(_got), _d["source"], len(_bs)))
+
+
+
 def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
     """
     🆕 W-D.2 §3：滑池槽選位（W-D_細部plan §3.1 STEP1-4；純函式、無 st/session）。
@@ -7728,6 +7933,8 @@ def _spatial_order_parcels_v2(parcels_in_block,
     forced_offset = forced_offset or {}
 
     # ── 投影序列：正典原位次（🆕 W-D.2 §2 單一真相源 _projection_order；由 p1 端 → p2 端）
+    # 🆕 W-G.9-161 `L-3′`：透傳點——其宣告繫於**呼叫端**，此處只斷言「已收到帶宣告之母體」。
+    _proj_pop_assert_passthrough("app:v2/pre_seq")
     pre_seq = _projection_order(parcels_in_block, front_line_p1, front_line_p2)
     pre_seq_meta = [
         {'tp': tp, 'pre_position': i + 1,
@@ -11393,6 +11600,12 @@ def k6_step0_merge(temp_parcels, own_map, front_lines_by_label, side_lines_by_si
 
             # 🔒 命名與位次：位次由**聯集幾何**依 `_projection_order` 導出（⛔ 不另訂）；
             #    命名取「投影序在前者之暫編地號」＋`+`。
+            # 🆕 W-G.9-161 `L-3′` `NAME_DERIVATION`：`_mem` ⊆ `TEMP_LAYER(該街廓)`
+            #   🔒 `TEMP_LAYER` **就地重算**（⛔ 不取 `_idxs`·否則為套套邏輯）。
+            _proj_pop_assert_subset(
+                "app:k6step0/_ordered", _mem,
+                [_tp_pp for _tp_pp in temp_parcels
+                 if str(_tp_pp.get("所屬街廓", "") or "") == _lbl], blk=_lbl)
             _ordered = _projection_order(_mem, _p1, _p2)
             _name = str(_ordered[0].get("暫編地號", "")) + "+"
             _rep_i = min(_m["_k6_src_index"] for _m in _mem)
@@ -18907,6 +19120,9 @@ def main():
                             _candidate_source = 'auto_pk'
                             # 🆕 W-D.2 v2 轉正（§2 tiebreaker 換源）：正典原位次＝
                             #   _projection_order 投影序 rank（單一真相源；廢距角序暫行近似）
+                            # 🆕 W-G.9-161 `L-3′` `POP_SYNC`：實參 ≡ identity(BUILD_LAYER)
+                            _proj_pop_assert_seq("app:main/_rank_by_tpid",
+                                                 _all_in_blk, by_blk.get(_lbl, []), blk=_lbl)
                             _rank_by_tpid = {
                                 tp.get('暫編地號'): _i_rk + 1
                                 for _i_rk, tp in enumerate(
@@ -20033,6 +20249,9 @@ def main():
                                 )
 
                             # 呼叫 v2（不再 except fallback；失敗就讓它噴錯）
+                            # 🆕 W-G.9-161 `L-3′`：透傳之**呼叫端**宣告（實參 ≡ stage1(BUILD_LAYER)）
+                            _proj_pop_assert_seq("app:main/v2_caller",
+                                                 _stage1_parcels, parcels_in_blk, blk=blk_label)
                             _v2_res = _spatial_order_parcels_v2(
                                 parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗
                                 d_hat=d_hat,

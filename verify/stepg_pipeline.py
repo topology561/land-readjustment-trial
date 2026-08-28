@@ -476,6 +476,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _v2_pk_winners = (ss.get('f3_corner_winners', {}) or {}).get(blk_label, {}) or {}
             _v2_forced = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}
             _v2_fl_p1 = _cad_fl_blk.get('p1'); _v2_fl_p2 = _cad_fl_blk.get('p2')
+            # 🆕 W-G.9-161 `L-3′`：透傳之**呼叫端**宣告（實參 ≡ stage1(BUILD_LAYER)）
+            ns["_proj_pop_assert_seq"]("stepg:v2_caller",
+                                       _stage1_parcels, parcels_in_blk, blk=blk_label)
             _v2_res = _spatial_order_parcels_v2(
                 parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗（遞補宗改走 _place_pool_parcels）
                 d_hat=d_hat,
@@ -495,6 +498,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         if not _degenerate_order:
             # 🆕 P2-a／B-2：母體**與 `ordered_v2` 同源**（皆 `_stage1_parcels`）。用未過濾之
             #   `parcels_in_blk` 會使排名把階段2宗一併編號 → 與 `pre_position` 對不上 → 本閘必 raise。
+            # 🆕 W-G.9-161 `L-3′` `POP_SYNC`：實參 ≡ stage1(BUILD_LAYER)
+            ns["_proj_pop_assert_seq"]("stepg:_proj_rank",
+                                       _stage1_parcels, parcels_in_blk, blk=blk_label)
             _proj_rank = {tp['暫編地號']: _i + 1 for _i, tp in enumerate(
                 ns["_projection_order"](_stage1_parcels, _cad_fl_blk.get('p1'),
                                         _cad_fl_blk.get('p2')))}

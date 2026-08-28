@@ -333,6 +333,9 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         _all_in_blk = by_blk.get(_lbl, [])
         _candidates_pool = _all_in_blk   # Patch D-1：候選池一律全自動 PK
         # 🆕 W-D.2 v2（鏡射 app tiebreaker 換源）：§2 正典原位次 rank（投影序）
+        # 🆕 W-G.9-161 `L-3′` `POP_SYNC`：實參 ≡ identity(BUILD_LAYER)
+        ns["_proj_pop_assert_seq"]("sp:_rank_by_tpid",
+                                   _all_in_blk, by_blk.get(_lbl, []), blk=_lbl)
         _rank_by_tpid = {
             tp.get('暫編地號'): _i_rk + 1
             for _i_rk, tp in enumerate(

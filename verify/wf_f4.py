@@ -980,6 +980,10 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             removed_all = _rm0 | set(rm2)
             exp = [x for x in oD if x not in removed_all]
             got = [x for x in oE if not x.startswith("74·")]
+            # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（added ＝ `74·` 前綴族）
+            ns["_proj_pop_assert_diff"]("wf_f4:_proj_order", oD, oE,
+                                        set(oD) & set(removed_all),
+                                        {x for x in oE if x.startswith("74·")}, blk=blk)
             if got != exp:
                 pos_viol.append((blk, exp, got))
         if pos_viol:
@@ -1433,6 +1437,11 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
                 return [t["暫編地號"] for t in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
             _oE = _order_fb({r["暫編地號"]: _poly_of_row(r) for r in lots})
             _oN = [k for k in _order_fb(fb_polys) if k != _abate_key]
+            # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（added ＝ {_abate_key}）
+            #   🔒 對拍須用**未排除抵費地末**之原序 ⇒ 另取 `_oN_raw`（⛔ 不動上行一字）。
+            _oN_raw = _order_fb(fb_polys)
+            ns["_proj_pop_assert_diff"]("wf_f4:_order_fb", _oE, _oN_raw,
+                                        set(), {_abate_key}, blk=blk)
             if _oE != _oN:
                 raise RuntimeError(f"🔴 [{tag}] E3 {blk} fallback 位次序變動：{_oE}→{_oN}")
             return fb_rows, fb_polys, None
@@ -1503,6 +1512,8 @@ def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
         return [t["暫編地號"] for t in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
     oE = _order({r["暫編地號"]: _poly_of_row(r) for r in lots})
     oN = _order(new_polys)
+    # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（removed ＝ added ＝ ∅）
+    ns["_proj_pop_assert_diff"]("wf_f4:_order", oE, oN, set(), set(), blk=blk)
     if oE != oN:
         raise RuntimeError(f"🔴 [{tag}] E3 {blk} 位次序變動：{oE}→{oN}")
     return rows, new_polys, target_row["暫編地號"]

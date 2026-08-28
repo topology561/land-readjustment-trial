@@ -376,6 +376,8 @@ def compute(ctx_by_tag, f0_out):
             return [tp["暫編地號"] for tp in ns["_projection_order"](pseudo, fl["p1"], fl["p2"])]
         oB = _order({r["暫編地號"]: _poly_of(r) for r in r1_lots})
         oN = _order(new_polys)
+        # 🆕 W-G.9-161 `L-3′` `ORDER_INVARIANCE`：宣告式差集（removed ＝ added ＝ ∅）
+        ns["_proj_pop_assert_diff"]("wf_f1:_order", oB, oN, set(), set(), blk="R1")
         if oB != oN:
             raise RuntimeError(f"🔴 [{tag}] R1 位次序變動：{oB} → {oN}")
 
