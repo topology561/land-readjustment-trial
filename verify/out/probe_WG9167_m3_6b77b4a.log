@@ -1,0 +1,29 @@
+====================================================================================================
+【W-G.9-167 M-3 補測】逐 filter 之 ghost 殘留（⛔ 只讀）
+====================================================================================================
+  identity       BUILD_LAYER  入  49 ⇒ 出  49 ・**殘留 ghost = 2** ['_GHOST_(R1)', '_GHOST_(R4)']
+  identity       TEMP_LAYER   入 114 ⇒ 出 114 ・**殘留 ghost = 8** ['_GHOST_(G1)', '_GHOST_(G1)', '_GHOST_(R1)', '_GHOST_(R4)', '_GHOST_(RD1)', '_GHOST_(RD2)', '_GHOST_(RD3)', '_GHOST_(RD3)']
+  stage1         BUILD_LAYER  入  49 ⇒ 出  49 ・**殘留 ghost = 2** ['_GHOST_(R1)', '_GHOST_(R4)']
+  stage1         TEMP_LAYER   入 114 ⇒ 出 114 ・**殘留 ghost = 8** ['_GHOST_(G1)', '_GHOST_(G1)', '_GHOST_(R1)', '_GHOST_(R4)', '_GHOST_(RD1)', '_GHOST_(RD2)', '_GHOST_(RD3)', '_GHOST_(RD3)']
+  no_ghost       BUILD_LAYER  入  49 ⇒ 出  47 ・**殘留 ghost = 0** []
+  no_ghost       TEMP_LAYER   入 114 ⇒ 出 106 ・**殘留 ghost = 0** []
+  passthrough    BUILD_LAYER  ⇒ **raise**：RuntimeError
+       逐字：🔴 [_proj_pop] 未知濾式 'passthrough'（`L-2′`）
+  pseudo_of      BUILD_LAYER  ⇒ **raise**：RuntimeError
+       逐字：🔴 [_proj_pop] 未知濾式 'pseudo_of'（`L-2′`）
+  group_members  BUILD_LAYER  ⇒ **raise**：RuntimeError
+       逐字：🔴 [_proj_pop] 未知濾式 'group_members'（`L-2′`）
+
+  🔒 **對照組**（必然非零）：`identity(BUILD_LAYER)` 之出列數 = 49
+  🔒 `_proj_pop_filter` 之**已實作**濾式 ＝ `identity`／`stage1`／`no_ghost`（其餘 raise）
+     ⇒ `passthrough`／`pseudo_of`／`group_members` 由**他支斷言器**承載（`grep -n "def _proj_pop_assert" app.py`）
+
+====================================================================================================
+【X-4 覆核】`無串聯` 閘之 `skip_cols` 是否對 `原位次` 失效
+====================================================================================================
+  `verify/run_verification.py:616` 逐字：skip_cols={"原位次(距角序·暫行)", "G估(㎡)"}
+  baselines/W-D.1.2 診斷_退縮0m.csv                        舊名『原位次(距角序·暫行)』在欄集 = **False**／新名『原位次(投影序)』 = **True**
+  baselines/W-D.1.2 診斷_退縮3.5m.csv                      舊名『原位次(距角序·暫行)』在欄集 = **False**／新名『原位次(投影序)』 = **True**
+  v3/W-D.1.2 診斷_退縮0m.csv                               舊名『原位次(距角序·暫行)』在欄集 = **False**／新名『原位次(投影序)』 = **True**
+  v3/W-D.1.2 診斷_退縮3.5m.csv                             舊名『原位次(距角序·暫行)』在欄集 = **False**／新名『原位次(投影序)』 = **True**
+  ⇒ 🔴 `skip_cols` 所列之舊欄名於四檔**命中皆 0**（對照組：新欄名命中皆 True） ⇒ **該豁免對 `原位次(投影序)` 失效** ⇒ `無串聯` 閘亦會看見本批預測之 4 格差。

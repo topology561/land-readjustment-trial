@@ -1,0 +1,841 @@
+{
+ "base": "6b77b4a",
+ "changed_files": [
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "凍存·⛔ 非對拍靶",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮0m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "5"
+  },
+  {
+   "列鍵": [
+    "R4",
+    "右",
+    "628-1(1)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-36(1)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "4",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "3"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "左",
+    "628-37(1)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "3",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "2"
+  },
+  {
+   "列鍵": [
+    "R1",
+    "右",
+    "628(5)"
+   ],
+   "檔名": "verify/baselines/v3/W-D.1.2 診斷_退縮3.5m.csv",
+   "欄名": "原位次(投影序)",
+   "現值": "6",
+   "角色": "對拍靶·全欄逐格（run_verification.py:606）",
+   "預測新值": "5"
+  }
+ ],
+ "roles": {
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮0m.csv": "凍存·⛔ 非對拍靶",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv": "凍存·⛔ 非對拍靶",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮0m.csv": "凍存·⛔ 非對拍靶",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.1.2 診斷_退縮3.5m.csv": "凍存·⛔ 非對拍靶",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮0m.csv": "凍存·⛔ 非對拍靶",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.1.2 診斷_退縮3.5m.csv": "凍存·⛔ 非對拍靶",
+  "verify/baselines/W-D.1.2 診斷_退縮0m.csv": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+  "verify/baselines/W-D.1.2 診斷_退縮3.5m.csv": "對拍靶·無串聯（run_verification.py:613·skip_cols 對本欄失效）",
+  "verify/baselines/v3/W-D.1.2 診斷_退縮0m.csv": "對拍靶·全欄逐格（run_verification.py:606）",
+  "verify/baselines/v3/W-D.1.2 診斷_退縮3.5m.csv": "對拍靶·全欄逐格（run_verification.py:606）"
+ },
+ "scenarios": {
+  "0m": [
+   {
+    "列鍵": [
+     "R1",
+     "右",
+     "628(5)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 6,
+    "預測新值": 5
+   },
+   {
+    "列鍵": [
+     "R1",
+     "左",
+     "628-36(1)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 4,
+    "預測新值": 3
+   },
+   {
+    "列鍵": [
+     "R1",
+     "左",
+     "628-37(1)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 3,
+    "預測新值": 2
+   },
+   {
+    "列鍵": [
+     "R4",
+     "右",
+     "628-1(1)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 3,
+    "預測新值": 2
+   }
+  ],
+  "3.5m": [
+   {
+    "列鍵": [
+     "R1",
+     "右",
+     "628(5)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 6,
+    "預測新值": 5
+   },
+   {
+    "列鍵": [
+     "R1",
+     "左",
+     "628-36(1)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 4,
+    "預測新值": 3
+   },
+   {
+    "列鍵": [
+     "R1",
+     "左",
+     "628-37(1)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 3,
+    "預測新值": 2
+   },
+   {
+    "列鍵": [
+     "R4",
+     "右",
+     "628-1(1)"
+    ],
+    "欄名": "原位次(投影序)",
+    "現值": 3,
+    "預測新值": 2
+   }
+  ]
+ },
+ "unchanged_files": [
+  "verify/baselines/E系列實測快照_退縮0m.csv",
+  "verify/baselines/E系列實測快照_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/G 值計算結果_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/G 值計算結果_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.2 §3 滑池槽診斷_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.2 §3 滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.4_四梯分級清單_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.4_四梯分級清單_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.4_碎片遞補對照_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.4_碎片遞補對照_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.4_跨占分配線_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/W-D.4_跨占分配線_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/wd3_fragment_edges.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/wd3_fragment_geom.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/逐槽 J 表_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/v3/逐槽 J 表_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_G值_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_合併決策_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_合併決策_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_旗標消長_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_旗標消長_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_池差_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_池差_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_滑池槽診斷_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_逐槽J表_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f0/F.0_逐槽J表_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f1/F.1_池驗證_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f1/F.1_池驗證_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f1/F.1_碎片處置_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f1/F.1_碎片處置_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f1/F.1_遞補整形_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f1/F.1_遞補整形_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f2/F.2_G值_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f2/F.2_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f2/F.2_池流向_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f2/F.2_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f2/F.2_跨街廓調配_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f2/F.2_跨街廓調配_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_G值_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_公設調配_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_公設調配_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_池流向_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_轉7-4_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f3/F.3_轉7-4_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_G值_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_七五雙出口_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_七五雙出口_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_公設調配_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_公設調配_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_整形_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_整形_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_池流向_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_總決算_退縮0m.csv",
+  "verify/baselines/PRE-S0b_S0c_幾何漏歸零_凍存/wf/f4/F.4_總決算_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/G 值計算結果_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/G 值計算結果_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.2 §3 滑池槽診斷_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.2 §3 滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.4_四梯分級清單_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.4_四梯分級清單_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.4_碎片遞補對照_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.4_碎片遞補對照_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.4_跨占分配線_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/W-D.4_跨占分配線_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/wd3_fragment_edges.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/wd3_fragment_geom.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/逐槽 J 表_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/v3/逐槽 J 表_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_G值_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_合併決策_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_合併決策_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_旗標消長_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_旗標消長_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_池差_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_池差_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_滑池槽診斷_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_逐槽J表_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f0/F.0_逐槽J表_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f1/F.1_池驗證_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f1/F.1_池驗證_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f1/F.1_碎片處置_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f1/F.1_碎片處置_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f1/F.1_遞補整形_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f1/F.1_遞補整形_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f2/F.2_G值_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f2/F.2_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f2/F.2_池流向_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f2/F.2_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f2/F.2_跨街廓調配_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f2/F.2_跨街廓調配_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_G值_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_公設調配_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_公設調配_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_池流向_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_轉7-4_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f3/F.3_轉7-4_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_G值_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_G值_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_七五雙出口_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_七五雙出口_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_公設調配_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_公設調配_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_整形_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_整形_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_池流向_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_總決算_退縮0m.csv",
+  "verify/baselines/PRE-比率更新_凍存/wf/f4/F.4_總決算_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/G 值計算結果_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/G 值計算結果_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.2 §3 滑池槽診斷_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.2 §3 滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.4_四梯分級清單_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.4_四梯分級清單_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.4_碎片遞補對照_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.4_碎片遞補對照_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.4_跨占分配線_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/W-D.4_跨占分配線_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/wd3_fragment_edges.csv",
+  "verify/baselines/PRE勘誤_期日/v3/wd3_fragment_geom.csv",
+  "verify/baselines/PRE勘誤_期日/v3/逐槽 J 表_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/v3/逐槽 J 表_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_G值_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_G值_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_合併決策_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_合併決策_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_旗標消長_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_旗標消長_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_池差_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_池差_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_滑池槽診斷_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_逐槽J表_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f0/F.0_逐槽J表_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f1/F.1_池驗證_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f1/F.1_池驗證_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f1/F.1_碎片處置_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f1/F.1_碎片處置_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f1/F.1_遞補整形_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f1/F.1_遞補整形_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f2/F.2_G值_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f2/F.2_G值_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f2/F.2_池流向_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f2/F.2_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f2/F.2_跨街廓調配_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f2/F.2_跨街廓調配_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_G值_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_G值_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_公設調配_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_公設調配_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_池流向_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_轉7-4_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f3/F.3_轉7-4_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_G值_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_G值_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_七五雙出口_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_七五雙出口_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_公設調配_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_公設調配_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_整形_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_整形_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_池流向_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_池流向_退縮3.5m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_總決算_退縮0m.csv",
+  "verify/baselines/PRE勘誤_期日/wf/f4/F.4_總決算_退縮3.5m.csv",
+  "verify/baselines/V6dxf_各街廓鄰街地負擔.csv",
+  "verify/baselines/W-D.1.3-a 診斷_退縮0m.csv",
+  "verify/baselines/W-D.1.3-a 診斷_退縮3.5m.csv",
+  "verify/baselines/W-D.1.3-d 驗收_退縮3.5m.csv",
+  "verify/baselines/v2/G 值計算結果_退縮0m.csv",
+  "verify/baselines/v2/G 值計算結果_退縮3.5m.csv",
+  "verify/baselines/v2/W-D.2 §3 滑池槽診斷_退縮0m.csv",
+  "verify/baselines/v2/W-D.2 §3 滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/v2/W-D.4_四梯分級清單_退縮0m.csv",
+  "verify/baselines/v2/W-D.4_四梯分級清單_退縮3.5m.csv",
+  "verify/baselines/v2/W-D.4_碎片遞補對照_退縮0m.csv",
+  "verify/baselines/v2/W-D.4_碎片遞補對照_退縮3.5m.csv",
+  "verify/baselines/v2/W-D.4_跨占分配線_退縮0m.csv",
+  "verify/baselines/v2/W-D.4_跨占分配線_退縮3.5m.csv",
+  "verify/baselines/v2/wd3_fragment_edges.csv",
+  "verify/baselines/v2/wd3_fragment_geom.csv",
+  "verify/baselines/v2/逐槽 J 表_退縮0m.csv",
+  "verify/baselines/v2/逐槽 J 表_退縮3.5m.csv",
+  "verify/baselines/v3/G 值計算結果_退縮0m.csv",
+  "verify/baselines/v3/G 值計算結果_退縮3.5m.csv",
+  "verify/baselines/v3/W-D.2 §3 滑池槽診斷_退縮0m.csv",
+  "verify/baselines/v3/W-D.2 §3 滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/v3/W-D.4_四梯分級清單_退縮0m.csv",
+  "verify/baselines/v3/W-D.4_四梯分級清單_退縮3.5m.csv",
+  "verify/baselines/v3/W-D.4_碎片遞補對照_退縮0m.csv",
+  "verify/baselines/v3/W-D.4_碎片遞補對照_退縮3.5m.csv",
+  "verify/baselines/v3/W-D.4_跨占分配線_退縮0m.csv",
+  "verify/baselines/v3/W-D.4_跨占分配線_退縮3.5m.csv",
+  "verify/baselines/v3/wd3_fragment_edges.csv",
+  "verify/baselines/v3/wd3_fragment_geom.csv",
+  "verify/baselines/v3/逐槽 J 表_退縮0m.csv",
+  "verify/baselines/v3/逐槽 J 表_退縮3.5m.csv",
+  "verify/baselines/wf/f0/F.0_G值_退縮0m.csv",
+  "verify/baselines/wf/f0/F.0_G值_退縮3.5m.csv",
+  "verify/baselines/wf/f0/F.0_合併決策_退縮0m.csv",
+  "verify/baselines/wf/f0/F.0_合併決策_退縮3.5m.csv",
+  "verify/baselines/wf/f0/F.0_旗標消長_退縮0m.csv",
+  "verify/baselines/wf/f0/F.0_旗標消長_退縮3.5m.csv",
+  "verify/baselines/wf/f0/F.0_池差_退縮0m.csv",
+  "verify/baselines/wf/f0/F.0_池差_退縮3.5m.csv",
+  "verify/baselines/wf/f0/F.0_滑池槽診斷_退縮0m.csv",
+  "verify/baselines/wf/f0/F.0_滑池槽診斷_退縮3.5m.csv",
+  "verify/baselines/wf/f0/F.0_逐槽J表_退縮0m.csv",
+  "verify/baselines/wf/f0/F.0_逐槽J表_退縮3.5m.csv",
+  "verify/baselines/wf/f1/F.1_池驗證_退縮0m.csv",
+  "verify/baselines/wf/f1/F.1_池驗證_退縮3.5m.csv",
+  "verify/baselines/wf/f1/F.1_碎片處置_退縮0m.csv",
+  "verify/baselines/wf/f1/F.1_碎片處置_退縮3.5m.csv",
+  "verify/baselines/wf/f1/F.1_遞補整形_退縮0m.csv",
+  "verify/baselines/wf/f1/F.1_遞補整形_退縮3.5m.csv",
+  "verify/baselines/wf/f2/F.2_G值_退縮0m.csv",
+  "verify/baselines/wf/f2/F.2_G值_退縮3.5m.csv",
+  "verify/baselines/wf/f2/F.2_池流向_退縮0m.csv",
+  "verify/baselines/wf/f2/F.2_池流向_退縮3.5m.csv",
+  "verify/baselines/wf/f2/F.2_跨街廓調配_退縮0m.csv",
+  "verify/baselines/wf/f2/F.2_跨街廓調配_退縮3.5m.csv",
+  "verify/baselines/wf/f3/F.3_G值_退縮0m.csv",
+  "verify/baselines/wf/f3/F.3_G值_退縮3.5m.csv",
+  "verify/baselines/wf/f3/F.3_公設調配_退縮0m.csv",
+  "verify/baselines/wf/f3/F.3_公設調配_退縮3.5m.csv",
+  "verify/baselines/wf/f3/F.3_池流向_退縮0m.csv",
+  "verify/baselines/wf/f3/F.3_池流向_退縮3.5m.csv",
+  "verify/baselines/wf/f3/F.3_轉7-4_退縮0m.csv",
+  "verify/baselines/wf/f3/F.3_轉7-4_退縮3.5m.csv",
+  "verify/baselines/wf/f4/F.4_G值_退縮0m.csv",
+  "verify/baselines/wf/f4/F.4_G值_退縮3.5m.csv",
+  "verify/baselines/wf/f4/F.4_七五雙出口_退縮0m.csv",
+  "verify/baselines/wf/f4/F.4_七五雙出口_退縮3.5m.csv",
+  "verify/baselines/wf/f4/F.4_公設調配_退縮0m.csv",
+  "verify/baselines/wf/f4/F.4_公設調配_退縮3.5m.csv",
+  "verify/baselines/wf/f4/F.4_整形_退縮0m.csv",
+  "verify/baselines/wf/f4/F.4_整形_退縮3.5m.csv",
+  "verify/baselines/wf/f4/F.4_池流向_退縮0m.csv",
+  "verify/baselines/wf/f4/F.4_池流向_退縮3.5m.csv",
+  "verify/baselines/wf/f4/F.4_總決算_退縮0m.csv",
+  "verify/baselines/wf/f4/F.4_總決算_退縮3.5m.csv",
+  "verify/baselines/第 1 宗街角地指配結果_退縮0m.csv",
+  "verify/baselines/第 1 宗街角地指配結果_退縮3.5m.csv",
+  "verify/baselines/退縮0m參數.csv",
+  "verify/baselines/退縮3.5m參數.csv"
+ ]
+}
