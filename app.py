@@ -13202,6 +13202,15 @@ _WF_NS_NAMES = [
     #   **必 KeyError**（實測落點 `stepg_pipeline.py:334`·見 `verify/out/probe_WG94b_wiring.log`）。
     #   ⛔ 禁改為 `ns.get(...)` 加自算 fallback（`no-silent-fallback`／`GB-60` 病灶族）。
     "k956_W_from_mp",
+    # 🆕 W-G.9-163（補列·修 `W-G.9-161` 之真實破壞）：引擎實耗但清單漏列者（同 W-8 補漏之族·第三度）。
+    #   `_proj_pop_assert_seq` 於 `stepg_pipeline.py:480`／`:502`、`_proj_pop_assert_diff` 於
+    #   `wf_f0:412`／`wf_f1:380`／`wf_f2:255`／`wf_f3:194`／`wf_f4:984`／`:1443`／`:1516`
+    #   （共 9 消費點·AST 現查·母體＝`fixture_wf_ns_wiring.HARD_FILES` 六檔）**無條件執行**
+    #   ⇒ app 路徑（「執行七級調配」→ `_build_wf_ctx` → `_wf_ns()` → wf_f0.compute → run_step_g）
+    #   取不到即 **KeyError**（`W-G.9-162R` 實測：`fixture_wf_ns_wiring.py` 由 rc=0 轉 rc=1，
+    #   夾具逐字「ns 解包段拋 KeyError ⇒ app 生產路徑必崩」）。
+    #   ⛔ 禁改為 `ns.get(...)` 加自算 fallback（`no-silent-fallback`／`GB-60` 病灶族）。
+    "_proj_pop_assert_seq", "_proj_pop_assert_diff",
 ]
 
 
