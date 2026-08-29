@@ -1,0 +1,57 @@
+====================================================================================================
+【W-G.9-173 M-A-2】`R2` 池計算之輸入（shim 路徑·情境 `3.5m`）
+====================================================================================================
+  HEAD = 0c88cc85fef117131375e6555717efc8aac53be0 ／ app.py blob = 68f7bfab610ec78688b9d7322ae4bc2aac74493e
+
+── 步驟 L／街角 PK 之產物（shim 側）──
+   winners_state = {'R4': {'p1_end': '628(1)', 'p2_end': '628-1(1)', 'method': 'V13_spatial_binding'}, 'R6': {'p1_end': None, 'p2_end': '628-18(1)', 'method': 'V13_spatial_binding'}, 'R5': {'p1_end': '628-45(1)+', 'p2_end': None, 'method': 'V13_spatial_binding'}, 'R2': {'p1_end': None, 'p2_end': None, 'method': 'V13_spatial_binding'}, 'R3': {'p1_end': None, 'p2_end': '628-30(3)+', 'method': 'V13_spatial_binding'}, 'R1': {'p1_end': '628-36(1)', 'p2_end': '628(5)', 'method': 'V13_spatial_binding'}}
+   forced_map    = {'R4': {'left_forced_offset': False, 'right_forced_offset': False, 'left_has_side': True, 'right_has_side': True, 'left_corner_min_area': 0.0, 'right_corner_min_area': 0.0}, 'R6': {'left_forced_offset': False, 'right_forced_offset': False, 'left_has_side': False, 'right_has_side': True, 'left_corner_min_area': 0.0, 'right_corner_min_area': 0.0}, 'R5': {'left_forced_offset': False, 'right_forced_offset': False, 'left_has_side': True, 'right_has_side': False, 'left_corner_min_area': 0.0, 'right_corner_min_area': 0.0}, 'R2': {'left_forced_offset': True, 'right_forced_offset': False, 'left_has_side': True, 'right_has_side': False, 'left_corner_min_area': 308.17, 'right_corner_min_area': 0.0}, 'R3': {'left_forced_offset': False, 'right_forced_offset': False, 'left_has_side': False, 'right_has_side': True, 'left_corner_min_area': 0.0, 'right_corner_min_area': 0.0}, 'R1': {'left_forced_offset': False, 'right_forced_offset': False, 'left_has_side': True, 'right_has_side': True, 'left_corner_min_area': 0.0, 'right_corner_min_area': 0.0}}
+   f3L_forced_offset(ss) = None
+   f3_corner_winners(ss) = None
+   K-9-21 blocks_locked（二候選鍵）= None ／ None
+   ss 中含 'lock' 之鍵 = ['f3_classified_blocks', 'f3_current_pk_block']
+   ss 中含 'forced' 之鍵 = []
+   `f3_g_iter_params` 之 is_corner=True 筆數 = **0**（KL 側逐字「步驟 L 覆寫 7 筆」）
+   其明細 = {}
+
+── 池呼叫之逐項輸入（run_step_g 期末例外 = RuntimeError('🔴 結構閘 telescoping 破：街廓 R2 left 側 ΣRw_實跑=100.02 ≠ R(W_final=34.39)−R(W₀=6.98)=44.41（Δ=55.606 >0.1）｜逐界面：[Δ_i·R2·left] 628-42(1)→628-41(1): W_far=6.9800／W_near=6.9800／W_start=6.9800／Δ=+0.00）──
+   ══ 街廓 R1 ══ 狀態 OK
+      block_poly.area = 2893.553087409 ／ _depth = 33.15
+      d_hat = [0.6873759189438299, -0.7263018284818822] ／ corner_pt = [310451.56699, 2652010.42816] ／ allocation_dir = [-0.7437266267097206, 0.6684838851632701]
+      biz_n = **5** ／ Σbiz.area = 1718.456790234
+         biz[ 0] area=575.731096     npts=6   sha16=331d4258339105fa
+         biz[ 1] area=227.739166     npts=7   sha16=b32efb07e2ed0a5d
+         biz[ 2] area=86.002992      npts=5   sha16=f317a85d8731fd3c
+         biz[ 3] area=216.338809     npts=5   sha16=ba506ed2b5c6957f
+         biz[ 4] area=612.644726     npts=5   sha16=b59a4cdf39479589
+      ⇒ 池片 = [1169.708187457, 5.383510123, 0.004599587] ／ **Σ池 = 1175.096297168**
+   ══ 街廓 R2 ══ 狀態 OK
+      block_poly.area = 4368.603346850 ／ _depth = 44.47
+      d_hat = [0.6756855318673246, 0.7371899768887057] ／ corner_pt = [310361.51526, 2651912.18005] ／ allocation_dir = [0.7260188428756796, 0.6876748067142342]
+      biz_n = **14** ／ Σbiz.area = 2589.176526798
+         biz[ 0] area=0.007822       npts=5   sha16=74e29f9290eaf1d0
+         biz[ 1] area=183.174430     npts=5   sha16=b1cfc4bc95812aa6
+         biz[ 2] area=29.607754      npts=5   sha16=ed3f9825b0488860
+         biz[ 3] area=299.319090     npts=5   sha16=a99b5d697a4df430
+         biz[ 4] area=89.976052      npts=5   sha16=9f57db6b3b002a98
+         biz[ 5] area=236.537153     npts=5   sha16=d12b8074c25333b3
+         biz[ 6] area=391.660631     npts=5   sha16=8769de2a31e40451
+         biz[ 7] area=58.949875      npts=6   sha16=b9de305a9047fed8
+         biz[ 8] area=432.113341     npts=5   sha16=dfac98a0879c0d05
+         biz[ 9] area=65.445691      npts=5   sha16=44d75f4d03a8bc2f
+         biz[10] area=147.188795     npts=5   sha16=0fb358e07e8b20dd
+         biz[11] area=146.590175     npts=5   sha16=188108b0b3199ad3
+         biz[12] area=71.592234      npts=5   sha16=d8af2294428125da
+         biz[13] area=437.013484     npts=5   sha16=a8e8073f3b116353
+      ⇒ 池片 = [1471.25682002, 308.170000011] ／ **Σ池 = 1779.426820031**
+
+── 🔴 三方對拍（情境 `3.5m`·Step-G 階段）──
+   街廓    v3 baseline Σ    KL app（2dp）      shim Σ           KL−base      shim−base
+   R1    1174.4000        1175.10          1175.096297      +0.7000      +0.6963
+   R2    1774.4000        1774.20          1779.426820      -0.2000      +5.0268
+   R4    1229.0600        1228.36          ⛔ 不可達            -0.7000      —
+   R6    1628.6900        1628.71          ⛔ 不可達            +0.0200      —
+   R1 逐片：v3 baseline = [1169.07, 5.33] ／ shim = [1169.7082, 5.3835, 0.0046]
+   R2 逐片：v3 baseline = [1465.35, 309.05] ／ shim = [1471.2568, 308.17]
+
+  證據檔：verify/out/WG9173_r2inputs_68f7bfab.json
