@@ -1,0 +1,177 @@
+====================================================================================================
+【W-G.9-172 M-B-2／M-B-4】`temp_parcels` 鍵之流向 ＋ 八合併名之波及面
+====================================================================================================
+  母體之態（`VR-058 三`）= fcad7fdd4986ad4b2e80fb3033ed72f824ec91ea
+
+── `M-B-2`　`temp_parcels` 之鍵（20 個）vs `verify/baselines/**` 之欄集 ──
+   baseline CSV = 266 檔 ／ 相異欄名 = 245
+   🔴 **流入**被對拍輸出之鍵（3）：['原地號', '所屬街廓', '暫編地號']
+   ⛔ **未流入**之鍵（17）：['_ghost_area_m2', '_ghost_reason', '_integrity_incomplete', '_is_ghost_sliver', 'centroid_x', 'centroid_y', 'cut_type', 'polygon_coords', '分攤登記面積_m2', '合併依據', '合併組成', '幾何面積_m2', '登記面積_m2', '街廓分類', '重劃前地價區段', '面積_m2', '面積_坪']
+   `_` 前綴之既有鍵（4）：['_ghost_area_m2', '_ghost_reason', '_integrity_incomplete', '_is_ghost_sliver']
+   ⇒ `_` 前綴者流入 baseline 欄集之數 = **0**（先例之判別力）
+
+── `M-B-4`　八個現行合併名之波及面（母體 ＝ 全倉 .md/.py/.csv/.log/.json/.txt·⛔ 非僅 .md）──
+   母體檔數 = **1402**（🔒 已自母體**扣除本探針自身**之 3 檔：其原始碼／log／json）
+   `628-40(1)+`　命中列數 **84** ／ 出現次數 **114** ／ 檔數 **29**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-149R_K9-19全文交付與proj_order對拍.md              列 1 ／ 次 1
+        docs/reports/W-G.9-150pR_K9-19性質與末端塊現查.md                      列 2 ／ 次 2
+        docs/reports/W-G.9-156R_八格表可重算輸入.md                            列 4 ／ 次 6
+        docs/reports/W-G.9-157R_R3右遞補宗更正與GB109解除.md                    列 1 ／ 次 1
+        docs/reports/W-G.9-159R_停機_五類歸屬不成立.md                          列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 3 ／ 次 3
+        docs/驗證裁定登記表.md                                                列 1 ／ 次 1
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9168_viol_full_a98a99f.json                       列 8 ／ 次 8
+        verify/out/WG9169_viol_full_post.json                          列 8 ／ 次 8
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 6 ／ 次 6
+        verify/out/probe_WG9150_endblock_8bdb3e3.log                   列 1 ／ 次 1
+        verify/out/probe_WG9156_pred_inputs_5f06a659.log               列 3 ／ 次 5
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 12
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 1 ／ 次 1
+        verify/out/probe_WG9167_vr074_pre_6b77b4a.log                  列 1 ／ 次 3
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9168_viol_full_a98a99f.log                  列 2 ／ 次 2
+        verify/out/probe_WG9172_step0.log                              列 2 ／ 次 2
+        verify/out/runall_0e4b508_full.log                             列 5 ／ 次 7
+        verify/out/runall_3e8a8ab_full.log                             列 5 ／ 次 7
+        verify/out/runall_77ebc49_full.log                             列 5 ／ 次 7
+        verify/out/runall_W-G.9-169R_post_full.log                     列 5 ／ 次 7
+        verify/out/runall_a98a99f_full.log                             列 5 ／ 次 7
+        verify/out/runall_f285b91_full.log                             列 5 ／ 次 7
+        verify/probes/probe_WG9156_pred_inputs.py                      列 1 ／ 次 1
+   `628-30(3)+`　命中列數 **95** ／ 出現次數 **103** ／ 檔數 **23**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-156R_八格表可重算輸入.md                            列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 1 ／ 次 1
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9168_viol_full_a98a99f.json                       列 16 ／ 次 16
+        verify/out/WG9169_viol_full_post.json                          列 16 ／ 次 16
+        verify/out/WG9169_z4_winner_a3c97aa.json                       列 4 ／ 次 4
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 2 ／ 次 2
+        verify/out/probe_WG9156_pred_inputs_5f06a659.log               列 1 ／ 次 1
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9167_vr074_pre_6b77b4a.log                  列 2 ／ 次 6
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9168_viol_full_a98a99f.log                  列 4 ／ 次 4
+        verify/out/probe_WG9172_step0.log                              列 2 ／ 次 2
+        verify/out/runall_0e4b508_full.log                             列 6 ／ 次 6
+        verify/out/runall_3e8a8ab_full.log                             列 6 ／ 次 6
+        verify/out/runall_77ebc49_full.log                             列 6 ／ 次 6
+        verify/out/runall_W-G.9-169R_post_full.log                     列 6 ／ 次 6
+        verify/out/runall_a98a99f_full.log                             列 6 ／ 次 6
+        verify/out/runall_f285b91_full.log                             列 6 ／ 次 6
+   `628-47(1)+`　命中列數 **18** ／ 出現次數 **22** ／ 檔數 **11**
+        docs/reports/W-G.4_§4_G006_六格錨異_診斷.md                          列 1 ／ 次 1
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 2 ／ 次 2
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 2 ／ 次 2
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9172_step0.log                              列 3 ／ 次 3
+   `628-29(1)+`　命中列數 **87** ／ 出現次數 **93** ／ 檔數 **28**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-149R_K9-19全文交付與proj_order對拍.md              列 1 ／ 次 1
+        docs/reports/W-G.9-150pR_K9-19性質與末端塊現查.md                      列 1 ／ 次 1
+        docs/reports/W-G.9-156R_八格表可重算輸入.md                            列 11 ／ 次 11
+        docs/reports/W-G.9-156R_附_自證.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-157R_R3右遞補宗更正與GB109解除.md                    列 3 ／ 次 3
+        docs/reports/W-G.9-160R_三受詞類與錨定框.md                            列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 11 ／ 次 11
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9168_viol_full_a98a99f.json                       列 8 ／ 次 8
+        verify/out/WG9169_viol_full_post.json                          列 8 ／ 次 8
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 4 ／ 次 4
+        verify/out/probe_WG9156_pred_inputs_5f06a659.log               列 3 ／ 次 3
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9167_vr074_pre_6b77b4a.log                  列 1 ／ 次 3
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9168_viol_full_a98a99f.log                  列 2 ／ 次 2
+        verify/out/probe_WG9172_step0.log                              列 3 ／ 次 3
+        verify/out/runall_0e4b508_full.log                             列 3 ／ 次 3
+        verify/out/runall_3e8a8ab_full.log                             列 3 ／ 次 3
+        verify/out/runall_77ebc49_full.log                             列 3 ／ 次 3
+        verify/out/runall_W-G.9-169R_post_full.log                     列 3 ／ 次 3
+        verify/out/runall_a98a99f_full.log                             列 3 ／ 次 3
+        verify/out/runall_f285b91_full.log                             列 3 ／ 次 3
+        verify/probes/probe_WG9156_pred_inputs.py                      列 1 ／ 次 1
+   `628-21(2)+`　命中列數 **20** ／ 出現次數 **24** ／ 檔數 **12**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-150pR_K9-19性質與末端塊現查.md                      列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 1 ／ 次 1
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 5 ／ 次 5
+        verify/out/probe_WG9150_endblock_8bdb3e3.log                   列 1 ／ 次 1
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9172_step0.log                              列 2 ／ 次 2
+   `628-45(1)+`　命中列數 **101** ／ 出現次數 **109** ／ 檔數 **24**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-143_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-150pR_K9-19性質與末端塊現查.md                      列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 2 ／ 次 2
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9168_viol_full_a98a99f.json                       列 16 ／ 次 16
+        verify/out/WG9169_viol_full_post.json                          列 16 ／ 次 16
+        verify/out/WG9169_z4_winner_a3c97aa.json                       列 2 ／ 次 2
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 2 ／ 次 2
+        verify/out/probe_WG9150_endblock_8bdb3e3.log                   列 1 ／ 次 1
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9167_vr074_pre_6b77b4a.log                  列 2 ／ 次 6
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9168_viol_full_a98a99f.log                  列 4 ／ 次 4
+        verify/out/probe_WG9172_step0.log                              列 2 ／ 次 2
+        verify/out/runall_0e4b508_full.log                             列 7 ／ 次 7
+        verify/out/runall_3e8a8ab_full.log                             列 7 ／ 次 7
+        verify/out/runall_77ebc49_full.log                             列 7 ／ 次 7
+        verify/out/runall_W-G.9-169R_post_full.log                     列 7 ／ 次 7
+        verify/out/runall_a98a99f_full.log                             列 7 ／ 次 7
+        verify/out/runall_f285b91_full.log                             列 7 ／ 次 7
+   `628(2)+`　命中列數 **21** ／ 出現次數 **26** ／ 檔數 **12**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-150pR_K9-19性質與末端塊現查.md                      列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 2 ／ 次 3
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 5 ／ 次 5
+        verify/out/probe_WG9150_endblock_8bdb3e3.log                   列 1 ／ 次 1
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9172_step0.log                              列 2 ／ 次 2
+   `628-23(1)+`　命中列數 **20** ／ 出現次數 **24** ／ 檔數 **12**
+        docs/reports/W-G.9-134_CC交接文.md                                列 1 ／ 次 1
+        docs/reports/W-G.9-150pR_K9-19性質與末端塊現查.md                      列 1 ／ 次 1
+        docs/reports/W-G.9-168R_前置量測與期初錨.md                            列 1 ／ 次 1
+        docs/rulings/K-6_街角地分配程序與可分配判準.md                              列 1 ／ 次 1
+        verify/out/WG9168_k6step0_a98a99f.json                         列 2 ／ 次 2
+        verify/out/WG9172_step0_68f7bfab.json                          列 1 ／ 次 1
+        verify/out/probe_WG9147_projorder_e9ad898.log                  列 5 ／ 次 5
+        verify/out/probe_WG9150_endblock_8bdb3e3.log                   列 1 ／ 次 1
+        verify/out/probe_WG9159_projorder_pop_2d72de3.json             列 1 ／ 次 4
+        verify/out/probe_WG9159_projorder_pop_2d72de3.log              列 2 ／ 次 2
+        verify/out/probe_WG9168_k6step0_a98a99f.log                    列 2 ／ 次 3
+        verify/out/probe_WG9172_step0.log                              列 2 ／ 次 2
+   🔒 對照組（人造不存在之名 `628-99(9)+`）⇒ 出現次數 = **0**（須 0）
+   🔒 對照組（已知非 0 之 `628-30(3)`·⛔ 不含 `+`）⇒ 出現次數 = **403**（須 > 0）
+
+  證據檔：verify/out/WG9172_names.json
