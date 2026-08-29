@@ -7782,6 +7782,13 @@ def _proj_pop_filter(fname, base):
             _out = list(_out)
         elif _atom == "stage1":
             _out = [tp for tp in _out if '配地階段' not in tp]
+        # 🆕 `W-G.9-169 補正①` `W-5`（發單側 `§零` 核可之**附帶條件**·⛔ 純附加註解）：
+        #   ① `no_ghost` 之**述詞** ＝ `K-9-19 一` 之**三判準合取**——
+        #      `原地號 == '_GHOST'` ∧ `G(㎡) == 0` ∧ `a 面積(㎡) == 0`（式見 `_proj_pop_ghost3`）。
+        #   ② 🛑 ⛔ **不綁 `_is_ghost_sliver`**（`VR-074` 落地拘束·`K-6:3106`：其於 `g_row` 層恆假）、
+        #      🛑 ⛔ 亦不綁**名稱**。
+        #   ③ 其名之沿用（⛔ 未另立 `no_ghost3`）係 `W-G.9-169` `L-3`「**名可留**」所許；
+        #      另立將使**二原子同義**、正犯同批所鑄 `GB-116`（同一述詞多份實作）之形。
         elif _atom == "no_ghost":
             _out = [tp for tp in _out if not _proj_pop_ghost3(tp)]
         else:

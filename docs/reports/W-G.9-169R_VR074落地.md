@@ -303,3 +303,233 @@
    baseline 之更新屬 KL 已裁之**波末重烤**（與 `GB-111`／`GB-113` 同批）。
 3. ⚠️ **`L-4` 之一處偏離**（`§二`）：原子名採 `no_ghost`（非甲案示例之 `no_ghost3`），理由已逐字載明；
    若不採，一行可改。
+
+---
+
+## 🔧 `W-G.9-169 補正①`　`app` 路徑之改動須證與 harness 路徑**同構**
+
+**發單**：`W-G.9-169_補正①_app路徑同構證明.md`（`SELF_SHA256 = 1edeb52617d89e75ad8f5e93b899cfe6fef4fd76eb90cb2bd3dfaab7c2f7d347`
+——**CC 現算逐位相符**·計法＝扣除最末一行·`107` 列／`8769` B）
+**性質**：只讀證明 ＋ 純附加（`W-5` 之註解補記除外·`deletions` 逐檔 `0`）
+**基座**：`6a4a0da`（🛑 **未 push**）　**量測時點**：`2026-08-29`
+🔒 **行號之態**：本節**一切 `app.py`／`verify/**` 行號皆繫於 `6a4a0da`**。
+⚠️ 本補正之 `W-5` 補記後，`app.py` 行號 **≥ `7785` 者一律 `+7`**（⛔ 勿以本節行號 grep 期末態）。
+
+🛑 **總判**：`§三` 五項預測 ⇒ **符 `3`／不符 `2`／不可判 `0`**（和 ＝ **`5`** ✅）。
+🔴 其中 **`W-2` 不符 ⇒ 依單之停機條件「🛑 停機回報」**（`N-2 ②`·逐字二側已附·⛔ **未改 app 側**、
+⛔ **未加正規化規則**）。`W-5` 不符 ⇒ 依單「補之（⛔ 非停機）」，已補（見文末 `W-5` 節）。
+
+---
+
+### `N-1`　本批之**全部**碼面改動與其**執行覆蓋**
+
+母體 ＝ `git diff --numstat 6a4a0da^ 6a4a0da` 之**生產碼三檔**（其餘 `10` 檔皆 `docs/**`／`verify/out/**`／
+新增探針，⛔ 非碼面改動）。逐 hunk 由 `git diff -U0` 機械解析。
+
+🔒 **算術自檢**：逐 hunk 合計 **`+98 / -19`** ＝ numstat 合計（`92+3+3` ／ `17+1+1`）⇒ **True**。
+
+| # | `檔:行`（期初→期末） | 期初逐字 → 期末逐字 | **覆蓋** | 證 |
+|---|---|---|---|---|
+| `H1` | `app.py:7649→7649` | `…"filter": "passthrough"},` → `…"filter": "passthrough+no_ghost"},` | ✅ | tag `app:v2/pre_seq` 計數 **`18`**【倉】`docs/reports/W-G.9-169R_VR074落地.md` §七 `Z-3` 表 |
+| 🔴 `H2` | `app.py:7651→7651` | `…"filter": "stage1"},` → `…"filter": "stage1+no_ghost"},` | 🔴 **⛔ 本批未執行** | tag `app:main/v2_caller` 計數 **`0`**（`main()` 內·結構性不可達）同上 |
+| `H3` | `app.py:7653→7653` | `…"filter": "stage1"},` → `…"filter": "stage1+no_ghost"},` | ✅ | tag `stepg:v2_caller` 計數 **`18`** 同上 |
+| 🔴 `H4` | `app.py:7655→7655` | `…"filter": "identity"},` → `…"filter": "identity+no_ghost"},` | 🔴 **⛔ 本批未執行** | tag `app:main/_rank_by_tpid` 計數 **`0`** 同上 |
+| `H5` | `app.py:7657→7657` | `…"filter": "identity"},` → `…"filter": "identity+no_ghost"},` | ✅ | tag `sp:_rank_by_tpid` 計數 **`102`** 同上 |
+| `H6` | `app.py:7659→7659` | `…"filter": "stage1"},` → `…"filter": "stage1+no_ghost"},` | ✅ | tag `stepg:_proj_rank` 計數 **`18`** 同上 |
+| `H7` | `app.py:7729→7730`（`+37/-0`） | 期初**無**（純插入）→ 新增 `def _proj_pop_ghost3`／`_PROJ_POP_GROW_KEYS`／`def _proj_pop_key_guard`（⚠️ 全文長 `37` 列·逐字見 `git diff -U0 6a4a0da^ 6a4a0da -- app.py`） | ✅ | `_proj_pop_ghost3` 經 `_proj_pop_filter` 之 `no_ghost` 原子被 `stepg:v2_caller`＋`sp:_rank_by_tpid`＋`stepg:_proj_rank` 三 tag 共 **`138`** 次呼叫；另 `D-5`／`D-6` 正負對照【倉】`verify/out/probe_WG9169_ghost3_equiv_a3c97aa.log` |
+| `H8` | `app.py:7731→7768`（`+22/-8`） | `_proj_pop_filter` 之 `if/elif` 三分支 → **原子迴圈**（`for _atom in str(fname).split("+")`） | ✅ | 同 `H7`（`138` 次）；`D-1` 正負對照同上 log |
+| `H9` | `app.py:7746→7798`（`+1/-0`） | 期初**無** → `    _proj_pop_key_guard(tag, base, _d["source"])` | ✅ | 位於 `_proj_pop_assert_seq` 直線路徑（`138` 次）；`D-2` 負對照 `raise` 逐字同上 log |
+| `H10` | `app.py:7761→7813`（`+2/-1`） | `if _d["kind"] != "POP_SYNC" or _d["filter"] != "passthrough":` → `…or str(_d["filter"]).split("+")[0] != "passthrough":` | ✅ | tag `app:v2/pre_seq` 計數 **`18`**（走 `_proj_pop_assert_passthrough`） |
+| `H11` | `app.py:11608→11662`（`+13/-0`） | 期初**無** → `k6_step0_merge` 內之 `_proj_pop_key_guard(...)` ＋ `_gh3_mem` loud `raise` | ✅ | tag `app:k6step0/_ordered` 計數 **`80`**；其 `_proj_pop_note` 於 `_proj_pop_assert_subset`（`app.py:11659`）＝本 hunk **正上方同一直線路徑**、其間⛔ 無分支；`D-4` 正負對照同上 log |
+| `H12` | `app.py:13213→13280`（`+5/-0`） | 期初**無** → `_WF_NS_NAMES` 補列 `"_proj_pop_ghost3"` | ✅ | `fixture_wf_ns_wiring.py rc=0`【倉】`verify/out/runall_W-G.9-169R_post_full.log:55`（靜態層 AST 讀該 list 字面 ＋ 動態層以 `_wf_ns()` 建 ns 實跑 `run_step_g`） |
+| 🔴 `H13` | `app.py:19119→19190`（`+3/-1`） | `_all_in_blk = by_blk.get(_lbl, [])` → 見 `N-2` 逐字 | 🔴 **⛔ 本批未執行** | 位於 `main()`；`CLAUDE.md` 逐字「`app.py:main()` 內之敘述從不被 `run_all` 執行」；併證 tag `app:main/_rank_by_tpid` 計數 `0` |
+| 🔴 `H14` | `app.py:20083→20156`（`+3/-1`） | `_stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp]` → 見 `N-2` 逐字 | 🔴 **⛔ 本批未執行** | 同上；併證 tag `app:main/v2_caller` 計數 `0` |
+| `V1` | `verify/selection_pipeline.py:333→333`（`+3/-1`） | 同 `H13` 之對側（見 `N-2`） | ✅ | tag `sp:_rank_by_tpid` 計數 **`102`** |
+| `V2` | `verify/stepg_pipeline.py:416→416`（`+3/-1`） | 同 `H14` 之對側（見 `N-2`） | ✅ | tag `stepg:v2_caller` **`18`** ＋ `stepg:_proj_rank` **`18`** |
+
+🔴 **標 🔴 之 hunk 數 ＝ `4`**（`H2`／`H4`／`H13`／`H14`）。
+
+---
+
+### 🔴 `N-2`　`app` 側 ↔ harness 側之**同構證明**
+
+#### ①　對應之具名
+
+| 對 | app 側（🔴 未執行） | 對側（✅ 已執行） | 對應之依據 |
+|---|---|---|---|
+| `P1` | `app.py:7651`（tag `app:main/v2_caller` 之宣告） | `app.py:7653`（tag `stepg:v2_caller` 之宣告） | **同一函式語意**：二 tag 為 `_spatial_order_parcels_v2` 之**同一透傳呼叫端**於 app／harness 二側之孿生體（`_PROJ_POP_DECL` 係**單一宣告表**，故對側亦落於 `app.py`） |
+| `P2` | `app.py:7655`（tag `app:main/_rank_by_tpid`） | `app.py:7657`（tag `sp:_rank_by_tpid`） | 同上（`_rank_by_tpid` 之 app／harness 孿生體） |
+| `P3` | `app.py:19190`（`_all_in_blk`·`main()` 內） | `verify/selection_pipeline.py:333` | **同一註解錨**：二處新增之註解逐字皆為 `# 🆕 W-G.9-169 \`L-4\`：實參與宣告同步（\`identity+no_ghost\`）`；且二處為 `run_corner_pk` 候選池構造之孿生體 |
+| `P4` | `app.py:20156`（`_stage1_parcels`·`main()` 內） | `verify/stepg_pipeline.py:416` | **同一註解錨**：`# 🆕 W-G.9-169 \`L-4\`：實參與宣告同步（\`stage1+no_ghost\`）`；且 `app.py:20155` 之既有註解逐字自陳「**必須**與 stepg 同構——否則 app 走舊單階段、harness 走新兩階段＝無聲分岔」 |
+
+#### ②　同構之機械證　🛑 **`2` 對成立／`2` 對⛔ 不成立**
+
+🔒 **正規化規則（逐字·`re.sub` 形·逐行套用後以單一空白接合非空列）**——⛔ 僅此四條，⛔ 未增刪：
+
+```
+R1  re.sub(r'\s*#.*$', '', line)        # 剝除行尾註解
+R2  re.sub(r'^\s+|\s+$', '', line)      # 去縮排（含行尾空白）
+R3  re.sub(r'\s+', ' ', line)           # 統一空白 run
+R4  非空列以單一空白接合
+```
+
+| 對 | 正規化後逐位相同 |
+|---|---|
+| `P1` | ✅ **True** |
+| `P2` | ✅ **True** |
+| 🔴 `P3` | 🔴 **False**（首異位元 offset ＝ `56`） |
+| 🔴 `P4` | 🔴 **False**（首異位元 offset ＝ `75`） |
+
+🛑 **`P3` 之二側逐字**（正規化後）：
+
+```
+app 側    _all_in_blk = [tp for tp in by_blk.get(_lbl, []) if not _proj_pop_ghost3(tp)]
+對側      _all_in_blk = [tp for tp in by_blk.get(_lbl, []) if not ns["_proj_pop_ghost3"](tp)]
+```
+
+🛑 **`P4` 之二側逐字**（正規化後）：
+
+```
+app 側    _stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp and not _proj_pop_ghost3(tp)]
+對側      _stage1_parcels = [tp for tp in parcels_in_blk if '配地階段' not in tp and not ns["_proj_pop_ghost3"](tp)]
+```
+
+🔒 **差異之定位**（🛑 ⛔ **非** 上述正規化規則之一·⛔ **不影響本判**）：另以一條**示範性**替換
+`ns["_proj_pop_ghost3"]` → `_proj_pop_ghost3` 套於對側後，`P3`／`P4` 皆轉為**逐位相同 ＝ True`**
+⇒ 二側之差異**恰只**在 `ns[…]` **間接層**、⛔ 無第二處差異。
+
+🛑 **CC 之處置**（依單 `§三 W-2` 逐字「⛔ 不得自行改 app 側使其同構」＋ `§六 10` 逐字
+「⛔ 不得為使預測轉符而改探針／濾式／容差／框／正規化規則」）：
+**⛔ 未改 app 側一字**、**⛔ 未把該替換列入正規化規則**、**⛔ 未自行寬免** ⇒ **停機回報**，
+`ns[…]` 間接層是否應計入「同構」之判**上呈發單側／KL**。
+⚠️ **併陳一項倉內事實（⛔ 非 CC 之裁）**：`CLAUDE.md` 之「§7 引擎接線鐵律」逐字要求
+**app 接線以 live ctx 注入呼叫同一引擎模組**、而 `verify/` 側之 app 真符號**一律經 `ns[...]` 取用**
+（`_WF_NS_NAMES`／`_wf_ns()`）——即該間接層係**制度所令**、⛔ 非本批所引入；
+惟「制度所令」**⛔ 不等於**單所定義之同構成立，故仍照實判為**不符**。
+
+#### ③　判別力自檢（🛑 必辦·⛔ 僅於記憶體·⛔ 未改任何檔案）
+
+人造把 app 側新增文字之首個 `ghost` 改為 `ghosT`（一字），再比較；改回後復原。
+
+| 對 | 期初判 | 擾動後判 | 轉紅 | 復原 |
+|---|---|---|---|---|
+| `P1` | `True` | `False` | ✅ **是** | ✅ |
+| `P2` | `True` | `False` | ✅ **是** | ✅ |
+| `P3` | `False` | `False` | n/a（期初已紅） | ✅ |
+| `P4` | `False` | `False` | n/a（期初已紅） | ✅ |
+
+⇒ **於期初判為「相同」之 `2` 對，擾動皆轉紅** ⇒ 比較器**具判別力** ⇒ `②` 之 `P1`／`P2` 之
+「逐位相同」**可採信**（`W-3` 符）。
+
+#### ④　殘餘之具名（`app.py` 側有而 harness 側⛔ 無對應者）
+
+| # | 項 | 有無對側 | 本批執行 | 風險 |
+|---|---|---|---|---|
+| `R-1` | `H7`／`H8`／`H9`／`H10`（`_proj_pop_*` 之**定義**） | ⛔ 無（依構造：定義只存 `app.py` 一份，harness 經 `ns[...]` 取用） | ✅ 已執行 | **無**——harness 之執行即**同一份**碼之執行 |
+| `R-2` | `H11`（`k6_step0_merge` 之 loud 斷言） | ⛔ 無（`k6_step0_merge` 只存 `app.py`） | ✅ 已執行（`80` 次） | **無** |
+| `R-3` | `H12`（`_WF_NS_NAMES`） | ⛔ 無（依構造為 app 專屬清單） | ✅ 已執行（`fixture_wf_ns_wiring` `rc=0`） | **無** |
+| 🔴 `R-4` | `H2`／`H4`（`main()` 之二 tag 宣告值） | ✅ 有（`P1`／`P2`·**逐位相同**） | 🔴 ⛔ 未執行 | **經 `②` 移轉為已證**——其為**純字串常量**，與已執行之對側逐位相同 |
+| 🔴 `R-5` | `H13`／`H14`（`main()` 之二處實參） | ✅ 有（`P3`／`P4`·**⛔ 不逐位相同**） | 🔴 ⛔ 未執行 | 🛑 **⛔ 未證**——差異在 `ns[…]` 間接層。**風險**：若 `_wf_ns()` 之 `ns` 與 `app.py` 之 module globals 於該二點**不同源**，則 app 與 harness 之濾式可分岔而無聲。⚠️ 倉內另有反向證據（`W-G.9-147`：`ns is __globals__` 實測 `True`），**惟該證⛔ 非本批所產、⛔ 不足以取代本單所令之機械同構** ⇒ 照實列為未證 |
+| ⚠️ `R-6` | **併記**（⛔ 不擴大射程）：`_stage1_parcels` 之**第 5 個消費點** `verify/stepg_pipeline.py:501-507`（`stepg:_proj_rank` 結構閘）於 `app.py` **⛔ 無對應** | ⛔ 無（**反向**：harness 有、app 無） | ✅（harness 側 `18` 次） | **⛔ 非本批所生**——屬既登之「`19` 條 harness 專屬結構閘（app 命中 `0`）」（`app-vs-harness-stepg-divergence`） |
+
+---
+
+### `N-3`　`_stage1_parcels` 之**非 PO 用途**對 ghost 之敏感性
+
+母體 ＝ `grep -n "_stage1_parcels" app.py verify/stepg_pipeline.py`（期末態·app `5` 列／stepg `7` 列）。
+
+| 處（期末行號） | 可達性 | 對 ghost 敏感？ | 證 |
+|---|---|---|---|
+| `verify/stepg_pipeline.py:466-468` | `if _degenerate_order:` ⇒ **本案不可達** | — | 註解逐字「（UC9898 全塊皆有 FRONT_LINE·不觸）」【倉】`verify/stepg_pipeline.py:460`；`Z-3` 之 `stepg:v2_caller` `18` 次皆走 `else` 分支（否則 `stepg:483` 之斷言不會被記數） |
+| `app.py:20182`（`first_corner_side` 之迴圈） | **可達**（app 側） | ✅ **⛔ 不敏感** | 見下「`W-4` 之現查」 |
+| `app.py:20305`（`if _degenerate_order:` 內之 `ordered_v2` 退化構造） | `if _degenerate_order:` ⇒ **本案不可達** | — | 與 stepg 同構之孿生體（`app.py:20302`）；同上註解錨 |
+| `parcels_in_block=_stage1_parcels`（`stepg:485`／`app:20340`） | **可達且有幾何後果** | 🔴 **是**（母體變） | harness 側已由 `Z-1`（`6` 列）／`Z-2a`（`16` 格·欄名集合 ＝ `{原位次(投影序)}` 單一值）／`Z-4`（指配 rows 逐格相異 `0`）三重覆蓋 ⇒ **⛔ 無幾何後果**；app 側繫於 `N-2` 之同構 ⇒ 🛑 **因 `P4` 不成立而⛔ 未證**（見 `R-5`） |
+
+#### 🔒 `W-4` 之現查（⛔ 非推定）
+
+**受詞**：`app.py:20182-20186` 之迴圈——其**唯一出口**係
+`p = _params_for_g.get(tp['暫編地號'], {})` 之 `p.get('is_corner') and p.get('side', '無') in ('左側', '右側')`。
+迴圈於首個滿足者 `break` ⇒ **移除「恆不滿足」之元素⛔ 不可能改變結果** ⇒
+「敏感」⟺「**某 ghost 滿足該述詞**」。
+
+| # | 現查 | 結果 |
+|---|---|---|
+| `a` | ghost 能否成為 PK 候選？`app.py:19215-19218` 逐字 `_parent = r.get('原地號', '')`／`_gid = _own_map.get(_parent, '')`／`if not _gid: continue`；ghost 之 `原地號 == '_GHOST'`（`app.py:4636`），而 `_own_map` 之鍵全由**地籍歸戶**之 `(地段, 地號)` 導出（`app.py:16348-16352`）、⛔ 無 `'_GHOST'` 之寫入點 | ⇒ **ghost 於 `_candidates` 被 `continue` 跳過** |
+| `a′` | harness 側**同一守衛**逐字存在 | 【倉】`verify/selection_pipeline.py:347-351`（與 `a` 逐字同式） |
+| `b` | **執行態現查**：`Z-4` 之 winner 表（`winner欄 = ['【左】第1宗指配', '【右】第1宗指配']`·`winner欄` 二欄 × `6` 街廓 × `2` 情境 ＝ **`24` 格**·母體**非空**：非佔位格 **`15`**、相異值 **`10`**（期初期末**同集**）） | `grep -c "_GHOST" verify/out/WG9169_z4_winner_a3c97aa.json` ⇒ **`0`** ⇒ **⛔ 無任一 winner 為 ghost** |
+| `c` | 若 Step L 已跑：`app.py:20020-20026` 逐字對 `build_parcels` 中**該街廓全部**宗地寫 `is_corner=False`／`side='無'`，其後**僅** `p1_end`／`p2_end` 二 winner 被寫 `True` | ⇒ ghost 之 `_params_for_g` 條目必為 `is_corner=False`／`side='無'` ⇒ **⛔ 不滿足** |
+| `d` | 若 Step L 未跑（`_step_l_winners` 空）：ghost 於 `_params_for_g` **⛔ 無條目** ⇒ `p = {}` ⇒ `p.get('is_corner')` ＝ `None` | ⇒ **⛔ 不滿足** |
+
+🔒 **判：`W-4` 符——`app.py:20182` 對 ghost ⛔ 不敏感**（⇒ ⛔ **無土地後果**、⛔ 不觸該單之停機條件）。
+
+⚠️ **殘餘之具名（⛔ 不自行寬免）**：`c`／`d` 未涵蓋之**唯一**組合 ＝
+「Step L **未**跑 ∧ 使用者於 GIS **手動點選一個 ghost 多邊形**並標為街角地」（`app.py:17947`／`:17955`／`:17960` 之 UI 點選分支·其 session 寫回於 `:17967`）。
+該路徑**⛔ 非 `run_all` 射程**、亦**⛔ 非本批所引入**（`H14` 只把 ghost 自 `_stage1_parcels` 移除，
+於該組合下反而**消除**了風險）⇒ 列為**併記**，⛔ 不列為本批之未證項。
+
+---
+
+### `§三`　五項預測之逐項對拍
+
+| # | 預測 | 實得 | 判 |
+|---|---|---|---|
+| `W-1` | `N-1` 中標 🔴 之 `app.py` hunk 數 **`> 0`** | **`4`**（`H2`／`H4`／`H13`／`H14`） | ✅ **符** |
+| 🔴 `W-2` | `N-2 ②` 之同構**成立** | `4` 對中 **`2` 成立／`2` ⛔ 不成立**（`P3`／`P4`·差異恰在 `ns[…]` 間接層） | 🔴 **不符** ⇒ 🛑 **停機回報** |
+| `W-3` | `N-2 ③` 之判別力對照**轉紅** | 期初判為相同之 `2` 對**皆轉紅**、`2` 對期初已紅（n/a） | ✅ **符** |
+| `W-4` | `app.py:20107`（期末 `:20182`）對 ghost **⛔ 不敏感** | **⛔ 不敏感**（四項現查 `a`／`a′`／`b`／`c`／`d`） | ✅ **符** |
+| 🔴 `W-5` | `no_ghost` 之唯一定義處已帶三項註解 | **缺**（見下） | 🔴 **不符** ⇒ 依單**補之**（⛔ 非停機） |
+
+**和 ＝ `5`**（符 `3` ／ 不符 `2` ／ 不可判 `0`）✅
+
+#### `W-5`　現查與補記
+
+**現查**（態 ＝ `6a4a0da`）：`no_ghost` **原子**之定義處 ＝ `_proj_pop_filter` 之
+`elif _atom == "no_ghost":`（`app.py:7785`），其 docstring（`app.py:7768-7778`）：
+
+| 項 | 逐字要求 | 現查 |
+|---|---|---|
+| ① | 其述詞為 `K-9-19 一` 之**三判準合取** | 🔴 **缺**（該 docstring 內 `K-9-19`／「三判準」皆⛔ 未出現；⚠️ 該文字實存於 `_proj_pop_ghost3` 之 docstring `app.py:7734-7737`，**⛔ 非** `no_ghost` 之定義處） |
+| ② | 🛑 ⛔ **不綁 `_is_ghost_sliver`** | ⚠️ **不逐字**（現有為「其述詞由 `_is_ghost_sliver` 換為 `_proj_pop_ghost3`（`VR-074` 拘束：⛔ 不綁旗標、⛔ 不綁名稱）」） |
+| ③ | 其名之沿用係 `W-G.9-169 L-3`「**名可留**」所許 | ⚠️ **不逐字**（現有為「`no_ghost` 之名**留**」） |
+
+⇒ **缺 ①、②③ 不逐字** ⇒ 依單「補之」。
+
+**補記**（🔒 **純附加註解**·`app.py` `+7 / -0`·⛔ 未改既有一字·`py_compile` **OK**）：
+於 `app.py:7785`（`elif _atom == "no_ghost":`）**正上方**插入 `7` 列註解，逐字：
+
+```
+        # 🆕 `W-G.9-169 補正①` `W-5`（發單側 `§零` 核可之**附帶條件**·⛔ 純附加註解）：
+        #   ① `no_ghost` 之**述詞** ＝ `K-9-19 一` 之**三判準合取**——
+        #      `原地號 == '_GHOST'` ∧ `G(㎡) == 0` ∧ `a 面積(㎡) == 0`（式見 `_proj_pop_ghost3`）。
+        #   ② 🛑 ⛔ **不綁 `_is_ghost_sliver`**（`VR-074` 落地拘束·`K-6:3106`：其於 `g_row` 層恆假）、
+        #      🛑 ⛔ 亦不綁**名稱**。
+        #   ③ 其名之沿用（⛔ 未另立 `no_ghost3`）係 `W-G.9-169` `L-3`「**名可留**」所許；
+        #      另立將使**二原子同義**、正犯同批所鑄 `GB-116`（同一述詞多份實作）之形。
+```
+
+🔒 **`app.py` 之態**（🛑 **本補正後已變**·⛔ 不得再以 `60b550b7…` 為工作區之錨）：
+
+| 態 | blob | 列數（`splitlines`） | bytes | `sha16` |
+|---|---|---|---|---|
+| `6a4a0da`（＝ `W-G.9-169R` 期末） | `60b550b7f4d651cca5418fdf9807a0cc3248278d` | `22915` | `1351414` | `1b9483ba3a86f260` |
+| **本補正期末** | **`68f7bfab610ec78688b9d7322ae4bc2aac74493e`** | **`22922`** | **`1352132`** | **`7c290b6f55f83a24`** |
+
+🔒 **純附加之機械自檢**：以 `split("\n")` 逐列比對，插入點前 `7784` 列與插入點後全部列**皆按序逐字保留**
+⇒ `True`；檔尾末位元組期初期末皆 `b')'`（⛔ 無尾隨換行·未被改形）；`git diff --numstat -- app.py` ⇒ **`7  0`**。
+
+---
+
+### 🛑 收工聲明
+
+1. 🛑 **`W-2` 不符 ⇒ 停機**：`P3`／`P4` 之同構於單所定義之四條正規化下**⛔ 不成立**；
+   CC **⛔ 未改 app 側**、**⛔ 未增修正規化規則**、**⛔ 未自行寬免** ⇒ 上呈發單側／KL 裁。
+2. 🔒 **`N-1` 標 🔴 之 `4` 個 hunk 中，`H2`／`H4` 已由 `②` 之 `P1`／`P2` 移轉為已證；
+   `H13`／`H14` ⛔ 未證**（`R-5`）。
+3. 🔒 **⛔ 未重跑 `run_all`**、**⛔ 未改任何探針**、**⛔ 未重產任何 baseline**（依單 `§三` 共通）。
+4. 🔒 **push 仍須 KL 核可**（`W-G.9-169 S-8` 全效）——本補正**⛔ 不解除**該條件；
+   且本補正**已觸 `app.py`** ⇒ 仍屬**生產碼批**、⛔ 不得逕行 push。
+5. 🔒 `6a4a0da` **⛔ 不得**被記為倉態（常規九 一）；`/c/w169b` **保留不刪**。
+6. 🔒 **`§四` 之擇一**（常規三·⛔ 無土地後果）：CC 擇 **「另起一 commit 疊於 `6a4a0da`／本地 tip 之上」**。
+   **一句理由**：`6a4a0da` 之 `Z-1`〜`Z-5` 全綠**係以其自身之 `app.py` blob `60b550b7…` 為受詞**，
+   若把本補正之 `W-5` 註解 amend 進該 commit，該 blob 即變而使**已入倉之 `Z` 系列錨全數失真**；
+   另起 commit 則二態各自持有正確之錨。
