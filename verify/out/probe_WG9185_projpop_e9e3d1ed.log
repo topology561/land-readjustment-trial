@@ -1,0 +1,103 @@
+==============================================================================================================================================================================================
+【W-G.9-185 M-J-1／M-J-2】`_projection_order` 呼叫點清單與母體同步之直接實測 — ⛔ 零生產碼
+==============================================================================================================================================================================================
+
+【M-J-1】呼叫點之完整清單（**AST**·母體 = app.py ＋ verify/**/*.py = 229 檔）
+  #   檔                                                 行 形          所屬函式                           第一實參
+  1   app.py                                         7998 裸名         _spatial_order_parcels_v2      parcels_in_block
+  2   app.py                                        11682 裸名         k6_step0_merge                 _mem
+  3   app.py                                        19218 裸名         main                           _all_in_blk
+  4   verify/probes/probe_WG9147_projorder.py         109 ns["…"]    main                           []
+  5   verify/probes/probe_WG9149_projorder_equiv.py     87 ns["…"]    direct                         pib
+  6   verify/probes/probe_WG9168_k6step0.py           105 ns["…"]    build_once                     r1
+  7   verify/probes/probe_WG9168_k6step0.py           109 ns["…"]    build_once                     r1c
+  8   verify/probes/probe_WG916_isolate.py             72 ns["…"]    w_proj                         parcels
+  9   verify/selection_pipeline.py                    344 ns["…"]    run_corner_pk                  _all_in_blk
+  10  verify/stepg_pipeline.py                        507 ns["…"]    run_step_g                     _stage1_parcels
+  11  verify/wf_f0.py                                 256 ns["…"]    _proj_order                    pib
+  12  verify/wf_f1.py                                 376 ns["…"]    _order                         pseudo
+  13  verify/wf_f2.py                                  95 ns["…"]    _proj_order                    pib
+  14  verify/wf_f3.py                                  78 ns["…"]    _proj_order                    pib
+  15  verify/wf_f4.py                                1047 ns["…"]    _proj_order                    pib
+  16  verify/wf_f4.py                                1437 ns["…"]    _order_fb                      pseudo
+  17  verify/wf_f4.py                                1512 ns["…"]    _order                         pseudo
+  ── 合計 = 17 處（**生產鏈 12** ／ 探針 5）
+  ── 含字面 `_projection_order` 之列數 = 119 ⇒ 其中 AST 判為**呼叫**者 = 17（差 102 ＝ 定義列／字串／註解／賦值）
+  ── 🔒 對拍 `GB-105` 加註一之「**`12`** 處（探針另計·⛔ 不列入）」：本次生產鏈 = 12 ⇒ ✅ **相同**
+
+【M-J-2 前置】`_PROJ_POP_DECL` 之宣告表（`app.py`·現基座）
+  tag 總數 = 14
+    NAME_DERIVATION    1 tag：['app:k6step0/_ordered']
+    ORDER_INVARIANCE   7 tag：['wf_f0:_proj_order', 'wf_f2:_proj_order', 'wf_f3:_proj_order', 'wf_f4:_proj_order', 'wf_f1:_order', 'wf_f4:_order_fb', 'wf_f4:_order']
+    POP_SYNC           6 tag：['app:v2/pre_seq', 'app:main/v2_caller', 'stepg:v2_caller', 'app:main/_rank_by_tpid', 'sp:_rank_by_tpid', 'stepg:_proj_rank']
+  🔒 三受詞類（`GB-105` 加註三·`W-G.9-160`）——⛔ 非單所載之「5 類」
+
+  執行情形（⛔ 非停機款·照實載）：R2→RuntimeError: 🔴 結構閘 telescoping 破：街廓 R2 left 側 ΣRw_實跑=100.02 ≠ R(W_final=34.39)−R(W₀=6.98)=44.41（Δ=55.606 >0.1）｜逐界面：[Δ_i·R2·left] 628-；R4→RuntimeError: 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.41（Δ=2.425 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R4·ri；R5→RuntimeError: 街廓 R5 抵費地計算失敗：🔴 ②-宗 圍堵閘破[R5]：宗-宗重疊 = 56.8186 > 上界 1.5999（(宗數8−1)×0.005×深度45.71）——**超出捨入量子可解釋範圍＝另有病**，停
+
+【M-J-2 a】`_projection_order` 之**實際**呼叫者 frame（證哪些靜態點真被執行）
+  檔                                                 行 函式                                 次數 實收長度（去重）
+  <app.py:harvest>                               7998 _spatial_order_parcels_v2           6 [2, 5, 8, 10, 14]
+  <app.py:harvest>                              11682 k6_step0_merge                      8 [2, 3]
+  verify/selection_pipeline.py                    344 run_corner_pk                       6 [2, 5, 8, 10, 14]
+  verify/stepg_pipeline.py                        507 run_step_g                          6 [2, 5, 8, 10, 14]
+  ── 實際執行之靜態點 = 4 ／ 靜態清單之生產鏈 = 12
+  ── **⛔ 未被執行**之生產鏈點（結構上到不了或本情境未觸）：
+       app.py:7998  _spatial_order_parcels_v2（parcels_in_block）
+       app.py:11682  k6_step0_merge（_mem）
+       app.py:19218  main（_all_in_blk）
+       verify/wf_f0.py:256  _proj_order（pib）
+       verify/wf_f1.py:376  _order（pseudo）
+       verify/wf_f2.py:95  _proj_order（pib）
+       verify/wf_f3.py:78  _proj_order（pib）
+       verify/wf_f4.py:1047  _proj_order（pib）
+       verify/wf_f4.py:1437  _order_fb（pseudo）
+       verify/wf_f4.py:1512  _order（pseudo）
+
+【M-J-2 b】逐 tag 之**實收**暫編地號集合（🛑 ⛔ 非「沒 raise」·係**值本身**）
+  tag                        類                  位置                           次數 集合大小(去重) 首 3 號
+  app:k6step0/_ordered       NAME_DERIVATION    actual                        8   [2, 3] ['628-43(1)', '628-40(1)']
+  app:k6step0/_ordered       NAME_DERIVATION    base                          8 [11, 12, 14, 15] ['628-35(1)', '628-32(2)', '628-31(2)']
+  app:v2/pre_seq             POP_SYNC           (passthrough·⛔ 無序參)           6      [0] []
+  sp:_rank_by_tpid           POP_SYNC           actual                        6 [2, 5, 8, 10, 14] ['628(1)', '628-1(1)']
+  sp:_rank_by_tpid           POP_SYNC           base                          6 [3, 6, 8, 10, 14] ['628(1)', '628-1(1)', '_GHOST_(R4)']
+  stepg:_proj_rank           POP_SYNC           actual                        6 [2, 5, 8, 10, 14] ['628-37(1)', '628-36(1)', '628-35(2)']
+  stepg:_proj_rank           POP_SYNC           base                          6 [2, 5, 8, 10, 14] ['628-37(1)', '628-36(1)', '628-35(2)']
+  stepg:v2_caller            POP_SYNC           actual                        6 [2, 5, 8, 10, 14] ['628-37(1)', '628-36(1)', '628-35(2)']
+  stepg:v2_caller            POP_SYNC           base                          6 [2, 5, 8, 10, 14] ['628-37(1)', '628-36(1)', '628-35(2)']
+  ── 實收 tag 數 = 5 ／ 宣告表 tag 數 = 14
+  ── **⛔ 未觀測到**之 tag（9）：['app:main/v2_caller', 'app:main/_rank_by_tpid', 'wf_f0:_proj_order', 'wf_f2:_proj_order', 'wf_f3:_proj_order', 'wf_f4:_proj_order', 'wf_f1:_order', 'wf_f4:_order_fb', 'wf_f4:_order']
+
+【M-J-2 c】**逐對對稱差集**（同街廓·同 `kind` 內·逐號具名）
+
+  ■ 類 NAME_DERIVATION
+    街廓 R2     觀測 2 次／相異集合 2 個／大小 [2, 15]
+       Δ vs 最大集合：−13 號 ['628-27(1)', '628-30(2)', '628-31(2)', '628-32(2)', '628-34(1)', '628-35(1)', '628-39(1)', '628-41(1)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+    街廓 R3     觀測 6 次／相異集合 4 個／大小 [2, 2, 3, 14]
+       Δ vs 最大集合：−12 號 ['628(4)', '628-27(2)', '628-28(1)', '628-29(1)', '628-31(3)', '628-32(3)', '628-34(2)', '628-42(2)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+       Δ vs 最大集合：−12 號 ['628(4)', '628-27(2)', '628-30(3)', '628-31(3)', '628-32(3)', '628-34(2)', '628-42(2)', '628-45(2)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+       Δ vs 最大集合：−11 號 ['628(4)', '628-27(2)', '628-28(1)', '628-29(1)', '628-30(3)', '628-31(3)', '628-32(3)', '628-34(2)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+    街廓 R5     觀測 4 次／相異集合 3 個／大小 [3, 3, 12]
+       Δ vs 最大集合：−9 號 ['628(3)', '628-18(2)', '628-20(2)', '628-30(1)', '628-31(1)', '628-32(1)', '628-45(1)', '628-53(2)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+       Δ vs 最大集合：−9 號 ['628(3)', '628-18(2)', '628-21(2)', '628-22(2)', '628-23(2)', '628-31(1)', '628-32(1)', '628-53(2)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+    街廓 R6     觀測 4 次／相異集合 3 個／大小 [2, 3, 11]
+       Δ vs 最大集合：−9 號 ['628-18(1)', '628-20(1)', '628-21(1)', '628-22(1)', '628-23(1)', '628-38(1)', '628-4(1)', '628-53(1)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+       Δ vs 最大集合：−8 號 ['628(2)', '628-1(2)', '628-18(1)', '628-20(1)', '628-38(1)', '628-4(1)', '628-53(1)', '628-7(1)'] ／ +0 號 []   ← ['app:k6step0/_ordered/actual']
+
+  ■ 類 ORDER_INVARIANCE
+
+  ■ 類 POP_SYNC
+    街廓 R1     觀測 6 次／相異集合 2 個／大小 [5, 6]
+       Δ vs 最大集合：−1 號 ['_GHOST_(R1)'] ／ +0 號 []   ← ['sp:_rank_by_tpid/actual', 'stepg:_proj_rank/actual', 'stepg:_proj_rank/base', 'stepg:v2_caller/actual', 'stepg:v2_caller/base']
+    街廓 R2     觀測 6 次／相異集合 1 個／大小 [14]
+       ⇒ ✅ 該街廓內**集合逐位相同**（相異集合僅 1 個）
+    街廓 R3     觀測 6 次／相異集合 1 個／大小 [10]
+       ⇒ ✅ 該街廓內**集合逐位相同**（相異集合僅 1 個）
+    街廓 R4     觀測 6 次／相異集合 2 個／大小 [2, 3]
+       Δ vs 最大集合：−1 號 ['_GHOST_(R4)'] ／ +0 號 []   ← ['sp:_rank_by_tpid/actual', 'stepg:_proj_rank/actual', 'stepg:_proj_rank/base', 'stepg:v2_caller/actual', 'stepg:v2_caller/base']
+    街廓 R5     觀測 6 次／相異集合 1 個／大小 [8]
+       ⇒ ✅ 該街廓內**集合逐位相同**（相異集合僅 1 個）
+    街廓 R6     觀測 6 次／相異集合 1 個／大小 [8]
+       ⇒ ✅ 該街廓內**集合逐位相同**（相異集合僅 1 個）
+
+🛑 本檔只量·⛔ 未修任何不同步·⛔ 未動生產碼一字·⛔ 未立任何新閘。
+==============================================================================================================================================================================================
