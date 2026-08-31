@@ -43,6 +43,7 @@ r"""**`W-G.9-189` `S-6`**：複刻區同步閘——AST 正規化對拍 ＋ 遞�
 import ast
 import difflib
 import os
+import platform
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -180,6 +181,9 @@ def main():                                                      # noqa: C901
         % (len(src_a.splitlines()), len(src_s.splitlines())))
     say("  界定 ＝ AST FunctionDef／For 節點（⛔ 非自陳之舊行號「約 14650-15450」）")
     say("  正規化 ＝ ①縮排(AST天然) ②註解/docstring(逐層剝) ③ns[\"X\"]→X ＋ st.session_state→ss")
+    say("  🔒 直譯器 ＝ CPython %s ｜ 🛑 下列 `ast.dump` 之 **bytes ⛔ 非跨環境錨**"
+        "（`3.12.3` 與 `3.13.11` 得數不同，而**判定與實質差處數逐項相同**）"
+        "⇒ **只對拍判定與差數**（`W-G.9-190R §八-2 4.`·⛔ 不鑄號）" % platform.python_version())
     say("")
 
     PAIRS = [("_build_g_row", find(TA, "def", "_build_g_row"), find(TS, "def", "_build_g_row")),

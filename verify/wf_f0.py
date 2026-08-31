@@ -6,7 +6,8 @@ W-F F.0 — 前置與級0/0'（同街廓同歸戶合併）＋梯3 二群釋池�
   trunk A（v3 錨）：原 build_parcels → run_step_g，對拍 baselines/v3/（證基礎引擎零漂移）。
   trunk B（F.0 終態）：deepcopy build_parcels → F.0 變換 → run_step_g，對拍 baselines/wf/f0/。
 本檔 additive-only：**不改 app.py、不改 stepg_pipeline 推進機、不碰 build_ownership 指紋**。
-解算一律走 app 真函式 run_step_g（F.0 僅為 Step G 前之 parcels 資料變換）。
+解算一律走 **harness 之** `run_step_g`（其定義**唯一**在 `verify/stepg_pipeline.py`·全倉 `^def run_step_g` 命中 `1`），F.0 僅為 Step G 前之 parcels 資料變換。
+🔧 **更正（`W-G.9-190R §八-2 2.`·⛔ 不鑄號）**：本行原作「走 **app 真函式** run_step_g」係**偽述**——`run_step_g` ⛔ 非 `app.py` 之函式。其**葉子**函式（`_solve_G_one`／`_pool_strips_for_block`）方經 `ns` 取 app 之單一真相源（`verify/stepg_pipeline.py:327`／`:956` 逐字）。
 
 **KL 正典（位相不變＝原位次序不變，2026-07-10）**：集中合併時，標的宗於原位次原地變寬，
 變寬面積以調配池結算；標的宗左右毗鄰不變；全體剩餘宗相對位次序不變。同街廓合併中被併宗消失
