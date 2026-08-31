@@ -11734,6 +11734,496 @@ def k6_step0_merge(temp_parcels, own_map, front_lines_by_label, side_lines_by_si
     _diag["parcels_out"] = len(_out)
     return _out, _diag
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🆕 **K-9-12 矩形容納判定**（`W-G.9-187` 段 A·⛔ 純函式·**觀測模式**）
+#
+# 🔒 **判準逐字**（正典 `docs/rulings/K-6_街角地分配程序與可分配判準.md:2482`·
+#    框 ＝ 原始位元組·`戒 39 ②`）：
+#      ∃ 旋轉角 `θ` 與平移 `(u, v)`，使 `W × D` 矩形**整個落在宗地四至範圍內** ⇒ **可建築**。
+#
+# 🔒 `W`／`D` **一律查表**（`get_min_lot_size(分區, 正面路寬)` 之 `min_width`／`min_depth`）
+#    ——⛔ **不得硬編 `3.5`／`14`**（KL 逐字：「若不同路寬級距或不同使用分區則就不是 3.5*14」）。
+#    本檔之函式**只收 `W`／`D` 數值**，查表之責在呼叫端 ⇒ 硬編於此結構上不可能發生。
+#
+# 🔒 **姿態 ＝ 可旋轉、可平移、⛔ 不須貼齊 FRONTLINE**（`K-9-12-c`·canonical·
+#    `W-G.9-186 §六 四` 已裁）。⚠️ `K-9-12 三` 之「⛔ 不旋轉」係 KL `2026-08-17` 當日原樣，
+#    正典 `K-6:2471` 明示其「一字不刪」係**刻意保留**；`K-9-12-c`（`K-6:2469`）為事後自陳更正。
+#
+# 🛑 ⛔ **不得以 shapely 之「最小外接旋轉矩形」屬性實作**（`W-G.9-89` 判其既有八處
+#    實質為【缺】·CC 於 `W-G.9-186R` 覆核現基座仍為 `8` 處）——最小**外接**旋轉矩形係
+#    **度量**，⛔ 非「於宗地四至內**旋轉平移搜尋** `W × D` 之容納性」。
+#    🔒 **本區塊⛔ 未寫入該識別符之字面**——寫入即污染全倉之計數（「哨兵勿入倉」之戒·
+#      同 `VR-999`／裸框 MAX 被次號書寫污染之族）⇒ 其「未使用」之機檢改採 **AST**
+#      （受檢 ＝ 本區塊各函式之 `Attribute` 節點名），⛔ 非字串 `grep`。
+# ═══════════════════════════════════════════════════════════════════════════
+
+_RECT_FIT_TOL = 1e-6            # m：矩形邊長各內縮此值後判定 ⇒「恰好相切」判 True（見射程外 ①）
+_RECT_FIT_ANGLE_STEP_DEG = 0.5  # 度：角度掃描解析度（見射程外 ②）
+
+
+def _rect_fit_edge_angles_deg(poly):
+    """回傳 `poly` 全部邊（含內環）之方向角（度·模 **`180`**）——角度掃描之**臨界候選**。
+
+    🔒 **為何模 `180` 而⛔ 非 `90`**（`W-G.9-187 M-L-2 ③` 實測所迫·**首版之實作紅**）：
+    `W × D` 矩形之對稱群為 `180°`，⛔ **非** `90°`——`θ` 與 `θ+90°` **互換 `W`／`D` 所在之軸**，
+    二者之容納性**不等價**（`W ≠ D` 時）。首版誤取模 `90` ⇒ 「走廊須轉 `135°` 方容納」之案
+    其解落在框外而得偽陰。🔒 **該偽陰係實作紅、⛔ 非受詞紅**，由夾具之造 ③ 當場擋下。
+    """
+    import math as _m
+    out = []
+    _polys = list(poly.geoms) if hasattr(poly, 'geoms') else [poly]
+    for _p in _polys:
+        if _p is None or _p.is_empty:
+            continue
+        for _r in [_p.exterior] + list(_p.interiors):
+            _cs = list(_r.coords)
+            for _a, _b in zip(_cs, _cs[1:]):
+                _dx = _b[0] - _a[0]
+                _dy = _b[1] - _a[1]
+                if abs(_dx) < 1e-15 and abs(_dy) < 1e-15:
+                    continue
+                out.append(_m.degrees(_m.atan2(_dy, _dx)) % 180.0)
+    return out
+
+
+def _rect_fit_sweep(geom, vec):
+    """**Minkowski 掃掠**：`geom ⊕ [0, vec]`（沿線段之掃掠）——對任意多邊形**精確**。
+
+    構造 ＝ `geom` ∪ `geom+vec` ∪（逐邊所掃出之平行四邊形）。
+    🔒 該三者之聯集即掃掠體：內部點沿 `vec` 走過之軌跡必落於前二者或某邊之掃掠帶內。
+    ⚠️ 邊 ∥ `vec` 時平行四邊形退化為零面積 ⇒ `buffer(0)` 正規化（**非**靜默吞掉：
+       其面積本即 `0`，⛔ 不影響聯集）。
+    """
+    from shapely.geometry import Polygon as _SP_rf
+    from shapely.ops import unary_union as _uu_rf
+    from shapely import affinity as _af_rf
+    _vx, _vy = float(vec[0]), float(vec[1])
+    _parts = [geom, _af_rf.translate(geom, _vx, _vy)]
+    _polys = list(geom.geoms) if hasattr(geom, 'geoms') else [geom]
+    for _p in _polys:
+        if _p is None or _p.is_empty or _p.geom_type != 'Polygon':
+            continue
+        for _r in [_p.exterior] + list(_p.interiors):
+            _cs = list(_r.coords)
+            for _a, _b in zip(_cs, _cs[1:]):
+                _q = _SP_rf([_a, _b, (_b[0] + _vx, _b[1] + _vy), (_a[0] + _vx, _a[1] + _vy)])
+                if not _q.is_valid:
+                    _q = _q.buffer(0)
+                if not _q.is_empty:
+                    _parts.append(_q)
+    return _uu_rf(_parts)
+
+
+def _rect_fit_erode_axis(q, w, d):
+    """`q ⊖ ([0,w] × [0,d])`：**軸對齊**矩形之侵蝕 ⇒ 回傳可放置矩形**左下角**之點集。
+
+    `E ≠ ∅` ⟺ 存在平移使軸對齊 `w × d` 矩形整個落在 `q` 內。
+
+    **二路皆精確**（⛔ 非「快路 ＋ fallback」，二者恆等·見下）：
+      - **凸路**：`q` 凸時 `q ⊖ R ＝ ∩_{v ∈ R 之四頂點}(q − v)`
+        （`t + R ＝ conv(t + 頂點) ⊆ q`，由凸性）。
+      - **通路**：`q \\ ((B \\ q) ⊕ (−R))`（`B` ＝ 充分大之框）——對任意多邊形精確。
+    🔒 凸路係**同一恆等式之快速形**、⛔ 非近似；`fixture_wg9187_rect_fit` 對隨機凸例
+       逐例對拍二路之結果（判別力：非凸例二路**必**相異之案亦入夾具）。
+    """
+    from shapely.geometry import box as _box_rf
+    from shapely import affinity as _af_rf
+    if q is None or q.is_empty:
+        return q
+    _hull = q.convex_hull
+    _is_convex = abs(_hull.area - q.area) <= max(1e-12, q.area * 1e-12)
+    if _is_convex:
+        _e = q
+        for _dx, _dy in ((0.0, 0.0), (w, 0.0), (0.0, d), (w, d)):
+            _e = _e.intersection(_af_rf.translate(q, -_dx, -_dy))
+            if _e.is_empty:
+                return _e
+        return _e
+    _minx, _miny, _maxx, _maxy = q.bounds
+    _m = float(w) + float(d) + 1.0
+    _B = _box_rf(_minx - _m, _miny - _m, _maxx + _m, _maxy + _m)
+    _comp = _B.difference(q)
+    _dil = _rect_fit_sweep(_rect_fit_sweep(_comp, (-float(w), 0.0)), (0.0, -float(d)))
+    return q.difference(_dil)
+
+
+def _rect_fits_free_pose(poly, W, D, angle_step_deg=None, fit_tol=None,
+                         _label='', _detail=None):
+    """🔑 **`K-9-12` 之判定式**：宗地四至範圍 `poly` 內能否容納 `W × D` 矩形
+    （**可旋轉、可平移**·`K-9-12-c`）。回傳 `bool`。
+
+    參數
+      `poly`           宗地四至範圍之多邊形（shapely）。
+      `W`／`D`         矩形邊長（m）——**呼叫端須自 `get_min_lot_size` 查表取得**，
+                       ⛔ 不得硬編（`K-9-12 二`）。
+      `angle_step_deg` 角度掃描解析度（度·預設 `_RECT_FIT_ANGLE_STEP_DEG`）。
+      `fit_tol`        邊長內縮容差（m·預設 `_RECT_FIT_TOL`）。
+      `_detail`        可傳入 `dict` 以承接診斷（命中角度／掃描數／面積上界判）——
+                       ⛔ 不改變回傳值。
+
+    🛑 **loud raise·⛔ 無靜默退路**（`no-silent-fallback`／`W-G.9-14` 修法 ②）：
+       `W`／`D` 非正、或 `poly` 非多邊形 ⇒ **拋 `RuntimeError`**。
+       「**算不出**」與「**判定為偽**」⛔ 不得共用同一出艙碼——本函式回 `False`
+       **一律**表示「已算出且不可容納」。
+
+    ⚠️ **射程外**（`VR-082` 體例·⛔ 不得留白）
+      ① **`fit_tol` 之內縮**：邊長各內縮 `fit_tol`（預設 `1e-6 m` ＝ 1 µm）後判定
+         ⇒ **恰好相切者判 `True`**。⛔ 此係**刻意**之定義選擇（否則侵蝕退化為零面積集，
+         shapely 之 `difference` 會回空 ⇒ 恰好容納者被誤判為 `False`）。
+      ② **角度掃描非連續**：`θ` 取「全部邊方向（模 `180`）∪ `[0,180)` 之均勻格點」。
+         ⇒ 對「僅在極窄角度區間可容納」之宗地，本式**可能偽陰**（判 `False` 而實可容納）。
+         🔒 其誤差**單向**：⛔ 不會偽陽（每個受檢 `θ` 之侵蝕皆精確）。
+      ③ **⛔ 不判街角第 1 宗**（`K-9-12-e` 射程排除·`K-9-13` 四段）——射程之界定在呼叫端。
+      ④ **⛔ 不涵蓋街廓層之深度警示**（`K-9-2`·`K-9-12-a` 明令原封不動）。
+    """
+    import math as _m
+    _st = float(angle_step_deg if angle_step_deg is not None else _RECT_FIT_ANGLE_STEP_DEG)
+    _tol = float(fit_tol if fit_tol is not None else _RECT_FIT_TOL)
+    if poly is None or not hasattr(poly, 'is_empty'):
+        raise RuntimeError(
+            f"🔴 _rect_fits_free_pose[{_label}]：`poly` 非 shapely 幾何"
+            f"（得 {type(poly).__name__}）——⛔ 禁以 False 兜底（「算不出」≠「判定為偽」）")
+    if not (float(W) > 0.0 and float(D) > 0.0):
+        raise RuntimeError(
+            f"🔴 _rect_fits_free_pose[{_label}]：`W`／`D` 須為正（得 W={W}／D={D}）"
+            f"——附表值為 `0` 表**非可建築土地**，其判定屬呼叫端之射程，⛔ 不在此靜默回 False")
+    if not (_st > 0.0):
+        raise RuntimeError(f"🔴 _rect_fits_free_pose[{_label}]：`angle_step_deg` 須為正")
+    _w = float(W) - _tol
+    _d = float(D) - _tol
+    if not (_w > 0.0 and _d > 0.0):
+        raise RuntimeError(
+            f"🔴 _rect_fits_free_pose[{_label}]：`fit_tol`({_tol}) ≥ 邊長 ⇒ 容差吞掉受詞")
+    _det = _detail if isinstance(_detail, dict) else {}
+    _det['W'] = float(W); _det['D'] = float(D)
+    _det['fit_tol'] = _tol; _det['angle_step_deg'] = _st
+    if poly.is_empty:
+        _det['reason'] = 'poly 為空'
+        return False
+    # 面積必要條件：`area(poly) < W×D` ⇒ **必**不可容納（⛔ 只作提前否決·非判準本身）
+    _det['area'] = float(poly.area)
+    _det['need_area'] = float(W) * float(D)
+    if float(poly.area) + 1e-12 < float(W) * float(D):
+        _det['reason'] = '面積 < W×D（必要條件不成立）'
+        _det['hit_angle_deg'] = None
+        return False
+    # 🔒 掃描域 ＝ `[0, 180)`（⛔ 非 `[0, 90)`）——見 `_rect_fit_edge_angles_deg` 之戒：
+    #   `θ` 與 `θ+90°` 互換 `W`／`D` 之軸 ⇒ 二者不等價；矩形之對稱群為 `180°`。
+    _angles = sorted({round(_a % 180.0, 9) for _a in _rect_fit_edge_angles_deg(poly)}
+                     | {round(_i * _st % 180.0, 9)
+                        for _i in range(int(_m.ceil(180.0 / _st)) + 1)})
+    _det['n_angles'] = len(_angles)
+    from shapely import affinity as _af_rf
+    _cen = poly.centroid
+    for _th in _angles:
+        _q = _af_rf.rotate(poly, -_th, origin=_cen, use_radians=False)
+        _e = _rect_fit_erode_axis(_q, _w, _d)
+        if _e is not None and not _e.is_empty:
+            _det['hit_angle_deg'] = _th
+            _det['reason'] = '容納（命中角度 %.6f°）' % _th
+            return True
+    _det['hit_angle_deg'] = None
+    _det['reason'] = '掃 %d 個角度皆不可容納' % len(_angles)
+    return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🆕 **K-9-23 藍影骨架 ＋ 二閘分立**（`W-G.9-187` 段 B·🛑 **觀測模式**）
+#
+# 🔒 **構造逐字**（正典 `K-6` 之 `K-9-23 三-一`）：街角地（第 0 宗）依 winner 之 `G` 定其
+#    **遠側境界線**（∥SIDELINE）；該線交 FRONTLINE 於 `P1`、交 BASELINE 於 `B1`。
+#    過 `P1`、過 `B1` **各**作一條 ∥ALLOCLINE ⇒ 二者夾出一條帶；遠側界係該帶之**對角線**。
+#    **藍影 ＝ 該帶落在街角地<u>外</u>之那一半**，因二線不平行故 `Δs ≠ 0`，藍影恆為**三角形**。
+#
+# 🔒 **外界 ＝ `B1`**（`K-9-16`·⛔ 非 `B2`）——`B2`（`P1` 沿 FRONTLINE 法向至 BASELINE 之垂足）
+#    所繫之條件 3 已由 `K-9-15` 廢止，其立法目的移轉至 `K-9-12`（最小內接矩形）。
+#    本構造之二平行線皆 ∥ALLOCLINE 且**其一過 `B1`** ⇒ 結構上⛔ 不可能取到 `B2`。
+#
+# 🔴 **選邊之唯一決定點 ＝ `∩街角地 ＝ 0` 之半**（`K-9-23 三-二`·容差 `1e-6`）。
+#    ⛔ **不得以 `σ·Δs` 之號為決定點**——`W-G.9-142` 實測該純號規則 **`4/8` 選錯**
+#    （發單側 `自誤 179`）。`σ·Δs` 於本檔**只作斷言**（出艙供對拍），⛔ 不參與決定。
+#
+# 🛑 **觀測模式之硬界（`W-G.9-187 §一 N-3`）**：本區塊之一切輸出**只寫入診斷**
+#    （`[T3-GATE]` 列），⛔ **不得**改變任何落位、位次、面積、`G`、池、或任何既有輸出。
+#    ⇒ 本區塊⛔ 無任何 `return` 值被既有碼路徑消費；其呼叫端亦僅為診斷。
+#    **遞補迴圈（`K-9-17` 二·五）本批⛔ 不辦**（屬第二批）。
+# ═══════════════════════════════════════════════════════════════════════════
+
+_K923_EPS_ZERO = 1e-6      # 「∩街角地 ＝ 0」之容差（`K-9-23 三-二` 逐字）
+_K923_TOUCH_TOL = 1e-3     # 臨接長之容差帶（判別力見 `_k923_touch_len` docstring）
+
+
+def _k923_uhat(v):
+    """單位化。零向量 ⇒ **loud raise**（⛔ 不回 `None`／零向量兜底）。"""
+    _v = np.asarray(v, dtype=float)[:2]
+    _n = float(np.hypot(_v[0], _v[1]))
+    if not (_n > 0.0):
+        raise RuntimeError("🔴 _k923_uhat：零向量不可單位化（⛔ 禁靜默兜底）")
+    return _v / _n
+
+
+def _k923_rot90(v):
+    """左轉 `90°`（`(x, y) → (−y, x)`）。"""
+    _v = np.asarray(v, dtype=float)[:2]
+    return np.array([-_v[1], _v[0]], dtype=float)
+
+
+def _k923_isect(p1, d1, p2, d2):
+    """二**無限直線**之交點。平行 ⇒ 回 `None`（呼叫端須 loud，⛔ 不得靜默續行）。"""
+    _p1 = np.asarray(p1, dtype=float)[:2]
+    _p2 = np.asarray(p2, dtype=float)[:2]
+    _d1 = _k923_uhat(d1)
+    _d2 = _k923_uhat(d2)
+    _den = _d1[0] * _d2[1] - _d1[1] * _d2[0]
+    if abs(_den) < 1e-15:
+        return None
+    _w = _p2 - _p1
+    _t = (_w[0] * _d2[1] - _w[1] * _d2[0]) / _den
+    return _p1 + _t * _d1
+
+
+def _k923_touch_len(poly, p, d, tol=None):
+    r"""宗地與「過 `p` 沿 `d` 之**無限直線**」之**臨接長**
+    （＝其邊界落在 `|垂距| ≤ tol` 帶內之長度）。
+
+    🩸 ⛔ **不得用 `poly.intersection(line)`**——宗地之邊**恰落在該線上**時，
+    二維面與其切線之交集因浮點而**退化為空** ⇒ 臨接長偽 `0`
+    （`W-G.9-156` 之 `常規八` 案由：`40/40` 自證全綠而閘一逐格為 `False`）。
+    改以**逐邊裁剪至容差帶**計之。
+
+    🔒 **`tol` 之判別力**（本案實測·`W-G.9-156R`）：臨接者之 `|垂距|` 極值 `≤ 1e-5 m`，
+    而**不臨接**者之 `min|垂距|` 為 `34.87 m`（`R2` `628-42(1)`）／`38.64 m`（`R5` `628-53(2)`）
+    ⇒ 二母體相距**逾 6 個數量級**，`tol = 1e-3` 落於其間、⛔ 非湊出來之門檻。
+    """
+    _tol = float(tol if tol is not None else _K923_TOUCH_TOL)
+    _p = np.asarray(p, dtype=float)[:2]
+    _nv = _k923_rot90(_k923_uhat(d))
+    _b = float(np.dot(_p, _nv))
+    _ring = list(poly.exterior.coords)
+    _tot = 0.0
+    for _i in range(len(_ring) - 1):
+        _a0 = np.asarray(_ring[_i], dtype=float)[:2]
+        _a1 = np.asarray(_ring[_i + 1], dtype=float)[:2]
+        _f0 = float(np.dot(_a0, _nv)) - _b
+        _f1 = float(np.dot(_a1, _nv)) - _b
+        _lo, _hi = 0.0, 1.0
+        for _sgn in (+1.0, -1.0):          # 裁剪至 sgn*(f0 + t*(f1−f0)) ≤ tol
+            _c0 = _sgn * _f0 - _tol
+            _c1 = _sgn * _f1 - _tol
+            _dd = _c1 - _c0
+            if abs(_dd) < 1e-18:
+                if _c0 > 0.0:
+                    _lo, _hi = 1.0, 0.0
+                continue
+            _t = -_c0 / _dd
+            if _dd > 0.0:
+                _hi = min(_hi, _t)
+            else:
+                _lo = max(_lo, _t)
+        if _hi > _lo:
+            _tot += float(np.hypot(*(_a1 - _a0))) * (_hi - _lo)
+    return _tot
+
+
+def _k923_min_absdist(poly, p, d):
+    """宗地頂點至「過 `p` 沿 `d` 之無限直線」之 `min |垂距|`——供臨接長之**判別力佐證**。"""
+    _p = np.asarray(p, dtype=float)[:2]
+    _nv = _k923_rot90(_k923_uhat(d))
+    _b = float(np.dot(_p, _nv))
+    _vs = np.asarray(poly.exterior.coords, dtype=float)[:, :2]
+    return float(np.min(np.abs(_vs @ _nv - _b)))
+
+
+def _blue_shadow_tri(corner_poly, front_p1, front_p2, base_pt, base_dir,
+                     side_p1, side_p2, side_mid, alloc_dir, block_centroid,
+                     _label='', _side=''):
+    """🔑 **`K-9-23` 藍影之構造與選邊**（含 `K-9-16` 之外界 ＝ `B1`）。
+
+    回傳 `dict`：`P1`／`B1`／`Q`／`R`／`TA`／`TB`／`areaA`／`areaB`／`iA`／`iB`／
+    `pick`（`'A'`｜`'B'`）／`blue_area`／`blue_tri`／`sigma`／`ds`／`sigma_ds`／`sigma_rule_pick`。
+
+    - `TA` ＝ 過 `B1` 之三角形（頂點 `P1`,`B1`,`Q`）；`TB` ＝ 過 `P1` 之三角形（頂點 `P1`,`B1`,`R`）。
+    - 🔴 **選邊之唯一決定點 ＝ `∩街角地 ≤ 1e-6` 之半**；`σ·Δs` 只作**斷言**並一併出艙
+      （`sigma_rule_pick`），供與 `pick` 對拍——⛔ **不參與決定**（`自誤 179`：純號規則 `4/8` 選錯）。
+    - 🛑 二半皆重疊／皆不重疊 ⇒ **loud raise**（⛔ 不得任取·「算不出」≠「判定為偽」）。
+
+    ⚠️ **射程外**：⛔ 不涵蓋末端塊（`K-9-23 三` 之漏承加註·`W-G.9-150′`／`-154`）；
+    ⛔ 不涵蓋第 2 宗以後（其境界線間皆 ∥ALLOCLINE·`K-9-17 四`）。
+    """
+    from shapely.geometry import Polygon as _SP_bs
+    _o = np.asarray(front_p1, dtype=float)[:2]
+    _d = _k923_uhat(np.asarray(front_p2, dtype=float)[:2] - _o)
+    _bp = np.asarray(base_pt, dtype=float)[:2]
+    _bd = _k923_uhat(base_dir)
+    _su = _k923_uhat(np.asarray(side_p2, dtype=float)[:2]
+                     - np.asarray(side_p1, dtype=float)[:2])
+    _ns = _k923_rot90(_su)
+    _ah = _k923_uhat(alloc_dir)
+    _nh = _k923_rot90(_ah)
+    _smid = np.asarray(side_mid, dtype=float)[:2]
+
+    # ── 街角地之**遠側境界線**（∥SIDELINE）：取其距 SIDE_LINE 中線最遠之頂點 ──
+    _vs = np.asarray(corner_poly.exterior.coords, dtype=float)[:, :2]
+    _base = float(np.dot(_smid, _ns))
+    _far = _vs[int(np.argmax(np.abs(_vs @ _ns - _base)))]
+
+    _P1 = _k923_isect(_far, _su, _o, _d)
+    _B1 = _k923_isect(_far, _su, _bp, _bd)
+    if _P1 is None or _B1 is None:
+        raise RuntimeError(
+            f"🔴 _blue_shadow_tri[{_label}/{_side}]：`P1`／`B1` 取不到"
+            f"（遠側界 ∥ FRONTLINE 或 ∥ BASELINE）——⛔ 禁靜默續行")
+    # ── 帶：過 `P1`、過 `B1` **各**一條 ∥ALLOCLINE ⇒ 二三角形 ──
+    _Q = _k923_isect(_B1, _ah, _o, _d)      # 過 `B1` 之 ∥ALLOC ∩ FRONTLINE
+    _R = _k923_isect(_P1, _ah, _bp, _bd)    # 過 `P1` 之 ∥ALLOC ∩ BASELINE
+    if _Q is None or _R is None:
+        raise RuntimeError(
+            f"🔴 _blue_shadow_tri[{_label}/{_side}]：帶與 FRONTLINE／BASELINE 平行"
+            f"——⛔ 禁靜默續行")
+    _TA = _SP_bs([tuple(_P1), tuple(_B1), tuple(_Q)])
+    _TB = _SP_bs([tuple(_P1), tuple(_B1), tuple(_R)])
+    _iA = float(_TA.intersection(corner_poly).area)
+    _iB = float(_TB.intersection(corner_poly).area)
+
+    _cen = np.asarray(block_centroid, dtype=float)[:2]
+    _sigma = 1.0 if float(np.dot(_cen - _P1, _nh)) >= 0.0 else -1.0
+    _ds = float(np.dot(_B1 - _P1, _nh))
+    _sds = _sigma * _ds
+
+    _a0 = (_iA <= _K923_EPS_ZERO)
+    _b0 = (_iB <= _K923_EPS_ZERO)
+    if _a0 and _b0:
+        raise RuntimeError(
+            f"🔴 _blue_shadow_tri[{_label}/{_side}]：二半皆不重疊 ⇒ 定義無法決定"
+            f"（∩A={_iA:.9f}／∩B={_iB:.9f}）——⛔ 不得任取")
+    if (not _a0) and (not _b0):
+        raise RuntimeError(
+            f"🔴 _blue_shadow_tri[{_label}/{_side}]：二半皆重疊 ⇒ 定義無法決定"
+            f"（∩A={_iA:.9f}／∩B={_iB:.9f}）——⛔ 不得任取")
+    _pick = 'A' if _a0 else 'B'
+    _tri = _TA if _a0 else _TB
+    return {
+        'P1': _P1, 'B1': _B1, 'Q': _Q, 'R': _R, 'far_pt': _far,
+        'TA': _TA, 'TB': _TB, 'areaA': float(_TA.area), 'areaB': float(_TB.area),
+        'iA': _iA, 'iB': _iB,
+        'pick': _pick, 'blue_area': float(_tri.area), 'blue_tri': _tri,
+        'sigma': _sigma, 'ds': _ds, 'sigma_ds': _sds,
+        # 🔒 **斷言**（⛔ 非決定點）：`σ·Δs > 0` ⇒ 外界過 `B1`（＝取 `A`）；`< 0` ⇒ 過 `P1`（取 `B`）
+        'sigma_rule_pick': ('A' if _sds > 0.0 else 'B'),
+        'front_pt': _o, 'front_dir': _d, 'base_pt': _bp, 'base_dir': _bd,
+    }
+
+
+def _k923_gate1(poly, G, blue_area, front_pt, front_dir, base_pt, base_dir,
+                strict=True):
+    """**閘一（不交叉 ∧ 兩端臨接）**（`K-9-23 三-三` 逐字）：
+
+        `G(第 1 宗) > area(藍影)`（**嚴格大於**）
+        ∧ `len(∩FRONTLINE) > 0` ∧ `len(∩BASELINE) > 0`
+
+    🔒 **「嚴格大於」之由**（`K-9-23 三`）：`σ·Δs > 0` 之向 ⇒ `G ＝ 藍影` 時**臨 BASELINE 長 ＝ 0**；
+    `σ·Δs < 0` 之向 ⇒ **臨正街長 ＝ 0** ⇒ **兩向各壞一頭**，皆違 `K-9-13` 三段。
+    `strict=False` 僅供**判別力注入**（把 `>` 改為 `>=`），⛔ 非生產判準。
+
+    回 `(ok, detail)`；`G` 取不到 ⇒ `ok = None`（**⛔ 非 `False`**——
+    「算不出」與「判定為偽」⛔ 不得共用同一出艙碼）。
+    """
+    if G is None:
+        return None, {'G': None, 'why': '🔴 G 取不到 ⇒ 無從判定（⛔ 非判定為偽）'}
+    _lf = _k923_touch_len(poly, front_pt, front_dir)
+    _lb = _k923_touch_len(poly, base_pt, base_dir)
+    _c1 = (float(G) > float(blue_area)) if strict else (float(G) >= float(blue_area))
+    _ok = bool(_c1 and _lf > 0.0 and _lb > 0.0)
+    return _ok, {
+        'G': float(G), 'blue': float(blue_area), 'c_G': bool(_c1),
+        'len_front': _lf, 'len_base': _lb, 'c_front': bool(_lf > 0.0),
+        'c_base': bool(_lb > 0.0),
+        'min_front': _k923_min_absdist(poly, front_pt, front_dir),
+        'min_base': _k923_min_absdist(poly, base_pt, base_dir),
+        'strict': bool(strict)}
+
+
+def _k923_gate2(poly, W, D, _label=''):
+    """**閘二（可建築）** ＝ `K-9-12`：宗地範圍內可否完整容納 `W × D` 矩形
+    （**可旋轉、可平移**·`K-9-12-c`）。⇒ 逕呼 `_rect_fits_free_pose`。
+
+    🔒 `W`／`D` **一律由呼叫端自 `get_min_lot_size` 查表**（`K-9-12 二`·⛔ 不得硬編）。
+    🔒 **街角地本身⛔ 不走閘二**（`K-9-12-e`／`K-9-13` 四段）——射程之界定在呼叫端。
+    """
+    _det = {}
+    _ok = _rect_fits_free_pose(poly, W, D, _label=_label, _detail=_det)
+    return bool(_ok), _det
+
+
+_T3_NA = 'NA'              # 🔒 **不適用**（該閘之射程本不及此宗）——⛔ 與 `None`（無從判定）分立
+
+
+def _t3_fmt_gate(v):
+    """閘值之四態出艙碼：`True`／`False`／`不適用`／`無從判定`。
+
+    🛑 **四態⛔ 不得併三**——「**不適用**」（射程外·如街角地⛔ 不走閘二）與
+    「**無從判定**」（求值失敗·如 `G` 取不到）**是兩件事**，共用同一碼即重演
+    `W-G.9-14` 修法 ② 所禁之形（「我算不出這個命題」與「這個命題為偽」）。
+    """
+    if v is _T3_NA:
+        return '不適用'
+    if v is None:
+        return '無從判定'
+    return 'True' if v else 'False'
+
+
+def _t3_gate_line(_label, side, rank, pid, g1, g1d, g2, g2d, blue):
+    """組一列 `[T3-GATE]`（**逐街廓逐宗一列**·`W-G.9-187 §一 N-3` 觀測模式 1）。
+
+    `g1`／`g2` 之值域 ＝ `True`／`False`／`None`（無從判定）／`_T3_NA`（不適用）。
+
+    **綜合判之定式**（依序）：
+      ① 任一**適用**之閘為 `False` ⇒ **不配地**
+      ② 任一**適用**之閘為 `None` ⇒ **無從判定**
+      ③ 全部閘皆不適用 ⇒ **不適用**（街角地之常態）
+      ④ 其餘 ⇒ **配地（就本批已檢之二閘而言）**
+    🛑 ④ 之措辭刻意加「**就本批已檢之二閘而言**」——遞補（`K-9-17`）本批⛔ 未辦，
+       故本列⛔ 不得讀為「終局可配地」。
+
+    🛑 **本列⛔ 不參與任何判斷**——其為**診斷輸出**，讀者據以人工核對；
+    ⛔ 不得有任何碼路徑消費其內容（觀測模式之硬界 2）。
+    """
+    _app = [g for g in (g1, g2) if g is not _T3_NA]
+    if any(g is False for g in _app):
+        _v = '不配地'
+    elif any(g is None for g in _app):
+        _v = '無從判定'
+    elif not _app:
+        _v = '不適用'
+    else:
+        _v = '配地（就本批已檢之二閘而言）'
+    _num = (lambda k: '—' if g1d.get(k) is None else format(g1d[k], '.6f'))
+    _g = g1d.get('G')
+    return (f"[T3-GATE] 街廓 {_label}｜側 {side}｜位次 {rank}｜暫編地號 {pid}｜"
+            f"G {('—' if _g is None else format(float(_g), '.4f'))}｜"
+            f"藍影 {blue:.9f}｜"
+            f"閘一 {_t3_fmt_gate(g1)}（G>藍影 {g1d.get('c_G', '—')}／"
+            f"臨正街 {_num('len_front')}>0 {g1d.get('c_front', '—')}／"
+            f"臨屁股 {_num('len_base')}>0 {g1d.get('c_base', '—')}"
+            f"{('｜' + g1d['why']) if g1d.get('why') else ''}）｜"
+            f"閘二 {_t3_fmt_gate(g2)}（W×D {g2d.get('W')}×{g2d.get('D')}·"
+            f"命中角 {g2d.get('hit_angle_deg')}｜{g2d.get('reason')}）｜"
+            f"綜合 {_v}｜🛑 觀測模式·⛔ 未改變任何配地結果")
+
+
+def _t3_gate_emit(rows, _stream=None):
+    """印出 `[T3-GATE]` 各列（`X-1` ③ 之診斷輸出）。
+
+    🛑 **觀測模式**：本函式**只印**，⛔ 無回傳值被消費、⛔ 不改任何狀態。
+    ⇒ 其存在**不可能**改變 `[T2-DIAG]` 之任何欄位（`X-T`）。
+    """
+    import sys as _sys_t3
+    _out = _stream if _stream is not None else _sys_t3.stdout
+    for _r in rows:
+        print(_r, file=_out)
+    return None
+
+
 def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
                            side_line_pts, alloc_dir, block_depth, setback, min_width,
                            chamfer_tri=None, dxf_quantum=None, _label='', _side='',
