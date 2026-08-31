@@ -1,0 +1,54 @@
+==========================================================================================================================================================================
+【W-G.9-186 N-2】`ORDER_INVARIANCE` 7 tag 之執行次數與未執行之原因 — ⛔ 零生產碼
+==========================================================================================================================================================================
+  🔒 觀測鉤 ＝ 生產碼自身之 `_proj_pop_note`（env `WV_PROJ_POP_COUNT`）⇒ ⛔ 未覆寫任何 assert 函式
+  執行情形（⛔ 非停機款·照實載）：R2→RuntimeError: 🔴 結構閘 telescoping 破：街廓 R2 left 側 ΣRw_實跑=100.02 ≠ R(W_final=34.39)−R(W₀=6.98)=44.41（Δ=55.60；R4→RuntimeError: 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.41（Δ=2.425 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未；R5→RuntimeError: 街廓 R5 抵費地計算失敗：🔴 ②-宗 圍堵閘破[R5]：宗-宗重疊 = 56.8186 > 上界 1.5999（(宗數8−1)×0.005×深度45.71）——**超出捨入量子可
+  計數檔 ＝ wg9186_projpop_count.txt（32 列）
+
+【N-2 a】**全 `14` tag** 之執行次數（🔒 由生產碼自身之 `_proj_pop_note` 記錄）
+  tag                          kind                     執行次數 判
+  app:v2/pre_seq               POP_SYNC                    6 ✅ 有執行
+  app:main/v2_caller           POP_SYNC                    0 🔴 **零**
+  stepg:v2_caller              POP_SYNC                    6 ✅ 有執行
+  app:main/_rank_by_tpid       POP_SYNC                    0 🔴 **零**
+  sp:_rank_by_tpid             POP_SYNC                    6 ✅ 有執行
+  stepg:_proj_rank             POP_SYNC                    6 ✅ 有執行
+  wf_f0:_proj_order            ORDER_INVARIANCE            0 🔴 **零**
+  wf_f2:_proj_order            ORDER_INVARIANCE            0 🔴 **零**
+  wf_f3:_proj_order            ORDER_INVARIANCE            0 🔴 **零**
+  wf_f4:_proj_order            ORDER_INVARIANCE            0 🔴 **零**
+  wf_f1:_order                 ORDER_INVARIANCE            0 🔴 **零**
+  wf_f4:_order_fb              ORDER_INVARIANCE            0 🔴 **零**
+  wf_f4:_order                 ORDER_INVARIANCE            0 🔴 **零**
+  app:k6step0/_ordered         NAME_DERIVATION             8 ✅ 有執行
+
+  類 NAME_DERIVATION    tag 1 個／執行總次數 8／**零執行之 tag 0 個**
+  類 ORDER_INVARIANCE   tag 7 個／執行總次數 0／**零執行之 tag 7 個**
+  類 POP_SYNC           tag 6 個／執行總次數 24／**零執行之 tag 2 個**
+
+【N-2 b·`X-3` 判別力對照】一個**確有執行**之 tag，其數須非 `0`
+  對照組（實得非零者·前 3）：[('app:k6step0/_ordered', 8), ('sp:_rank_by_tpid', 6), ('stepg:v2_caller', 6)]
+  ⇒ ✅ **量測器非紅**（同一觀測鉤對確有執行之 tag 得非 `0`）⇒ ⛔ 不觸 `X-3`
+
+【N-2 c】`ORDER_INVARIANCE` 之 `7` tag——**未執行之原因**（逐 tag）
+  🔒 `_projection_order` 之**實際**呼叫者 frame（4 個相異）：
+     <app.py:harvest>                           :7998   _spatial_order_parcels_v2
+     <app.py:harvest>                           :11682  k6_step0_merge
+     verify/selection_pipeline.py               :344    run_corner_pk
+     verify/stepg_pipeline.py                   :507    run_step_g
+
+  tag                      呼叫點                                  執行次數 模組已 import？    原因之判
+  wf_f0:_proj_order        verify/wf_f0.py:256                     0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+  wf_f2:_proj_order        verify/wf_f2.py:95                      0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+  wf_f3:_proj_order        verify/wf_f3.py:78                      0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+  wf_f4:_proj_order        verify/wf_f4.py:1047                    0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+  wf_f1:_order             verify/wf_f1.py:376                     0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+  wf_f4:_order_fb          verify/wf_f4.py:1437                    0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+  wf_f4:_order             verify/wf_f4.py:1512                    0 **否**          **情境不適用**（該呼叫點所在函式⛔ 未被進入）
+
+  🔒 **原因之總判**：`wf_f0`〜`wf_f4` 之主路徑於現行 harness **從不執行**
+     （`run_verification` 於 `②-宗 圍堵閘破[R2]` 中止·【倉】`CLAUDE.md` 之 harness 限制）
+     ⇒ `7` tag 皆屬**情境不適用**、⛔ 非死碼（其碼面確有呼叫點）、⛔ 非分支未進。
+
+🛑 本檔只量·⛔ 未修·⛔ 未刪任何 tag·⛔ 未動生產碼一字·⛔ 未立任何新閘。
+==========================================================================================================================================================================
