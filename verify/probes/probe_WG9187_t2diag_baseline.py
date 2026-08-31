@@ -8,6 +8,11 @@ r"""**W-G.9-187 `S-5`／`X-T`**：六街廓 `[T2-DIAG]` **整列逐位**之基�
 > 全欄位**並落檔（`verify/out/probe_WG9187_baseline_f2ea2e4d.log`）。
 > 🛑 **此係 `X-T` 之唯一比較端**，須在**動任何一字之前**取得。
 
+🔧 **檔名之更正（`W-G.9-188 裁 D`）**：上開**逐字引錄**內之 `probe_WG9187_baseline_f2ea2e4d.log` ⛔ 一字不改
+（其為施工單原文·`戒 39 ②` 之框 ＝ 原始位元組）；**實際落檔名已改為 `probe_WG9187_baseline_76378d09.log`**
+——單所令之名內嵌 `f2ea2e4`，而本批之**真實基座係 `76378d0`**（`f2ea2e4` 之直系子·
+成因見報告 `§零-1`）⇒ 檔名之 rev 與基座不符，依 `常規三`（檔名·⛔ 無土地後果）由發單側裁定更名。
+
 `W-G.9-187 §二 X-T`（逐字）：
 
 > 🔑 **落地前後，`R1`〜`R6` 六街廓之 `[T2-DIAG]` 全欄位逐位相同**（比較端 ＝ `S-5` 之基準量）。
@@ -63,7 +68,7 @@ def main():                                                          # noqa: C90
             pass
     os.makedirs(OUTDIR, exist_ok=True)
 
-    name = os.environ.get("WV_OUT_NAME") or "probe_WG9187_baseline_f2ea2e4d.log"
+    name = os.environ.get("WV_OUT_NAME") or "probe_WG9187_baseline_76378d09.log"
     path = os.path.join(OUTDIR, name)
     if os.path.exists(path) and os.environ.get("WV_ALLOW_OVERWRITE") != "1":
         raise RuntimeError("拒絕覆寫既有 log：" + path)
