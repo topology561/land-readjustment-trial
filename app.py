@@ -9119,7 +9119,10 @@ def k956_W_from_mp(point, side_mid, allocation_dir, d_hat):
     🔧 **現況之更正（`W-G.9-190R` commit 3·⛔ 上二行一字不刪·留作沿革）**：
       **族②（`_W_prev_*` 初值）已於本批切為新式 `0.0`**（逐字同
       `verify/stepg_pipeline.py:628-629`）⇒ 上二行之「族②③ 仍取舊式」**對族② 已成偽**。
-      **族③（`_select_pool_slot` 之 `'b'`）於本 commit 仍取舊式**——其切換係同批之次一 commit。
+      **族③（`_select_pool_slot` 之 `'b'`）已於同批次一 commit 切為新式**（`W-G.9-190R` commit 4）
+      ——逐字複刻 `verify/stepg_pipeline.py:812-844`，其 `_mp_base_W0` 係**純委派**至本函式。
+      ⇒ 🔒 **族②③ 之遷移（`W-G.9-5` contract 側）於 `W-G.9-190R` 至此完成**；
+        上方「族②③ 仍取舊式」一句**⛔ 已全數成偽**（⛔ 不刪·留作沿革）。
       🔒 ⛔ 本更正**不改**本函式之語意，亦⛔ 不使本函式之值進入生產路徑。
     · 二式之差已解析定式（`W-G.9-2`）：**舊式 ＝ 本式 − `W_0`**，
       `W_0 = dot(群起點 − mp, â)`；相等**當且僅當 `W_0 = 0`**，而正典明載其**照實可負**。
@@ -21267,14 +21270,52 @@ def main():
                         else:
                             # ① 基準趟（k=naive、不落 rows）取真寬度 w_i（⊥ALLOC；D-1 Option A）
                             _adv_base = _advance_block_with_split(_k_naive, False)
-                            # ② 真寬度餵 _select_pool_slot（Q2：b＝buffer_S×cos_dn 入 W 軸；
+                            # ② 真寬度餵 _select_pool_slot（Q2：b＝**W 正典 W₀**（見下 `_b_L0`／`_b_R0`）；
+                            #    🔧 **更正（`W-G.9-190R` commit 4·族③ 之切換）**：本行原逐字載
+                            #    「Q2：b＝buffer_S×cos_dn 入 W 軸」——該述於本批**已成偽**；
                             #    Q3：F/l1 與推進迴圈同源＝_F_left/_lside_left/_F_right/_lside_right）
+                            # 🆕 W 正典 W₀（補丁八 §一·脫鉤 S）：選槽理論之 forced 起始 W 改＝**首宗近側 KL W**
+                            #   ＝(群起點 + buffer·d̂ − mp)·â_定向·取代舊 `buffer·cos_dn`（群起點 telescoping 約定·已作廢）。
+                            #   使 _select_pool_slot 之理論 ΣRw 與實跑（solve_G_binary KL W）同源（理論＝實跑閘·禁 #20 脫鉤）。
+                            # 🔧 **族③ 之切換（`W-G.9-190R` commit 4·`W-G.9-5` contract 側）**：本段係**逐字複刻**
+                            #   `verify/stepg_pipeline.py:812-844`（該檔本批⛔ 不改——本批係令 app 對齊 harness）。
+                            #   🛑 ⛔ **未於 `app.py` 另寫第二份 `W` 定義**（`GB-48` 族·`app.py` 之 `k956_W_from_mp`
+                            #      docstring 明令）——下列 `_mp_base_W0` 係**純委派**至該單一產生者。
+                            def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
+                                # 🔒 **純委派**至 `k956_W_from_mp`（`grep -n "def k956_W_from_mp" app.py`）：
+                                #   本處僅把「群起點沿 d̂ 推進 `_buf`」算成點，再交由單一產生者量
+                                #   `W = dot(P − mp, â_定向)`。⛔ **語意不變、簽章不變**。
+                                #   ⚠️ `_du` 於此仍需自算（因 `P` 之構成需要它）；其式**逐字同 stepg**，
+                                #      ⛔ 不得改為先正規化再傳（會改變 `_dn ≤ 1e-9` 之退化行為）。
+                                if _gs is None or _mp is None or _adir is None or _dv is None:
+                                    return 0.0
+                                _dv2 = _np_d.asarray(_dv, dtype=float)
+                                _dn = float(_np_d.linalg.norm(_dv2))
+                                _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+                                _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
+                                return float(k956_W_from_mp(_bp0, _mp, _adir, _dv))
+                            # 右組群起點 end_pt 於此重算（`_advance_block_with_split` 內 end_pt 為其局部·此處不可見）。
+                            #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：四處同源 `_oblique_s_max`（#20）。
+                            _end_pt_o = None; _dhr_o = None
+                            if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+                                _smax_o = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt,
+                                                         allocation_dir_block)
+                                if _smax_o is not None:
+                                    _end_pt_o = corner_pt + _smax_o * _np_d.asarray(d_hat, dtype=float)
+                                    _dhr_o = -_np_d.asarray(d_hat, dtype=float)
+                            # 🔒 K-9-5-12（五）-1「首宗起點一律為 0」＋ K-9-5-13 裁定二「起算一律用真正的地界」
+                            #    ⇒ 非 forced 之選槽起算點校回 0（施工單 W-G.9-27·影響估算見 W-G.9-23）。
+                            #    ⛔ forced 側維持原式——其目標為抵費地遠側界，卡「保留區之表示法」（W-G.9-19 D3）。
+                            _b_L0 = (_mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left,
+                                                 allocation_dir_block) if _fo_left else 0.0)
+                            _b_R0 = (_mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right,
+                                                 allocation_dir_block) if _fo_right else 0.0)
                             _slot_res = _select_pool_slot(
                                 _adv_base['widths'],
                                 {'has': _has_left_corner, 'F': _F_left,
-                                 'l1': _lside_left, 'b': _left_buffer_S * _cos_dn},
+                                 'l1': _lside_left, 'b': _b_L0},
                                 {'has': _has_right_corner, 'F': _F_right,
-                                 'l1': _lside_right, 'b': _right_buffer_S * _cos_dn},
+                                 'l1': _lside_right, 'b': _b_R0},
                             )
                             _k_star = int(_slot_res['k'])
                             # 停機②（J 下降）看守：argmax 保證 J(k*)≥J(naive)；破＝實作 bug
