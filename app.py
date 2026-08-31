@@ -9116,6 +9116,11 @@ def k956_W_from_mp(point, side_mid, allocation_dir, d_hat):
     · `verify/stepg_pipeline.py` 之 `_mp_base_W0` **已改為純委派**至本函式（語意不變）。
     · `app.py` 之族②③（`_W_prev_*`／`_select_pool_slot` 之 `'b'`）**仍取舊式**
       `buf · _cos_dn`，本函式之值**僅入診斷**——⛔ **未進生產路徑**。
+    🔧 **現況之更正（`W-G.9-190R` commit 3·⛔ 上二行一字不刪·留作沿革）**：
+      **族②（`_W_prev_*` 初值）已於本批切為新式 `0.0`**（逐字同
+      `verify/stepg_pipeline.py:628-629`）⇒ 上二行之「族②③ 仍取舊式」**對族② 已成偽**。
+      **族③（`_select_pool_slot` 之 `'b'`）於本 commit 仍取舊式**——其切換係同批之次一 commit。
+      🔒 ⛔ 本更正**不改**本函式之語意，亦⛔ 不使本函式之值進入生產路徑。
     · 二式之差已解析定式（`W-G.9-2`）：**舊式 ＝ 本式 − `W_0`**，
       `W_0 = dot(群起點 − mp, â)`；相等**當且僅當 `W_0 = 0`**，而正典明載其**照實可負**。
     ⇒ 切換屬 **`W-G.9-5`**（contract 側）。
@@ -20987,11 +20992,16 @@ def main():
                             left_cum_S = float(_left_buffer_S)
                             right_cum_S = float(_right_buffer_S)   # 同理右側
                             # 🆕 W-C §4：thread 累積 W_前（首筆=0；forced_offset 時=buffer 臨街寬）
-                            _W_prev_left = (_left_buffer_S * _cos_dn) if _has_left_corner else 0.0
-                            _W_prev_right = (_right_buffer_S * _cos_dn) if _has_right_corner else 0.0
+                            _W_prev_left = 0.0
+                            _W_prev_right = 0.0
                             # ── 🆕 **W-G.9-4（expand）：併行計算 `K-9-5-6` 之正典直量** ──────────
-                            #   🔴 **⛔ 本段之值<u>不進生產路徑</u>**：上二行之 `_W_prev_*` 仍取舊式
-                            #   `buf · _cos_dn`；本段只寫診斷欄，供 `W-G.9-5`（contract 側）對拍。
+                            #   🔴 **⛔ 本段之值<u>不進生產路徑</u>**；本段只寫診斷欄，
+                            #   供 `W-G.9-5`（contract 側）對拍。
+                            #   🔧 **更正（`W-G.9-190R` commit 3·族② 之切換）**：本段原逐字載
+                            #   「上二行之 `_W_prev_*` **仍取舊式** `buf · _cos_dn`」——該述於本批
+                            #   **已成偽**：上二行已切為新式 `0.0`（逐字同
+                            #   `verify/stepg_pipeline.py:628-629`）⇒ **contract 側之遷移已完成**。
+                            #   ⚠️ 本段之併行診斷**仍保留**（其受詞係 `K-9-5-6` 之直量、⛔ 非初值）。
                             #   ⛔ **不得以任何條件分支讓下列 `_W_new_*` 進入生產消費**（`W-G.9-4` §2-1）。
                             #
                             #   正典（權威序**第 1 級**）`K-9-5-6`：`W_i` ＝ MP → 本宗**遠側**界之垂距
