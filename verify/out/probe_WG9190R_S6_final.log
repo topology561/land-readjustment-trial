@@ -1,0 +1,177 @@
+============================================================================================================================
+【W-G.9-189 S-6】複刻區同步閘——AST 正規化對拍 ＋ 遞迴下鑽（⛔ 零生產碼）
+============================================================================================================================
+  母體 ＝ app.py（23463 列）／verify/stepg_pipeline.py（1454 列）之四組對應區
+  界定 ＝ AST FunctionDef／For 節點（⛔ 非自陳之舊行號「約 14650-15450」）
+  正規化 ＝ ①縮排(AST天然) ②註解/docstring(逐層剝) ③ns["X"]→X ＋ st.session_state→ss
+  🔒 直譯器 ＝ CPython 3.13.11 ｜ 🛑 下列 `ast.dump` 之 **bytes ⛔ 非跨環境錨**（`3.12.3` 與 `3.13.11` 得數不同，而**判定與實質差處數逐項相同**）⇒ **只對拍判定與差數**（`W-G.9-190R §八-2 4.`·⛔ 不鑄號）
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+■ _build_g_row               app @20588 ／stepg @346  　正規化後全等 = True （dump 4353 B vs 4353 B）
+   ⇒ ✅ **零分歧**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+■ _solve_one                 app @20631 ／stepg @387  　正規化後全等 = True （dump 1293 B vs 1293 B）
+   ⇒ ✅ **零分歧**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+■ _advance_block_with_split  app @20959 ／stepg @593  　正規化後全等 = False（dump 23593 B vs 20641 B）
+   ⇒ 本區新增：實質差 4 ／ st.* 略去 0
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+■ 逐街廓迴圈                      app @20650 ／stepg @402  　正規化後全等 = False（dump 77162 B vs 94370 B）
+   ⇒ 本區新增：實質差 17 ／ st.* 略去 0
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+■ `st.*` 略去：共 0 處
+
+■ 🔴 **實質差**：共 21 處
+    1. [_advance_block_with_split] <頂層>　（insert）
+        stg ▸ _W0_left = 0.0
+        stg ▸ _W0_right = 0.0
+        stg ▸ _W0_left_set = False
+        stg ▸ …（另 3 句）
+    2. [_advance_block_with_split] <頂層>　（delete）
+        app ▸ try:
+    3. [_advance_block_with_split] <頂層>　（replace）
+        app ▸ for entry in left_group:
+        app ▸ if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+        stg ▸ for entry in left_group:
+        stg ▸ if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+    4. [_advance_block_with_split] <頂層>　（replace）
+        app ▸ for entry in right_group:
+        app ▸ return {'rows': _rows_local, 'trace': _trace_local, 'widths': _widths_local, 'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
+        stg ▸ for entry in right_group:
+        stg ▸ return {'rows': _rows_local, 'trace': _trace_local, 'widths': _widths_local, 'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
+    5. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ _depth_map_g = ss.get('f3_alloc_depth_by_label', {}) or {}
+        app ▸ if float(_depth_map_g.get(blk_label, 0.0) or 0.0) <= 0:
+        app ▸ avg_depth_default = float(_depth_map_g[blk_label])
+        app ▸ …（另 3 句）
+        stg ▸ avg_depth_default = float((ss.get('f3_alloc_depth_by_label', {}) or {}).get(blk_label) or (blk_area / front_len if front_len > 0 e
+    6. [逐街廓迴圈] <頂層>　（delete）
+        app ▸ allocation_dir_block = None
+    7. [逐街廓迴圈] if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get　（replace）
+        app ▸ try:
+        stg ▸ _p1_fl = _cad_fl_blk['p1']
+        stg ▸ _p2_fl = _cad_fl_blk['p2']
+        stg ▸ _dx_fl = _p2_fl[0] - _p1_fl[0]
+        stg ▸ …（另 3 句）
+    8. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ if allocation_dir_block is None:
+        app ▸ _mbl_block = (ss.get('f3_manual_baseline', {}) or {}).get(blk_label, {})
+        app ▸ if d_hat is None and _mbl_block.get('enabled') and _mbl_block.get('point') and (blk_poly is not None):
+        app ▸ …（另 2 句）
+        stg ▸ if _alloc_dir_cad is not None and d_hat is not None:
+    9. [逐街廓迴圈] <orelse>　（replace）
+        app ▸ _v2_cad_fl = (ss.get('f3_cad_front_lines', {}) or {}).get(blk_label, {}) or {}
+        app ▸ _v2_fl_p1 = _v2_cad_fl.get('p1')
+        app ▸ _v2_fl_p2 = _v2_cad_fl.get('p2')
+        app ▸ …（另 2 句）
+        stg ▸ _v2_fl_p1 = _cad_fl_blk.get('p1')
+        stg ▸ _v2_fl_p2 = _cad_fl_blk.get('p2')
+        stg ▸ _proj_pop_assert_seq('stepg:v2_caller', _stage1_parcels, parcels_in_blk, blk=blk_label)
+   10. [逐街廓迴圈] <頂層>　（insert）
+        stg ▸ if not _degenerate_order:
+   11. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ _corner_min_table = ss.get('f3L_corner_min_table', []) or []
+        app ▸ _row_for_buffer = next((r for r in _corner_min_table if r.get('街廓') == blk_label), None)
+        stg ▸ _row_for_buffer = rows_by_lbl.get(blk_label)
+   12. [逐街廓迴圈] <頂層>　（delete）
+        app ▸ if _left_buffer_S > 0 or _right_buffer_S > 0:
+        app ▸ ss.setdefault('f3_forced_offset_diag', {})[blk_label] = {'left_forced': _fo_left, 'right_forced': _fo_right, 'left_buffer_S': roun
+   13. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ def _advance_block_with_split(_k_split, _commit):
+        app ▸ for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (('左', _has_left_corner, _F_left, _lside_left), ('右', _has_right_corner, _F_right, _lsi
+        stg ▸ for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (('左', _has_left_corner, _F_left, _lside_left), ('右', _has_right_corner, _F_right, _lsi
+        stg ▸ def _advance_block_with_split(_k_split, _commit):
+   14. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ if _degenerate_order or _N <= 1:
+        app ▸ if _stage2_parcels:
+        stg ▸ if _degenerate_order or _N <= 1:
+        stg ▸ _Wf_stage1 = {'left': float(_adv_final.get('Wf_left', 0.0) or 0.0), 'right': float(_adv_final.get('Wf_right', 0.0) or 0.0)}
+        stg ▸ _stage2_ids = {tp['暫編地號'] for tp in _stage2_parcels}
+        stg ▸ …（另 1 句）
+   15. [逐街廓迴圈] <頂層>　（delete）
+        app ▸ left_cum_S = _adv_final['left_cum_S']
+        app ▸ right_cum_S = _adv_final['right_cum_S']
+   16. [逐街廓迴圈] <頂層>　（delete）
+        app ▸ if left_cum_S + right_cum_S > S_block_max + 0.5:
+   17. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ if blk_poly is not None:
+        stg ▸ offset_geoms = []
+        stg ▸ if blk_poly is not None:
+   18. [逐街廓迴圈] for _r_lot in _adv_final['rows']: › if _dev > _tol_lot:　（replace）
+        app ▸ st.error(f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 {_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > 上界 {_tol_lot:.4f}（0.005×深度{avg_depth_d
+        app ▸ st.stop()
+        stg ▸ raise RuntimeError(f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 {_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > 上界 {_tol_lot:.4f}（0.005×深度{a
+   19. [逐街廓迴圈] <頂層>　（insert）
+        stg ▸ def _rw_stage1_only(_side_tag):
+        stg ▸ _IFACE_TOL = 0.1
+        stg ▸ _PAR_TOL = 1e-06
+        stg ▸ …（另 6 句）
+   20. [逐街廓迴圈] <頂層>　（insert）
+        stg ▸ for _sd_tag, _sd_has, _sd_W0, _sd_Wf in (('left', _has_left_corner, _adv_final['W0_left'], _adv_final['Wf_left']), ('right', _has_
+        stg ▸ for _sd_t2, _sd_has_t2, _W1_end_t2, _Wf_t2 in (('left', _has_left_corner, _Wf_stage1['left'], _adv_final['Wf_left']), ('right', _h
+        stg ▸ _mw_blk_z = float((ss.get('f3_min_width_by_label', {}) or {}).get(blk_label, 0.0) or 0.0)
+        stg ▸ …（另 3 句）
+   21. [逐街廓迴圈] <頂層>　（replace）
+        app ▸ ss['f3_wd2_pool_diag'][blk_label] = {'n': _N, 'k_naive': _k_naive, 'k*': _k_star, 'J(naive)': round(float(_t_naive.get('J', 0.0)),
+        app ▸ if _verdict_wd2 == '🔴 守恆破':
+        stg ▸ pool_diag[blk_label] = {'n': _N, 'k_naive': _k_naive, 'k*': _k_star, 'J(naive)': round(float(_t_naive.get('J', 0.0)), 4), 'J(k*)':
+        stg ▸ if _verdict_wd2 == '🔴 守恆破':
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+🔑 **遞補所在之二迴圈**（`for entry in left_group:`／`right_group:`）之單獨下鑽
+   （🛑 本區即 `K-9-17` 遞補之落點 ⇒ 其分歧最具決定性）
+
+── for entry in left_group　app @21071／stepg @638　正規化後 body：app 28 句／stepg 28 句／全等 = False
+   [replace] app[14:15]／stepg[14:15]
+     ── app 側敘述 #14（正規化後 unparse）──
+        if _has_left_corner:
+            _W_prev_left = float(res.get('W_far', _W_prev_left))
+     ── stepg 側敘述 #14（正規化後 unparse）──
+        if _has_left_corner:
+            if not _W0_left_set:
+                _W0_left = float(res.get('W_near', 0.0))
+                _W0_left_set = True
+                _Wfirst_left = float(res.get('W', 0.0))
+            _W_prev_left = float(res.get('W_far', _W_prev_left))
+
+── for entry in right_group　app @21154／stepg @712　正規化後 body：app 29 句／stepg 29 句／全等 = False
+   [replace] app[14:16]／stepg[14:16]
+     ── app 側敘述 #14（正規化後 unparse）──
+        if float(res.get('area_geom', 0)) < 0.5 and d_hat_rev is not None and (baseline_pt is not None):
+            for _adj in (0.1, 0.3, 0.5):
+                _try_pt = baseline_pt + _adj * d_hat_rev
+                _try_S = max(0.1, S_remain - _adj)
+                _r2, _sl2 = _solve_one(a_m2, A_ratio, l_front, l_side_use, F_use, blk_poly, d_hat_rev, _try_pt, _try_S, is_first_corner_r, side, avg_depth_def
+                if float(_r2.get('area_geom', 0)) >= 0.5:
+                    res, solver_label = (_r2, _sl2)
+                    if _commit:
+                        st.info(f'ℹ️ 街廓 {blk_label} 右側起點數值微修 {_adj}m 後成功切出土地')
+                    break
+     ── app 側敘述 #15（正規化後 unparse）──
+        if _has_right_corner:
+            _W_prev_right = float(res.get('W_far', _W_prev_right))
+     ── stepg 側敘述 #14（正規化後 unparse）──
+        if float(res.get('area_geom', 0)) < 0.5 and d_hat_rev is not None and (baseline_pt is not None):
+            for _adj in (0.1, 0.3, 0.5):
+                _try_pt = baseline_pt + _adj * d_hat_rev
+                _try_S = max(0.1, S_remain - _adj)
+                _r2, _sl2 = _solve_one(a_m2, A_ratio, l_front, l_side_use, F_use, blk_poly, d_hat_rev, _try_pt, _try_S, is_first_corner_r, side, avg_depth_def
+                if float(_r2.get('area_geom', 0)) >= 0.5:
+                    res, solver_label = (_r2, _sl2)
+                    break
+     ── stepg 側敘述 #15（正規化後 unparse）──
+        if _has_right_corner:
+            if not _W0_right_set:
+                _W0_right = float(res.get('W_near', 0.0))
+                _W0_right_set = True
+                _Wfirst_right = float(res.get('W', 0.0))
+            _W_prev_right = float(res.get('W_far', _W_prev_right))
+
+── 判別力對照（證比對器**非恆綠**）──
+   注入：`_build_g_row` 之首個 `round(` → `int(`（必然改語意）
+   源碼相同 = False（須 False）／AST 仍判全等 = False（須 False）✅
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+🛑 `X-1` 之判：**實質差 21 處** ⇒ 🛑 **觸發·停機上呈**
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════

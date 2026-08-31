@@ -1,0 +1,125 @@
+============================================================================================================================
+【W-G.9-190R commit 5】`S-6` 四分分類器（`W-G.9-188 裁 一`）— ⛔ 零生產碼
+============================================================================================================================
+  🛑 判準（機檢可判·⛔ 不得逐案裁量）：
+     乙 ＝ **封閉白名單**（`st.<...>` 呼叫／`with st.<...>`／`ss[...]` 寫入／`raise RuntimeError`）·**名單外之任一敘述形 ⇒ 歸甲**
+     丙 ＝ 單側獨有 ＋ **AST def-use**：所寫回之名若為共用流程所讀 ⇒ **歸甲**
+     丁 ＝ 僅**無裝飾器**之 `FunctionDef`／`ClassDef` 重排（名集須相同）
+     甲 ＝ 其餘（🛑 停機款）
+
+── 逐項四分（共 21 項）──
+   1. [丙] _advance_block_with_split › <頂層>（insert）
+        理由：單側獨有守備；其所寫回之名 ['_W0_left', '_W0_left_set', '_W0_right', '_W0_right_set', '_Wfirst_left', '_Wfirst_right'] **⛔ 未**為共用流程所讀
+        stg ▸ _W0_left = 0.0
+        stg ▸ _W0_right = 0.0
+   2. [丙] _advance_block_with_split › <頂層>（delete）
+        理由：單側獨有守備；其所寫回之名 ['_W0_l', '_W0_r', '_Wn_l', '_Wn_r', '_dg_slot', '_dn_diag', '_du_diag', '_gs_l', '_gs_r', '_smax_diag'] **⛔ 未**為共用流程所讀
+        app ▸ try:
+   3. [甲] _advance_block_with_split › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ for entry in left_group:
+        app ▸ if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+        stg ▸ for entry in left_group:
+        stg ▸ if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+   4. [甲] _advance_block_with_split › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ for entry in right_group:
+        app ▸ return {'rows': _rows_local, 'trace': _trace_local, 'widths': _widths_local, 'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
+        stg ▸ for entry in right_group:
+        stg ▸ return {'rows': _rows_local, 'trace': _trace_local, 'widths': _widths_local, 'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
+   5. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ _depth_map_g = ss.get('f3_alloc_depth_by_label', {}) or {}
+        app ▸ if float(_depth_map_g.get(blk_label, 0.0) or 0.0) <= 0:
+        stg ▸ avg_depth_default = float((ss.get('f3_alloc_depth_by_label', {}) or {}).get(blk_label) or (blk_area / front_len if front_len > 0 e
+   6. [甲] 逐街廓迴圈 › <頂層>（delete）
+        理由：單側獨有碼**寫回**了共用流程所讀之名 ⇒ def-use 判甲：['allocation_dir_block']
+        app ▸ allocation_dir_block = None
+   7. [甲] 逐街廓迴圈 › if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ try:
+        stg ▸ _p1_fl = _cad_fl_blk['p1']
+        stg ▸ _p2_fl = _cad_fl_blk['p2']
+   8. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ if allocation_dir_block is None:
+        app ▸ _mbl_block = (ss.get('f3_manual_baseline', {}) or {}).get(blk_label, {})
+        stg ▸ if _alloc_dir_cad is not None and d_hat is not None:
+   9. [甲] 逐街廓迴圈 › <orelse>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ _v2_cad_fl = (ss.get('f3_cad_front_lines', {}) or {}).get(blk_label, {}) or {}
+        app ▸ _v2_fl_p1 = _v2_cad_fl.get('p1')
+        stg ▸ _v2_fl_p1 = _cad_fl_blk.get('p1')
+        stg ▸ _v2_fl_p2 = _cad_fl_blk.get('p2')
+  10. [甲] 逐街廓迴圈 › <頂層>（insert）
+        理由：單側獨有碼**寫回**了共用流程所讀之名 ⇒ def-use 判甲：['tp']
+        stg ▸ if not _degenerate_order:
+  11. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ _corner_min_table = ss.get('f3L_corner_min_table', []) or []
+        app ▸ _row_for_buffer = next((r for r in _corner_min_table if r.get('街廓') == blk_label), None)
+        stg ▸ _row_for_buffer = rows_by_lbl.get(blk_label)
+  12. [丙] 逐街廓迴圈 › <頂層>（delete）
+        理由：單側獨有守備；其所寫回之名 ['_msg_buf'] **⛔ 未**為共用流程所讀
+        app ▸ if _left_buffer_S > 0 or _right_buffer_S > 0:
+        app ▸ ss.setdefault('f3_forced_offset_diag', {})[blk_label] = {'left_forced': _fo_left, 'right_forced': _fo_right, 'left_buffer_S': roun
+  13. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ def _advance_block_with_split(_k_split, _commit):
+        app ▸ for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (('左', _has_left_corner, _F_left, _lside_left), ('右', _has_right_corner, _F_right, _lsi
+        stg ▸ for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (('左', _has_left_corner, _F_left, _lside_left), ('右', _has_right_corner, _F_right, _lsi
+        stg ▸ def _advance_block_with_split(_k_split, _commit):
+  14. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ if _degenerate_order or _N <= 1:
+        app ▸ if _stage2_parcels:
+        stg ▸ if _degenerate_order or _N <= 1:
+        stg ▸ _Wf_stage1 = {'left': float(_adv_final.get('Wf_left', 0.0) or 0.0), 'right': float(_adv_final.get('Wf_right', 0.0) or 0.0)}
+  15. [丙] 逐街廓迴圈 › <頂層>（delete）
+        理由：單側獨有守備；其所寫回之名 ['left_cum_S', 'right_cum_S'] **⛔ 未**為共用流程所讀
+        app ▸ left_cum_S = _adv_final['left_cum_S']
+        app ▸ right_cum_S = _adv_final['right_cum_S']
+  16. [丙] 逐街廓迴圈 › <頂層>（delete）
+        理由：單側獨有守備；其所寫回之名 （無） **⛔ 未**為共用流程所讀
+        app ▸ if left_cum_S + right_cum_S > S_block_max + 0.5:
+  17. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ if blk_poly is not None:
+        stg ▸ offset_geoms = []
+        stg ▸ if blk_poly is not None:
+  18. [乙] 逐街廓迴圈 › for _r_lot in _adv_final['rows']: › if _dev > _tol_lot:（replace）
+        理由：全部敘述皆落於封閉白名單，且二側識別符之**對稱差** ['RuntimeError', 'error', 'st', 'stop'] ⊆ 白名單
+        app ▸ st.error(f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 {_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > 上界 {_tol_lot:.4f}（0.005×深度{avg_depth_d
+        app ▸ st.stop()
+        stg ▸ raise RuntimeError(f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 {_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > 上界 {_tol_lot:.4f}（0.005×深度{a
+  19. [甲] 逐街廓迴圈 › <頂層>（insert）
+        理由：單側獨有碼**寫回**了共用流程所讀之名 ⇒ def-use 判甲：['r']
+        stg ▸ def _rw_stage1_only(_side_tag):
+        stg ▸ _IFACE_TOL = 0.1
+  20. [丙] 逐街廓迴圈 › <頂層>（insert）
+        理由：單側獨有守備；其所寫回之名 ['_W1_end_t2', '_Wf1_z', '_Wf_t2', '_adv_a', '_ah_a', '_bad_a', '_bad_b', '_bad_c', '_cen_a', '_cross_a', '_exp_s2', '_first_floor', '_has_a', '_has_z', '_ifs_a', '_ifs_b', '_ifs_c', '_mp_a', '_mw_blk_z', '_nodes_a', '_nodes_b', '_nodes_c', '_nrm_a', '_re', '_rw_s2', '_sd_W0', '_sd_Wf', '_sd_a', '_sd_has', '_sd_has_t2', '_sd_t2', '_sd_tag', '_sd_tag2', '_sd_z', '_sum_delta_c', '_sum_rw_side', '_tele_exp', '_th', '_th_key', 'd'] **⛔ 未**為共用流程所讀
+        stg ▸ for _sd_tag, _sd_has, _sd_W0, _sd_Wf in (('left', _has_left_corner, _adv_final['W0_left'], _adv_final['Wf_left']), ('right', _has_
+        stg ▸ for _sd_t2, _sd_has_t2, _W1_end_t2, _Wf_t2 in (('left', _has_left_corner, _Wf_stage1['left'], _adv_final['Wf_left']), ('right', _h
+  21. [甲] 逐街廓迴圈 › <頂層>（replace）
+        理由：⛔ 不落於乙／丙／丁之任一機械判準
+        app ▸ ss['f3_wd2_pool_diag'][blk_label] = {'n': _N, 'k_naive': _k_naive, 'k*': _k_star, 'J(naive)': round(float(_t_naive.get('J', 0.0)),
+        app ▸ if _verdict_wd2 == '🔴 守恆破':
+        stg ▸ pool_diag[blk_label] = {'n': _N, 'k_naive': _k_naive, 'k*': _k_star, 'J(naive)': round(float(_t_naive.get('J', 0.0)), 4), 'J(k*)':
+        stg ▸ if _verdict_wd2 == '🔴 守恆破':
+
+── 統計 ──
+  類 甲：14 項
+  類 乙：1 項
+  類 丙：6 項
+  類 丁：0 項
+  🛑 **類甲數 ＝ 14**（`§十` 之**預期為 `0`**·🛑 **預測·⛔ 非停機款**）
+  ⇒ 依 `§十` 逐字：仍有類甲 ⇒ **逐項具名呈裁**，⛔ 不自行豁免、⛔ 不改白名單以求綠。
+
+── 🔑 判別力造：於白名單區內注入一已知實質差，須**仍判甲** ──
+     注入：`st.error(f'x')` ↔ `st.error(_dev * 2 + _tol_lot)`（引數係真實運算）
+     ⇒ 判為 **類 甲**（敘述形雖落白名單，惟二側識別符之**對稱差** ['_dev', '_tol_lot'] **⊄ 白名單** ⇒ 歸甲）
+     🛑 判別力之判：✅ **仍判甲** ⇒ 分類器⛔ 非恆判乙丙
+
+============================================================================================================================
+🛑 總判：判別力造 ✅ 過 ／ 類甲 14 項（⛔ 非停機款·逐項具名呈裁）
+============================================================================================================================

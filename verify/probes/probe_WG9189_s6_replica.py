@@ -282,3 +282,254 @@ def main():                                                      # noqa: C901
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 🆕 **`S-6` 四分分類器**（`W-G.9-188 裁 一`／`W-G.9-190R §十`·**末端追加**）
+#
+# 🛑 **本區塊置於 `if __name__ == "__main__":` <u>之後</u>** ⇒ 以腳本執行本檔時，
+#    `sys.exit(main())` 已先終止 ⇒ **既有判定路徑逐位未動、且⛔ 不受本區塊影響**
+#    （`§十一-3` 禁改「既有判定路徑」·末端追加除外）。其入口係 `import` 本模組後呼叫
+#    `classify4_main()`（驅動檔 ＝ `verify/probes/probe_WG9190R_class4.py`）。
+#
+# **四分之判準（🛑 機檢可判·⛔ 不得逐案裁量）**
+#   乙 宿主介面差：**封閉白名單** ＝ `st.<...>` 之呼叫／`with st.<...>`／`ss[...]` 之寫入／
+#                  `raise RuntimeError(...)` ↔ `st.error(...)` ＋ `st.stop()`。
+#                  🛑 **名單外之任一<u>識別符</u> ⇒ 歸甲**（單 `§十` 逐字）——
+#                  受檢之識別符集取**二側之對稱差**（CC 之實作解·見 `_c4_classify` 內之逐字）。
+#   丙 單側獨有守備：僅 `insert`／`delete`（一側全無）者；再以 **AST def-use** 機檢——
+#                  獨有碼所**寫回**之名，若為**共用流程**（該區之相同敘述）所**讀**，⇒ 歸甲。
+#   丁 呼叫序差：僅**無裝飾器**之 `FunctionDef`／`ClassDef` 之重排得豁免；其餘 ⇒ 歸甲。
+#   甲 其餘：🛑 **停機款**。
+#
+# 🔑 **判別力造（⛔ 不可省）**：於白名單區內注入一已知實質差（把某 `st.error(...)` 之引數
+#    改為一**真實運算**），須**仍判甲**。恆判乙丙 ⇒ 分類器紅、⛔ 不得入倉。
+# ═══════════════════════════════════════════════════════════════════════════
+
+_C4_WL_ROOT = ("st", "ss")          # 封閉白名單之根識別符
+_C4_WL_RAISE = ("RuntimeError",)    # `raise RuntimeError(...)` ↔ `st.error`+`st.stop`
+# 🔒 白名單之**屬性名**（`st.<attr>`／`ss.<attr>`）——單 `§十` 之 `st.*`／`ss[...]` 所涵蓋
+_C4_WL_ATTR = ("error", "stop", "info", "warning", "success", "caption", "write",
+               "dataframe", "markdown", "setdefault", "get", "session_state")
+
+
+def _c4_is_whitelist_stmt(n):
+    """該敘述是否落在**封閉白名單**內（⛔ 名單外之任一形即否）。"""
+    # `st.<...>(...)` 之單獨呼叫
+    if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call):
+        f = n.value.func
+        while isinstance(f, ast.Attribute):
+            f = f.value
+        if isinstance(f, ast.Name) and f.id in _C4_WL_ROOT:
+            return True
+    # `with st.<...>:`
+    if isinstance(n, ast.With):
+        for it in n.items:
+            f = it.context_expr
+            if isinstance(f, ast.Call):
+                f = f.func
+            while isinstance(f, ast.Attribute):
+                f = f.value
+            if isinstance(f, ast.Name) and f.id in _C4_WL_ROOT:
+                return True
+        return False
+    # `ss[...] = …` ／ `ss.setdefault(...)[...] = …`
+    if isinstance(n, ast.Assign):
+        for tg in n.targets:
+            r = tg
+            while isinstance(r, (ast.Subscript, ast.Attribute)):
+                r = r.value
+            if isinstance(r, ast.Call):
+                f = r.func
+                while isinstance(f, ast.Attribute):
+                    f = f.value
+                r = f
+            if isinstance(r, ast.Name) and r.id in _C4_WL_ROOT:
+                return True
+        return False
+    # `raise RuntimeError(...)`
+    if isinstance(n, ast.Raise) and n.exc is not None:
+        e = n.exc
+        if isinstance(e, ast.Call):
+            e = e.func
+        if isinstance(e, ast.Name) and e.id in _C4_WL_RAISE:
+            return True
+    return False
+
+
+def _c4_all_names(nodes):
+    """該組敘述內之**全部識別符**（`Name.id` ＋ `Attribute.attr`·⛔ 不分 ctx）。"""
+    out = set()
+    for n in nodes:
+        for m in ast.walk(n):
+            if isinstance(m, ast.Name):
+                out.add(m.id)
+            elif isinstance(m, ast.Attribute):
+                out.add(m.attr)
+    return out
+
+
+def _c4_names(nodes, ctx):
+    out = set()
+    for n in nodes:
+        for m in ast.walk(n):
+            if isinstance(m, ast.Name) and isinstance(m.ctx, ctx):
+                out.add(m.id)
+    return out
+
+
+def _c4_is_plain_def(n):
+    return (isinstance(n, (ast.FunctionDef, ast.ClassDef))
+            and not getattr(n, "decorator_list", []))
+
+
+def _c4_walk(name, a_body, s_body, depth, path, acc):
+    """與 `walk()` 同構之遞迴，惟**保留 AST 節點**以供分類（⛔ 不改 `walk()` 一字）。"""
+    sm = difflib.SequenceMatcher(None, [sig(x) for x in a_body], [sig(x) for x in s_body])
+    common = [a_body[i] for tag, i1, i2, _j1, _j2 in sm.get_opcodes()
+              if tag == "equal" for i in range(i1, i2)]
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        av, sv = a_body[i1:i2], s_body[j1:j2]
+        if av and not sv and all(is_st(x) for x in av):
+            continue                      # `st.*` 略去（既有路徑已另計）
+        if len(av) == 1 and len(sv) == 1 and depth < MAXDEPTH \
+                and type(av[0]) is type(sv[0]) and head(av[0]) == head(sv[0]) \
+                and body_of(av[0]) and body_of(sv[0]):
+            _c4_walk(name, body_of(av[0]), body_of(sv[0]), depth + 1,
+                     path + [head(av[0]).strip()[:60]], acc)
+            oa = list(getattr(av[0], "orelse", []) or [])
+            os_ = list(getattr(sv[0], "orelse", []) or [])
+            if oa or os_:
+                _c4_walk(name, oa, os_, depth + 1, path + ["<orelse>"], acc)
+            continue
+        acc.append({"name": name, "path": list(path), "tag": tag,
+                    "av": av, "sv": sv, "common": common})
+
+
+def _c4_classify(item):
+    """回 (類, 理由)。🛑 機檢可判·⛔ 不得逐案裁量。"""
+    av, sv, common = item["av"], item["sv"], item["common"]
+    allst = av + sv
+    # ── 乙：封閉白名單 ────────────────────────────────────────────
+    #   🛑 **判準係「識別符」、⛔ 非「敘述形」**（單 `§十` 逐字：「名單外之任一**識別符**
+    #      ⇒ 歸甲」）。🩸 **本器首版誤實作為敘述形之判**，致判別力造之注入
+    #      （`st.error(f'x')` ↔ `st.error(_dev * 2 + _tol_lot)`）**逃過而判乙** ⇒ 分類器紅。
+    #   🔒 **CC 之實作解（工程裁·`§零-2`「純技術自行做完」·逐字呈裁）**：受檢之識別符集
+    #      取**二側之<u>對稱差</u>**（⛔ 非聯集）——理由：「宿主介面差」之受詞係**差異本身**；
+    #      二側**相同**之訊息負載（如 `blk_label`）⛔ 非介面差之一部。
+    #      ⇒ 注入案之對稱差 ＝ {`_dev`, `_tol_lot`} ⊄ 白名單 ⇒ **判甲** ✅；
+    #        而真實之 `st.error(f"…")`+`st.stop()` ↔ `raise RuntimeError(f"…")`（負載相同）
+    #        其對稱差 ＝ {`st`, `RuntimeError`} ⊆ 白名單 ⇒ **判乙** ✅。
+    #      🛑 若發單側認本解過寬，改採**聯集**即可（一行之改），惟屆時類乙將近乎不可達。
+    _WL = set(_C4_WL_ROOT) | set(_C4_WL_RAISE) | set(_C4_WL_ATTR)
+    _na = _c4_all_names(av)
+    _ns = _c4_all_names(sv)
+    _sym = (_na | _ns) - (_na & _ns)
+    if allst and all(_c4_is_whitelist_stmt(n) for n in allst) and (_sym <= _WL):
+        return "乙", ("全部敘述皆落於封閉白名單，且二側識別符之**對稱差** %s ⊆ 白名單"
+                      % (sorted(_sym) or "（空）"))
+    if allst and all(_c4_is_whitelist_stmt(n) for n in allst):
+        return "甲", ("敘述形雖落白名單，惟二側識別符之**對稱差** %s **⊄ 白名單** ⇒ 歸甲"
+                      % sorted(_sym - _WL))
+    # ── 丁：僅無裝飾器之 def/class 重排 ──
+    if av and sv and all(_c4_is_plain_def(n) for n in allst):
+        na = sorted(getattr(n, "name", "") for n in av)
+        ns_ = sorted(getattr(n, "name", "") for n in sv)
+        if na == ns_:
+            return "丁", "僅**無裝飾器**之 `FunctionDef`／`ClassDef` 之重排（名集相同）"
+        return "甲", "def/class 之名集不同（%s vs %s）⇒ ⛔ 非單純重排" % (na, ns_)
+    # ── 丙：單側獨有 ＋ def-use 機檢 ──
+    if (av and not sv) or (sv and not av):
+        own = av if av else sv
+        stores = _c4_names(own, ast.Store)
+        loads_common = _c4_names(common, ast.Load)
+        bad = sorted(stores & loads_common)
+        if bad:
+            return "甲", ("單側獨有碼**寫回**了共用流程所讀之名 ⇒ def-use 判甲：%s" % bad)
+        return "丙", ("單側獨有守備；其所寫回之名 %s **⛔ 未**為共用流程所讀"
+                      % (sorted(stores) or "（無）"))
+    return "甲", "⛔ 不落於乙／丙／丁之任一機械判準"
+
+
+def classify4(src_a=None, src_s=None):
+    """對四組對應區之**實質差**逐項四分。回 (items, 統計)。"""
+    src_a = src_a if src_a is not None else open(APP, encoding="utf-8").read()
+    src_s = src_s if src_s is not None else open(STG, encoding="utf-8").read()
+    TA, TS = ast.parse(src_a), ast.parse(src_s)
+    PAIRS = [("_build_g_row", find(TA, "def", "_build_g_row"), find(TS, "def", "_build_g_row")),
+             ("_solve_one", find(TA, "def", "_solve_one"), find(TS, "def", "_solve_one")),
+             ("_advance_block_with_split", find(TA, "def", "_advance_block_with_split"),
+              find(TS, "def", "_advance_block_with_split")),
+             ("逐街廓迴圈", find(TA, "for"), find(TS, "for"))]
+    acc = []
+    for nm, na, ns_ in PAIRS:
+        if na is None or ns_ is None:
+            continue
+        A, S = normalize(na), normalize(ns_)
+        if sig(A) == sig(S):
+            continue
+        _c4_walk(nm, body_of(A), body_of(S), 0, [], acc)
+    out = []
+    for it in acc:
+        cls, why = _c4_classify(it)
+        out.append((cls, it["name"], " › ".join(it["path"]) or "<頂層>", it["tag"], why,
+                    [head(x) for x in it["av"]][:2], [head(x) for x in it["sv"]][:2]))
+    stat = {}
+    for c, *_ in out:
+        stat[c] = stat.get(c, 0) + 1
+    return out, stat
+
+
+def classify4_main():                                            # noqa: C901
+    """入口（供驅動檔呼叫）。回 `rc`：判別力造未判甲 ⇒ `1`（`§十一-1` 停機款 `10`）。"""
+    say("=" * 124)
+    say("【W-G.9-190R commit 5】`S-6` 四分分類器（`W-G.9-188 裁 一`）— ⛔ 零生產碼")
+    say("=" * 124)
+    say("  🛑 判準（機檢可判·⛔ 不得逐案裁量）：")
+    say("     乙 ＝ **封閉白名單**（`st.<...>` 呼叫／`with st.<...>`／`ss[...]` 寫入／"
+        "`raise RuntimeError`）·**名單外之任一敘述形 ⇒ 歸甲**")
+    say("     丙 ＝ 單側獨有 ＋ **AST def-use**：所寫回之名若為共用流程所讀 ⇒ **歸甲**")
+    say("     丁 ＝ 僅**無裝飾器**之 `FunctionDef`／`ClassDef` 重排（名集須相同）")
+    say("     甲 ＝ 其餘（🛑 停機款）")
+    say("")
+    items, stat = classify4()
+    say("── 逐項四分（共 %d 項）──" % len(items))
+    for i, (cls, nm, path, tag, why, av, sv) in enumerate(items, 1):
+        say("  %2d. [%s] %s › %s（%s）" % (i, cls, nm, path, tag))
+        say("        理由：%s" % why)
+        for h in av:
+            say("        app ▸ %s" % h)
+        for h in sv:
+            say("        stg ▸ %s" % h)
+    say("")
+    say("── 統計 ──")
+    for c in ("甲", "乙", "丙", "丁"):
+        say("  類 %s：%d 項" % (c, stat.get(c, 0)))
+    say("  🛑 **類甲數 ＝ %d**（`§十` 之**預期為 `0`**·🛑 **預測·⛔ 非停機款**）"
+        % stat.get("甲", 0))
+    if stat.get("甲", 0):
+        say("  ⇒ 依 `§十` 逐字：仍有類甲 ⇒ **逐項具名呈裁**，"
+            "⛔ 不自行豁免、⛔ 不改白名單以求綠。")
+    say("")
+
+    # ── 🔑 判別力造（⛔ 不可省·`§十一-1` 停機款 10）──────────────────
+    say("── 🔑 判別力造：於白名單區內注入一已知實質差，須**仍判甲** ──")
+    inj_a = ast.parse("st.error(f'x')").body
+    inj_s = ast.parse("st.error(_dev * 2 + _tol_lot)").body   # 引數改為**真實運算**
+    fake = {"name": "<judge>", "path": [], "tag": "replace",
+            "av": inj_a, "sv": inj_s, "common": []}
+    cls, why = _c4_classify(fake)
+    say("     注入：`st.error(f'x')` ↔ `st.error(_dev * 2 + _tol_lot)`（引數係真實運算）")
+    say("     ⇒ 判為 **類 %s**（%s）" % (cls, why))
+    ok = (cls == "甲")
+    say("     🛑 判別力之判：%s"
+        % ("✅ **仍判甲** ⇒ 分類器⛔ 非恆判乙丙" if ok
+           else "🔴 **未判甲 ⇒ 分類器紅·⛔ 不得入倉**（`§十一-1` 停機款 `10`）"))
+    say("")
+    say("=" * 124)
+    say("🛑 總判：判別力造 %s ／ 類甲 %d 項（⛔ 非停機款·逐項具名呈裁）"
+        % ("✅ 過" if ok else "🛑 **紅**", stat.get("甲", 0)))
+    say("=" * 124)
+    return 0 if ok else 1
