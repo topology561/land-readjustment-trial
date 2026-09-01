@@ -13012,18 +13012,13 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
         else:
             qualified.append(cand)
 
-    if not qualified:
-        return {'winner': None, 'qualified': [], 'eliminated': eliminated,
-                'note': '🚫 無人達 G 值門檻 → 該端保留為抵費地',
-                'group_size': len(group)}
-
     # 🆕 V13 修正 #3 + #7：第二關優先權指數採用三項法定加權
     # 項一（0.4）：候選宗地與「道路截角線 corner_cut_line」之重疊長度比
     # 項二（0.2）：候選宗地與「SIDE_LINE 評比區內」之重疊長度比
     # 項三（0.4）：候選宗地與「虛擬評比框」之物理交集面積比
     # ※ 對個別 cand 之原始幾何指標（front_length / side_length / physical_overlap_area）
     #   呼叫端在分流時應已計算並寫入 cand 各欄位（fallback 至既有欄位）
-    for cand in qualified:
+    for cand in group:
         # 🆕 W-D.1.3-c 手冊三指數逐筆（單一路徑；已刪 V13 死欄位 + front_length/side_length fallback）：
         #   項一=0.4×(臨截角/range 截角邊)、項二=0.2×(臨側街/range 側街邊)、項三=0.4×(真交集/range 面積)；
         #   分子⊆分母（皆取自 parcel∩range vs range 自身邊/面積）→ 值域 ∈[0,權重]。
@@ -13044,6 +13039,11 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
         cand['priority_index'] = round(
             score_corner_cut + score_side + score_overlap, 6
         )
+
+    if not qualified:
+        return {'winner': None, 'qualified': [], 'eliminated': eliminated,
+                'note': '🚫 無人達 G 值門檻 → 該端保留為抵費地',
+                'group_size': len(group)}
 
     # 🆕 Phase 8 Issue 3 + 防護一：法定排序主鍵不能用「距角點」為第一鍵
     # （否則大塊合法街角地會被微小畸零地淘汰）
