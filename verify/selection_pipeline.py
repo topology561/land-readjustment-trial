@@ -316,6 +316,9 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
     _k6b_side_results = []
     # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（`K-9-24 二`·**有土地後果**）——與 app 同構
     _k6b_dual_rows = []
+    # 🆕 `W-G.9-198R` `R3-4`：段一「上鎖」之出艙（**唯讀·零土地後果**）——與 app 同構
+    _k6b_lock_rows = []
+    _k6b_locked_by_block = {}
     _winners_state = {}   # 🆕 W-D.2 P6：鏡射 app f3_corner_winners
     for b in _build_blocks:
         _lbl = b['label']
@@ -474,6 +477,11 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         _v13, _k6b_rows_blk = ns["k6b_resolve_dual_crossing_sides"](
             _v13, _bf, block_label=_lbl)
         _k6b_dual_rows.extend(_k6b_rows_blk)
+        # 🆕 `W-G.9-198R` `R3-1`〜`R3-6`（`K-6 §二 段一`）：段一上鎖——與 app 同構、同一函式。
+        #   🔒 **唯讀**：其產出⛔ 被任何既有分配邏輯消費（段三尚未落地·`VR-086`）。
+        _k6b_lk_set, _k6b_lk_rows_blk = ns["k6b_stage1_locks"](_v13, block_label=_lbl)
+        _k6b_lock_rows.extend(_k6b_lk_rows_blk)
+        _k6b_locked_by_block[_lbl] = sorted(_k6b_lk_set)
         _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
         # ── W-D.1.2 診斷 rows（app 13904-13949 原樣） ──
         for _dg_side, _dg_res in (('左', _l_v13), ('右', _r_v13)):
@@ -573,6 +581,9 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
     ss['f3_k6b_stage2_order'] = ns["k6b_stage2_global_order"](_k6b_side_results)
     # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（app==engine 同鍵）。
     ss['f3_k6b_dual_side_assign'] = _k6b_dual_rows
+    # 🆕 `W-G.9-198R` `R3-4`：段一上鎖之出艙（app==engine 同鍵·**唯讀**）。
+    ss['f3_k6b_stage1_locks'] = _k6b_lock_rows
+    ss['f3_k6b_stage1_locked_by_block'] = _k6b_locked_by_block
 
     # ── W-D.1.3-d 抵費地驗收 rows（app 14107-14119 原樣） ──
     _offset_diag_rows = []

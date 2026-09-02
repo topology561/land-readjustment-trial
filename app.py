@@ -13322,6 +13322,90 @@ def k6b_resolve_dual_crossing_sides(v13_result, base_front_len_m, block_label=No
     return adjusted, rows
 
 
+def k6b_stage1_locks(v13_result, block_label=None):
+    """`K-6 §二 段一` 之「**上鎖**」（`W-G.9-198R` `R3-1`〜`R3-6`；受詞之澄清見 `K-9-24 四`）。
+
+    🔒 **正典逐字**（`K-6 §二 段一`）：
+        「有任一筆 `G ≥ 街角規定面積` ⇒ **該街角定案**（達標者中比街角指數取 winner）；
+          且該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）**一律上鎖**
+          ——不得被任何合併群抽走，亦不得作為合併標的（**既不出也不進**）。」
+
+    🔴 **本函式唯讀**（`R3-5`）：⛔ 改動 `v13_result` 及其內任何候選物件之一字；
+       其產出**⛔ 被任何既有分配邏輯消費**。上鎖之受詞 ＝ **段三之合併群操作**
+       （`K-9-24 四`：`K-6 §二 段三 1`「取該合併群中**未上鎖**之其他片」），
+       而**段三尚未落地**（`VR-086`）⇒ 本批之上鎖**⛔ 有消費端** ⇒ 土地後果為零。
+    🛑 **⛔ 作用於步驟 0**（`R3-3`）：步驟 0 已回歸無條件（`K-9-24 一`）且**完成於段一之前**；
+       本函式係於 `select_corner_lots_both_sides_v12` 之**後**被呼叫，
+       ⛔ 位於 `k6_step0_merge` 及其被呼叫鏈上。
+    🔒 **側無關·案無關**（`R3-6`）：以 `p1_end`／`p2_end` 二**幾何端點**鍵識別，
+       ⛔ 「左」「右」之字面、⛔ 街廓名、⛔ 本案常數；`block_label` **僅作出艙欄之資料**、
+       ⛔ 參與任何判定。
+    🔒 **反靜默**（`D3-d`·承 `GB-106`）：取不到值一律 `raise`，⛔ 靜默視為「未上鎖」。
+    🛑 **`R3-7`**（`W-G.9-210` `補三-5`）：本函式⛔ 收斂 `GB-140`／`GB-141`，
+       ⛔ 更動任何 `round` 之位數、⛔ 更動 `_dual` 之次序。**⛔ 用到 `priority_index`**
+       ——上鎖之判準只有「該側是否定案」與「是否跨占」，**與指數無涉**。
+
+    參數
+      v13_result   `select_corner_lots_both_sides_v12` 之回傳（**經
+                   `k6b_resolve_dual_crossing_sides` 調整後**）；須含 `p1_end`／`p2_end` 二鍵。
+                   🔑 取調整後者係因 `K-9-24 二·5` 逐字「一經歸定，另一側**視為未被 `M` 跨占**」
+                   ⇒ `M` 於另一側已**非**「跨占該街角規定範圍之土地」，⛔ 因該側定案而上鎖。
+      block_label  街廓標籤（**僅出艙欄之資料**）。
+
+    回傳 `(locked, rows)`
+      locked  `set`：本街廓內取得「上鎖」狀態之暫編地號。
+      rows    `list[dict]`：**逐筆**（含**未上鎖**者）之出艙列（`R3-4`）。
+    """
+    _P1, _P2 = 'p1_end', 'p2_end'
+    _SIDES = (_P1, _P2)
+
+    def _pid_of(_c):
+        _v = _c.get('暫編地號')
+        if not _v:
+            raise RuntimeError(
+                "🔴 [K-6 段一 上鎖] 候選缺 `暫編地號`（街廓 %r）⇒ 停機；⛔ 靜默略過"
+                % (block_label,))
+        return _v
+
+    _grp = {}
+    for _s in _SIDES:
+        _r = v13_result.get(_s)
+        if _r is None:
+            raise RuntimeError(
+                "🔴 [K-6 段一 上鎖] `v13_result` 缺鍵 %r（街廓 %r）⇒ 停機；⛔ 靜默視為未上鎖"
+                % (_s, block_label))
+        # `_pk_one_side_v12` 之契約：`qualified` ＝ `G ≥ min_area_to_apply` 者、
+        #   `eliminated` ＝ 其餘者 ⇒ 二者之聯集恰為該側之**全體跨占者**（含落選者）。
+        _grp[_s] = (list(_r.get('qualified') or []), list(_r.get('eliminated') or []))
+
+    # **定案** ＝ 該側存在任一筆 `G ≥ 該街角規定面積`（＝ `qualified` 非空）。
+    _settled = {_s: bool(_grp[_s][0]) for _s in _SIDES}
+
+    locked = set()
+    rows = []
+    for _s in _SIDES:
+        _q, _e = _grp[_s]
+        _lk = _settled[_s]
+        for _c, _pass in [(_x, True) for _x in _q] + [(_x, False) for _x in _e]:
+            _pid = _pid_of(_c)
+            if _lk:
+                locked.add(_pid)
+            rows.append({
+                '街廓': block_label,
+                '暫編地號': _pid,
+                '所跨占之街角': _s,
+                '達標': ('✅' if _pass else ''),
+                '上鎖': ('🔒' if _lk else ''),
+                '上鎖之緣由': (
+                    '該街角**已定案**（%s 端達標者 %d 筆）⇒ 該側全體跨占者（含落選者）一律上鎖'
+                    % (_s, len(_q))
+                ) if _lk else (
+                    '該街角**待處理**（%s 端達標者 0 筆）⇒ ⛔ 上鎖' % (_s,)
+                ),
+            })
+    return locked, rows
+
+
 def _compute_per_end_cutoff_areas(block_meta: dict,
                                    front_line_p1: tuple,
                                    front_line_p2: tuple) -> dict:
@@ -19909,6 +19993,9 @@ def main():
                         _k6b_side_results = []
                         # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（`K-9-24 二`·**有土地後果**）
                         _k6b_dual_rows = []
+                        # 🆕 `W-G.9-198R` `R3-4`：段一「上鎖」之出艙（`K-6 §二 段一`·**唯讀·零土地後果**）
+                        _k6b_lock_rows = []
+                        _k6b_locked_by_block = {}
                         # 🆕 Phase A：使用 build_parcels（temp_parcels 子集）取代 f3_G_values
                         # build_parcels 為「可建築土地」之 temp_parcels；此時 G 值尚未計算
                         # 但 PK 所需欄位（暫編地號、原地號、所屬街廓、面積_m2）皆已具備
@@ -20150,6 +20237,16 @@ def main():
                                 _v13, _k6b_rows_blk = k6b_resolve_dual_crossing_sides(
                                     _v13, _bf, block_label=_lbl)
                                 _k6b_dual_rows.extend(_k6b_rows_blk)
+                                # 🆕 `W-G.9-198R` `R3-1`〜`R3-6`（`K-6 §二 段一`·`W-G.9-210 §三` 授權）：
+                                #   **段一上鎖**——某街角定案（該側有任一筆 `G ≥ 街角規定面積`）
+                                #   ⇒ 該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）一律上鎖。
+                                #   🔒 **唯讀**（`R3-5`）：其產出⛔ 被任何既有分配邏輯消費——
+                                #      受詞係**段三之合併群操作**（`K-9-24 四`），而段三尚未落地（`VR-086`）。
+                                #   🛑 置於 `_v13`（**歸側調整後**）之後、⛔ 於步驟 0 之鏈上（`R3-3`）。
+                                _k6b_lk_set, _k6b_lk_rows_blk = k6b_stage1_locks(
+                                    _v13, block_label=_lbl)
+                                _k6b_lock_rows.extend(_k6b_lk_rows_blk)
+                                _k6b_locked_by_block[_lbl] = sorted(_k6b_lk_set)
                                 _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
                                 # 🆕 W-D.1.2 診斷：逐候選三分項攤現況（揭露 §1 指數退化，供 KL 核 D-3）
                                 #   端 p1_end→左、p2_end→右（沿用本區 _l/_r 顯示對應）；
@@ -20348,6 +20445,36 @@ def main():
                                                  use_container_width=True, hide_index=True)
                                 else:
                                     st.caption("（本案無同時跨占左右兩街角之宗地）")
+                            # 🆕 `W-G.9-198R` `R3-4`：段一上鎖之出艙（🔒 **唯讀·零土地後果**）
+                            st.session_state['f3_k6b_stage1_locks'] = _k6b_lock_rows
+                            st.session_state['f3_k6b_stage1_locked_by_block'] = _k6b_locked_by_block
+                            _lk_n = sum(1 for _r in _k6b_lock_rows if _r.get('上鎖'))
+                            _lk_p = len({_r['暫編地號'] for _r in _k6b_lock_rows if _r.get('上鎖')})
+                            with st.expander(
+                                "🔬 K-6 §二 段一：**上鎖**狀態"
+                                f"（{len(_k6b_lock_rows)} 列 · 上鎖 {_lk_n} 列 · 涉 {_lk_p} 宗）",
+                                expanded=False
+                            ):
+                                if _k6b_lock_rows:
+                                    st.dataframe(_pd.DataFrame(_k6b_lock_rows),
+                                                 use_container_width=True, hide_index=True)
+                                else:
+                                    st.caption("（本案無任何街角候選）")
+                                st.caption(
+                                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——上鎖之受詞係"
+                                    "**段三之合併群操作**（`K-6 §二 段三 1`「取該合併群中**未上鎖**之其他片」），"
+                                    "而段三尚未落地（`VR-086`）。⛔ 作用於**步驟 0**——步驟 0 已回歸無條件"
+                                    "（`K-9-24 一`）且完成於段一之前。"
+                                )
+                                st.caption(
+                                    "🔒 **上鎖之判準**：某街角**定案**（該側存在任一筆 `G ≥ 該街角規定面積`）"
+                                    "⇒ 該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）一律上鎖；"
+                                    "其效力為**既不出也不進**（⛔ 被任何合併群抽走、⛔ 作為合併標的）。"
+                                )
+                                st.caption(
+                                    "🔑 母體取**歸側調整後**之候選集——`K-9-24 二·5` 逐字「一經歸定，"
+                                    "另一側**視為未被 `M` 跨占**」⇒ `M` 於另一側已非跨占者、⛔ 因該側定案而上鎖。"
+                                )
                                 st.caption(
                                     "🛑 **拿得下** ＝ 達標（`G ≥ 該側街角規定面積`）**且**為該側全部達標"
                                     "候選中指數最大者（winner）；**第 1 名而未達標者不算拿得下**。"
