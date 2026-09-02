@@ -314,6 +314,8 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
     _corner_cand_diag = []
     # 🆕 `W-G.9-198R` `R1-6`：段二全域排序之素材（逐側之 PK 結果·唯讀）——與 app 同構
     _k6b_side_results = []
+    # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（`K-9-24 二`·**有土地後果**）——與 app 同構
+    _k6b_dual_rows = []
     _winners_state = {}   # 🆕 W-D.2 P6：鏡射 app f3_corner_winners
     for b in _build_blocks:
         _lbl = b['label']
@@ -467,6 +469,11 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
             g_values_map=_g_map,
             require_g_map=True,   # 🆕 P-C：真 G 驅動資格閘（側特定·來自 _G_true_p1/p2）
         )
+        # 🆕 `W-G.9-198R` `R2-2`〜`R2-6`（`K-9-24 二`）：歸側四分支——與 app 同構、同一函式。
+        #   🔴 **有土地後果**：調整後之 `_v13` 即下游 winner／抵費地之來源。
+        _v13, _k6b_rows_blk = ns["k6b_resolve_dual_crossing_sides"](
+            _v13, _bf, block_label=_lbl)
+        _k6b_dual_rows.extend(_k6b_rows_blk)
         _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
         # ── W-D.1.2 診斷 rows（app 13904-13949 原樣） ──
         for _dg_side, _dg_res in (('左', _l_v13), ('右', _r_v13)):
@@ -564,6 +571,8 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
     #   🔒 ⛔ 改 `run_corner_pk` 之回傳元數（多處呼叫端逐一解 5 值）⇒ 循 app 之體例曝於
     #      `session_state['f3_k6b_stage2_order']`（app==engine 同鍵）。
     ss['f3_k6b_stage2_order'] = ns["k6b_stage2_global_order"](_k6b_side_results)
+    # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（app==engine 同鍵）。
+    ss['f3_k6b_dual_side_assign'] = _k6b_dual_rows
 
     # ── W-D.1.3-d 抵費地驗收 rows（app 14107-14119 原樣） ──
     _offset_diag_rows = []

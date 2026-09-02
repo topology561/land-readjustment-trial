@@ -11565,6 +11565,12 @@ def k6_step0_enabled():
 
 
 def k6_step0_block_locked(side_lines_by_side, label):
+    # 🛑🛑 **經 `K-9-24 一` 取代·⛔ 再被呼叫**——**死碼**（`W-G.9-198R` `R2-1`·`W-G.9-208 §三` 授權）。
+    #   🔒 **本函式本體與其下之逐字說明一字未刪**（`R2-1` 明令「**死碼化而非刪除**」），保留為史料。
+    #   🔑 其所解之「循環依賴」已因 `K-9-24 一`（步驟 0 回歸**無條件**）而**消滅**
+    #      （`GB-135` 已於 `W-G.9-200` 解除）。
+    #   🛑 其唯一呼叫點（`k6_step0_merge` 內）已移除；`_diag["blocks_locked_k921"]` 之**鍵保留**
+    #      （供對照）而其值自本批起**恆為空**。⛔ 得重新接線——如需回復，須經 KL 域裁。
     # 🔒 **K-9-21 之保守替代**（⛔ 非正典本文·**待 KL 裁循環依賴之解**）。
     #
     #   正典 K-9-21 之判準 ＝ 群中存在二筆以上同時滿足
@@ -11628,10 +11634,13 @@ def k6_step0_merge(temp_parcels, own_map, front_lines_by_label, side_lines_by_si
             continue
         _diag["blocks_buildable"] += 1
 
-        # 🔒 K-9-21 之保守替代（見 `k6_step0_block_locked` 之逐字說明）
-        if k6_step0_block_locked(side_lines_by_side, _lbl):
-            _diag["blocks_locked_k921"].append(_lbl)
-            continue
+        # 🔧 `W-G.9-198R` `R2-1`（`K-9-24 一`）：**步驟 0 回歸無條件**。
+        #   🛑 舊碼於此依 `k6_step0_block_locked`（`K-9-21` 之保守替代）`continue` 而跳過該街廓。
+        #      該保守替代**經 `K-9-24 一` 取代** ⇒ **本處⛔ 再呼叫之、⛔ 再 `continue`**。
+        #   🔒 該函式**本體未刪**（死碼·見其首之加註）；`_diag["blocks_locked_k921"]` 之**鍵亦未刪**
+        #      （供對照）——自本批起⛔ 有任何街廓被附加 ⇒ 其值恆為 **`[]`**。
+        #   ⇒ 任何可建築街廓皆進入步驟 0，只依「同街廓 ∧ 同歸戶 ∧ 相鄰」之**重劃前地籍事實**合併
+        #      （`K-9-24 一`：資訊單向流動·⛔ 有回路）。
 
         _fl = ((front_lines_by_label or {}).get(_lbl) or {})
         _p1, _p2 = _fl.get("p1"), _fl.get("p2")
@@ -13092,14 +13101,18 @@ def k6b_stage2_global_order(side_results):
     🔒 **側無關·案無關**（`R1-9`）：端之識別由呼叫端以 `side_results` 之元素給定；
        本函式內⛔ 有任何街廓名、側標字面或本案特有常數。
 
-    🔴 **正典未載之方向（CC 之技術判讀·已於 `W-G.9-198R` 執行報告上呈發單側）**
-       正典只給鍵**序**，⛔ 給 ②③ 之**方向**（僅 ④ 明載「字典序最小」）。本實作採：
-         ① 名次 **升冪**（`1` 為最優——名次之定義所內生）
-         ② 街角試算 `G` **降冪**（大者優先——與 `Phase 8 防護一`「大塊合法街角地⛔ 得被微小
-            畸零地淘汰」同向）
-         ③ 指數數值 **降冪**（與 winner 取 max 同向）
+    🔒 **鍵之方向 ＝ 正典 `K-9-26`**（KL 域裁 `2026-09-02`·逐字「面積大的、街角指數大的 排前面」；
+       `grep -n "^### 🔒 K-9-26　" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+         ① 街角指數**名次** **升冪**（`1` 為最前——名次定義所內生）
+         ② 街角試算 `G` 🔴 **降冪**（面積大的排前面）
+         ③ 街角指數**數值** 🔴 **降冪**（指數大的排前面）
          ④ 暫編地號 **升冪**（正典逐字「字典序最小」）
-       🛑 段三未落地 ⇒ 本序**今日無消費端、無土地後果**；②③ 之方向須於**段三落地前**經發單側確認。
+       🔑 `K-9-26` **二**：②③ 之降冪與 `Phase 8 防護一`（大塊合法街角地⛔ 得被微小畸零地淘汰）
+          及 `K-9-24 二·2`（歸指數數值**較大**之一側）同向，⛔ 另立新的比較觀點。
+       🛑 `K-9-26` **三**：段三一落地，本序即決定**哪一筆候選先去湊足街角地之最小規定面積**
+          ⇒ **自段三落地起即有土地後果**；今日段三未落地（`VR-086`）⇒ 本序⛔ 有消費端。
+       🛑 **精度**：鍵③ 之出艙與排序皆取 `6dp`（下方 `round(..., 6)`），而段一之平手判定取 `4dp`
+          ——二者之分歧已登記為 **`GB-140`**，**⛔ 於本批收斂**（須先量測後裁·屬另案）。
 
     參數
       side_results : 可迭代之 `(街廓, 端, side_result)`；`side_result` ＝ `_pk_one_side_v12`
@@ -13141,6 +13154,172 @@ def k6b_stage2_global_order(side_results):
     for _i, _r in enumerate(_rows):
         _r['最終序位'] = _i + 1
     return _rows
+
+
+def k6b_resolve_dual_crossing_sides(v13_result, base_front_len_m, block_label=None):
+    """🆕 `K-9-24` **二：歸側四分支**——`W-G.9-198R` `R2-2`〜`R2-7`（`W-G.9-208 §三` 授權）。
+
+    受詞 `M` ＝ **同時跨占同一街廓左右兩街角規定範圍**之一宗（⛔ 論其係步驟 0 合併所生，
+    抑或地籍上本來就是一片）。其**判準** ＝ 同時出現於 `p1_end` 與 `p2_end` 二組——
+    `select_corner_lots_both_sides_v12` 之 `Patch B-4`／`E-1.7` 前置篩選已保證入組者
+    `_corner_intersection_area > 1.0 ㎡`（`grep -n "_has_p1 = _inter_p1_area > 1.0" app.py`）。
+
+    正典逐字（`grep -n "^### 🔒 K-9-24　" docs/rulings/K-6_街角地分配程序與可分配判準.md` 之 **二**）
+      ① 分別以左右街角**第 1 宗位置**試算 `M` 之 `G` 與街角指數，並使 `M` 在各該側**照常參與評選**；
+      ② **兩側皆拿得下** ⇒ 歸**指數數值較大**之側；**並列 ⇒ 取前緣線 `p1` 側**（決定性·**禁隨機**）；
+      ③ **僅一側拿得下** ⇒ **歸該側**（🛑 ⛔ 論該側之指數是否較小）；
+      ④ **兩側皆拿不下** ⇒ 兩側皆不歸；`M` **辦原位次**；
+      ⑤ **一經歸定，另一側視為未被 `M` 跨占**——該側扣除 `M` 後照常評選其餘跨占者；
+         **若無 winner（含候選集合為空）⇒ 強制留設抵費地，範圍嚴格等於該街角規定範圍**。
+
+    🛑 **「拿得下」之逐字定義**（`R2-3`）＝ `G ≥ 該側街角規定面積`（**達標**）**∧** 於該側
+       **全部達標候選**中之街角指數為最大（＝ 該側 `winner`）。**⛔ 得以「第 1 名」單獨代之
+       ——第 1 名而未達標者⛔ 拿得下**（本實作以「∈ `qualified`」∧「＝ `winner`」二條合取為之）。
+
+    🔒 **側無關·案無關**（`R2-7`）：本函式以 `p1_end`／`p2_end` **二鍵**識別端；該二鍵係
+       **前緣線之幾何端點**（`p1` ＝ `FRONT_LINE` 起點·`CLAUDE.md` CAD 圖層規範），
+       **⛔ 是「左」「右」之字面**。本函式內⛔ 有任何街廓名、側標中文字面或本案特有常數；
+       `block_label` 僅作**資料**（出艙欄）傳入，⛔ 參與任何分支。
+    🔒 **平手退路 ＝ `p1_end`**（正典逐字「取**前緣線 `p1` 側**」）——係**幾何性質**、⛔ 字面。
+       其「並列」之判定取 `4dp`，**與段一之平手判定同源**（`_pk_one_side_v12` 之 `qualified.sort`
+       逐字），⛔ 引入任何新的比較量。🛑 `GB-140` 所記之 `4dp`／`6dp` 分歧**⛔ 於本批收斂**
+       （`W-G.9-208` `補二-6`／`R2-10`）——本處之取捨係「與段一同源」，⛔ 是該分歧之解。
+
+    🔒 **`K-9-25` 之量測前提**（`R2-4`）：本函式**⛔ 對幾何作任何密合、補齊、吸收或歸併之前處理**
+       ——其所讀之 `_G_true`／`priority_index`／達標與否，皆由 `_pk_one_side_v12` 於**現況地籍幾何**
+       上算定；本函式只**讀**，⛔ 重算任何幾何。
+
+    🔒 **款⑤ 之再評選**：對「另一側」取其 `group` **扣除 `M`** 後重呼 `_pk_one_side_v12`
+       ——每一候選先**淺複製**（⇒ ⛔ 汙染 `v13_result` 內之原候選物件），`g_values_map` 取各該
+       候選之 `_G_true`（**側特定**·⛔ 重算）。本函式**⛔ 就地改入參**。
+
+    🔴 **反靜默**（`D2-f`）：凡取不到值（缺 `暫編地號`／`priority_index`／`_G_true`）⇒ **raise**；
+       ⛔ 靜默視為「不跨占」或「歸某側」，⛔ 有任何 `else` 之靜默預設。
+
+    參數
+      v13_result       : `select_corner_lots_both_sides_v12` 之回傳（`{'p1_end':…, 'p2_end':…}`）
+      base_front_len_m : 原呼叫所用之同名引數（原樣轉呼·⛔ 另造）
+      block_label      : 出艙欄之街廓標識（**資料**·⛔ 參與分支）
+    回傳
+      `(adjusted, rows)`——`adjusted` 與 `v13_result` 同形之**新** dict；`rows` ＝ `R2-6` 之歸側出艙
+    """
+    _P1, _P2 = 'p1_end', 'p2_end'
+    _SIDES = (_P1, _P2)
+
+    def _grp(_res):
+        return list(_res.get('qualified') or []) + list(_res.get('eliminated') or [])
+
+    def _pid_of(_c):
+        _v = _c.get('暫編地號')
+        if not _v:
+            raise RuntimeError(
+                "🔴 [K-9-24 二] 候選缺 `暫編地號`（街廓 %r）⇒ 停機；⛔ 靜默略過" % (block_label,))
+        return _v
+
+    def _idx_of(_c):
+        if 'priority_index' not in _c:
+            raise RuntimeError(
+                "🔴 [K-9-24 二] %r（街廓 %r）缺 `priority_index` ⇒ 停機；⛔ 靜默視為 0"
+                % (_c.get('暫編地號'), block_label))
+        return float(_c.get('priority_index') or 0)
+
+    def _gtrue_of(_c):
+        if _c.get('_G_true') is None:
+            raise RuntimeError(
+                "🔴 [K-9-24 二] %r（街廓 %r）缺 `_G_true`（側特定真 G）⇒ 停機；⛔ 靜默視為 0"
+                % (_c.get('暫編地號'), block_label))
+        return float(_c['_G_true'])
+
+    def _rngarea_of(_c, _side):
+        """🔴 `D2-f` 反靜默：該側之**街角規定範圍面積**（塊×側級）——款⑤ 之強制抵費地面積即此，
+        **有土地後果** ⇒ 取不到值一律 raise，⛔ 靜默退為 `0`。"""
+        _v = _c.get('_corner_range_area')
+        if _v is None or float(_v) <= 0:
+            raise RuntimeError(
+                "🔴 [K-9-24 二·⑤] %r（街廓 %r／端 %r）之 `_corner_range_area` ＝ %r"
+                "——強制抵費地之範圍面積無從取得 ⇒ 停機；⛔ 靜默視為 0（有土地後果）"
+                % (_c.get('暫編地號'), block_label, _side, _v))
+        return float(_v)
+
+    def _thr_of(_c, _side):
+        """🔴 `D2-f` 反靜默：該側之街角規定面積（門檻）——出艙欄；取不到值一律 raise。"""
+        _v = _c.get('min_area_to_apply')
+        if _v is None:
+            raise RuntimeError(
+                "🔴 [K-9-24 二] %r（街廓 %r／端 %r）缺 `min_area_to_apply`（門檻）⇒ 停機；⛔ 靜默視為 0"
+                % (_c.get('暫編地號'), block_label, _side))
+        return float(_v)
+
+    def _holds(_res, _pid):
+        """🛑 拿得下 ＝ **達標**（∈ `qualified`）**∧** 為該側 `winner`。"""
+        _q = {_pid_of(_c) for _c in (_res.get('qualified') or [])}
+        _w = (_res.get('winner') or {}).get('暫編地號')
+        return (_pid in _q) and (_w == _pid)
+
+    adjusted = {}
+    for _s in _SIDES:
+        _r = v13_result.get(_s)
+        if _r is None:
+            raise RuntimeError(
+                "🔴 [K-9-24 二] `v13_result` 缺鍵 %r（街廓 %r）⇒ 停機" % (_s, block_label))
+        adjusted[_s] = dict(_r)
+    for _k, _v in (v13_result or {}).items():
+        if _k not in adjusted:
+            adjusted[_k] = _v
+
+    _by = {_s: {_pid_of(_c): _c for _c in _grp(adjusted[_s])} for _s in _SIDES}
+    _dual = sorted(set(_by[_P1]) & set(_by[_P2]))
+
+    rows = []
+    for _m in _dual:
+        _cm = {_s: _by[_s][_m] for _s in _SIDES}
+        _hd = {_s: _holds(adjusted[_s], _m) for _s in _SIDES}
+        if _hd[_P1] and _hd[_P2]:
+            _to = _P1 if round(_idx_of(_cm[_P1]), 4) >= round(_idx_of(_cm[_P2]), 4) else _P2
+            _br = '②'                       # 兩側皆拿得下 ⇒ 歸指數大者（並列取 p1 側）
+        elif _hd[_P1] or _hd[_P2]:
+            _to = _P1 if _hd[_P1] else _P2
+            _br = '③'                       # 僅一側拿得下 ⇒ 歸該側
+        else:
+            _to, _br = None, '④'            # 兩側皆拿不下 ⇒ 兩側皆不歸·辦原位次
+
+        _other_note, _forced_area = '', None
+        if _to is not None:
+            _other = _P2 if _to == _P1 else _P1
+            _kept = [dict(_c) for _c in _grp(adjusted[_other]) if _pid_of(_c) != _m]
+            _gmap = {_pid_of(_c): _gtrue_of(_c) for _c in _kept}
+            adjusted[_other] = _pk_one_side_v12(
+                _kept, _gmap, base_front_len_m, require_g_map=True)
+            _nw = (adjusted[_other].get('winner') or {}).get('暫編地號')
+            if _nw:
+                _other_note = '有 winner：%s' % _nw
+            else:
+                # 款⑤：無 winner（含候選集合為空）⇒ 強制留設抵費地，範圍嚴格等於該街角規定範圍。
+                #   🔒 範圍面積係**塊×側級**（`_corner_range_area`）⇒ ⛔ 依候選集；
+                #      候選集為空時仍可自 `M` 於該側之列取得（同一 range）。
+                _forced_area = round(_rngarea_of(_cm[_other], _other), 2)
+                _other_note = '⚠️ 強制抵費地'
+
+        _row = {'街廓': block_label, 'M之暫編地號': _m,
+                '跨占之街角': '%s＋%s' % (_P1, _P2)}
+        for _s in _SIDES:
+            _c = _cm[_s]
+            _row['%s.真G(㎡)' % _s] = round(_gtrue_of(_c), 2)
+            _row['%s.門檻(㎡)' % _s] = round(_thr_of(_c, _s), 2)
+            _row['%s.達標' % _s] = ('達標' if _pid_of(_c) in
+                                    {_pid_of(_x) for _x in (v13_result[_s].get('qualified') or [])}
+                                    else '未達標')
+            _row['%s.指數' % _s] = round(_idx_of(_c), 6)
+            _row['%s.winner' % _s] = ('✅' if ((v13_result[_s].get('winner') or {})
+                                               .get('暫編地號') == _m) else '')
+            _row['%s.拿得下' % _s] = ('✅' if _hd[_s] else '')
+        _row['歸側結果'] = (_to if _to is not None else '（兩側皆不歸·辦原位次）')
+        _row['依據款次'] = _br
+        _row['另一側之後果'] = (_other_note or '—')
+        _row['另一側.強制抵費地範圍面積(㎡)'] = ('' if _forced_area is None else _forced_area)
+        rows.append(_row)
+
+    return adjusted, rows
 
 
 def _compute_per_end_cutoff_areas(block_meta: dict,
@@ -19728,6 +19907,8 @@ def main():
                         _corner_cand_diag = []   # 🆕 W-D.1.2 診斷：逐候選三分項（揭露 §1 指數退化，供 KL 核 D-3）
                         # 🆕 `W-G.9-198R` `R1-6`：段二全域排序之素材（逐側之 PK 結果·唯讀）
                         _k6b_side_results = []
+                        # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（`K-9-24 二`·**有土地後果**）
+                        _k6b_dual_rows = []
                         # 🆕 Phase A：使用 build_parcels（temp_parcels 子集）取代 f3_G_values
                         # build_parcels 為「可建築土地」之 temp_parcels；此時 G 值尚未計算
                         # 但 PK 所需欄位（暫編地號、原地號、所屬街廓、面積_m2）皆已具備
@@ -19961,6 +20142,14 @@ def main():
                                     #   硬停（D-1·禁退 estG）⇒ 執行至此必有真 G·無降級路徑。
                                     require_g_map=True,
                                 )
+                                # 🆕 `W-G.9-198R` `R2-2`〜`R2-6`（`K-9-24 二`·`W-G.9-208 §三` 授權）：
+                                #   **歸側四分支**——同時跨占同街廓左右兩街角者，依正典定其側；
+                                #   **一經歸定，另一側視為未被其跨占**，扣除之後照常評選其餘跨占者
+                                #   （款⑤：若無 winner ⇒ 強制留設抵費地·範圍嚴格等於該街角規定範圍）。
+                                #   🔴 **本步有土地後果**——其調整後之 `_v13` 即下游 winner／抵費地之來源。
+                                _v13, _k6b_rows_blk = k6b_resolve_dual_crossing_sides(
+                                    _v13, _bf, block_label=_lbl)
+                                _k6b_dual_rows.extend(_k6b_rows_blk)
                                 _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
                                 # 🆕 W-D.1.2 診斷：逐候選三分項攤現況（揭露 §1 指數退化，供 KL 核 D-3）
                                 #   端 p1_end→左、p2_end→右（沿用本區 _l/_r 顯示對應）；
@@ -20146,6 +20335,25 @@ def main():
                                 st.caption(
                                     "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——段三"
                                     "（逐一嘗試／集中規則／跨街廓合併）尚未落地。"
+                                )
+                            # 🆕 `W-G.9-198R` `R2-6`：K-9-24 二 之歸側四分支（🔴 **有土地後果**）
+                            st.session_state['f3_k6b_dual_side_assign'] = _k6b_dual_rows
+                            with st.expander(
+                                "🔬 K-9-24 二：同時跨占左右兩街角者之**歸側四分支**"
+                                f"（{len(_k6b_dual_rows)} 宗 · 款② 兩側皆拿得下／款③ 僅一側／款④ 兩側皆拿不下）",
+                                expanded=False
+                            ):
+                                if _k6b_dual_rows:
+                                    st.dataframe(_pd.DataFrame(_k6b_dual_rows),
+                                                 use_container_width=True, hide_index=True)
+                                else:
+                                    st.caption("（本案無同時跨占左右兩街角之宗地）")
+                                st.caption(
+                                    "🛑 **拿得下** ＝ 達標（`G ≥ 該側街角規定面積`）**且**為該側全部達標"
+                                    "候選中指數最大者（winner）；**第 1 名而未達標者不算拿得下**。"
+                                    "**並列**時取前緣線 `p1` 側（決定性·禁隨機）。"
+                                    "一經歸定，**另一側視為未被其跨占**，扣除後若無 winner "
+                                    "⇒ **強制留設抵費地**，範圍嚴格等於該街角規定範圍。"
                                 )
                             st.caption(
                                 "💡 **左右側分類規則**：(1) 使用者標註優先；(2) 未標註者用 `LineString.project()` "
