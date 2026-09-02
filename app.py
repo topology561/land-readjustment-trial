@@ -13012,7 +13012,11 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
         else:
             qualified.append(cand)
 
-    # 🆕 V13 修正 #3 + #7：第二關優先權指數採用三項法定加權
+    # 🆕 V13 修正 #3 + #7：優先權指數採用三項法定加權
+    # 🔧 `W-G.9-198R` `R1-8` 措辭更正：本段舊作「**第二關**優先權指數採用三項法定加權」。
+    #   惟下方迴圈之母體係 `group` **全體**（含第一關已 `eliminated` 者）⇒ **落選候選亦逐筆計分**。
+    #   「第二關」一詞僅描述 **winner 之決定**（只在 `qualified` 中比大小）；**指數本身逐候選皆算**，
+    #   且其名次亦逐候選皆給（見下 `指數名次`）——舊措辭對落選候選⛔ 精確。
     # 項一（0.4）：候選宗地與「道路截角線 corner_cut_line」之重疊長度比
     # 項二（0.2）：候選宗地與「SIDE_LINE 評比區內」之重疊長度比
     # 項三（0.4）：候選宗地與「虛擬評比框」之物理交集面積比
@@ -13040,6 +13044,19 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
             score_corner_cut + score_side + score_overlap, 6
         )
 
+    # 🆕 K-6-B 段二 鍵序① 之來源：**街角指數名次**（`W-G.9-198R` `R1-1`／`R1-2`）
+    #   🔒 母體 ＝ 該側 `group` **全體**（含 `qualified` 與 `eliminated`）⇒ **段一全滅之側亦有名次**
+    #      （`K-6 §二 段一` 逐字：「全部未達 ⇒ 該街角待處理，記下各候選之街角指數與名次」；
+    #       亦即 `GB-133` 失效條件之第二肢）。值 `1` 起算、**連續**（`1,2,…,n`）、⛔ 跳號。
+    #   🔒 平手鍵**與下方 `qualified.sort` 同源**（`priority_index` 取 `4dp` 判平手 →
+    #      `_pre_position_rank` 升冪）·⛔ 引入任何新的比較量（`R1-2`）。
+    #   ⚠️ 本迴圈**置於 `if not qualified` 早退之前** ⇒ 早退分支亦帶名次（`R1-1` 之明文）。
+    for _rk_i, _rk_c in enumerate(sorted(
+            group,
+            key=lambda c: (-round(float(c.get('priority_index', 0)), 4),
+                           float(c.get('_pre_position_rank', float('inf')))))):
+        _rk_c['指數名次'] = _rk_i + 1
+
     if not qualified:
         return {'winner': None, 'qualified': [], 'eliminated': eliminated,
                 'note': '🚫 無人達 G 值門檻 → 該端保留為抵費地',
@@ -13057,6 +13074,73 @@ def _pk_one_side_v12(group: list, g_values_map: dict,
     return {'winner': qualified[0], 'qualified': qualified,
             'eliminated': eliminated, 'note': '✅ PK 完成',
             'group_size': len(group)}
+
+
+def k6b_stage2_global_order(side_results):
+    """🆕 `K-6-B` **段二：全域排序（僅排待處理街角之候選）**——`W-G.9-198R` `R1-6`／`R1-7`。
+
+    正典逐字（`grep -n "^### 段二：全域排序" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
+      「鍵序：① 街角指數**名次** → ② 街角試算 **G** → ③ 街角指數**數值** →
+        ④ 暫編地號**字典序最小**（最終回退）。」
+
+    🔒 **鍵序① 直接消費 `指數名次` 欄**（`_pk_one_side_v12` 所產·**單一資料源**）——⛔ 於此重算
+       （`R1-5`；其機械證即「人為擾動該欄 ⇒ 本序必變」）。
+    🔒 **「待處理街角」之定義**（`K-6 §二 段一` 逐字：「全部未達 ⇒ 該街角**待處理**」）
+       ＝ 該側 `qualified` **為空**。已於段一定案之街角⛔ 入段二。
+    🛑 **唯讀出艙**（`R1-7`）：本函式**只回傳表**——⛔ 改任何候選之欄位、⛔ 被任何分配邏輯消費。
+       段三尚未落地（`VR-086`），其消費端不存在。
+    🔒 **側無關·案無關**（`R1-9`）：端之識別由呼叫端以 `side_results` 之元素給定；
+       本函式內⛔ 有任何街廓名、側標字面或本案特有常數。
+
+    🔴 **正典未載之方向（CC 之技術判讀·已於 `W-G.9-198R` 執行報告上呈發單側）**
+       正典只給鍵**序**，⛔ 給 ②③ 之**方向**（僅 ④ 明載「字典序最小」）。本實作採：
+         ① 名次 **升冪**（`1` 為最優——名次之定義所內生）
+         ② 街角試算 `G` **降冪**（大者優先——與 `Phase 8 防護一`「大塊合法街角地⛔ 得被微小
+            畸零地淘汰」同向）
+         ③ 指數數值 **降冪**（與 winner 取 max 同向）
+         ④ 暫編地號 **升冪**（正典逐字「字典序最小」）
+       🛑 段三未落地 ⇒ 本序**今日無消費端、無土地後果**；②③ 之方向須於**段三落地前**經發單側確認。
+
+    參數
+      side_results : 可迭代之 `(街廓, 端, side_result)`；`side_result` ＝ `_pk_one_side_v12`
+                     之回傳（含 `winner`／`qualified`／`eliminated`／`group_size`）。
+    回傳
+      `list[dict]`：欄 ＝ `街廓`／`端`／`暫編地號`／`名次`／`街角試算G(㎡)`／`指數數值`／`最終序位`
+    """
+    _rows = []
+    for _sr in (side_results or []):
+        _blk, _end, _res = _sr
+        if _res is None:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段二] 街廓 {_blk} 端 {_end} 之側結果為 None"
+                "——⛔ 靜默略過（no-silent-fallback）")
+        if _res.get('qualified'):
+            continue                      # 該街角已於段一定案 ⇒ ⛔ 待處理 ⇒ 不入段二
+        for _c in (list(_res.get('eliminated') or []) + list(_res.get('qualified') or [])):
+            _pid = _c.get('暫編地號')
+            if not _pid:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段二] 街廓 {_blk} 端 {_end} 之候選缺 `暫編地號` ⇒ 停")
+            if '指數名次' not in _c:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段二] {_pid}（{_blk}／{_end}）缺 `指數名次`"
+                    "——鍵序① 之單一資料源缺失；⛔ 於此重算（`R1-5`）")
+            if _c.get('_G_true') is None:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段二] {_pid}（{_blk}／{_end}）缺 `_G_true`（街角試算 G）"
+                    "——鍵序② 無從取值；⛔ 靜默視為 0")
+            _rows.append({
+                '街廓': _blk,
+                '端': _end,
+                '暫編地號': _pid,
+                '名次': int(_c['指數名次']),
+                '街角試算G(㎡)': round(float(_c['_G_true']), 2),
+                '指數數值': round(float(_c.get('priority_index', 0) or 0), 6),
+            })
+    _rows.sort(key=lambda r: (r['名次'], -r['街角試算G(㎡)'], -r['指數數值'], r['暫編地號']))
+    for _i, _r in enumerate(_rows):
+        _r['最終序位'] = _i + 1
+    return _rows
 
 
 def _compute_per_end_cutoff_areas(block_meta: dict,
@@ -19642,6 +19726,8 @@ def main():
                         from shapely.geometry import LineString as _SLine
                         _corner_select_results = []
                         _corner_cand_diag = []   # 🆕 W-D.1.2 診斷：逐候選三分項（揭露 §1 指數退化，供 KL 核 D-3）
+                        # 🆕 `W-G.9-198R` `R1-6`：段二全域排序之素材（逐側之 PK 結果·唯讀）
+                        _k6b_side_results = []
                         # 🆕 Phase A：使用 build_parcels（temp_parcels 子集）取代 f3_G_values
                         # build_parcels 為「可建築土地」之 temp_parcels；此時 G 值尚未計算
                         # 但 PK 所需欄位（暫編地號、原地號、所屬街廓、面積_m2）皆已具備
@@ -19880,6 +19966,8 @@ def main():
                                 #   端 p1_end→左、p2_end→右（沿用本區 _l/_r 顯示對應）；
                                 #   達標 = 通過第一關門檻；分數僅 qualified 有（eliminated 顯示 —）。
                                 for _dg_side, _dg_res in (('左', _l_v13), ('右', _r_v13)):
+                                    # 🆕 `R1-6`：累積逐側 PK 結果供段二（⛔ 新增側標字面·取迴圈變數）
+                                    _k6b_side_results.append((_lbl, _dg_side, _dg_res))
                                     _dg_win = ((_dg_res.get('winner') or {}).get('暫編地號'))
                                     for _dg_pass, _dg_list in (('達標', _dg_res.get('qualified', [])),
                                                                ('未達標', _dg_res.get('eliminated', []))):
@@ -19922,6 +20010,10 @@ def main():
                                                                 if '_score_overlap' in _dc else '—'),
                                                 '總分': (round(float(_dc.get('priority_index', 0) or 0), 4)
                                                          if 'priority_index' in _dc else '—'),
+                                                # 🆕 `W-G.9-198R` `R1-3`：街角指數名次（該側 group 全體·
+                                                #   降冪·1 起算·連續）。位置 ＝ 總分之後、原位次之前；
+                                                #   逐列皆整數（⛔ 有 `—`／空白）。源 ＝ `_pk_one_side_v12`。
+                                                '指數名次': int(_dc.get('指數名次', 0) or 0),
                                                 # 🆕 W-D.2 v2 轉正：原位次＝§2 正典投影序 rank（單一真相源；
                                                 #   廢距角序暫行欄——v1 診斷 baseline 該欄豁免記帳見 verify/README）
                                                 '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
@@ -20038,6 +20130,23 @@ def main():
                                          use_container_width=True, hide_index=True)
                             st.session_state['f3L_corner_winners'] = _corner_select_results
                             st.session_state['f3L_corner_side_warnings'] = _side_warnings
+                            # 🆕 `W-G.9-198R` `R1-6`／`R1-7`：K-6-B 段二全域排序（**唯讀出艙**）
+                            _k6b_stage2 = k6b_stage2_global_order(_k6b_side_results)
+                            st.session_state['f3_k6b_stage2_order'] = _k6b_stage2
+                            with st.expander(
+                                "🔬 K-6-B 段二：全域排序（僅排**待處理街角**之候選）"
+                                f"（{len(_k6b_stage2)} 筆 · 鍵序 ① 名次 → ② 街角試算 G → ③ 指數數值 → ④ 地號）",
+                                expanded=False
+                            ):
+                                if _k6b_stage2:
+                                    st.dataframe(_pd.DataFrame(_k6b_stage2),
+                                                 use_container_width=True, hide_index=True)
+                                else:
+                                    st.caption("（本案無待處理街角 ⇒ 段二清單為空）")
+                                st.caption(
+                                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——段三"
+                                    "（逐一嘗試／集中規則／跨街廓合併）尚未落地。"
+                                )
                             st.caption(
                                 "💡 **左右側分類規則**：(1) 使用者標註優先；(2) 未標註者用 `LineString.project()` "
                                 "沿正面道路投影距離，前半段=左側、後半段=右側；(3) Phase 4 H-1 — 圖選時即時自動偵測。"

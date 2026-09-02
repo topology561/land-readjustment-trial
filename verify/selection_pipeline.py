@@ -312,6 +312,8 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
 
     _corner_select_results = []
     _corner_cand_diag = []
+    # 🆕 `W-G.9-198R` `R1-6`：段二全域排序之素材（逐側之 PK 結果·唯讀）——與 app 同構
+    _k6b_side_results = []
     _winners_state = {}   # 🆕 W-D.2 P6：鏡射 app f3_corner_winners
     for b in _build_blocks:
         _lbl = b['label']
@@ -468,6 +470,8 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
         _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
         # ── W-D.1.2 診斷 rows（app 13904-13949 原樣） ──
         for _dg_side, _dg_res in (('左', _l_v13), ('右', _r_v13)):
+            # 🆕 `R1-6`：累積逐側 PK 結果供段二（⛔ 新增側標字面·取迴圈變數）
+            _k6b_side_results.append((_lbl, _dg_side, _dg_res))
             _dg_win = ((_dg_res.get('winner') or {}).get('暫編地號'))
             for _dg_pass, _dg_list in (('達標', _dg_res.get('qualified', [])),
                                        ('未達標', _dg_res.get('eliminated', []))):
@@ -507,6 +511,8 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
                                         if '_score_overlap' in _dc else '—'),
                         '總分': (round(float(_dc.get('priority_index', 0) or 0), 4)
                                  if 'priority_index' in _dc else '—'),
+                        # 🆕 `W-G.9-198R` `R1-3`：街角指數名次（欄序逐字同 app）
+                        '指數名次': int(_dc.get('指數名次', 0) or 0),
                         '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
                         '選中': ('✅' if (_dg_win and _dc.get('暫編地號') == _dg_win) else ''),
                     })
@@ -553,6 +559,11 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
             '【右】第1宗指配': _r_disp_winner,
             '【右】優先權指數': _r_disp_score,
         })
+
+    # 🆕 `W-G.9-198R` `R1-6`／`R1-7`：K-6-B 段二全域排序（**唯讀出艙**）。
+    #   🔒 ⛔ 改 `run_corner_pk` 之回傳元數（多處呼叫端逐一解 5 值）⇒ 循 app 之體例曝於
+    #      `session_state['f3_k6b_stage2_order']`（app==engine 同鍵）。
+    ss['f3_k6b_stage2_order'] = ns["k6b_stage2_global_order"](_k6b_side_results)
 
     # ── W-D.1.3-d 抵費地驗收 rows（app 14107-14119 原樣） ──
     _offset_diag_rows = []
