@@ -3541,3 +3541,25 @@ git 預設 `core.quotepath=true`，將非 ASCII 路徑作 C-style 轉義並加�
 | **處置** | 🔒 **⛔ 本則只登記·⛔ 零生產碼·⛔ 追改任何既有 `GB` 標題形一字。** **現況處置** ＝ ① 自本則起，凡出艙 `GB` 之**相異／缺號集**者，須同格載明所用之框（`戒 29`：一張表只准一個框）；② `MAX` **⛔ 受影響**（四框皆得 `137`），取號照常；③ 釘框之正典化另案辦——須比照 `W-G.9-184` 之體例，先實測各形之相異／MAX／差集，**證明所採之形涵蓋既有全部鑄號**（`甲∖寬 ＝ 0`）後方得施行。 |
 | **字樣錨** | `grep -n "常規四（八）" CLAUDE.md`；`grep -n "三框聯集" docs/reports/W-G.9-157R_R3右遞補宗更正與GB109解除.md`；`grep -n "^## 🔧 自誤之" CLAUDE.md` |
 | **土地後果** | ⛔ **無**——純取號可發現性缺陷。🛑 惟其**已實際致誤**：`W-G.9-202 §二` 之 `73` 即無框之數（見 `自誤 254`）。 |
+
+### `GB-139` 🆕　KL 本機 `core.autocrlf=true`（system 層）⇒ 工作樹行尾 ≠ 倉內行尾
+
+**實測（`2026-09-02`·KL 本機 `C:\Users\admin\Desktop\land-readjustment-trial`）**
+- `git config --show-origin --get core.autocrlf` ⇒ `file:C:/Program Files/Git/etc/gitconfig  true`（**system 層·非 KL 所設**）
+- `git ls-files --eol` ⇒ `CLAUDE.md` `i/lf w/mixed`／`docs/驗證裁定登記表.md` `i/lf w/mixed`／
+  `docs/orders/W-G.9-204_發單側交接文.md` `i/lf w/lf`（從未經 checkout）
+
+**肢一（施工單之措辭）**　任何令 `-c core.autocrlf=false` 之 `add`，對**既有檔**會把工作樹之 `CR` 寫進 blob
+⇒ 全檔偽異動、`deletions` 爆表、破 append-only。
+⇒ 🔴 **施工單⛔ 得對既有檔下 `autocrlf` 之覆寫，一律走常規 `add`。**
+
+**肢二（閘之受詞）**　任何以「工作樹位元組 ≡ blob」為判準之閘，對**既有檔恆偽紅**。
+⇒ 🔴 **閘之受詞一律取 `git cat-file blob`（倉側），⛔ 取工作樹側。**
+🔒 `W-G.9-205` 之 `S-1` 恰因其三受詞皆為 `w/lf` 之新入倉檔而未踩到；**下一張單若對既有檔下同閘即偽紅**。
+
+**例外（⛔ 受本項影響）**　`clone` 時之 `-c core.autocrlf=false -c core.quotepath=false` **仍為必要**
+——驗證側新 clone 須取得逐位元組原貌。
+
+**處置之時點**　🔒 **KL 裁 `2026-09-02`：⛔ 於本波變更該設定**（現行 `true` 已使倉內 blob 恆為純 `LF`，
+且⛔ 宜在動分配面積之批前改環境）；**留至波末與重烤同批處理**。
+⇒ 本項於波末前**⛔ 解除**，其功用 ＝ 拘束施工單之措辭與閘之受詞。
