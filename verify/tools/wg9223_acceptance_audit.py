@@ -66,7 +66,9 @@ STOP = {"驗收", "全以", "復驗", "推後", "回報", "全部", "逐項", "�
 
 
 def parse_acceptance(order_path):
-    """自單之 `【驗收】` 段取出字樣（資料驅動）。回傳 (字樣 list, 段之列範圍)."""
+    """自單之 `【驗收】` 段取出字樣（資料驅動）。
+    回傳 **3 元組** `(判定組 list, 參考組 list, 段之列範圍)`；
+    無 `【驗收】` 段者回 `([], [], (None, None))`（**元數須一致**·⛔ 早退回 2 元組）。"""
     ln = lines(order_path)
     st = en = None
     for i, x in enumerate(ln):
@@ -76,7 +78,7 @@ def parse_acceptance(order_path):
             en = i
             break
     if st is None:
-        return [], (None, None)
+        return [], [], (None, None)     # 🔒 元數須與正常回傳一致（3）——早退路徑之修正
     if en is None:
         en = len(ln)
     seg = "\n".join(ln[st:en])
