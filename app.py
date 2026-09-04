@@ -19668,6 +19668,30 @@ def main():
 - **第 1 宗優先權指數** = (臨正街長度/基準) × 0.4 + (臨側街長度/基準) × 0.2 + (跨占街角面積/基準) × 0.4
   - 全部候選 G 值都未達門檻 → 街角地第 1 宗強制留設為**抵費地**（forced_offset）
 """)
+                # 🆕 W-G.9-219R2 工項二：退縮值之**常設顯示**（KL 裁示一；版面採**甲案**——
+                #   置於下方 `st.expander("⚙️ 街角地參數…")` **之外·其上方**）。
+                #   ⛔ 條件式出現：本區塊**不包在任何 if 內**、**不置於任何 expander 內**。
+                # 🔒 **射程之載明（⛔ 省）**：本顯示位於上方 `else:` 分支內（其對應之
+                #   `if not build_parcels:` 在同段之前），故其「永遠顯示」之射程為
+                #   「**步驟 L 區塊渲染時恆可見**」，**⛔ 為「全頁恆可見」**；
+                #   `build_parcels` 為空時整區不渲染，**其時亦無退縮值在用**。
+                # 🔒 **乙案**（`W-G.9-226` 工項二之裁）：來源 ＝「使用者輸入」⟺
+                #   退縮鍵 ∈ `st.session_state` **且** 旗標 `f3L_setback_user_set` 為真。
+                #   ⇒ 旗標之有效性**綁於該鍵之存在性**，**不可能活得比值久**。
+                # 🔒 **先調和、後顯示**（`W-G.9-226` 附加約束一）：於讀取**之前**先丟棄過期旗標。
+                # 🔒 **`G4'` 之實測依據**（⛔ 推理）：`verify/probes/probe_WG9219R2_widget_lifecycle.py`
+                #   ——該 widget 所在分支未渲染時，Streamlit **丟棄其 key**（同輪之非 widget 鍵則存活）。
+                # ⛔ 於此另行讀取或重算退縮值——顯示之值取自與下游**同一之 session 鍵**。
+                _SB_KEY = 'f3L_setback_default'
+                _SB_DEFAULT_M = 3.5   # 顯示端預設；與下方輸入欄之預設**同值**（集中為具名常數列通用化波）
+                if _SB_KEY not in st.session_state:
+                    st.session_state.pop('f3L_setback_user_set', None)      # 先調和：丟棄過期旗標
+                _sb_present = (_SB_KEY in st.session_state)
+                _sb_val = float(st.session_state[_SB_KEY]) if _sb_present else _SB_DEFAULT_M
+                _sb_src = ('使用者輸入'
+                           if (_sb_present and bool(st.session_state.get('f3L_setback_user_set', False)))
+                           else '預設')
+                st.markdown(f"**本次退縮值：{_sb_val:g} m（{_sb_src}）**")
                 with st.expander("⚙️ 街角地參數（共用設定 + 各街廓微調）", expanded=False):
                     # 🚨 Phase 9.12 Issue 4：UI 雙向綁定 + on_change callback 清除 G 值 cache
                     def _f3L_invalidate_g_cache():
@@ -19681,13 +19705,25 @@ def main():
                             _st_inv.session_state['f3_g_needs_rerun'] = True
                         except Exception:
                             pass
+                    # 🆕 W-G.9-219R2 工項一 a／b：退縮欄**專屬**之 on_change——先設來源旗標，
+                    #   再委派既有之 cache 失效函式（⛔ 改其一字）。
+                    #   🔴 **⛔ 逕於 `_f3L_invalidate_g_cache` 內設旗標**：該函式**亦被逐街廓
+                    #     深度覆寫欄共用**（下方 `f3L_depth_ov_*` 之 `on_change`），於彼處設旗標
+                    #     將使「改深度」被誤判為「動過退縮」（**偽陽**）。
+                    def _f3L_setback_changed():
+                        """退縮欄被使用者更動 ⇒ 記來源旗標；其餘行為委派既有失效函式。"""
+                        try:
+                            st.session_state['f3L_setback_user_set'] = True
+                        except Exception:
+                            pass
+                        _f3L_invalidate_g_cache()
                     _setback_init = float(st.session_state.get('f3L_setback_default', 3.5))
                     _setback_default = st.number_input(
                         "街角地退縮距離（m，全區共用預設）",
                         min_value=0.0, max_value=10.0,
                         value=_setback_init, step=0.1,
                         key='f3L_setback_default',
-                        on_change=_f3L_invalidate_g_cache,
+                        on_change=_f3L_setback_changed,
                         help='💡 修改後 Step G 迭代將自動採用最新 PK 結果')
                     if st.session_state.get('f3_g_needs_rerun'):
                         st.info(
