@@ -19717,7 +19717,7 @@ def main():
                         except Exception:
                             pass
                         _f3L_invalidate_g_cache()
-                    _setback_init = float(st.session_state.get('f3L_setback_default', 3.5))
+                    _setback_init = float(st.session_state.get('f3L_setback_default', _SB_DEFAULT_M))
                     _setback_default = st.number_input(
                         "街角地退縮距離（m，全區共用預設）",
                         min_value=0.0, max_value=10.0,
