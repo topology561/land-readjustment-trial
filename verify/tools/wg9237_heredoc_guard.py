@@ -92,7 +92,12 @@ def _selftest():
 def main():
     if "--selftest" in sys.argv[1:]:
         return _selftest()
-    raw = sys.stdin.read()
+    # 🩸 **第二個真缺陷之修**（`W-G.9-238` 活體攔截實測當場咬中）：
+    #    首版用 `sys.stdin.read()` ⇒ 走**平台預設編碼**（本機 `cp950`）
+    #    ⇒ 凡命令含 CJK 者，其 UTF-8 位元組以 `cp950` 解碼後破壞 JSON 結構
+    #    ⇒ 落入「解析失敗 ⇒ 阻斷」⇒ **誤攔一切含中文之 `Bash` 命令**（`②` 之誤攔情形）。
+    #    🔒 hook 事件之 wire 編碼恆為 **UTF-8** ⇒ 一律自 `sys.stdin.buffer` 取**位元組**後顯式解碼。
+    raw = sys.stdin.buffer.read().decode("utf-8", errors="replace")
     # ③ loud：**空 stdin 亦係「無從判定」**——⛔ 落入 `{}` 而靜默放行。
     #    依 `W-G.9-14` 修法 `②`：「無從判定」與「判定為可」**⛔ 共用同一出艙碼**。
     #    🩸 本分支係 `W-G.9-237` 工項二 `c` 之 `⟨NEG3⟩` 案當場捕獲之真缺陷（首版靜默放行）。
@@ -111,13 +116,11 @@ def main():
     blocked, reason = verdict(tool, cmd)
     if not blocked:
         return 0
-    sys.stdout.write(json.dumps({
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "permissionDecision": "deny",
-            "permissionDecisionReason": reason,
-        }
-    }, ensure_ascii=False))
+    # 🩸 **第三個真缺陷之修**（`W-G.9-238` 活體攔截實測·隔離實驗所得）：
+    #    首版**二法並用**（`stdout` 之 `hookSpecificOutput` deny JSON ＋ `exit 2`）。
+    #    活體實測：僅 `stderr` ＋ `exit 2` 者**確被攔**（CJK 解析失敗案）；
+    #    而二法並用者**未被攔** ⇒ 🔒 **`stdout` 之 JSON 覆蓋 `exit 2` 而其驗證未過 ⇒ 回落放行**。
+    #    ⇒ **⛔ 二法並用**；一律**只走 `stderr` ＋ `exit 2`**（`PreToolUse` 之阻斷碼）。
     sys.stderr.write(reason + "\n")
     return 2
 
