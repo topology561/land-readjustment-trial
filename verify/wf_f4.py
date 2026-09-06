@@ -95,6 +95,36 @@ WIDTH_MARGIN = 0.03                    # 合法基地寬目標＝min_width＋此
 E1_MARGIN = 5.0                        # E1 灌配保留餘裕：可達殘池 ≥ MinA+MARG（中央殘池寬>min_width，避浮點邊界）
 
 
+# ── 🆕 W-G.9-243 §六：排序準據 seam（射程乙·四站·KL 裁 2026-09-06）────────────
+#   抽出之唯一目的 ＝ 立**單一掛點**，俾五級（八鍵詞典序）落地時只換此處。
+#   🔒 本批**⛔ 新增任何替代準據**：registry 每鍵只有一個實作，
+#      ⛔ 開關、⛔ 參數化準據、⛔ 條件分支、⛔ 預留 `if` 位。
+#   🔒 各 provider **回傳與原 lambda 逐位相同之 tuple**；閉包變數一律**以參數傳入**
+#      （`_level`／`dists`／`mina`／`gid`／`blk`），⛔ 靠全域或自由變數。
+def _key_anchor(x):
+    """歸戶錨點宗之選定鍵（原 `:433` lambda）；x ＝ 公設宗 dict。"""
+    return (x["a"], x["pid"])
+
+
+def _key_border(b, gid, level_fn, dists):
+    """區位順序鍵（原 `:488` lambda）：級 → 距離 → 街廓 label。"""
+    return (level_fn(gid, b), dists[(gid, b)], b)
+
+
+def _key_queue(g, dists, mina):
+    """E1 全域佇列鍵（原 `:662`–`:663` lambda）：至最近可達塊之距 → gid。"""
+    return (min(dists[(g, b)] for b in mina), g)
+
+
+def _key_share(g, blk, dists):
+    """同塊分攤序鍵（原 `:689` lambda）：距該塊之距 → gid。"""
+    return (dists[(g, blk)], g)
+
+
+_SORT_KEYS = {"anchor": _key_anchor, "border": _key_border,
+              "queue": _key_queue, "share": _key_share}
+
+
 def _money(x):
     return int(Decimal(str(x)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
@@ -430,7 +460,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             raise RuntimeError(f"🔴 [{tag}] 7-4 母體 ≠ 24筆/9群")
         ginfo = {}
         for gid, lots in pub74.items():
-            anchor = max(lots, key=lambda x: (x["a"], x["pid"]))
+            anchor = max(lots, key=_SORT_KEYS["anchor"])
             zz = {x["zone"] for x in lots}
             if len(zz) != 1:
                 raise RuntimeError(f"🔴 [{tag}] {gid} 公設宗跨 zone {zz}（Σ地價需分 zone，未建模）")
@@ -485,7 +515,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
                 return 0
             return 1 if dists[(gid, blk)] <= med else 2
         LV = {0: "級1相鄰", 1: "級2鄰近", 2: "級3非鄰近"}
-        border = {gid: sorted(mina, key=lambda b: (_level(gid, b), dists[(gid, b)], b))
+        border = {gid: sorted(mina, key=lambda b: _SORT_KEYS["border"](b, gid, _level, dists))
                   for gid in ginfo}
 
         # 不可達池量（S=0 碎片＋forced 鎖定；吃池歸零之幾何禁區）
@@ -660,7 +690,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             # 裁定K：佇列**恆為單一類別**（已過「兩側皆無」之篩）⇒ 裁定D「類別優先」永不觸發
             #   ⇒ **純距離優先**（全域佇列取「至最近可達塊之距」）＋決定性 tiebreak（gid 字典序）。
             act = [g for g in sorted(alloc - spset,
-                                     key=lambda g: (min(dists[(g, b)] for b in mina), g))
+                                     key=lambda g: _SORT_KEYS["queue"](g, dists, mina))
                    if a_rem[g] > TOL]
             if not act:
                 break
@@ -686,7 +716,7 @@ def compute(ctx_by_tag, f0_out, f2_out, f3_out):
             if not requests:
                 break
             for blk in sorted(requests):
-                gs = sorted(requests[blk], key=lambda g: (dists[(g, blk)], g))   # 裁定K：距離優先
+                gs = sorted(requests[blk], key=lambda g: _SORT_KEYS["share"](g, blk, dists))   # 裁定K：距離優先
                 demG = {g: a_rem[g] * _conv(g, blk) * _ratio(g, blk) for g in gs}
                 budget = _budget(blk)            # 可灌量＝可達池 − (MinA+餘裕)；rule3 保有效殘池
                 # 同級比例分攤（分母＝本輪本塊請求集）；share<MinA 者退出本塊（自小值序）
