@@ -10268,6 +10268,46 @@ HUALIEN_MIN_LOT_TABLE = {
 }
 
 
+# ── 🆕 K-9-1 資料層（`W-G.9-244` §五 工項四）：街廓「最小建築面積」 ─────────────
+#   典據 ＝ `docs/配地計算總規格_v3.md` 之「`K-9-1` 域裁六款」⑧⑨（KL 裁 `2026-09-06`）。
+#   🛑 本批**只做資料層**：**⛔ 接任何閘、⛔ 實作 `r2`、⛔ 動 `get_min_lot_size`**。
+#   🔒 三函式皆 **module 級純函式**（不讀 `st`、不改入參）⇒ `app_harvest` 可取、可單元對拍。
+K91_SS_MBA_BY_CATEGORY = 'f3_min_build_area_by_category'
+K91_SS_MBA_BY_LABEL = 'f3_min_build_area_by_label'
+K91_SS_MBA_EFFECTIVE = 'f3_min_build_area_effective_by_label'
+
+
+def k91_effective_min_build_area(label, category, by_label, by_category):
+    """`K-9-1` ⑨ 裁丙：某街廓之「最小建築面積」**有效值**。
+
+    有效值 ＝ 街廓覆寫（`>0`）→ 分區底（`>0`）→ `0`
+    （`0` ＝ **該街廓無規定** ⇒ 僅幾何驗、無面積驗）。
+    """
+    _v = float((by_label or {}).get(label, 0.0) or 0.0)
+    if _v > 0:
+        return _v
+    _v = float((by_category or {}).get(category, 0.0) or 0.0)
+    return _v if _v > 0 else 0.0
+
+
+def k91_min_alloc_contrib_by_blk(min_alloc_area_by_blk, eff_min_build_by_blk):
+    """`K-9-1` ⑧：逐街廓對全區 `MinA` 之**貢獻**。
+
+    有規定（有效值 `>0`）⇒ 該規定值；未規定 ⇒ 「畸零地寬 × 平均深度」。
+    🔒 未規定而該乘積不可得（`min_width ≤ 0` ⇒ 值為 `None`）者**⛔ 入母體**
+    ——與現行 `_valid_mins` 之濾**同一判準**且**同一迭代序**，
+    故**規定集為空時本函式之輸出逐位退化為現行式**。
+    """
+    _out = {}
+    for _lbl, _v in (min_alloc_area_by_blk or {}).items():
+        _e = float((eff_min_build_by_blk or {}).get(_lbl, 0.0) or 0.0)
+        if _e > 0:
+            _out[_lbl] = _e
+        elif _v is not None and float(_v) > 0:
+            _out[_lbl] = float(_v)
+    return _out
+
+
 def get_min_lot_size(category: str, front_road_width_m: float) -> dict:
     """
     依街廓分類與正面路寬查詢最小分配寬度 / 深度 / 面積
@@ -19774,13 +19814,78 @@ def main():
                             _min_width_by_blk[_lbl] = _mw_d
                             _min_alloc_area_by_blk[_lbl] = (round(_depth_use_by_blk[_lbl] * _mw_d, 2)
                                                             if _mw_d > 0 else None)
+                    # ── 🆕 K-9-1 資料層（`W-G.9-244` §五 工項四·KL 裁 2026-09-06）────────
+                    #   ⑨ 裁丙：逐**使用分區**為底、逐**街廓**得覆寫；
+                    #   有效值 ＝ 街廓覆寫(>0) → 分區底(>0) → 0（＝**無規定**·僅幾何驗）。
+                    #   🔒 分區清單**取自現行 `category` 集合**（`_build_blocks` 之實際值）·**⛔ 硬編**。
+                    #   🔒 掛此處而非 `f3_fw_{bid}`（正面路寬）之側：該側在 `st.form` 內
+                    #      （`submit_road = st.form_submit_button("✅ 儲存路寬資料")`）⇒ 須按鈕方生效，
+                    #      且以 `bid` 為鍵；本欄之消費端（下方 `MinA`）以 **label** 為鍵且需即時生效，
+                    #      故沿用同一逐街廓介面之 `f3L_*_ov_{label}` 慣例。**此擇已具名上呈**。
+                    #   🛑 **⛔ 接任何閘、⛔ 實作 `r2`**；亦⛔ 掛 `on_change=_f3L_invalidate_g_cache`
+                    #      （本值不入 `G` 式；且該 hook 與深度覆寫欄共用 ⇒ 會生偽陽）。
+                    _k91_cats = sorted({(b.get('category', '') or '') for b in _build_blocks
+                                        if (b.get('category', '') or '')})
+                    _k91_by_cat = dict(st.session_state.get(K91_SS_MBA_BY_CATEGORY, {}) or {})
+                    _k91_by_lbl = dict(st.session_state.get(K91_SS_MBA_BY_LABEL, {}) or {})
+                    _k91_eff = {}
+                    with st.expander("🏛️ 街廓最小建築面積（資料源＝**都市計畫書**；0＝該街廓無規定）",
+                                     expanded=False):
+                        st.caption("`K-9-1` ⑨ 裁丙：有效值＝**街廓覆寫(>0) → 分區底(>0) → 0**。"
+                                   "`0` 表示該街廓**無**「最小建築面積」規定（僅幾何驗、無面積驗）。"
+                                   "🔒 本批僅建**資料層**：其值已入 §7-0a 之全區 `MinA`（**僅顯示**，"
+                                   "該檢無任何強制消費端），**尚未接任何分配之閘**（⑩⑪ 之驗另批）。")
+                        st.markdown("**🔹 分區底表（逐使用分區）**")
+                        if not _k91_cats:
+                            st.info("目前無可建築街廓之使用分區可設定。")
+                        for _cat9 in _k91_cats:
+                            # 🔒 `value=` 之種**取自持久 dict**（`:19835`／`:19836` 所還原者），
+                            #    **⛔ 取自 widget key** —— 分支未渲染之輪 Streamlit 會**丟棄 widget key**
+                            #    而持久鍵存活（本倉 `W-G.9-219R2`／`-226` `G4` 已活體實測）；
+                            #    若自 widget key 取種，回渲染時將以 `0` **靜默覆寫**使用者所填之都市計畫書值。
+                            _k91_by_cat[_cat9] = float(st.number_input(
+                                f"{_cat9}　最小建築面積（㎡）", min_value=0.0, step=1.0,
+                                value=float(_k91_by_cat.get(_cat9, 0.0) or 0.0),
+                                key=f'f3L_mba_cat_{_cat9}',
+                                help="都市計畫書所定；0＝該分區無規定"))
+                        st.markdown("**🔹 逐街廓覆寫（0＝不覆寫，沿用分區底）**")
+                        for b in _build_blocks:
+                            _lbl9 = b['label']
+                            # 🔒 同上：種取自持久 dict，⛔ widget key。
+                            _k91_by_lbl[_lbl9] = float(st.number_input(
+                                f"{_lbl9} 最小建築面積覆寫（㎡）", min_value=0.0, step=1.0,
+                                value=float(_k91_by_lbl.get(_lbl9, 0.0) or 0.0),
+                                key=f'f3L_mba_ov_{_lbl9}',
+                                help="0＝不覆寫（沿用該街廓所屬分區之底值）"))
+                        _k91_eff = {b['label']: k91_effective_min_build_area(
+                                        b['label'], (b.get('category', '') or ''),
+                                        _k91_by_lbl, _k91_by_cat)
+                                    for b in _build_blocks}
+                        st.markdown("**🔹 各街廓之有效值（供目檢）**")
+                        st.dataframe(pd.DataFrame([{
+                            '街廓': b['label'],
+                            '使用分區': (b.get('category', '') or ''),
+                            '分區底(㎡)': float(_k91_by_cat.get((b.get('category', '') or ''), 0.0) or 0.0),
+                            '街廓覆寫(㎡)': float(_k91_by_lbl.get(b['label'], 0.0) or 0.0),
+                            '有效值(㎡)': _k91_eff.get(b['label'], 0.0),
+                            '規定?': ('有' if _k91_eff.get(b['label'], 0.0) > 0 else '無'),
+                            '畸零地寬×平均深度(㎡)': _min_alloc_area_by_blk.get(b['label']),
+                        } for b in _build_blocks]), use_container_width=True, hide_index=True)
+                    st.session_state[K91_SS_MBA_BY_CATEGORY] = _k91_by_cat
+                    st.session_state[K91_SS_MBA_BY_LABEL] = _k91_by_lbl
+                    st.session_state[K91_SS_MBA_EFFECTIVE] = _k91_eff
                     st.session_state['f3_block_depth_by_label'] = _depth_info_by_blk
                     st.session_state['f3_alloc_depth_by_label'] = _depth_use_by_blk
                     st.session_state['f3_min_alloc_area_by_label'] = _min_alloc_area_by_blk
                     st.session_state['f3_min_width_by_label'] = _min_width_by_blk
                     # 🆕 W-C §5 / 7-0a 前置地基檢查：region_min vs 重劃區總面積×C%（v3.1 §7-0a）
                     #   region_min = min(各可建築街廓 D_avg_i×min_width_i)（非街角範圍面積）。
-                    _valid_mins = [v for v in _min_alloc_area_by_blk.values() if v is not None and v > 0]
+                    #   🆕 `K-9-1` ⑧（`W-G.9-244`）：`MinA` 新式（全區單一量）
+                    #     `MinA ＝ min( min(未規定街廓之「畸零地寬×平均深度」), min(有規定之「最小建築面積」值) )`
+                    #     🔒 規定集為空 ⇒ `_k91_contrib` 之鍵、值與迭代序**逐位等同**舊 `_valid_mins`
+                    #        ⇒ `_region_min` 與 `argmin_blk` 皆**逐位退化為現行式**（單元對拍見執行報告）。
+                    _k91_contrib = k91_min_alloc_contrib_by_blk(_min_alloc_area_by_blk, _k91_eff)
+                    _valid_mins = list(_k91_contrib.values())
                     _region_min = min(_valid_mins) if _valid_mins else None
                     _total_area_70a = sum(float(_b.get('area_m2', 0.0) or 0.0)
                                           for _b in classified_blocks)
@@ -19789,9 +19894,8 @@ def main():
                     st.session_state['f3_70a'] = {
                         'region_min': _region_min, 'total_area': round(_total_area_70a, 2),
                         'C': _C_70a, 'pool': round(_pool_70a, 2),
-                        'argmin_blk': (min(((k, v) for k, v in _min_alloc_area_by_blk.items()
-                                            if v is not None and v > 0),
-                                           key=lambda kv: kv[1])[0] if _valid_mins else None),
+                        'argmin_blk': (min(_k91_contrib.items(),
+                                           key=lambda kv: kv[1])[0] if _k91_contrib else None),
                         'pass': (_region_min is None) or (_C_70a <= 0) or (_region_min <= _pool_70a),
                     }
                     if _region_min is not None and _C_70a > 0 and _region_min > _pool_70a:
@@ -19802,7 +19906,7 @@ def main():
                         )
                     elif _region_min is not None and _C_70a > 0:
                         st.caption(
-                            f"✅ §7-0a 地基檢查 PASS：全區最小分配面積 {_region_min:.2f}㎡（最淺乘積街廓 "
+                            f"✅ §7-0a 地基檢查 PASS：全區最小分配面積 {_region_min:.2f}㎡（MinA 來源街廓 "
                             f"{st.session_state['f3_70a']['argmin_blk']}）≤ 重劃區總面積×C% "
                             f"{_pool_70a:,.2f}㎡（{_total_area_70a:,.0f}×{_C_70a:.4f}）"
                         )
@@ -22549,7 +22653,7 @@ def main():
                             _pf = '✅ PASS' if _70.get('pass') else '🔴 FAIL'
                             st.markdown(
                                 f"**⑥ 7-0a 前置地基檢查：{_pf}**　region_min = "
-                                f"{_70.get('region_min')}㎡（最淺乘積街廓 {_70.get('argmin_blk')}）"
+                                f"{_70.get('region_min')}㎡（MinA 來源街廓 {_70.get('argmin_blk')}）"
                                 f" vs 重劃區總面積×C% = {_70.get('total_area')}×{_70.get('C')} "
                                 f"= {_70.get('pool')}㎡")
                         # ⑦ 強制街角抵費地（§0.5-F.3：該 buffer 區應 render 成橘色抵費地；白色=漏上色）
