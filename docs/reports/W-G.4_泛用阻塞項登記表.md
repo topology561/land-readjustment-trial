@@ -4744,3 +4744,60 @@ KL 於 `2026-09-05` 逐字閱後**點頭確認** ⇒ **自本批起為 KL 裁**�
 
 🔒 **⛔ 於本單擴充閘 `P` 之定義**（其為常規之修，另議）；
 本單以工項五 `V-3` 之**逐批併報**代之，並登記此缺口候裁。
+
+---
+
+## 🔧 `GB-143` 補款之補款三：**硬閘之<u>範圍限定</u>——其成立繫於 session 之 project dir**（`W-G.9-244` 工項三·**CC 自擬**·⛔ 上文原句一字不刪·純末端追加）
+
+🛑 **本節⛔ 鑄任何號**——其為 `GB-143` 補款之補款（`戒 36`）。
+🔒 **⛔ 回改**「硬閘化」／「誠實化 ＋ 真攔截點之最小形」／「自本節起有對應機制」／「`③` 之機制更正」四節任一字。
+
+🩸 **案由**　`W-G.9-238R` 所立之「`PreToolUse` heredoc 硬閘**活體攔截已成立**」為真，
+惟其**射程未被載明**。CC 於 `W-G.9-239`〜`-244` 之窗中**三度**誤送含引入符之 `Bash` 命令，
+**三度皆未被攔**——**非閘失效，而是該 session 中閘根本不存在**。
+
+### 一　機制（自倉逐字·`blob@845d08db3cb63fa6562ebdf6459c56629de5f6b4`）
+
+`.claude/settings.json`（**267** B·`sha256` 前 16 位 `722dd10bad1ffcff`）之 `PreToolUse` 掛點逐字為
+`python "$CLAUDE_PROJECT_DIR/verify/tools/wg9237_heredoc_guard.py"`（`matcher` ＝ `Bash`）
+⇒ 閘之成立**同時**繫於二事：
+
+> **一**　`$CLAUDE_PROJECT_DIR/.claude/settings.json` 於 **session 啟動時**存在——否則 hook **根本未註冊**。
+> **二**　`$CLAUDE_PROJECT_DIR/verify/tools/wg9237_heredoc_guard.py` 存在（**8212** B·`sha16 aaeb8219ff1d501f`）——否則該 hook 之命令不可執行。
+
+### 二　實測（CC 於 `2026-09-06` 當場·三處 checkout 並列）
+
+| checkout | `.claude/settings.json` | `wg9237_heredoc_guard.py` | 閘 |
+|---|---|---|---|
+| 主 checkout（`land-readjustment-trial`）| **在** | **在** | 成立 |
+| 短路徑拋棄式 clone（本波施工副本）| **在** | **在** | 成立 |
+| 🔴 **本 session 之 project dir**（`.claude/worktrees/w-g9-handoff-b5ba50`）| **不在** | **不在** | 🔴 **結構性不存在** |
+
+🔒 **成因**：harness 逐窗**自 `main` 開 worktree**——該 worktree 之 `HEAD` ＝
+`6cb77b7f0c08e2edf62f8e9cd239efa774a98d95`，與主線 `845d08d` 之 `left-right` ＝ **`1 622`**；
+而接線二檔皆係**工作分支之物** ⇒ 於該 worktree 內**二檔皆不存在**
+⇒ hook 未註冊、guard 亦不可執行。**且⛔ 有任何徵兆**（無錯誤訊息、無警告）。
+
+### 三　範圍限定（自本節起為正字規則）
+
+> **`GB-143` 補款之補款二所立之「硬閘自本節起有<u>對應機制</u>」，其射程<u>限於</u>
+> `$CLAUDE_PROJECT_DIR` 內<u>同時</u>具備上開二檔之 session。**
+> **凡 session 之 project dir 為自 `main` 開之 worktree（或任何缺該二檔之目錄），
+> 該閘<u>結構性不存在</u>** ⇒ **⛔ 讀為「閘已生效」**、**⛔ 以其存在為由放鬆 `GB-143` 之人工紀律**。
+
+### 四　通則（承 `W-G.9-238R` 之「自檢綠⛔ 蘊含閘已生效」·再進一層）
+
+> **「閘已落地（倉內有其碼與設定）」⇏「閘於本 session 生效」**
+> ——接線之受詞係 **session 啟動時之 project dir**，**⛔ 倉**。
+> ⇒ **凡引用某閘為防線者，須同格載該 session 之 project dir 內該閘所繫各檔之在否。**
+> **最廉價之現查** ＝ `test -f .claude/settings.json`（不存在即閘不存在）。
+
+### 五　三度誤送之後果（逐次現查·⛔ 隱去）
+
+三次皆為**未完成即滯留**之命令（其一為佔位、其二為量測命令之尾段、其三為多重性檢查之殼），
+**皆以 `TaskStop` 終止**，**未寫任何檔、未動倉態**——各該批之 `git status`／`numstat` 逐項對得上。
+⇒ **土地後果 ＝ 零、倉態後果 ＝ 零**。
+
+🛑 **本節⛔ 修 session 之開啟方式、⛔ 動 guard 本體、⛔ 改 `GB-143` 之發生次數計數器**——**只登記**（單之明令）。
+🛑 **候裁（⛔ 由 CC 自裁）**：① 接線是否改置於**不隨分支變動**之位置（如使用者層設定）；
+② harness 是否改為**自工作分支**開 worktree；③ 本窗三度是否計入 `GB-143` 之發生次數。
