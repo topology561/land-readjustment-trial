@@ -665,9 +665,15 @@ def main():
         #   由 run_step_g 內部 raise RuntimeError；於此轉 FAIL 列（run_all 轉紅）。
         print(f"… Step G headless（{tag}；v3 真值財務＋結構不變量永久閘）")
         try:
+            # 🆕 `W-G.9-247` 工項三：最小建築面積有效值之管線（二情境皆空）。
+            #   🛑 單 `§四-1` 逐字令「`param_by_tag[tag]` 加鍵」，惟該值係
+            #   `build_param_table` 之回傳 ＝ **`list[dict]`（列）**、⛔ `dict`
+            #   ⇒ 「加鍵」結構上不可能（且加欄必破 `參數{tag}` 之 baseline diff）。
+            #   依 `常規二` 取保守項：改以**顯式具名引數**於呼叫端傳入（效果同「二情境皆空」）。
             _sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                              param_by_tag[tag], build_parcels,
-                             winners_state, forced_map, setback)
+                             winners_state, forced_map, setback,
+                             eff_min_build_by_blk={})
             g_tab, diag_tab, slot_tab = build_step_g_tables(_sg)
             _dump_csv(g_tab, os.path.join(OUTDIR, f"got_G值_退縮{tag}.csv"))
             _dump_csv(diag_tab, os.path.join(OUTDIR, f"got_滑池槽診斷_退縮{tag}.csv"))
@@ -694,8 +700,36 @@ def main():
             results.append((f"k* 六塊經驗錨{tag} {K_STAR_EXPECT[tag]}", _ks == K_STAR_EXPECT[tag],
                             [] if _ks == K_STAR_EXPECT[tag] else [f"實得 {_ks}"]))
         except RuntimeError as _e_sg:
+            # 🔒 本列**一字不動**——仍紅、仍 FAIL；`run_all` 之判法不受影響。
             results.append((f"v3·StepG{tag}（結構閘/看守觸發）", False,
                             [f"[StepG{tag}] {_e_sg}"]))
+            # 🆕 `W-G.9-247` 工項一：中止時之**部分落檔**（`自誤 301`）。
+            #   🛑 落檔失敗 ⇒ **具名 print**，⛔ 二次 raise、⛔ 蓋掉原例外。
+            _pt = getattr(_e_sg, 'partial', None)
+            if _pt is None:
+                print(f"  🔴 [StepG{tag}] 例外未帶 `partial` ⇒ ⛔ 部分落檔"
+                      f"（`run_step_g` 薄殼未生效？）")
+            else:
+                _prows = list(_pt.get('g_rows') or [])
+                if not _prows:
+                    print(f"  🟡 [StepG{tag}] partial 之 `g_rows` 為空"
+                          f"（中止街廓 {_pt.get('aborted_blk')!r}）⇒ ⛔ 落檔")
+                else:
+                    _pcols = []
+                    for _r in _prows:
+                        for _k in _r:
+                            if _k not in _pcols:
+                                _pcols.append(_k)
+                    _ptab = [{**{_k: _r.get(_k, '') for _k in _pcols},
+                              '中止街廓': _pt.get('aborted_blk'),
+                              '中止閘': _pt.get('aborted_gate')}
+                             for _r in _prows]
+                    _ppath = os.path.join(OUTDIR, f"got_G值_退縮{tag}_partial.csv")
+                    _dump_csv(_ptab, _ppath)
+                    print(f"  🟡 [StepG{tag}] 部分落檔 {len(_ptab)} 列 → {_ppath}"
+                          f"（中止街廓 {_pt.get('aborted_blk')!r}）")
+                # 🆕 `W-G.9-247` 工項三 `V-4`：`eff_keys` 之出艙（⛔ 於 `g_rows` 空時亦印）
+                print(f"  🟡 [StepG{tag}] eff_keys = {_pt.get('eff_keys')!r}")
 
     # ── 🆕 v3 財務接線閘（KL 裁定 2026-07-09）──
     #   **斷言錨之輸入必須獨立於錨**：B/C 皆由快照 財務接線_v3 之三純量（前均價/後均價/貸款利息）

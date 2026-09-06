@@ -236,8 +236,63 @@ def assert_depth_same_source(depth_from_snapshot):
 
 
 def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
-               winners_state, forced_map, setback):
-    """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。"""
+               winners_state, forced_map, setback, eff_min_build_by_blk=None):
+    """一情境 Step G（**薄殼**·`W-G.9-247` 工項一）——**只包、不吞**。
+
+    🔒 **本殼之唯一職責** ＝ 於 `RuntimeError` 上掛 `e.partial` 後**原樣 `raise`**
+    （原例外物件、原型別、原訊息·⛔ 不新建例外、⛔ 不改 `results` 之任何列）。
+
+    🩸 **案由**（`自誤 301`）：`run_verification.py` 之 `_dump_csv(g_tab, …)` 落在
+    `try: _sg = run_step_g(...)` **之內**，而本函式內有 **27** 處 `raise RuntimeError`
+    （結構閘）；`R2` 一 raise，該 `_dump_csv` **一列不執行** ⇒ `R1` 已算完之逐宗表**全丟**。
+
+    🛑 **⛔ 以「本體縮排一層」實作**（單 `§二-1` 之逐字形）——實測本體含 **33** 個
+    跨列字串常數，其中 **7** 個為跨列 docstring；整體縮排會改變其**內容**
+    ⇒ 與本單【驗收】`V-1`「`results` 列（含二 FAIL 列之文字）逐位相同」**互斥**。
+    ⇒ 依 `常規二` 取保守項：**內外分離**（語意同一·字串內容**零變更**·diff 由 ~1190 列降為 ~20 列）。
+
+    🔒 `_pcap` ＝ partial capture。其 `g_rows` 掛的是 `_run_step_g_impl` 內
+    `g_rows = []` 之**同一 list 物件**（掛引用·⛔ 複製）⇒ 中止時已 `extend` 之列全在。
+    """
+    _pcap = {'g_rows': [], 'aborted_blk': None}
+    try:
+        return _run_step_g_impl(
+            ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+            winners_state, forced_map, setback,
+            eff_min_build_by_blk=eff_min_build_by_blk, _pcap=_pcap)
+    except RuntimeError as _e_partial:
+        # ⛔ 不吞：掛完即原樣 raise（bare `raise` 保留原 traceback）
+        _e_partial.partial = {
+            'g_rows': _pcap['g_rows'],
+            'aborted_blk': _pcap['aborted_blk'],
+            'aborted_gate': str(_e_partial),
+            'eff_keys': _pcap.get('eff_keys'),
+        }
+        raise
+
+
+def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                     winners_state, forced_map, setback,
+                     eff_min_build_by_blk=None, _pcap=None):
+    """一情境 Step G。回傳 {'g_rows','pool_diag','slot_rows'}（欄名/rounding 同 app）。
+
+    🔒 **本體自 `W-G.9-247` 前之 `run_step_g` <u>逐字位移</u>**（⛔ 改一個可執行敘述），
+    僅加二處 `_pcap` 記錄（純賦值·⛔ 改控制流）與簽章末之 `eff_min_build_by_blk`／`_pcap`。
+    """
+    # 🆕 `W-G.9-247` 工項三：最小建築面積**有效值**之 ctx（`None ⇒ {}`）。
+    #   🛑 **本批⛔ 有消費端**（判定式屬 `W-G.9-246`）——只鋪管線。
+    #   🩸 單 `§四-3` 令置於回傳值／`pool_diag`，惟二者**皆在 `return` 之後**，
+    #      而現態二情境皆於 `R2` raise ⇒ 該出艙**結構上不可觀測**（`自誤 301` 同族·第三度）
+    #      ⇒ 依 `常規二` 取保守項：**併掛 `partial`**（回傳值之鍵⛔ 移除·二路並存）。
+    #
+    # 🔒 **本二敘述置於函式體之最首**（⛔ 移至下方）——由**判別力對照當場所迫**：
+    #      置於 `g_rows` 一帶時，`f3_total_burden_rate_from_finance` 未鋪底之 `raise`
+    #      落在其**前** ⇒ 早期中止之 `partial['eff_keys']` 恆 `None`
+    #      ⇒ 對照組（傳 `{'R1': 1.0}`）與（傳 `{}`）**得數相同** ⇒ 該檢**判別力為零**。
+    #   🛑 二者皆為**純賦值**（入參之淺拷貝）⇒ 置首**⛔ 有任何行為後果**。
+    _eff_mba = dict(eff_min_build_by_blk or {})
+    if _pcap is not None:
+        _pcap['eff_keys'] = sorted(_eff_mba.keys())
     import numpy as _np_d
     from shapely.geometry import Polygon as _SP_d
     # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
@@ -334,6 +389,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _k956_W_from_mp = ns["k956_W_from_mp"]
 
     g_rows = []
+    # 🆕 `W-G.9-247` 工項一：掛**同一 list 物件**之引用供薄殼於中止時取用（純賦值·⛔ 改控制流）
+    if _pcap is not None:
+        _pcap['g_rows'] = g_rows
     detail_trace = {}
     pool_diag = {}
     # 🆕 §4 P2-e／W-4 回饋通道：`{街廓: {暫編地號: 實際落位面積}}`。階段2 落位在 stepg（幾何層）、
@@ -400,6 +458,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
     # ── 逐街廓（app Step G 迴圈逐行複刻；st.* 於 headless 為 fake no-op 故略） ──
     for blk_label, parcels_in_blk in parcels_by_block.items():
+        # 🆕 `W-G.9-247` 工項一：記當前街廓（純賦值·⛔ 改控制流）
+        if _pcap is not None:
+            _pcap['aborted_blk'] = blk_label
         blk_meta = block_meta_by_label.get(blk_label, {})
         blk_poly = blk_meta.get('shapely', None)
         blk_area = float(blk_meta.get('area_m2', 0.0) or 0.0)
@@ -1424,7 +1485,10 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
     # `stage2_placed`＝W-4 回饋通道（P2-e 備·wf_f4 扣 `a_rem` 於 P2-g 接）。
     #   純加性頂層鍵——`build_step_g_tables` 只讀 `g_rows`/`pool_diag`，三表欄集不受影響。
-    return {'g_rows': g_rows, 'pool_diag': pool_diag, 'stage2_placed': _stage2_placed}
+    # 🆕 `W-G.9-247` 工項三：`eff_keys` 為**頂層鍵**（⛔ 塞 `pool_diag`——後者逐鍵攤成
+    #   診斷表欄位，加鍵會污染 baseline 欄集；同 `_stage2_placed` 之既例）。
+    return {'g_rows': g_rows, 'pool_diag': pool_diag, 'stage2_placed': _stage2_placed,
+            'eff_keys': sorted(_eff_mba.keys())}
 
 
 def build_step_g_tables(res):
