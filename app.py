@@ -10276,6 +10276,39 @@ K91_SS_MBA_BY_CATEGORY = 'f3_min_build_area_by_category'
 K91_SS_MBA_BY_LABEL = 'f3_min_build_area_by_label'
 K91_SS_MBA_EFFECTIVE = 'f3_min_build_area_effective_by_label'
 
+# ── 🆕 `W-G.9-248` 工項二：街廓**正面道路名稱／識別符**（`r3` 之資料前提）────────
+#   🛑 **⛔ 建消費端**（單 `§三 b` 明令）：本鍵**⛔ 被任何判定式／`G` 式／
+#      `_lot_gate`／`verify/**` 讀取**；⛔ 實作 `r3`、⛔ 建區外道路清單。
+#   🔒 與既有 `SS_ROAD`（`'f3_block_road'`）之 `front_*` 諸鍵**⛔ 共用、⛔ 覆寫**
+#      ——本鍵自成一 dict：鍵 ＝ `bid`、值 ＝ 使用者所填之字串（預設 `''`）。
+#   🔒 ⛔ 及於**側面**道路——`r3` 之受詞為**正面**道路（單 `§三 b`：擴及側面係射程外）。
+SS_FRONT_ROAD_NAME = 'f3_front_road_name_by_bid'
+
+
+def wg9248_stringify_mixed_cols(df, cols):
+    """把指定欄轉為 `str`，以避 `pyarrow.lib.ArrowInvalid`（混型欄之 Arrow 轉換紅）。
+
+    🛑 **⛔ 動產生該值之計算一字**（單 `W-G.9-248 §四 b` 明令）——本函式僅施於
+    **顯示層**，且僅於**送入 `st.dataframe` 之前**。
+    🔒 **受詞** ＝ 「同一欄同時含**數值**與**字串哨兵**（`'—'`／`'-'`）」之欄。
+    🔒 **哨兵之語意⛔ 滅失**：`'—'`（無此側／無資格）之**字面原樣**成為字串。
+    🔒 **⛔ 把哨兵改成 `0`**——會與真實之 `0` 混淆（**有判讀後果**·單明令）。
+    🔒 **受詞欄不存在 ⇒ loud `KeyError`**（`no-silent-fallback`）：三呼叫點之欄集
+       皆已由碼面逐一確認；欄若消失即係碼變，**⛔ 靜默略過**。
+    """
+    if df is None or getattr(df, 'empty', True):
+        return df
+    _out = df.copy()
+    _missing = [_c for _c in cols if _c not in _out.columns]
+    if _missing:
+        raise KeyError(
+            "wg9248_stringify_mixed_cols：受詞欄不存在 %r（該 DataFrame 之欄 ＝ %r）"
+            % (_missing, list(_out.columns))
+        )
+    for _c in cols:
+        _out[_c] = _out[_c].astype(str)
+    return _out
+
 
 def k91_effective_min_build_area(label, category, by_label, by_category):
     """`K-9-1` ⑨ 裁丙：某街廓之「最小建築面積」**有效值**。
@@ -16504,7 +16537,12 @@ def main():
                 "支出小計": round(construction_total + replot_fee_total, 2),
                 "收入": round(disposal_income, 2),
                 "當期淨現金流量": round(sum(yearly_cash_flows), 2),
-                "期初淨額": "-",
+                # 🆕 `W-G.9-248` 工項三：混型欄之**顯示層**修——合計列之哨兵由 `"-"` 改 `None`。
+                #   🔒 **語意⛔ 滅失**：下方 `.style.format(..., na_rep="-")` 已存在，
+                #      `None` 於顯示時**仍為 `-`**（同批於該 `format` 併補本欄之數值格式）。
+                #   🛑 ⛔ 改為 `0`——會與真實之 `0` 混淆（單 `§四 b` 明令）。
+                #   🔒 本改僅動**哨兵之載體**，⛔ 動 `beginning_balance` 之計算一字。
+                "期初淨額": None,
                 "貸款利息": round(total_interest, 2),
                 "期末餘額": round(cumulative_cash, 2)
             })
@@ -16518,6 +16556,10 @@ def main():
                 "支出小計": "{:,.2f}",
                 "收入": "{:,.2f}",
                 "當期淨現金流量": "{:,.2f}",
+                # 🆕 `W-G.9-248` 工項三：本欄原缺格式（其合計列為字串哨兵 `"-"`）；
+                #   哨兵改 `None` 後本欄轉純數值 ⇒ 補其格式，與同表他欄一致。
+                #   `None` 由既有之 `na_rep="-"` 顯示為 `-` ⇒ **語意保留**。
+                "期初淨額": "{:,.2f}",
                 "貸款利息": "{:,.2f}",
                 "期末餘額": "{:,.2f}"
             }, na_rep="-"), use_container_width=True)
@@ -19570,8 +19612,11 @@ def main():
                 st.success("✅ 已依 DXF 最小外接矩形自動帶入各街廓長度")
                 st.rerun()
 
+            # 🆕 `W-G.9-248` 工項二：正面道路名稱之持久 dict（**⛔ 消費端**·見 `SS_FRONT_ROAD_NAME`）
+            _front_road_names = dict(st.session_state.get(SS_FRONT_ROAD_NAME, {}) or {})
             with st.form("f3_road_form", clear_on_submit=False):
                 new_roads = {}
+                _new_front_road_names = {}
                 for b in build_blocks:
                     bid = b['id']
                     # DXF 自動計算結果（供預填與顯示）
@@ -19614,6 +19659,23 @@ def main():
                         fn = ca3.checkbox(
                             "正面為新闢道路", value=bool(r.get('front_new', True)), key=f"f3_fn_{bid}"
                         )
+                        # 🆕 `W-G.9-248` 工項二：正面道路**名稱／識別符**（`r3` 之資料前提）
+                        #   🔒 `value=` 之種取自**持久 dict** `_front_road_names`，**⛔ 取自 widget key**
+                        #      ——分支未渲染之輪 Streamlit 會**丟棄 widget key** 而持久鍵存活
+                        #      （本倉 `W-G.9-219R2`／`-226` `G4` 已活體實測）；自 widget key 取種者，
+                        #      回渲染時將以 `''` **靜默覆寫**使用者所填之值。體例同 `:20050`／`:20059`。
+                        #   🔒 本欄在 `st.form` 內 ⇒ 與同介面其餘欄同語意：**按鈕方生效**。
+                        #      其**⛔ 消費端** ⇒ **無即時性需求**，故該延遲**⛔ 為缺陷**
+                        #      （`W-G.9-248R` 段乙停機報告 `§四 b` 已具名）。
+                        frn = st.text_input(
+                            "正面道路名稱／識別符",
+                            value=str(_front_road_names.get(bid, '') or ''),
+                            key=f"f3_frname_{bid}",
+                            help="該街廓**正面**道路之名稱或識別符（例：「中山路」「計畫道路 3-1」）。"
+                                 "🛑 本欄**尚未接任何閘**，係 `r3`（正面道路）之**資料前提**；"
+                                 "留空表示未填。",
+                        )
+                        _new_front_road_names[bid] = frn
 
                         st.markdown("**🔹 左側面道路（若該街廓左側無臨路請填 0）**")
                         cl1, cl2, cl3 = st.columns([1, 1, 1.2])
@@ -19685,6 +19747,10 @@ def main():
                 submit_road = st.form_submit_button("✅ 儲存路寬資料", use_container_width=True)
             if submit_road:
                 st.session_state[SS_ROAD].update(new_roads)
+                # 🆕 `W-G.9-248` 工項二：另立之新鍵（**⛔ 併入 `SS_ROAD`**·⛔ 覆寫既有道路鍵）
+                _frn_persist = dict(st.session_state.get(SS_FRONT_ROAD_NAME, {}) or {})
+                _frn_persist.update(_new_front_road_names)
+                st.session_state[SS_FRONT_ROAD_NAME] = _frn_persist
                 st.success("路寬資料已儲存（正面 + 左側 + 右側三組）")
                 st.rerun()
 
@@ -20257,6 +20323,13 @@ def main():
                             {k: v for k, v in r.items() if not k.startswith('_')}
                             for r in _corner_rows_init
                         ])
+                        # 🆕 `W-G.9-248` 工項三：混型欄之**顯示層**修（⛔ 動上方計算一字）。
+                        #   本表之混型欄 ＝ 四（`round(...)`（float）∪ `'—'`）；
+                        #   `【左/右】街角最小面積(㎡)` ＝ `None` ∪ float ⇒ pandas 轉 `NaN`
+                        #   ⇒ **⛔ 混型**、⛔ 列入受詞。
+                        _df_corner = wg9248_stringify_mixed_cols(_df_corner, [
+                            '【左】路寬(m)', '【右】路寬(m)', '【左】截角(㎡)', '【右】截角(㎡)',
+                        ])
                         st.dataframe(_df_corner, use_container_width=True, hide_index=True)
                         st.session_state['f3L_corner_min_table'] = _corner_rows_init
                     else:
@@ -20756,8 +20829,17 @@ def main():
                                         "但本系統幾何投影演算法（`LineString.project()`）建議的側別不同。"
                                         "已採用使用者標註值；如需修正，請至步驟 G 圖選器重新點選。"
                                     )
-                            st.dataframe(_pd.DataFrame(_corner_select_results),
-                                         use_container_width=True, hide_index=True)
+                            # 🆕 `W-G.9-248` 工項三：混型欄之**顯示層**修（⛔ 動其計算一字）。
+                            #   本表之混型欄 ＝ 四：`達資格候選`（`len(...)`（int）∪ `'—'`）與
+                            #   `優先權指數`（`round(float(...), 4)`（float）∪ `'—'`）各左右二欄。
+                            #   🔒 `最小面積(㎡)`／`第1宗指配` 之二臂**皆 f-string／字串**
+                            #      ⇒ **恆字串**、⛔ 混型 ⇒ **⛔ 列入受詞**。
+                            st.dataframe(wg9248_stringify_mixed_cols(
+                                _pd.DataFrame(_corner_select_results), [
+                                    '【左】達資格候選', '【右】達資格候選',
+                                    '【左】優先權指數', '【右】優先權指數',
+                                ]),
+                                use_container_width=True, hide_index=True)
                             st.session_state['f3L_corner_winners'] = _corner_select_results
                             st.session_state['f3L_corner_side_warnings'] = _side_warnings
                             # 🆕 `W-G.9-198R` `R1-6`／`R1-7`：K-6-B 段二全域排序（**唯讀出艙**）
