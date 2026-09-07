@@ -19677,6 +19677,47 @@ def main():
                         )
                         _new_front_road_names[bid] = frn
 
+                        # 🆕 `W-G.9-248` 工項一（**丙案**·KL 裁 `2026-09-07`）：
+                        #   街廓**最小建築面積**之**唯讀顯示**（置於正面道路區塊**下方**）。
+                        #   🛑 **⛔ 覆寫欄**——`-248 §二 b`「覆寫欄須出現在介面甲」**已由 KL 裁作廢**；
+                        #      可編輯之覆寫欄仍在介面乙（`🏛️ 街廓最小建築面積` expander）。
+                        #      其由 ＝ 介面甲在 `st.form` 內 ⇒ **按鈕方生效**，而該值之消費端
+                        #      （`MinA`）**需即時生效** ⇒ 移入必生延遲（`W-G.9-248R` 段乙停機報告
+                        #      `§二` 之活體三步實驗已坐實：form 內之值須提交方更新）。
+                        #   🔒 **當場現算**——呼叫 module 級純函式 `k91_effective_min_build_area`；
+                        #      **⛔ 讀 `K91_SS_MBA_EFFECTIVE`**（該鍵於介面乙之後方寫入
+                        #      ⇒ 讀之必**延遲一輪**·KL 明令避之）。
+                        #   🔒 **入參之取得（二層·⛔ 靜默·⛔ 編造）**：
+                        #      ① 優先取 **widget key**（`f3L_mba_ov_{label}`／`f3L_mba_cat_{cat}`）
+                        #         ——該二 widget 在 `st.form` **外**，其 key 於 rerun 開始前即已更新
+                        #         ⇒ 得**本輪值·無延遲**。
+                        #      ② 缺則回落**持久 dict**（`K91_SS_MBA_BY_LABEL`／`_BY_CATEGORY`）
+                        #         ——介面乙未渲染之輪 Streamlit **丟棄 widget key** 而持久鍵存活
+                        #         （`W-G.9-219R2`／`-226` `G4` 已活體實測）。
+                        #      🔒 二者皆無 ⇒ `0.0` ＝ **該街廓無規定**（與介面乙之語意**同一**）。
+                        #   🛑 **唯讀**：⛔ 回寫任何 `session_state` 鍵、⛔ 設任何 widget key
+                        #      ⇒ **⛔ 觸** `f3L_mba_*` 之「`value=` 之種⛔ 取自 widget key」之戒
+                        #      （該戒之受詞係**種**；本處係**讀以顯示**，⛔ 回寫 ⇒ 無靜默覆寫之虞）。
+                        _mba_lbl = b['label']
+                        _mba_cat = (b.get('category', '') or '')
+                        _mba_ov_live = st.session_state.get(f'f3L_mba_ov_{_mba_lbl}', None)
+                        _mba_bs_live = st.session_state.get(f'f3L_mba_cat_{_mba_cat}', None)
+                        _mba_ov = (float(_mba_ov_live) if _mba_ov_live is not None else float(
+                            (st.session_state.get(K91_SS_MBA_BY_LABEL, {}) or {}).get(_mba_lbl, 0.0) or 0.0))
+                        _mba_bs = (float(_mba_bs_live) if _mba_bs_live is not None else float(
+                            (st.session_state.get(K91_SS_MBA_BY_CATEGORY, {}) or {}).get(_mba_cat, 0.0) or 0.0))
+                        _mba_eff = k91_effective_min_build_area(
+                            _mba_lbl, _mba_cat, {_mba_lbl: _mba_ov}, {_mba_cat: _mba_bs})
+                        _mba_src = ('街廓覆寫' if _mba_ov > 0
+                                    else ('分區底' if _mba_bs > 0 else '無規定'))
+                        st.caption(
+                            f"🏛️ **最小建築面積（唯讀·現算）**：`{_mba_eff:,.2f}` ㎡"
+                            f"　來源＝**{_mba_src}**（分區＝`{_mba_cat or '未分類'}`）\n\n"
+                            f"💡 其**設定**在本頁下方「🏛️ 街廓最小建築面積」區塊"
+                            f"（分區底表 ＋ 逐街廓覆寫）；`0` ＝ 該街廓**無**規定"
+                            f"（僅幾何驗、無面積驗）。"
+                        )
+
                         st.markdown("**🔹 左側面道路（若該街廓左側無臨路請填 0）**")
                         cl1, cl2, cl3 = st.columns([1, 1, 1.2])
                         # 🆕 Phase 11：預設 8m，使用者可改 0 表示無臨路
