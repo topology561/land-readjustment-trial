@@ -684,6 +684,36 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         _lside_left = float(sb_row.get('左側尺度', 0.0) or 0.0) if _has_left_corner else 0.0
         _F_right = float(sb_row.get('右側長度(m)', 0.0) or 0.0) if _has_right_corner else 0.0
         _lside_right = float(sb_row.get('右側尺度', 0.0) or 0.0) if _has_right_corner else 0.0
+        # 🆕 `W-G.9-246′` 工項二：**逐宗驗證站之街廓層 ctx**（每街廓組一次·app 側鏡射·`#20`）。
+        #   🔒 `corner_range_polys` 取自 `W-G.9-247` 工項二所鋪之 `ctx`（`I-7`）——⛔ 自建第二源。
+        #   🔒 `eff_min_build` 取自 `_eff_mba`（`W-G.9-247` 工項三所鋪·主跑二情境為 `{}`）。
+        #   🛑 本段**只讀不判**；缺者留 `None`，由 `_lot_gate` 記為「無從判定」並具名（`I-3`）。
+        _lg_fl_sg = (cad.get('front_lines', {}) or {}).get(blk_label) or {}
+        _lg_mb_sg = _bls_sg.get(blk_label) or {}
+        _lg_crp_sg = {_w_sg: ctx['corner_range_polys'].get((blk_label, _w_sg))
+                      for _w_sg in ('left', 'right')}
+        _lg_blk_ctx = {
+            'blk_label': blk_label,
+            'category': blk_meta.get('category', ''),
+            'front_road_width_m': float(SB[blk_label]['正面']['路寬_m']),
+            'eff_min_build': ns['k91_effective_min_build_area'](
+                blk_label, blk_meta.get('category', ''), _eff_mba, {}),
+            'has_side': {'left': _has_left_corner, 'right': _has_right_corner},
+            'corner_range_polys': _lg_crp_sg,
+            'corner_range_areas': {_w_sg: (None if _lg_crp_sg[_w_sg] is None
+                                           else float(_lg_crp_sg[_w_sg].area))
+                                   for _w_sg in ('left', 'right')},
+            'front_p1': _lg_fl_sg.get('p1'), 'front_p2': _lg_fl_sg.get('p2'),
+            'baseline_pts': ns['_baseline_pts_from_manual'](
+                _lg_mb_sg, blk_meta.get('vertices') or []),
+            'side_pts': {'left': ([_sl_left['p1'], _sl_left['p2']]
+                                  if (_sl_left.get('p1') and _sl_left.get('p2')) else None),
+                         'right': ([_sl_right['p1'], _sl_right['p2']]
+                                   if (_sl_right.get('p1') and _sl_right.get('p2')) else None)},
+            'side_mid': {'left': _side_mid_left, 'right': _side_mid_right},
+            'alloc_dir': _alloc_dir_cad,   # 🔴 **CAD 原始 ALLOC 方向**（app.py:9681 逐字）·⛔ `allocation_dir_block`（＝其 rot90）
+            'block_centroid': blk_meta.get('centroid'),
+        }
         _n_alloc_blk = allocation_dir_block
         _cos_dn = 1.0
         if _n_alloc_blk is not None and d_hat is not None:
@@ -758,6 +788,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _near_dir_left = None
             _near_dir_right = None
             first_corner_used_left = False
+            _lg_idx_left = 0          # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
             left_results = []
             for entry in left_group:
                 tp = entry['tp']
@@ -793,6 +824,14 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _W_prev=_W_prev_left,
                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                 )
+                # 🆕 `W-G.9-246′` 工項二 **站 3／4（harness 左鏈）**：`res` 定案後、鏈推進前。
+                #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
+                res['_lg_cols'] = ns['_lot_gate'](
+                    res, tp, _lg_blk_ctx,
+                    is_corner_first=bool(is_first_corner_l),
+                    is_second_after_corner=(_lg_idx_left == 1),
+                    chain_side='left', _label=blk_label)
+                _lg_idx_left += 1
                 if _has_left_corner:
                     if not _W0_left_set:
                         _W0_left = float(res.get('W_near', 0.0)); _W0_left_set = True
@@ -812,11 +851,14 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _widths_local[entry['_ov2_idx']] = float(res.get('_宗地寬度', 0.0) or 0.0)
                 if is_first_corner_l:
                     first_corner_used_left = True
-                _rows_local.append(_build_g_row(
+                _lg_row = _build_g_row(
                     k, tp, blk_label, blk_area, front_len, avg_depth_default,
                     zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
                     is_first_corner_l, side, res, solver_label, 'left',
-                ))
+                )
+                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
+                _lg_row.update(res.get('_lg_cols') or {})
+                _rows_local.append(_lg_row)
                 _trace_local[k] = res.get('trace', [])
                 left_results.append((entry, res))
 
@@ -832,6 +874,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 d_hat_rev = None
 
             first_corner_used_right = False
+            _lg_idx_right = 0         # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
             right_results = []
             for entry in right_group:
                 tp = entry['tp']
@@ -884,6 +927,14 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                         if float(_r2.get('area_geom', 0)) >= 0.5:
                             res, solver_label = _r2, _sl2
                             break
+                # 🆕 `W-G.9-246′` 工項二 **站 4／4（harness 右鏈）**：掛於**定案之 `res`** 後
+                #   （右鏈有二次 solve `_solve_one` ⇒ ⛔ 各 solve 後各掛·`I-4`）。
+                res['_lg_cols'] = ns['_lot_gate'](
+                    res, tp, _lg_blk_ctx,
+                    is_corner_first=bool(is_first_corner_r),
+                    is_second_after_corner=(_lg_idx_right == 1),
+                    chain_side='right', _label=blk_label)
+                _lg_idx_right += 1
                 if _has_right_corner:
                     if not _W0_right_set:
                         _W0_right = float(res.get('W_near', 0.0)); _W0_right_set = True
@@ -903,11 +954,14 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _widths_local[entry['_ov2_idx']] = float(res.get('_宗地寬度', 0.0) or 0.0)
                 if is_first_corner_r:
                     first_corner_used_right = True
-                _rows_local.append(_build_g_row(
+                _lg_row = _build_g_row(
                     k, tp, blk_label, blk_area, front_len, avg_depth_default,
                     zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
                     is_first_corner_r, side, res, solver_label, 'right',
-                ))
+                )
+                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
+                _lg_row.update(res.get('_lg_cols') or {})
+                _rows_local.append(_lg_row)
                 _trace_local[k] = res.get('trace', [])
                 right_results.append((entry, res))
 

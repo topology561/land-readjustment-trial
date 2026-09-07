@@ -12281,6 +12281,200 @@ def _t3_gate_emit(rows, _stream=None):
     return None
 
 
+def _lg_fmt(v):
+    """四態之出艙字樣（`W-G.9-246′` `I-2`）——**沿用既有四態基建**。
+
+    `True` → `合格`／`False` → `不合格`；`_T3_NA` 與 `None` **委派** `_t3_fmt_gate`
+    （得 `不適用`／`無從判定`）⇒ ⛔ 另立第二套詞彙。
+    🔒 **`無從判定` ＝ 單所稱之「不可判」**——⛔ 改既有基建之字樣（`_t3_fmt_gate` 之
+    docstring 逐字：「**四態⛔ 不得併三**——『不適用』與『無從判定』**是兩件事**」）。
+    """
+    if v is _T3_NA or v is None:
+        return _t3_fmt_gate(v)
+    return '合格' if v else '不合格'
+
+
+def _lot_gate(res, tp, blk_ctx, is_corner_first=False,
+              is_second_after_corner=False, chain_side='', _label=''):
+    """🆕 **逐宗驗證站**（`W-G.9-246′`·`v3` ⑧–⑪ 更正節）——**判定式之單一真相源**。
+
+    🛑 **觀測模式**：本函式**只回傳判定**，**⛔ 有任何副作用**
+    （⛔ 讀 `st`、⛔ 改 `res`／`tp`／`blk_ctx`、⛔ 寫任何 session／檔案）。
+    呼叫端**⛔ 依其 verdict 寫任何 `if`**（`I-5`）。
+
+    ## 三項判定（各為**四態**·`I-2`）
+
+    | 項 | 判準 | 正典 |
+    |---|---|---|
+    | `A` 幾何 | 宗地範圍可完整容納 `min_width × min_depth` 矩形（可旋轉、可平移） | `K-9-12`；`v3` ⑧⑪ |
+    | `B` 藍影 | `G > area(藍影)`（**嚴格大於**）∧ 臨 FRONTLINE 長 `> 0` ∧ 臨 BASELINE 長 `> 0` | `K-9-23` 閘一 |
+    | `C` 面積 | `e > 0` ⇒ `G ≥ e`；街角第 1 宗 ⇒ `G ≥ max(街角規定範圍面積, e)` | `v3` ⑨／⑩ |
+
+    **總判**：`rejected ＝ 任一項為「不合格」`（⛔ 計「不適用」與「無從判定」）。
+
+    ## 射程（`I-3`）
+
+    - **街角第 1 宗**：`A` ⇒ `不適用`（`K-9-12-e`／`K-9-5-15 二`）；`B` ⇒ `不適用`。
+    - **`B` 之適用** ＝ **有 sideline 之鏈之第 2 宗**（KL 語序·碼側 index `1`）；
+      末端塊之鏈**無 sideline ⇒ 無藍影之題**（`K-9-23 三` 漏承加註·`v3` ⑪ 逐字）⇒ `不適用`。
+    - **`e ＝ 0`** ＝ 該街廓無「最小建築面積」規定 ⇒ `C` `不適用`（`v3` ⑨ 逐字「僅幾何驗，無面積驗」）。
+    - 所需輸入**取不到** ⇒ `無從判定`（＝單所稱之「不可判」）並**具名缺者**；
+      🛑 **⛔ 當合格、⛔ 當不合格**（`W-G.9-14` 修法 ②：「我算不出這個命題」與「這個命題為偽」是兩件事）。
+
+    ## 🔴 `B` 之受詞 `G`（**依權威序取 `docs/rulings/K-6`**·具名之歧異）
+
+    `docs/rulings/K-6_街角地分配程序與可分配判準.md` 之 `K-9-23` 三 表逐字
+    「`G(第 1 宗) > 藍影面積`」——該檔以**碼側索引**行文（同檔逐字「`B1` ＝ **第 0 宗**遠側界
+    與 BASELINE 之交點」）⇒ 其「第 1 宗」＝ **碼側 index `1`** ＝ **受檢之宗自身**。
+    🔒 **內部自洽之佐證**：同節「嚴格大於」之由逐字「`G ＝ 藍影` 時**臨 BASELINE 長 ＝ 0**」
+    ——該推理唯有在 `G` 係**受檢宗自身**之 `G` 時方成立（臨接長係受檢宗之幾何性質）。
+    ⚠️ `docs/配地計算總規格_v3.md` ⑪ 逐字作「`G(街角第1宗)`」，依其自身之宗序對照
+    （KL 語「街角第 1 宗」＝ 碼側 `0`）將指向 **winner**。二典**表述相異**；
+    🔒 **本實作依權威序取 `docs/rulings/`**（`CLAUDE.md` 權威序第 1 級 > v3 第 3 級），
+    即 **`G` ＝ 受檢宗自身之 `G`**，並具名回報該歧異。**⛔ CC 自裁孰為誤。**
+
+    ## 入參
+
+    `res`        `_solve_G_one` 之回傳（讀 `G`／`cut_coords`·**⛔ 改**）
+    `tp`         宗地 dict（讀 `暫編地號`·**⛔ 改**）
+    `blk_ctx`    街廓層 ctx（逐鍵見下·由呼叫端**每街廓組一次**）
+    `is_corner_first`         本宗為該鏈之街角第 1 宗（KL 語）
+    `is_second_after_corner`  本宗為該鏈之第 2 宗（KL 語·碼側 index `1`）
+    `chain_side` `'left'`／`'right'`
+
+    `blk_ctx` 之鍵：`category`／`front_road_width_m`／`eff_min_build`／
+    `has_side`（`{side: bool}`）／`corner_range_polys`／`corner_range_areas`（皆 `{side: …}`）／
+    `front_p1`／`front_p2`／`baseline_pts`／`side_pts`（`{side: [p1, p2]}`）／
+    `side_mid`（`{side: pt}`）／`alloc_dir`／`block_centroid`。
+
+    ## 回傳
+
+    `dict`——鍵皆以 **`驗_`** 為前綴，供呼叫端逕 `update` 入該宗之 row（`I-5`／`I-6`）。
+    """
+    from shapely.geometry import Polygon as _SP_lg
+
+    _ctx = blk_ctx or {}
+    _side = str(chain_side or '')
+    _unknown = []
+
+    def _f(x):
+        try:
+            return None if x is None else float(x)
+        except (TypeError, ValueError):
+            return None
+
+    _G = _f((res or {}).get('G'))
+
+    # ── A 幾何（`K-9-12` 矩形·可旋轉可平移）──────────────────────────────
+    _A, _Ad = _T3_NA, {}
+    _W = _D = None
+    if not is_corner_first:
+        _coords = list((res or {}).get('cut_coords') or [])
+        _cat = str(_ctx.get('category', '') or '')
+        _fw = _f(_ctx.get('front_road_width_m')) or 0.0
+        _tbl = get_min_lot_size(_cat, _fw) if _fw > 0 else {}
+        _W = _f(_tbl.get('min_width'))
+        _D = _f(_tbl.get('min_depth'))
+        if len(_coords) < 3:
+            _A = None
+            _unknown.append('res.cut_coords')
+        elif not (_W and _W > 0 and _D and _D > 0):
+            _A = None
+            _unknown.append('get_min_lot_size(%r, %s).min_width/min_depth' % (_cat, _fw))
+        else:
+            _A, _Ad = _k923_gate2(_SP_lg(_coords), _W, _D,
+                                  _label='%s/%s/%s' % (_label, _side,
+                                                       (tp or {}).get('暫編地號', '')))
+
+    # ── B 藍影（`K-9-23` 閘一）────────────────────────────────────────────
+    _B, _Bd, _blue_area = _T3_NA, {}, None
+    if is_second_after_corner and bool((_ctx.get('has_side') or {}).get(_side)):
+        _cp = (_ctx.get('corner_range_polys') or {}).get(_side)
+        _sp = (_ctx.get('side_pts') or {}).get(_side)
+        _sm = (_ctx.get('side_mid') or {}).get(_side)
+        _bp = list(_ctx.get('baseline_pts') or [])
+        _miss = [_n for _n, _v in (('corner_range_poly', _cp), ('side_pts', _sp),
+                                   ('side_mid', _sm), ('front_p1', _ctx.get('front_p1')),
+                                   ('front_p2', _ctx.get('front_p2')),
+                                   ('alloc_dir', _ctx.get('alloc_dir')),
+                                   ('block_centroid', _ctx.get('block_centroid')))
+                 if _v is None]
+        if len(_bp) < 2:
+            _miss.append('baseline_pts')
+        _coords = list((res or {}).get('cut_coords') or [])
+        if len(_coords) < 3:
+            _miss.append('res.cut_coords')
+        if _miss:
+            _B = None
+            _unknown.extend('B:' + _n for _n in _miss)
+        else:
+            try:
+                _bd = (float(_bp[1][0]) - float(_bp[0][0]),
+                       float(_bp[1][1]) - float(_bp[0][1]))
+                _bl = _blue_shadow_tri(
+                    _cp, _ctx['front_p1'], _ctx['front_p2'], _bp[0], _bd,
+                    _sp[0], _sp[1], _sm, _ctx['alloc_dir'], _ctx['block_centroid'],
+                    _label=str(_label), _side=_side)
+                _blue_area = float(_bl['blue_area'])
+                _B, _Bd = _k923_gate1(
+                    _SP_lg(_coords), _G, _blue_area,
+                    _bl['front_pt'], _bl['front_dir'], _bl['base_pt'], _bl['base_dir'])
+            except Exception as _e_lg:            # noqa: BLE001
+                # 🛑 **⛔ 靜默退路**：構造失敗 ＝「**算不出**」⇒ `無從判定`（⛔ `False`），
+                #    並把事由具名入 `unknown_inputs`（`W-G.9-14` 修法 ②）。
+                _B = None
+                _unknown.append('B:_blue_shadow_tri raise(%s: %s)'
+                                % (type(_e_lg).__name__, _e_lg))
+
+    # ── C 面積（`v3` ⑨／⑩）───────────────────────────────────────────────
+    _e = _f(_ctx.get('eff_min_build')) or 0.0
+    _rng = _f((_ctx.get('corner_range_areas') or {}).get(_side))
+    _C, _thr = _T3_NA, None
+    if is_corner_first:
+        # ⑩ `G ≥ max(街角規定範圍面積, 該街廓最小建築面積)`
+        if _rng is None:
+            _C = None
+            _unknown.append('C:corner_range_area')
+        else:
+            _thr = max(_rng, _e)
+    elif _e > 0:
+        _thr = _e
+    if _thr is not None:
+        if _G is None:
+            _C = None
+            _unknown.append('C:res.G')
+        else:
+            _C = bool(_G >= _thr)
+
+    # ── 總判 ───────────────────────────────────────────────────────────────
+    _rejected = any(_v is False for _v in (_A, _B, _C))
+
+    def _n6(x):
+        return '—' if x is None else round(float(x), 6)
+
+    return {
+        '驗_A幾何': _lg_fmt(_A),
+        '驗_A_W': _n6(_W), '驗_A_D': _n6(_D),
+        '驗_A_命中角': _Ad.get('hit_angle_deg', '—'),
+        '驗_A_理由': _Ad.get('reason', '—'),
+        '驗_B藍影': _lg_fmt(_B),
+        '驗_B_G': _n6(_G), '驗_B_藍影面積': _n6(_blue_area),
+        '驗_B_Δ': _n6(None if (_G is None or _blue_area is None) else _G - _blue_area),
+        '驗_B_臨正街': _n6(_Bd.get('len_front')),
+        '驗_B_臨屁股': _n6(_Bd.get('len_base')),
+        '驗_C面積': _lg_fmt(_C),
+        '驗_C_G': _n6(_G), '驗_C_e': _n6(_e), '驗_C_街角範圍面積': _n6(_rng),
+        '驗_C_門檻': _n6(_thr),
+        '驗_C_Δ': _n6(None if (_G is None or _thr is None) else _G - _thr),
+        '驗_總判': ('剔除' if _rejected else '保留'),
+        '驗_rejected': bool(_rejected),
+        '驗_鏈': _side,
+        '驗_宗序': ('街角第1宗' if is_corner_first
+                    else ('第2宗' if is_second_after_corner else '其後')),
+        '驗_不可判輸入': ('；'.join(_unknown) if _unknown else '—'),
+    }
+
+
 def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
                            side_line_pts, alloc_dir, block_depth, setback, min_width,
                            chamfer_tri=None, dxf_quantum=None, _label='', _side='',
@@ -14176,6 +14370,14 @@ _WF_NS_NAMES = [
     "_proj_pop_ghost3",
     "_make_chamfer_tri_wb",
     "_baseline_pts_from_manual",
+    # 🆕 `W-G.9-246′` `I-1`：判定式只寫一處 ⇒ harness 經 `ns["_lot_gate"]` 取用。
+    #   ⛔ 補列則 app 生產路徑之 `_wf_ns()` 必 raise（`自誤 302` 之戒）。
+    "_lot_gate",
+    # 🆕 `W-G.9-246′`：`stepg` 之街廓層 ctx 以 `ns[…]` 取本名算「最小建築面積有效值」。
+    #   🩸 漏列係由 `verify/fixture_wf_ns_wiring.py` 於 `V-0` 當場捕得
+    #      （逐字「實拋 KeyError @ stepg_pipeline.py:699｜'k91_effective_min_build_area'」）
+    #      ⇒ app 生產路徑之 `_wf_ns()` 必崩（`自誤 302` 之形·CC 自犯）。
+    "k91_effective_min_build_area",
 ]
 
 
@@ -21516,6 +21718,45 @@ def main():
                         _lside_left = float(sb_row.get('左側尺度', 0.0) or 0.0) if _has_left_corner else 0.0
                         _F_right = float(sb_row.get('右側長度(m)', 0.0) or 0.0) if _has_right_corner else 0.0
                         _lside_right = float(sb_row.get('右側尺度', 0.0) or 0.0) if _has_right_corner else 0.0
+                        # 🆕 `W-G.9-246′` 工項二：**逐宗驗證站之街廓層 ctx**（每街廓組一次）。
+                        #   🛑 本段**只讀不判**；其失敗**不得影響分配** ⇒ 缺者留 `None`，
+                        #      由 `_lot_gate` 記為「無從判定」並具名（`I-3`）——⛔ 靜默替代任何值。
+                        _lg_fl = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(blk_label) or {}
+                        _lg_mb = (st.session_state.get('f3_manual_baseline', {}) or {}).get(blk_label) or {}
+                        _lg_crp_raw = (st.session_state.get('f3_corner_range_polys', {}) or {}).get(blk_label) or {}
+                        from shapely.geometry import Polygon as _SP_lgc
+                        _lg_crp = {}
+                        _lg_cra = {}
+                        for _lg_wh in ('left', 'right'):
+                            _lg_cs = _lg_crp_raw.get(_lg_wh)
+                            if _lg_cs and len(_lg_cs) >= 3:
+                                _lg_p = _SP_lgc(_lg_cs)
+                                _lg_crp[_lg_wh] = _lg_p
+                                _lg_cra[_lg_wh] = float(_lg_p.area)
+                            else:
+                                _lg_crp[_lg_wh] = None
+                                _lg_cra[_lg_wh] = None
+                        _lg_blk_ctx = {
+                            'blk_label': blk_label,
+                            'category': blk_meta.get('category', ''),
+                            'front_road_width_m': float(sb_row.get('正面路寬(m)', 0.0) or 0.0),
+                            'eff_min_build': k91_effective_min_build_area(
+                                blk_label, blk_meta.get('category', ''),
+                                st.session_state.get(K91_SS_MBA_BY_LABEL, {}) or {},
+                                st.session_state.get(K91_SS_MBA_BY_CATEGORY, {}) or {}),
+                            'has_side': {'left': _has_left_corner, 'right': _has_right_corner},
+                            'corner_range_polys': _lg_crp,
+                            'corner_range_areas': _lg_cra,
+                            'front_p1': _lg_fl.get('p1'), 'front_p2': _lg_fl.get('p2'),
+                            'baseline_pts': _baseline_pts_from_manual(_lg_mb, blk_meta.get('vertices') or []),
+                            'side_pts': {'left': ([_sl_left['p1'], _sl_left['p2']]
+                                                  if (_sl_left.get('p1') and _sl_left.get('p2')) else None),
+                                         'right': ([_sl_right['p1'], _sl_right['p2']]
+                                                   if (_sl_right.get('p1') and _sl_right.get('p2')) else None)},
+                            'side_mid': {'left': _side_mid_left, 'right': _side_mid_right},
+                            'alloc_dir': _alloc_dir_cad,   # 🔴 **CAD 原始 ALLOC 方向**（app.py:9681 逐字）·⛔ `allocation_dir_block`（＝其 rot90）
+                            'block_centroid': blk_meta.get('centroid'),
+                        }
                         _n_alloc_blk = allocation_dir_block   # rot90(f3_cad_alloc_dir)
                         # 臨街投影係數 _cos_dn：S 增量 → W 增量（W += S·|d_hat·n_alloc|）。
                         # 用於 thread W_前 初值（forced_offset buffer 之臨街寬）與一致性。
@@ -21653,6 +21894,7 @@ def main():
                             _near_dir_left = None
                             _near_dir_right = None
                             first_corner_used_left = False
+                            _lg_idx_left = 0          # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
                             left_results = []
                             for entry in left_group:
                                 tp = entry['tp']
@@ -21692,6 +21934,14 @@ def main():
                                     _W_prev=_W_prev_left,
                                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                                 )
+                                # 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
+                                #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
+                                res['_lg_cols'] = _lot_gate(
+                                    res, tp, _lg_blk_ctx,
+                                    is_corner_first=bool(is_first_corner_l),
+                                    is_second_after_corner=(_lg_idx_left == 1),
+                                    chain_side='left', _label=blk_label)
+                                _lg_idx_left += 1
                                 if _has_left_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_left = float(res.get('W_far', _W_prev_left))
                                 # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
@@ -21710,11 +21960,14 @@ def main():
                                     res.get('_宗地寬度', 0.0) or 0.0)   # 🆕 W-D.2 真寬度（D-1）
                                 if is_first_corner_l:
                                     first_corner_used_left = True
-                                _rows_local.append(_build_g_row(
+                                _lg_row = _build_g_row(
                                     k, tp, blk_label, blk_area, front_len, avg_depth_default,
                                     zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
                                     is_first_corner_l, side, res, solver_label, 'left',
-                                ))
+                                )
+                                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
+                                _lg_row.update(res.get('_lg_cols') or {})
+                                _rows_local.append(_lg_row)
                                 _trace_local[k] = res.get('trace', [])
                                 left_results.append((entry, res))
 
@@ -21736,6 +21989,7 @@ def main():
                                 d_hat_rev = None
 
                             first_corner_used_right = False
+                            _lg_idx_right = 0         # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
                             right_results = []
                             for entry in right_group:
                                 tp = entry['tp']
@@ -21796,6 +22050,14 @@ def main():
                                                     f"ℹ️ 街廓 {blk_label} 右側起點數值微修 {_adj}m 後成功切出土地"
                                                 )
                                             break
+                                # 🆕 `W-G.9-246′` 工項二 **站 2／4（app 右鏈）**：掛於**定案之 `res`** 後
+                                #   （右鏈有二次 solve ⇒ ⛔ 各 solve 後各掛·`I-4`）。
+                                res['_lg_cols'] = _lot_gate(
+                                    res, tp, _lg_blk_ctx,
+                                    is_corner_first=bool(is_first_corner_r),
+                                    is_second_after_corner=(_lg_idx_right == 1),
+                                    chain_side='right', _label=blk_label)
+                                _lg_idx_right += 1
                                 if _has_right_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_right = float(res.get('W_far', _W_prev_right))
                                 # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
@@ -21814,11 +22076,14 @@ def main():
                                     res.get('_宗地寬度', 0.0) or 0.0)   # 🆕 W-D.2 真寬度（D-1）
                                 if is_first_corner_r:
                                     first_corner_used_right = True
-                                _rows_local.append(_build_g_row(
+                                _lg_row = _build_g_row(
                                     k, tp, blk_label, blk_area, front_len, avg_depth_default,
                                     zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
                                     is_first_corner_r, side, res, solver_label, 'right',
-                                ))
+                                )
+                                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
+                                _lg_row.update(res.get('_lg_cols') or {})
+                                _rows_local.append(_lg_row)
                                 _trace_local[k] = res.get('trace', [])
                                 right_results.append((entry, res))
 
