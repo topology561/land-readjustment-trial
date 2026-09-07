@@ -267,6 +267,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             'aborted_blk': _pcap['aborted_blk'],
             'aborted_gate': str(_e_partial),
             'eff_keys': _pcap.get('eff_keys'),
+            'corner_range_keys': _pcap.get('corner_range_keys'),
+            'corner_range_areas': _pcap.get('corner_range_areas'),
+            'corner_range_errors': _pcap.get('corner_range_errors'),
         }
         raise
 
@@ -387,6 +390,66 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     # 🆕 W-G.9-4（expand）：**W 之單一產生者**（`K-9-5-6` intrinsic 直量·權威序第 1 級）。
     #   `_mp_base_W0` 自此純委派至本名；⛔ 不得於本檔另寫第二份 W 定義（`GB-48` 族）。
     _k956_W_from_mp = ns["k956_W_from_mp"]
+
+    # 🆕 `W-G.9-247` 工項二（KL 令 `2026-09-07`·依候裁 `(A)`）：**街角規定範圍多邊形進 ctx**。
+    #   🔒 呼叫形**逐字同** `verify/fixture_corner_range_k8.py` 之 `_build`（`:244`–`:263`）
+    #      ——⛔ 自創第三源（單 `§三` 明令）。其 `_build_corner_range_v3` 早在 `_WF_NS_NAMES`；
+    #      本批另補列 `_make_chamfer_tri_wb`／`_baseline_pts_from_manual` 二名於 `app.py`
+    #      （`+2`／`−0`）——⛔ 補列則 **app 生產路徑之 `_wf_ns()` 必 raise**（`自誤 302` 之戒）。
+    #
+    #   🔒 **`V-3` 同源錨（發單側現查·CC 復現）**：`min_width` 取
+    #      `get_min_lot_size(分區, 正面路寬)['min_width']` ——**與 `select_corner_lots_both_sides_v12`
+    #      同為<u>逐街廓查表</u>**（`verify/selection_pipeline.py` 之 `f3_pk_legal_min_width` 同式）。
+    #      ⚠️ `run_verification.build_param_table` 之第三路取**全域常數**
+    #      `snapshot['global']['法定最小寬_m']` ⇒ **⛔ 採之**（已鑄 `GB-151`）。
+    #
+    #   ⚠️ 本段**只算不判**且**只寫 ctx**；其產物於**本批⛔ 有消費端**（判定式屬 `W-G.9-246`）。
+    #      其失敗**不得影響分配** ⇒ 以 `except` 包覆並 **loud print**（既例＝ `app.py` 之
+    #      「本段**只算不判**且**只寫診斷**；其失敗**不得影響分配**」一段）。
+    #      🛑 **⛔ 靜默退路**：失敗者**⛔ 寫入該鍵**（⇒ 下游取用即 `KeyError`·loud），
+    #      並將其事由具名入 `corner_range_errors`——**無任何值被替代**。
+    ctx = {'corner_range_polys': {}, 'corner_range_errors': {}}
+    _crp_slbs = cad.get('side_lines_by_side', {}) or {}
+    _crp_flm = cad.get('front_lines', {}) or {}
+    _crp_adm = cad.get('alloc_dir_by_block', {}) or {}
+    for _crp_b in cb:
+        _crp_lbl = _crp_b.get('label')
+        for _crp_wh in ('left', 'right'):
+            _crp_sd = (_crp_slbs.get(_crp_lbl) or {}).get(_crp_wh)
+            if not _crp_sd:
+                continue
+            try:
+                _crp_fl = _crp_flm.get(_crp_lbl) or {}
+                _crp_mb = _bls_sg.get(_crp_lbl) or {}
+                _crp_mw = float(ns['get_min_lot_size'](
+                    _crp_b['category'],
+                    float(SB[_crp_lbl]['正面']['路寬_m']))['min_width'])
+                ctx['corner_range_polys'][(_crp_lbl, _crp_wh)] = ns['_build_corner_range_v3'](
+                    block_vertices=_crp_b['vertices'], block_centroid=_crp_b['centroid'],
+                    front_pts=[_crp_fl['p1'], _crp_fl['p2']],
+                    baseline_pts=ns['_baseline_pts_from_manual'](_crp_mb, _crp_b['vertices']),
+                    side_line_pts=[_crp_sd['p1'], _crp_sd['p2']],
+                    alloc_dir=_crp_adm.get(_crp_lbl),
+                    block_depth=float(SB[_crp_lbl]['街廓分配深度_m']),
+                    setback=setback, min_width=_crp_mw,
+                    chamfer_tri=ns['_make_chamfer_tri_wb'](_crp_b, _crp_wh),
+                    dxf_quantum=(_crp_mb.get('_match') or {}).get('q_detected'),
+                    _label=_crp_lbl, _side=_crp_wh)
+            except Exception as _e_crp:            # noqa: BLE001
+                ctx['corner_range_errors'][(_crp_lbl, _crp_wh)] = \
+                    '%s: %s' % (type(_e_crp).__name__, _e_crp)
+                print(f'🔴 [W-G.9-247 工項二] 街廓 {_crp_lbl} {_crp_wh} 之街角規定範圍構造失敗：'
+                      f'{type(_e_crp).__name__}: {_e_crp}'
+                      f'（⛔ **生產路徑未受影響**·本段只寫 ctx·該鍵⛔ 寫入）')
+    # 🆕 可觀測性（`自誤 305` 之戒：出艙點須於現行已知中止點下可達）——併掛 `_pcap`。
+    if _pcap is not None:
+        _pcap['corner_range_keys'] = sorted(
+            '%s/%s' % _k for _k in ctx['corner_range_polys'])
+        _pcap['corner_range_areas'] = dict(
+            ('%s/%s' % _k, (None if _v is None else round(float(_v.area), 6)))
+            for _k, _v in ctx['corner_range_polys'].items())
+        _pcap['corner_range_errors'] = dict(
+            ('%s/%s' % _k, _v) for _k, _v in ctx['corner_range_errors'].items())
 
     g_rows = []
     # 🆕 `W-G.9-247` 工項一：掛**同一 list 物件**之引用供薄殼於中止時取用（純賦值·⛔ 改控制流）
@@ -1488,7 +1551,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     # 🆕 `W-G.9-247` 工項三：`eff_keys` 為**頂層鍵**（⛔ 塞 `pool_diag`——後者逐鍵攤成
     #   診斷表欄位，加鍵會污染 baseline 欄集；同 `_stage2_placed` 之既例）。
     return {'g_rows': g_rows, 'pool_diag': pool_diag, 'stage2_placed': _stage2_placed,
-            'eff_keys': sorted(_eff_mba.keys())}
+            'eff_keys': sorted(_eff_mba.keys()),
+            'corner_range_polys': ctx['corner_range_polys'],
+            'corner_range_errors': ctx['corner_range_errors']}
 
 
 def build_step_g_tables(res):

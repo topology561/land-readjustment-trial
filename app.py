@@ -14174,6 +14174,8 @@ _WF_NS_NAMES = [
     #   ⇒ 漏列則 app 生產路徑（`_build_wf_ctx` → `_wf_ns()` → wf_f0.compute → run_step_g）
     #   **必 KeyError**。⛔ 禁改為 `ns.get(...)` 加自算 fallback。
     "_proj_pop_ghost3",
+    "_make_chamfer_tri_wb",
+    "_baseline_pts_from_manual",
 ]
 
 

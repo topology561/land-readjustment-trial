@@ -730,6 +730,14 @@ def main():
                           f"（中止街廓 {_pt.get('aborted_blk')!r}）")
                 # 🆕 `W-G.9-247` 工項三 `V-4`：`eff_keys` 之出艙（⛔ 於 `g_rows` 空時亦印）
                 print(f"  🟡 [StepG{tag}] eff_keys = {_pt.get('eff_keys')!r}")
+                # 🆕 `W-G.9-247` 工項二 `V-3`：街角規定範圍之 ctx 鍵出艙
+                print(f"  🟡 [StepG{tag}] corner_range_keys = "
+                      f"{_pt.get('corner_range_keys')!r}")
+                print(f"  🟡 [StepG{tag}] corner_range_areas = "
+                      f"{_pt.get('corner_range_areas')!r}")
+                if _pt.get('corner_range_errors'):
+                    print(f"  🔴 [StepG{tag}] corner_range_errors = "
+                          f"{_pt.get('corner_range_errors')!r}")
 
     # ── 🆕 v3 財務接線閘（KL 裁定 2026-07-09）──
     #   **斷言錨之輸入必須獨立於錨**：B/C 皆由快照 財務接線_v3 之三純量（前均價/後均價/貸款利息）
