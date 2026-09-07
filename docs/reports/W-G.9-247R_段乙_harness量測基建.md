@@ -431,3 +431,121 @@ POST 另覆蓋四檔）／母體 ＝ `run_all` 全 `stdout`（PRE `47936` B／`5
 | `1` | `V-C` 之母體：取**十檔**（`3`／`7`）抑或**十一檔**（`4`／`7`）？「四變六不變」之算式須修 |
 | `2` | `自誤 306` 之落點：本批依 `常規二` 取保守項置於**側分支**（因「主線 ⛔ 動」與「段甲追加」互斥）；是否於放行後另行搬至主線 |
 | `3` | 本報告 `§七` 之 `4`（`V-1(c)` traceback 行號差·類 II）——本節 `四` 已擴為 `V-0` 之全量逐項歸類，是否即結案 |
+
+---
+
+## 🔧 就地加註三：**段乙併線（KL 放行 `2026-09-07`）＋ `V-C` 之正讀 ＋ `§七-4` 結案**（⛔ 上文一字不刪·純末端追加）
+
+🛑 本節 **⛔ 鑄任何號**（`自誤 307` 鑄於同一 commit 之另一檔）。⛔ 追改上文任何一字。
+
+### 🔧 一　併線（**純快轉**·⛔ merge commit·⛔ rebase）
+
+🔒 **推前閘（任一不符即停機·全綠）**——`git fetch --prune` 後現查：
+
+| 閘 | 實測 | 期望 | 判 |
+|---|---|---|---|
+| `origin/wip/s1-endpart` | `28d62f31782c2ddee2bf72fb32afddaf62db8d62` | 同 | ✅ |
+| `origin/verify/W-G.9-247-c1` | `910d5e785a301c0e6564bab30c9b376b8bda5143` | 同 | ✅ |
+| `merge-base --is-ancestor 28d62f3 910d5e7` | **綠** | 綠 | ✅（⇒ 可純快轉）|
+| `rev-list --merges 28d62f3..910d5e7` | **`0`** | `0` | ✅ |
+| **對照組** `is-ancestor 910d5e7 28d62f3` | **紅** | 紅 | ✅（證該檢非恆綠）|
+| 側分支各 commit 之**父數** | `1 1 1 1 1` | 皆 `1` | ✅ |
+
+🔒 **併線指令**（⛔ `merge`、⛔ `--force`）：
+`git push origin 910d5e785a301c0e6564bab30c9b376b8bda5143:refs/heads/wip/s1-endpart`
+⇒ 輸出逐字 `28d62f3..910d5e7  … -> wip/s1-endpart`（**快轉記號 `..`**·⛔ `+`）。
+
+### 🔧 二　併後核對（**CC 自行復算**·⛔ 採發單側之預算值）
+
+| 項 | 實測 | 發單側預算 | 判 |
+|---|---|---|---|
+| `origin/wip/s1-endpart` | `910d5e785a301c0e6564bab30c9b376b8bda5143` | 同 | ✅ |
+| 併入區間之 merge commit | **`0`** | — | ✅ |
+
+🔒 **十檔**（＝**閘 `P` 五檔 ＋ `wf_f*` 五檔**·定義逐字見 `docs/reports/W-G.9-245_CC交接文.md:19`）
+**＝ 變 `3`／不變 `7`**（基數 `10` ✅）
+
+| 檔 | `sha256[:16]` | 判 |
+|---|---|---|
+| `app.py` | **`445585e238c26154`** | CHANGED·與預算相符 ✅ |
+| `verify/run_verification.py` | **`d0d531f7dc051b65`** | CHANGED·相符 ✅ |
+| `verify/stepg_pipeline.py` | **`508708b9c792f6a8`** | CHANGED·相符 ✅ |
+| `verify/selection_pipeline.py` | `6c6783420dbc635c` | SAME |
+| `verify/run_all.py` | `4ba89fef90979491` | SAME |
+| `verify/wf_f0.py` | `6758ea766b001b95` | SAME |
+| `verify/wf_f1.py` | `30e19048dfd781bc` | SAME |
+| `verify/wf_f2.py` | `f974724d7e694ad7` | SAME |
+| `verify/wf_f3.py` | `226c7c5fa00464f3` | SAME |
+| `verify/wf_f4.py` | `b36aeca6c4f6b364` | SAME |
+
+🔒 **夾具另計一檔**（**⛔ 屬十檔**）：`verify/fixture_wf_ns_wiring.py` ＝ **`b17826a6f7b98bf5`**·與預算相符 ✅。
+
+🔒 **全部遠端 heads 逐一列示**（`git ls-remote --heads origin`·**`13` 支**）
+
+```
+a18bb57064a308c8eddaa8b6d2a354681a67b844  refs/heads/claude/wg9-95z-v3-resume-hgpzfs
+6cb77b7f0c08e2edf62f8e9cd239efa774a98d95  refs/heads/main
+b772f8aa09820f01312081588fd8c8d718c8ac86  refs/heads/verify/W-G.9-198R-c1
+a1107a17825c37430f69349afaceef4d09c6f5f8  refs/heads/verify/W-G.9-198R-c2
+6e677223e4ab2823f1a2d276bc5635472b4d51a7  refs/heads/verify/W-G.9-198R-c3
+8b0534c451a45a8d066e7bbc98a6ee7d67323432  refs/heads/verify/W-G.9-219R2-c1
+20b04ac8caa137108b24ecc0d27253076f43adcb  refs/heads/verify/W-G.9-229-c1
+845d08db3cb63fa6562ebdf6459c56629de5f6b4  refs/heads/verify/W-G.9-243-c1
+6b5fe718a0d53d07b86a460d520037affa555a1b  refs/heads/verify/W-G.9-244-c1
+1a6a357aa797e06cfd8f60db9fa6a6a032a221f8  refs/heads/verify/W-G.9-244-c2
+910d5e785a301c0e6564bab30c9b376b8bda5143  refs/heads/verify/W-G.9-247-c1
+886645475b60f790c06d52333501e917596c28be  refs/heads/wip/W-G.4-S0b-S0c
+910d5e785a301c0e6564bab30c9b376b8bda5143  refs/heads/wip/s1-endpart
+```
+
+🔒 **`verify/W-G.9-247-c1` ⛔ 刪**（復驗痕跡·同既有七支側分支之體例）。
+
+### 🔧 三　**`V-C` 之正讀**（承加註二 `§六`·令已核）
+
+🔒 **正讀 ＝ 十檔 `3`／`7` ＋ 夾具 `+1`**（母體 `11` ⇒ `4`／`7`）。
+🔴 令所稱之「**四變六不變**」係 `4 + 6 = 10` 之湊——其誤在**將 `verify/fixture_wf_ns_wiring.py` 計入十檔**，
+而十檔之定義（`W-G.9-245_CC交接文.md:19` 逐字「閘 `P` 五檔 ＋ `wf_f*` 五檔」）**不含之**。
+⇒ **已鑄 `自誤 307`**（責 ＝ 發單側·同一 commit）。
+🔒 **CC 於加註二 `§六` 之處置**（照實出艙二讀 ＋ 逐字回報「二讀皆非 `4`／`6`」·⛔ 湊數）**經令確認為正解**。
+
+### 🔧 四　**`§七-4` 結案**（`V-1(c)` traceback 行號差·類 II）
+
+🔒 本報告 `§七` 之候裁 `4` 逐字為「`V-1(c)` traceback 行號差 `6` 處（類 II）——本文已逐項具名；
+是否另需對帳器登記候裁」。
+
+🔒 **結案之依據（令已核）**：
+1. 加註二 `§四` 已將母體由 `V-1(c)`（`run_verification` 之 `stdout`）**擴為 `V-0`**
+   （`run_all` 之全 `stdout`·PRE `47936` B／`534` 列；POST `49036` B／`542` 列），
+   並對其 **`64` 相異列（`24` 區塊）逐項歸類**。
+2. 其中唯一疑似實質差之 **`5` 列**（`RuntimeError: 🔴 ②-宗…`／空列／`During handling of the above exception…`／空列／`Traceback (most recent call last):`）
+   **已機驗為 `verify/run_all.py:315` 之十四列尾切顯示窗所致**——
+   該列逐字 `for _ln in ((_r8.stdout or "") + (_r8.stderr or "")).strip().splitlines()[-14:]:`；
+   該名目輸出列數 PRE **`14`**／POST **`14`**（**相等**）；`File` frame 數 `3` → `4`（`+1` ＝ 薄殼之 frame）
+   ＋其呼叫式 `4` 列 ＝ **`+5`** ⇒ 頂端**恰被擠掉 `5` 列**；**末列逐字相同**
+   （最終例外之型別與訊息一字未變）；且 PRE 自身首列即內層例外之**末**列 ⇒ **該窗本即在切、⛔ 本批所致**。
+   ⇒ 🔒 **例外鏈⛔ 滅失。**
+3. 類 II 之 `8` 處行號位移已逐一具名且**自洽驗算通過**
+   （`run_verification.py` 八處皆 `+42`＝該檔 LF 淨增；`stepg_pipeline.py` `1003→1127` ＝ `+124`，
+   其與淨增 `+129` 之差 `5` 由「`1003` 之後尚有 `5` 列新增」解釋）。
+
+⇒ 🔒 **`§七-4` 結案**——**⛔ 另需對帳器登記**（其受詞已由 `V-0` 之全量逐項歸類涵蓋）。
+
+### 🔧 五　`自誤 306` 之落點：**⛔ 另搬**（令已核）
+
+🔒 令逐字：「`自誤 306` ⛔ 另搬——其鑄於側分支係 CC 依 `常規二` 取保守項之正解，**隨併線已在主線**。」
+🔒 **現查**：`自誤 306` 之定義框標題形於併線後之主線（`910d5e7`）命中 **`1`**，
+且該號**在**自誤集合內（`MAX ＝ 306`·鑄 `307` 前）⇒ **確已在主線**。
+
+### 🔧 六　本報告 `§七` 候裁之最終現況
+
+| `§七` # | 受詞 | 現況 |
+|---|---|---|
+| `1` | 工項二之解 | ✅ KL 裁採 `(A)`·已落地·**已併線** |
+| `2` | `min_width` 三源 | ✅ 已鑄 `GB-151` |
+| `3` | 三處單內缺陷是否鑄號 | ✅ 已鑄 `自誤 303`／`304`／`305` |
+| `4` | `V-1(c)` traceback 行號差（類 II）| ✅ **本節 `四` 結案** |
+| `5` | `fixture_wf_ns_wiring.py` 之新紅 | ✅ KL 裁採 `(甲)`·已修·**已併線**（另鑄 `自誤 306`）|
+| 🆕 `6` | `V-C` 之母體 | ✅ **本節 `三` 正讀**·另鑄 `自誤 307` |
+
+🛑 **本批⛔ 辦（令之明文）**：⛔ 動 `app.py` 一字（`_WF_NS_NAMES` 之補列已隨併線落地）／
+⛔ 接任何閘／⛔ 實作 `r2`／五級／⛔ 動 `_lot_gate` 相關之任何碼——**`-246` 續辦另單**。
