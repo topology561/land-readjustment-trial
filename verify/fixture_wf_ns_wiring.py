@@ -183,9 +183,9 @@ _COND = (ast.Try, ast.ExceptHandler, ast.If, ast.IfExp, ast.While, ast.For,
 
 
 def _stepg_unpack_lines():
-    """`run_step_g` 內 `ns[...]` 之 [(行號, 名, 是否無條件)]。
+    """`run_step_g`／`_run_step_g_impl` 內 `ns[...]` 之 [(行號, 名, 是否無條件)]。
 
-    **「無條件」＝** 該節點至其最內層 `FunctionDef`（須為 `run_step_g` 本身）之
+    **「無條件」＝** 該節點至其最內層 `FunctionDef`（須為 `run_step_g` **或** `_run_step_g_impl`）之
     祖先鏈上，⛔ 無 `Try`／`If`／迴圈／`With`，且 ⛔ 無中介之巢狀 `FunctionDef`／`Lambda`。
     🔒 竄改自檢**只能抽無條件者**——抽到條件式者（如階段2 分支之名）在該情境
        根本不執行 ⇒ 竄改態不會轉紅，會誤判本層「無鑑別力」（本夾具首版即如此翻紅）。
@@ -212,7 +212,13 @@ def _stepg_unpack_lines():
             if isinstance(cur, _COND):
                 uncond = False
             cur = parent.get(cur)
-        if fname == "run_step_g":
+        # 🆕 `W-G.9-247`（KL 令 `2026-09-07`·採候裁 `(甲)`）：受詞擴為**薄殼與其 `_impl`**。
+        #   🩸 案由：`W-G.9-247` 段乙將 `run_step_g` 拆為「薄殼 ＋ `_run_step_g_impl`」
+        #      （其由見該批報告 `§四 a`：單所令之「本體縮排包住」會改寫 `33` 個跨列
+        #      字串常數之內容，與同單 `V-1` 互斥）⇒ 全部 `ns[...]` 解包點移入 `_impl`
+        #      ⇒ 本函式之母體**歸零**，`layer_dynamic` 遂於解引用處 `IndexError`。
+        #   🔒 二名**皆須收**：薄殼日後若自行解包，漏收即回到同一盲區。
+        if fname in ("run_step_g", "_run_step_g_impl"):
             out.append((node.lineno, node.slice.value, uncond))
     return sorted(out)
 
@@ -250,11 +256,16 @@ def layer_dynamic():
 
     unpack = _stepg_unpack_lines()
     uncond = [(ln, n) for ln, n, u in unpack if u]
-    print(f"  `run_step_g` 函式體內之 `ns[...]` 解包點 ＝ {len(unpack)} 處"
-          f"（行 {unpack[0][0]}–{unpack[-1][0]}）；其中**無條件執行** {len(uncond)} 處")
+    # 🆕 `W-G.9-247`（採候裁 `(甲)`）：**空集守衛前移至解引用之前**。
+    #   🩸 案由：舊序為「先 `print(unpack[0][0])` 後守衛」⇒ 母體為空時**恆 `IndexError`**，
+    #      其所欲之 `red("… 空真假綠")` **結構上不可達** ⇒ 空集之紅被換成一個 traceback。
+    #   🔒 通則：**守衛須先於其所守之解引用**；否則該守衛之訊息永不出現。
     if not unpack or not uncond:
-        red("`run_step_g` 內 `ns[...]`（或其無條件子集）母體 ＝ 0 ⇒ 動態層無受詞（空真假綠）")
+        red("`run_step_g`／`_run_step_g_impl` 內 `ns[...]`（或其無條件子集）"
+            "母體 ＝ 0 ⇒ 動態層無受詞（空真假綠）")
         return
+    print(f"  `run_step_g`／`_run_step_g_impl` 內之 `ns[...]` 解包點 ＝ {len(unpack)} 處"
+          f"（行 {unpack[0][0]}–{unpack[-1][0]}）；其中**無條件執行** {len(uncond)} 處")
 
     snapshot = rv.load_snapshot()
     ns_full, fake_st = harvest()
