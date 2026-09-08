@@ -19,7 +19,9 @@ W-F F.0 — 前置與級0/0'（同街廓同歸戶合併）＋梯3 二群釋池�
   達標宗 = G_i ≥ MinA_blk 且無畸零旗標。
   有達標宗 → 級0：標的=達標宗 G 最大者；被併=全部未達標宗。
   無達標宗 → 級0'：標的=全格 G 最大者；被併=其餘。
-  合併＝標的宗.面積_m2 += Σ(被併宗 a)（a′ 累加器；分攤登記面積_m2 唯讀）→ run_step_g 對 Σa 重解。
+  合併＝標的宗.面積_m2 += Σ(被併宗 a′)，a′ = a × p(自身)/p(標的)（K-9-29 三／十·KL 裁 2026-09-08）；
+  p ＝ 該宗原地號所屬區段之重劃前地價（元/㎡），p ≤ 0 或鍵缺 ⇒ raise。分攤登記面積_m2 唯讀。
+  跨區段合併准予為之（K-9-29 十 廢 停機#2）→ run_step_g 對 (a + Σa′) 重解。
   合併後仍不達標＝標旗轉出（G009→F.2、G014→F.4；停機#4「下一級」＝§7 全鏈），不停機。
 tie-break：標的=G 最大者，並列取暫編地號字典序最小（決定性）。
 
@@ -230,18 +232,53 @@ def _decide(ns, snap, cb_by, omap, g_rows_A, mina):
     return decisions
 
 
-def _transform(build_parcels, decisions):
-    """F.0 變換（deepcopy）：標的宗吞被併宗 a → 面積_m2；移除被併宗＋梯3 4 宗。
-    回傳 (f0_parcels, removed_set)。"""
+def _transform(build_parcels, decisions, snap):
+    """F.0 變換（deepcopy）：標的宗吞被併宗 a′ → 面積_m2；移除被併宗＋梯3 4 宗。
+    回傳 (f0_parcels, removed_set)。
+
+    🆕 `K-9-29 三`／`十`（KL 裁 2026-09-08·W-G.9-255）：一切合併恆走 `a′`——
+      `a′ = a × p(自身) / p(標的)`，`p` ＝ 該宗**原地號所屬區段**之重劃前地價（元/㎡）。
+      「逐筆」之受詞 ＝ 每一原地號各自被指定一個區段碼（⛔ 各有獨立價格欄）。
+      `p ≤ 0` 或鍵缺 ⇒ raise（no-silent-fallback：⛔ 退 1.0、⛔ 退 a′ = a）。"""
     f0 = copy.deepcopy(build_parcels)
     by_id = {tp["暫編地號"]: tp for tp in f0}
+    _fv3 = snap["財務接線_v3"]
+    _zone_of, _price_of = _fv3["原地號_區段"], _fv3["重劃前區段_面積單價"]
+
+    def p_of(pid):
+        """該暫編地號之重劃前地價（元/㎡）。任一環取不到 ⇒ loud raise。"""
+        tp = by_id.get(pid)
+        if tp is None:
+            raise RuntimeError(f"🔴 K-9-29 十 a′：暫編地號 {pid!r} 不在 build_parcels")
+        lot = tp.get("原地號", "")
+        if lot not in _zone_of:
+            raise RuntimeError(
+                f"🔴 K-9-29 十 a′：{pid!r} 之原地號 {lot!r} 不在快照 財務接線_v3.原地號_區段"
+                f"（{len(_zone_of)} 筆）⇒ 停機；⛔ 靜默退 a′ = a")
+        z = _zone_of[lot]
+        if z not in _price_of:
+            raise RuntimeError(
+                f"🔴 K-9-29 十 a′：區段 {z!r}（{pid!r}／原地號 {lot!r}）不在快照"
+                f" 財務接線_v3.重劃前區段_面積單價 ⇒ 停機；⛔ 靜默退 1.0")
+        p = float(_price_of[z].get("單價_元每m2", 0) or 0)
+        if p <= 0:
+            raise RuntimeError(
+                f"🔴 K-9-29 十 a′：區段 {z!r} 之單價_元每m2 ＝ {p!r} ≤ 0 ⇒ 停機；⛔ 靜默退 1.0")
+        return p
+
     for d in decisions:
         if not d["target"]:
             continue
+        p_t = p_of(d["target"])
         add = 0.0
         for m in d["merged"]:
-            add += (float(by_id[m].get("分攤登記面積_m2", 0) or 0)
-                    + float(by_id[m].get("面積_m2", 0) or 0))
+            a_m = (float(by_id[m].get("分攤登記面積_m2", 0) or 0)
+                   + float(by_id[m].get("面積_m2", 0) or 0))
+            # 🔴 K-9-29 十／W-G.9-256 V-G2（硬性款）：**先除後乘·括號不得省**。
+            #   ⛔ 寫作 (a * p_自身) / p_標的 或 a * p_自身 / p_標的（左結合同形）——
+            #   後者因 a*p 之中間捨入，於同區段時⛔ 逐位還原 a（本案母體 9 個反例·最大 1.14e-13），
+            #   將使 V-G1 假紅並使日後之零差迴歸永久漂移。
+            add += a_m * (p_of(m) / p_t)        # a′ = a × ( p(自身) / p(標的) )
         t = by_id[d["target"]]
         t["面積_m2"] = round(float(t.get("面積_m2", 0) or 0) + add, 2)
     removed = set(TIER3_LOTS) | {m for d in decisions for m in d["merged"]}
@@ -269,11 +306,10 @@ def compute(ctx_by_tag):
         decisions = _decide(ns, snap, cb_by, omap, c["gA"], mina)
 
         # 停機閘（決策層；破即 RuntimeError）
-        for d in decisions:
-            if d["target"] and len(d["zones"]) != 1:
-                raise RuntimeError(
-                    f"🔴 停機#2 區段不一致：{d['gid']}/{d['blk']} zones={d['zones']}"
-                    "（A 折算係數≠1，須域裁 7-4 雙模式）")
+        # 🛑 經 K-9-29 十（KL 裁 2026-09-08）廢止；跨區段改以 a′ 折算。
+        #   原閘：`d["target"] and len(d["zones"]) != 1 ⇒ RuntimeError`（「A 折算係數≠1，
+        #   須域裁 7-4 雙模式」）。該域裁已下 ⇒ 跨區段合併准予為之，由 _transform 之
+        #   p_of() 折算；`zones` 仍蒐集（供 V-G′ 之分流），⛔ 再作為停機條件。
         # 停機#3：被併宗 ∩ 街角 winners / forced 保留地
         win_set = {v for w in c["winners"].values()
                    for v in (w.get("p1_end"), w.get("p2_end")) if v}
@@ -285,7 +321,7 @@ def compute(ctx_by_tag):
         if _wconf:
             raise RuntimeError(f"🔴 停機#3 被併宗為街角 winner：{_wconf}")
 
-        f0_parcels, removed = _transform(c["build"], decisions)
+        f0_parcels, removed = _transform(c["build"], decisions, snap)
 
         # trunk B：F.0 終態（結構不變量永久閘於 run_step_g 內自動適用）
         sgB = run_step_g(ns, c["fake_st"], list(cb_by.values()), cad, snap,
