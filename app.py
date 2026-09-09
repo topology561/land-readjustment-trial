@@ -10000,6 +10000,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
                    block_poly, d_hat, baseline_pt,
                    S_max_limit: float,
                    is_corner: bool = False,
+                   is_chain_head: bool = False,
                    side_label: str = '左側',
                    tol: float = 0.01, max_iter: int = 80,
                    allocation_dir=None,
@@ -10136,7 +10137,25 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
             #     不觸「虛胖陷阱」`:9344`）——**累積的是 `Rw`、不是 `W`**。
             #   📌 代數 fallback `iterate_G_S` **本即此式**（`grep -n "rw_increment(W_prev, W_cur)" app.py`）
             #     ⇒ 本改動係令幾何解與代數解**回到同一定義**、⛔ 非新造。
-            _rw_start = _W_near if is_corner else float(W_prev)
+            #   🔧 **W-G.9-261（KL 開修 2026-09-09）：鏈頭起點之更正**（⛔ 上文一字不刪）
+            #     🩸 **案由**：上行「首宗例外」以 `is_corner` 為鏈頭之判準，而 `is_corner`
+            #        ＝「該宗為街角**勝者**」。無 WINNER（forced·街角為強制抵費地）之側，
+            #        其鏈頭係**第 2 宗**、`is_corner` 為**偽** ⇒ 起點退為 `W_prev` 之初值 `0`
+            #        ⇒ 首宗 `Rw` 自 `W=0` 起算，而 telescoping 閘之期望自 `W₀` 起算 ⇒ 差 ＝ `R(W₀)`。
+            #        實測（`W-G.9-261R` 工項一）：`3.5m·R2 left` 鏈頭 `628-42(1)`「第1筆街角＝否」、
+            #        `W₀ = 6.98` 而其 `Rw = 55.59 ≈ R(6.98) − R(0)`。
+            #     🔒 **所依之裁（⛔ 新裁·全部既有）**：
+            #        `K-9-5-12（四）`（KL 2026-08-12）「無 WINNER 而街角為強制抵費地時，
+            #        **第 2 宗**之起算為**該抵費地之遠側境界線**；抵費地本身不計 G、不負擔」；
+            #        `K-9-5-12（五）1`「首宗起點一律為 `0`（即自 MP 起量）」。
+            #     🔑 **一式同時滿足二裁**：鏈頭為街角勝者時其 `W_near ＝ 0`（（五）1 自動成立）；
+            #        鏈頭為無 WINNER 之第 2 宗時其 `W_near ＝ 抵費地遠側界`（（四）成立）
+            #        ⇒ **⛔ 需 `if forced` 之分支**。
+            #     🔒 **`or` 形之由（純加性）**：`is_chain_head` 預設 `False` ⇒ **未傳該旗標之呼叫端
+            #        行為逐位不變**（`_corner_first_lot_G` 之資格路徑、階段2 落位、`wf_f0` 皆然）；
+            #        且實測全 `24` 條（情境 × 街廓 × 側）中「非鏈頭而 `is_first_corner_marker` 為真」
+            #        之筆數 ＝ **0** ⇒ `is_corner` 恆蘊含「鏈頭」，`or` ⛔ 使任何非鏈頭之宗改變起點。
+            _rw_start = _W_near if (is_corner or is_chain_head) else float(W_prev)
             Rw = rw_increment(_rw_start, W)
             Rw_pct = Rw * 100.0
         else:
@@ -13862,7 +13881,8 @@ def _first_corner_alloc_dir(side_mid):
 
 def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                  S_max, is_corner, side, avg_depth, B, C, tab6_burden,
-                 allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None):
+                 allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None,
+                 is_chain_head=False):
     """🆕 P-0b（裁定M·Q-M4）：G 解算**單一真相源**——幾何二分法優先，失敗 fallback 至代數迭代。
 
     app 內嵌 `_solve_one`（`main()` 內）與 `verify/stepg_pipeline.py` 之 `_solve_one` 皆改**薄殼**
@@ -13899,6 +13919,7 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                 baseline_pt=baseline_pt,
                 S_max_limit=S_max,
                 is_corner=is_corner,
+                is_chain_head=is_chain_head,             # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·⛔ 在此推導）
                 side_label=side if side in ('左側', '右側') else '左側',
                 tol=0.01, max_iter=80,
                 allocation_dir=allocation_dir,
@@ -21542,7 +21563,7 @@ def main():
                     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                                    _allocation_dir=None, _side_mid=None, _W_prev=0.0,
-                                   _near_dir=None):
+                                   _near_dir=None, _is_chain_head=False):
                         """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
 
                         🆕 W-C §0.5-B/§4：_allocation_dir = rot90(f3_cad_alloc_dir)（臨街向）；
@@ -21555,7 +21576,8 @@ def main():
                             S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
                             B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
                             allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
-                            near_dir=_near_dir)   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
+                            near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
+                            is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·不推導）
 
                     st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
                     for blk_label, parcels_in_blk in parcels_by_block.items():
@@ -22056,6 +22078,7 @@ def main():
                                     _side_mid=(_side_mid_left if _has_left_corner else None),
                                     _W_prev=_W_prev_left,
                                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
+                                    _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
                                 )
                                 # 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
                                 #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
@@ -22150,6 +22173,7 @@ def main():
                                     _side_mid=(_side_mid_right if _has_right_corner else None),
                                     _W_prev=_W_prev_right,
                                     _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
+                                    _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                                 )
                                 # 極端防呆 2 後援：右側起點數值微修
                                 if (float(res.get('area_geom', 0)) < 0.5
@@ -22165,6 +22189,7 @@ def main():
                                             _side_mid=(_side_mid_right if _has_right_corner else None),
                                             _W_prev=_W_prev_right,
                                             _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
+                                            _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                                         )
                                         if float(_r2.get('area_geom', 0)) >= 0.5:
                                             res, solver_label = _r2, _sl2

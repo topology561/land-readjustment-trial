@@ -508,7 +508,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                    _allocation_dir=None, _side_mid=None, _W_prev=0.0,
-                   _near_dir=None):
+                   _near_dir=None, _is_chain_head=False):
         # 🆕 P-0b（裁定M·Q-M4）：薄殼委派 app module 級 `_solve_G_one`（單一真相源·經 ns）。
         #   B_value/C_for_calc（_compute_v3_finance 拆出）＋ _tab6_burden（本函式上方檢查）為閉包捕獲。
         return ns["_solve_G_one"](
@@ -517,7 +517,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
             B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
             allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
-            near_dir=_near_dir)   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
+            near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
+            is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·⛔ 不推導）
 
     # ── 逐街廓（app Step G 迴圈逐行複刻；st.* 於 headless 為 fake no-op 故略） ──
     for blk_label, parcels_in_blk in parcels_by_block.items():
@@ -823,6 +824,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _side_mid=(_side_mid_left if _has_left_corner else None),
                     _W_prev=_W_prev_left,
                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
+                    _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
                 )
                 # 🆕 `W-G.9-246′` 工項二 **站 3／4（harness 左鏈）**：`res` 定案後、鏈推進前。
                 #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
@@ -909,6 +911,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _side_mid=(_side_mid_right if _has_right_corner else None),
                     _W_prev=_W_prev_right,
                     _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
+                    _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                 )
                 if (float(res.get('area_geom', 0)) < 0.5
                     and d_hat_rev is not None and baseline_pt is not None):
@@ -923,6 +926,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                             _side_mid=(_side_mid_right if _has_right_corner else None),
                             _W_prev=_W_prev_right,
                             _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
+                            _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                         )
                         if float(_r2.get('area_geom', 0)) >= 0.5:
                             res, solver_label = _r2, _sl2
