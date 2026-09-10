@@ -1,0 +1,59 @@
+====================================================================================================
+【左鏈】段之界：自 /baseline_pt = \(corner_pt \+ left_cum_S \* d_hat/ 至 /left_cum_S \+= _S_actual/（含）
+  app    app.py  列 22071–22102（32 列）
+  stepg  stepg_pipeline.py  列 817–850（34 列）
+  逐行對照（去前導空白後）：app 32 列／stepg 34 列／共同 27 列／相似度 0.8182
+  ── 相異之逐項（`-` ＝ 只在 app／`+` ＝ 只在 stepg）──
+   @@ -13 +13 @@
+     -# 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
+     +# 🆕 `W-G.9-246′` 工項二 **站 3／4（harness 左鏈）**：`res` 定案後、鏈推進前。
+   @@ -15 +15 @@
+     -res['_lg_cols'] = _lot_gate(
+     +res['_lg_cols'] = ns['_lot_gate'](
+   @@ -21 +21,4 @@
+     -if _has_left_corner:   # thread 累積 W_前 給下一筆
+     +if _has_left_corner:
+     +if not _W0_left_set:
+     +_W0_left = float(res.get('W_near', 0.0)); _W0_left_set = True
+     +_Wfirst_left = float(res.get('W', 0.0))   # 首宗下限：首宗角落宗 KL W（=W_far）
+   @@ -25,2 +28 @@
+     -_S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
+     -# 極端防呆 3：S_remain 觸頂
+     +_S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改）
+  相異列數 ＝ 12
+
+====================================================================================================
+【右鏈】段之界：自 /baseline_pt = \(end_pt \+ right_cum_S \* d_hat_rev/ 至 /right_cum_S \+= _S_actual/（含）
+  app    app.py  列 22166–22220（55 列）
+  stepg  stepg_pipeline.py  列 904–955（52 列）
+  逐行對照（去前導空白後）：app 55 列／stepg 52 列／共同 44 列／相似度 0.8224
+  ── 相異之逐項（`-` ＝ 只在 app／`+` ＝ 只在 stepg）──
+   @@ -13 +12,0 @@
+     -# 極端防呆 2 後援：右側起點數值微修
+   @@ -31,4 +29,0 @@
+     -if _commit:   # 🆕 W-D.2 reviewer WARNING：深巢 st.info 顯式 gate
+     -st.info(
+     -f"ℹ️ 街廓 {blk_label} 右側起點數值微修 {_adj}m 後成功切出土地"
+     -)
+   @@ -36,3 +31,3 @@
+     -# 🆕 `W-G.9-246′` 工項二 **站 2／4（app 右鏈）**：掛於**定案之 `res`** 後
+     -#   （右鏈有二次 solve ⇒ ⛔ 各 solve 後各掛·`I-4`）。
+     -res['_lg_cols'] = _lot_gate(
+     +# 🆕 `W-G.9-246′` 工項二 **站 4／4（harness 右鏈）**：掛於**定案之 `res`** 後
+     +#   （右鏈有二次 solve `_solve_one` ⇒ ⛔ 各 solve 後各掛·`I-4`）。
+     +res['_lg_cols'] = ns['_lot_gate'](
+   @@ -44 +39,4 @@
+     -if _has_right_corner:   # thread 累積 W_前 給下一筆
+     +if _has_right_corner:
+     +if not _W0_right_set:
+     +_W0_right = float(res.get('W_near', 0.0)); _W0_right_set = True
+     +_Wfirst_right = float(res.get('W', 0.0))   # 首宗下限：首宗角落宗 KL W（=W_far）
+   @@ -48,2 +46 @@
+     -_S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
+     -# 極端防呆 3：S_remain 觸頂
+     +_S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改）
+  相異列數 ＝ 19
+
+====================================================================================================
+【判別力對照】取二檔各自之首 10 列（必然相異）⇒ 證上開相似度⛔ 恆為 1
+  相似度 ＝ 0.2000（須 < 1）
