@@ -384,6 +384,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
     _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2：池片單一真相源
     _oblique_s_max = ns["_oblique_s_max"]                   # step 0（正交→斜交 s_max）單一真相源·#20
+    # 🆕 `W-G.9-268′` `c1`：錨點更正（**expand**·旗標預設 `off`）·**單一真相源在 app**
+    _wg9268p_anchor_advance = ns["_wg9268p_anchor_advance"]
     _corner_buffer_S = ns["_corner_buffer_S"]               # §3 街角 band 幾何 bisect·side 參數化·單一真相源·#20
     _acct_geom_tol_per_lot = ns["_acct_geom_tol_per_lot"]   # §N3-0 帳對幾何閘：閘寬單一真相源
     _acct_geom_tol_block = ns["_acct_geom_tol_block"]
@@ -848,6 +850,10 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     and _area_actual < _G_target * 0.95):
                     res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
                 left_cum_S += _S_actual
+                # 🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標預設 `off` ⇒ 逐位不變）。
+                #   受詞見 `_wg9268p_anchor_advance` 之 docstring；**累積形**（補令三 `§二`）。
+                left_cum_S = _wg9268p_anchor_advance(
+                    left_cum_S, res.get('cut_coords'), d_hat, corner_pt, allocation_dir_block)
                 res['_alloc_cum_S'] = left_cum_S
                 _mark_zaling(res)
                 _widths_local[entry['_ov2_idx']] = float(res.get('_宗地寬度', 0.0) or 0.0)
@@ -953,6 +959,10 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     and _area_actual < _G_target * 0.95):
                     res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
                 right_cum_S += _S_actual
+                # 🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標預設 `off` ⇒ 逐位不變）。
+                #   受詞見 `_wg9268p_anchor_advance` 之 docstring；**累積形**（補令三 `§二`）。
+                right_cum_S = _wg9268p_anchor_advance(
+                    right_cum_S, res.get('cut_coords'), d_hat_rev, end_pt, allocation_dir_block)
                 res['_alloc_cum_S'] = right_cum_S
                 _mark_zaling(res)
                 _widths_local[entry['_ov2_idx']] = float(res.get('_宗地寬度', 0.0) or 0.0)

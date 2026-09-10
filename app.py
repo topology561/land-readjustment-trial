@@ -9244,6 +9244,37 @@ def _oblique_s_max(vertices, d_hat, corner_pt, allocation_dir=None):
     return max(s_vals) if s_vals else None
 
 
+def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
+    """🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標 `WG9268P_ANCHOR_GEOM`·預設 `off`）。
+
+    **受詞**（補令二 `§一` 逐字）：錨由「前一宗之**標稱終點**（起算點 ＋ `S_raw`）」
+    改為「前一宗之**幾何終點**（其遠側界離開街廓之點 ＝ `S_req`·**帶軸框**·⛔ 框甲）」。
+    **形**（補令三 `§二`）：**累積形**——以**當下**之幾何極值為推進基準，
+    ⛔ 逐格獨立套用落檔之 `累積S` 2dp 值（其捨入噪聲會新生 `0.03`〜`0.17 ㎡` 之偽重疊）。
+
+    🔒 **旗標 `off` ⇒ 原值原樣回傳**（`cum_S` 一字未動）⇒ **行為逐位不變**。
+    🔒 **只移錨點**：⛔ 改面積目標、⛔ 解 `S`（⛔ 呼叫 `solve_G_binary`）。
+    🔒 `s` 之取法 ＝ `_oblique_s_max`（`_strip_axis` 帶軸框·**倉內單一真相源**·#20 四處同源）
+       ——⛔ 另寫第二份幾何定義。
+    🔒 **取 `max`**：⛔ 令錨後退（`δ < 0` 者皆 `|δ| ≤ 0.0052 m` ＝ `累積S` 2dp 捨入之噪聲·
+       `W-G.9-268pR c0-5 §二-3` 實測）；與 `c0-5` 累積形之 `if d <= 0: continue` **同語意**。
+    🔒 **loud**：`_oblique_s_max` 於帶軸退化時經 `_strip_axis` **raise**（no-silent-fallback）
+       ——本函式⛔ 吞之。
+
+    期初實測（`c0-5`·態 `5b05da0`）：`0m·R2·left j=0` `4.0600 → 7.4479`（`δ ＝ +3.3879`）；
+    `3.5m·R5·left j=0` `8.0600 → 11.3822`（`δ ＝ +3.3222`）；`0m·R1·right j=1`（`δ ＝ +0.3969`）。
+    其餘 `39` 格之 `|δ| ≤ 0.01 m`（2dp 捨入量級）⇒ 偏差集中於 `j = 0`（街角第 1 宗）。
+    """
+    import os as _os_a
+    if _os_a.environ.get('WG9268P_ANCHOR_GEOM', '0') != '1':
+        return cum_S                      # 🔒 旗標 off：**原值原樣**（⛔ 觸任何幾何）
+    if not cut_coords or d_hat is None or base_pt is None:
+        return cum_S
+    _s = _oblique_s_max(cut_coords, d_hat, base_pt, allocation_dir)
+    if _s is None:
+        return cum_S
+    return max(float(cum_S), float(_s))
+
 def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
                      tol=0.01, _label=''):
     """
@@ -22100,6 +22131,10 @@ def main():
                                     and _area_actual < _G_target * 0.95):
                                     res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
                                 left_cum_S += _S_actual
+                                # 🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標預設 `off` ⇒ 逐位不變）。
+                                #   受詞見 `_wg9268p_anchor_advance` 之 docstring；**累積形**（補令三 `§二`）。
+                                left_cum_S = _wg9268p_anchor_advance(
+                                    left_cum_S, res.get('cut_coords'), d_hat, corner_pt, allocation_dir_block)
                                 res['_alloc_cum_S'] = left_cum_S
                                 _mark_zaling(res)   # 🆕 §1-4 判去留旗標
                                 _widths_local[entry['_ov2_idx']] = float(
@@ -22218,6 +22253,10 @@ def main():
                                     and _area_actual < _G_target * 0.95):
                                     res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
                                 right_cum_S += _S_actual
+                                # 🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標預設 `off` ⇒ 逐位不變）。
+                                #   受詞見 `_wg9268p_anchor_advance` 之 docstring；**累積形**（補令三 `§二`）。
+                                right_cum_S = _wg9268p_anchor_advance(
+                                    right_cum_S, res.get('cut_coords'), d_hat_rev, end_pt, allocation_dir_block)
                                 res['_alloc_cum_S'] = right_cum_S
                                 _mark_zaling(res)   # 🆕 §1-4 判去留旗標
                                 _widths_local[entry['_ov2_idx']] = float(
