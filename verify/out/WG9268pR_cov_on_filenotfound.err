@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\w-g-9-268p-s1-correction-f41d70\verify\probes\probe_WG9265_coverage_account.py", line 288, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\w-g-9-268p-s1-correction-f41d70\verify\probes\probe_WG9265_coverage_account.py", line 93, in main
+    rows, nbytes = load(fn)
+                   ~~~~^^^^
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\w-g-9-268p-s1-correction-f41d70\verify\probes\probe_WG9265_coverage_account.py", line 60, in load
+    with io.open(path, "r", encoding="utf-8-sig", newline="") as f:
+         ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'C:\\Users\\admin\\Desktop\\land-readjustment-trial\\.claude\\worktrees\\w-g-9-268p-s1-correction-f41d70\\verify\\out\\got_G值_退縮0m_partial.csv'
