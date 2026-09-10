@@ -59,7 +59,7 @@ def main():
             if flag_on:
                 os.environ[FLAG] = "1"
             else:
-                os.environ.pop(FLAG, None)
+                os.environ[FLAG] = '0'   # 🔒 顯式 off（⛔ pop ＝ 取預設·c2 後預設為 on）
             try:
                 params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, sb)
                 _d, _s, off, _w, _f = run_corner_pk(

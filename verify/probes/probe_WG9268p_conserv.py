@@ -59,7 +59,7 @@ def drive(setback, flag_on, ns, fake_st, snapshot, cb_by, cad, build_p, temp_p):
     if flag_on:
         os.environ[FLAG] = "1"
     else:
-        os.environ.pop(FLAG, None)
+        os.environ[FLAG] = '0'      # 🔒 顯式 off（⛔ pop ＝ 取預設·c2 後預設為 on）
     try:
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
         _d, _s, _off, wins, forced = run_corner_pk(
