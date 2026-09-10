@@ -9266,7 +9266,7 @@ def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
     其餘 `39` 格之 `|δ| ≤ 0.01 m`（2dp 捨入量級）⇒ 偏差集中於 `j = 0`（街角第 1 宗）。
     """
     import os as _os_a
-    if _os_a.environ.get('WG9268P_ANCHOR_GEOM', '0') != '1':
+    if _os_a.environ.get('WG9268P_ANCHOR_GEOM', '1') != '1':
         return cum_S                      # 🔒 旗標 off：**原值原樣**（⛔ 觸任何幾何）
     if not cut_coords or d_hat is None or base_pt is None:
         return cum_S
