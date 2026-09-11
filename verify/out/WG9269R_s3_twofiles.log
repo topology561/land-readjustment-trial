@@ -1,0 +1,59 @@
+====================================================================================================================
+【序 3】二檔「無從驗」之必答（補令五 §三 款 2）
+====================================================================================================================
+
+── 一、受詞二檔之**欄集**（⛔ 節略）──
+  verify/baselines/退縮0m參數.csv（12 欄）
+     · 街廓
+     · 分類
+     · 正面路寬(m)
+     · 【左】路寬(m)
+     · 【右】路寬(m)
+     · 街廓分配深度(m)
+     · 法定最小寬(m)
+     · 法定最小深(m)
+     · 【左】截角(㎡)
+     · 【右】截角(㎡)
+     · 【左】街角最小面積(㎡)
+     · 【右】街角最小面積(㎡)
+  verify/baselines/退縮3.5m參數.csv（12 欄）
+     · 街廓
+     · 分類
+     · 正面路寬(m)
+     · 【左】路寬(m)
+     · 【右】路寬(m)
+     · 街廓分配深度(m)
+     · 法定最小寬(m)
+     · 法定最小深(m)
+     · 【左】截角(㎡)
+     · 【右】截角(㎡)
+     · 【左】街角最小面積(㎡)
+     · 【右】街角最小面積(㎡)
+  二檔欄集相同 = True
+
+── 二、該二檔於生產碼之**讀取點**（⛔ 全倉排除式·正面列舉 6 檔）──
+  verify/run_verification.py:13  5. 參數表（截角/街角最小面積，雙情境）           → 對 退縮{0,3.5}m參數.csv        ✅
+  verify/run_verification.py:520  ok_p, v_p = diff_rows(params, os.path.join(BASELINES, f"退縮{tag}參數.csv"),
+  合計讀取點 ＝ 2
+  對照乙（哨兵·執行期組出）＝ 0（須 0）
+  對照甲（必非零·`BASELINES`）＝ 1 檔
+
+── 三、其**用途**（AST 實查·⛔ 以字樣推定）──
+  :520  呼叫 `diff_rows(...)` 之第 **1** 個引數（共 4 個）
+
+  🔒 `diff_rows` 之簽章（碼面·逐字）：
+     def diff_rows(got_rows, baseline_path, key_cols, label, skip_cols)
+     :406  def diff_rows(got_rows, baseline_path, key_cols, label, skip_cols=None):
+     :413  base = _read_csv(baseline_path)
+     :421  os.path.join(_bake_dir, os.path.relpath(baseline_path, BASELINES)))
+     :448  _undecl = sorted(_extras - declared_extras_for(baseline_path))
+
+── 四、三受詞之上游輸入（碼面·⛔ 推定）──
+  (i)  `_k923_gate1` 之呼叫點（`app.py`）：
+       :12256  def _k923_gate1(poly, G, blue_area, front_pt, front_dir, base_pt, base_dir,
+       :12501  _B, _Bd = _k923_gate1(
+       其引數是否含任何 baseline／CSV 之讀取？ ⇒ `參數.csv` 於 `app.py` 命中 = 0 （須 0）
+  (ii) `wd4_tier_list.py` 之 `參數.csv` 命中 = 0 （須 0）
+       其 `BASELINES` 命中 = 0 ／`baselines` 命中 = 1
+  (iii) 差異表之數 ＝ `c2` 之產物（`c1`〜`c4` **未開工**）⇒ 其上游 ＝ 生產管線之 `g_rows`，
+        而 `參數.csv` 於生產碼 6 檔之命中僅見於 `verify/run_verification.py`（見二）
