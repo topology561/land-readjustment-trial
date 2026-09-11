@@ -1,0 +1,22 @@
+去 docstring 後之 AST 節點數：父 67929 ／ 本態 67929
+相異節點數 ＝ **14**
+   -Call(func=Attribute(value=Call(func=Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()),
+   +Call(func=Attribute(value=Call(func=Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()),
+   -Attribute(value=Call(func=Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get
+   +Attribute(value=Call(func=Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get
+   -Call(func=Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), 
+   +Call(func=Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), 
+   -Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), args=[Name
+   +Attribute(value=Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), args=[Name
+   -Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), args=[Name(id='K917_BACKFI
+   +Call(func=Name(id='str', ctx=Load()), args=[Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), args=[Name(id='K917_BACKFI
+   -Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), args=[Name(id='K917_BACKFILL_ENV', ctx=Load()), Constant(value='0')])
+   +Call(func=Attribute(value=Attribute(value=Name(id='_os_k917', ctx=Load()), attr='environ', ctx=Load()), attr='get', ctx=Load()), args=[Name(id='K917_BACKFILL_ENV', ctx=Load()), Constant(value='1')])
+   -Constant(value='0')
+   +Constant(value='1')
+
+① 葉 `Constant` 相異 ＝ 2 列 ["-Constant(value='0')", "+Constant(value='1')"]
+② 全部 14 相異列皆為該處之祖先（含 `K917_BACKFILL_ENV`）＝ True
+對照組[必為真] 節點總數相等 ＝ True
+
+判 ＝ ✅ **行為變更恰一處** ＝ 旗標預設 `'0'`→`'1'`；⛔ 他處可執行敘述有變
