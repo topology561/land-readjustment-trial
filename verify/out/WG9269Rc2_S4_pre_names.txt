@@ -1,0 +1,64 @@
+✅ PASS  -a診斷0m
+✅ PASS  -a診斷3.5m
+✅ PASS  F.0-pre 15.73㎡ 歸因（公設 15.73 ＋ 可建築 13.34 = 29.07 ＝ ghost 真面積 29.09）
+✅ PASS  F.0-pre 公設軌 8 群（撤出梯3、待 F.3/F.4）
+✅ PASS  F.0-pre 公設軌補償欄全空（G(a′) 未算前禁取值·停機條款）
+✅ PASS  F.3 母數錨 公設地 59 筆／28 群持有（廢「30 筆/4,428㎡」）
+✅ PASS  W-D.3 ghost 零面積不變量（8 筆全零）
+✅ PASS  W-D.4 MinA_區 reverse-test(改深度→隨動·非寫死)
+✅ PASS  W-D.4 持分和逐宗檢核(WARNING-A)
+✅ PASS  W-D.4 第4梯 fixture(查封自成一群·移除後 byte-identical)
+✅ PASS  ownership Gxxx 靶組（三環定理鏈）
+✅ PASS  v3 A 逐宗全查（92 列＝後街廓單價/重劃前區段單價）
+✅ PASS  v3 C 兩形等價（加總形 vs app calc_C_value 均價形）|Δ|=2.92e-10 <1e-8
+✅ PASS  v3 reverse-test① 單位工程費 3500→3550 ⟹ C 隨動 (0.091319→0.092382)
+✅ PASS  v3 reverse-test② 前均價 ×1.1 ⟹ B 隨動且 C 不動 (B 0.171043→0.188147；C 0.091319)
+✅ PASS  v3 reverse-test③ 單位工程費 3500→3550 ⟹ 重劃總負擔率隨動 (0.40712387→0.40781775)
+✅ PASS  v3 中繼錨 工程費/重劃費/費用總額 == 122324608/22717427/150053099
+✅ PASS  v3 率分項錨 公設負擔比 34.754211% ＋ 費用負擔比 5.958176%
+✅ PASS  v3 率用 DXF 公設實值 12146.5579（非截圖 rounded 12146.56）
+✅ PASS  v3 財務錨 B == 0.171043（獨立輸入現算 → 0.171043）
+✅ PASS  v3 財務錨 C == 0.091319（加總形分母 1,643,176,255.06）
+✅ PASS  v3 重劃總負擔率錨 == 0.40712387（現算 0.40712387）
+✅ PASS  結構不變量永久閘0m（守恆/⊥/位次=投影序/J(k*)≥J(naive)/理論=實跑/telescoping）
+✅ PASS  結構不變量永久閘3.5m（守恆/⊥/位次=投影序/J(k*)≥J(naive)/理論=實跑/telescoping）
+🔴 FAIL  F.0 釋池對象＝梯3 二群 [('G025', 0.26), ('G030', 55.8)]（Σ=56.06㎡）
+🔴 FAIL  F.0-pre 雙軌錨 軌別{'建地軌': 25, '公設軌': 8}·梯次{'—': 8, '0': 13, '1': 7, '2': 3, '3': 2}
+🔴 FAIL  W-D.3 碎片幾何/三分類（v3）
+🔴 FAIL  W-D.3 碎片逐邊CAD（v3）
+🔴 FAIL  W-D.4 31旗標全消費(群組語意·v3 隨價變)
+🔴 FAIL  W-D.4 MinA_區==114.07(正典rounded)·½顯示==57.04(Decimal非round)
+🔴 FAIL  W-D.4 四梯清單0m（v3 半實算）
+🔴 FAIL  W-D.4 四梯清單3.5m（v3 半實算）
+🔴 FAIL  W-D.4 碎片遞補0m
+🔴 FAIL  W-D.4 碎片遞補3.5m
+🔴 FAIL  W-D.4 跨占分配線0m
+🔴 FAIL  W-D.4 跨占分配線3.5m
+🔴 FAIL  W-D.4 遞補錨 R6 85.66→628-4(1)（跳過 628(2);628-1(2);628-23(1)）
+🔴 FAIL  W-F F.0
+🔴 FAIL  W-F F.1
+🔴 FAIL  W-F F.2
+🔴 FAIL  W-F F.3
+🔴 FAIL  W-F F.4
+🔴 FAIL  W-G G.1 接線層 ctx-builder 同源（cb_by/cad+centerlines/gA/winners/β財務/blocks欄名/指紋/率鋪底）
+🔴 FAIL  W-G G.2 世代幾何曝出契約
+🔴 FAIL  k* 六塊經驗錨0m {'R1': 2, 'R2': 8, 'R3': 7, 'R4': 1, 'R5': 7, 'R6': 6}
+🔴 FAIL  k* 六塊經驗錨3.5m {'R1': 1, 'R2': 8, 'R3': 7, 'R4': 1, 'R5': 7, 'R6': 6}
+🔴 FAIL  v3·G值0m
+🔴 FAIL  v3·G值3.5m
+🔴 FAIL  v3·J表0m
+🔴 FAIL  v3·J表3.5m
+🔴 FAIL  v3·滑池槽0m
+🔴 FAIL  v3·滑池槽3.5m
+🔴 FAIL  v3·診斷0m（全欄逐格·無豁免）
+🔴 FAIL  v3·診斷3.5m（全欄逐格·無豁免）
+🔴 FAIL  參數0m
+🔴 FAIL  參數3.5m
+🔴 FAIL  抵費地0m(應空)
+🔴 FAIL  抵費地3.5m
+🔴 FAIL  指配0m
+🔴 FAIL  指配3.5m
+🔴 FAIL  率接線 G估 欄變動0m 8 格（期 0·Y 波後 baseline 同源）
+🔴 FAIL  率接線 G估 欄變動3.5m 12 格（期 0·Y 波後 baseline 同源）
+🔴 FAIL  率接線無串聯0m（vs v1 原錨，豁免 G估 後逐格全等）
+🔴 FAIL  率接線無串聯3.5m（vs v1 原錨，豁免 G估 後逐格全等）
