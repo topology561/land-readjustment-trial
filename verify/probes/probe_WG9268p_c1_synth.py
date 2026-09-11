@@ -89,19 +89,15 @@ print("   斜交角 ＝ %.1f°（⛔ 正交）／頂點 %d 個／`s_i` ＝ %s"
 chk("`_oblique_s_max`（閉式期望 max(s_i)）", float(osm(CC, d_hat, corner, alloc)), S_GEO, 1e-9)
 print()
 
-print("── 造 `a`：旗標 **off** ⇒ **原值原樣**（⛔ 觸幾何）──")
-os.environ["WG9268P_ANCHOR_GEOM"] = "0"
-chk("off·`cum_S ＝ 1.0` 而 `s_geo ＝ 7.25`（須仍 1.0）", float(adv(1.0, CC, d_hat, corner, alloc)), 1.0)
-os.environ.pop("WG9268P_ANCHOR_GEOM", None)
-# 🔧 **步一**（補令十三 `§二-2`）：`(a2)` 之期望由 `1.0` 改為 `S_GEO`（＝ `7.25`）。
-#    其由 ＝ **`c2`（`c1376af`）已將預設改為 `on`** ——逐字錨 ＝ `app.py` 之
-#    `_os_a.environ.get('WG9268P_ANCHOR_GEOM', '1') != '1'`（預設 `'1'` ⇒ 未設即取 `on`）。
-#    🛑 此**⛔ 為**「調判準以就結果」：所改者係**期望值**，而該期望值所編碼者
-#       為「**預設為何**」，而預設已由一個**既經 KL 放行之裁**（`c2`）合法改變。
-#    🛑 **判別力之保全**：`(a1)`（顯式 `'0'`）**維持期望 `1.0`** 且須仍通過
-#       ⇒ 二式期望**相異**（`1.0` vs `7.25`）＝ 該器仍能偵得旗標分支之證。
-#    🛑 容差沿用 `chk` 之預設 `1e-9`·⛔ 放寬。
-chk("未設（`c2` 後預設 `on`）·期望改 `s_geo`（補令十三 `§二-2` 步一）", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
+print("── 造 `a′`：**錨⛔ 後退**（`max()` 之語意·造 `a` 唯一存活之不變量）──")
+# 🔧 **步二**（補令十三 `§二-3`）：`c3` 移除旗標後，`(a1)`／`(a2)` 之受詞
+#    （「旗標 off」）**結構上不復存在** ⇒ 二式俱已重擬。
+#    本造承其**唯一存活之不變量** ＝ `max()` 之語意（錨⛔ 後退）。
+# 🛑 容差沿用 `chk` 之既有 `1e-9`·⛔ 放寬。
+# 🔒 `cum_S ＝ 9.0` 一式係**自原造 `c` 移入**（其受詞 `s_geo < cum_S` 與本造
+#    **同一不變量**），保留以**⛔ 減損既有覆蓋**；原造 `c` 之位改載新造 `c`。
+chk("`cum_S ＝ 10.0` 而 `s_geo ＝ 7.25`（須仍 10.0）", float(adv(10.0, CC, d_hat, corner, alloc)), 10.0)
+chk("`cum_S ＝ 9.0` 而 `s_geo ＝ 7.25`（須仍 9.0·承原造 `c`）", float(adv(9.0, CC, d_hat, corner, alloc)), 9.0)
 print()
 
 print("── 造 `b`：旗標 **on** ∧ `s_geo > cum_S` ⇒ **須變為 `s_geo`**（判別力·證非死碼）──")
@@ -109,8 +105,14 @@ os.environ["WG9268P_ANCHOR_GEOM"] = "1"
 chk("on·`cum_S ＝ 1.0` ⇒ 須 `7.25`", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
 print()
 
-print("── 造 `c`：旗標 **on** ∧ `s_geo < cum_S` ⇒ **取 `max` ⇒ ⛔ 後退**──")
-chk("on·`cum_S ＝ 9.0` ⇒ 須仍 `9.0`", float(adv(9.0, CC, d_hat, corner, alloc)), 9.0)
+print("── 造 `c`：**旗標已無效**（`c3` contract·正面斷言⛔ 殘留分支）──")
+# 🔧 **步二**（補令十三 `§二-3`）：把「旗標已移除」由**缺席**轉為**正面斷言**；
+#    與補令十一 `Q-2`（字樣命中 `0`）**互為兩證**——一為**字樣**、一為**行為**。
+# 🛑 二式之期望皆 ＝ 造 `b` 之結果（`S_GEO`）⇒ 若尚有殘留分支，其一必轉紅。
+os.environ["WG9268P_ANCHOR_GEOM"] = "0"
+chk("設 `'0'`（舊 off 值）⇒ 須同造 `b`（`7.25`）", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
+os.environ.pop("WG9268P_ANCHOR_GEOM", None)
+chk("未設 ⇒ 須同造 `b`（`7.25`）", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
 print()
 
 print("── 造 `d`：旗標 **on** ∧ 幾何缺 ⇒ 原值（⛔ 靜默造值）──")

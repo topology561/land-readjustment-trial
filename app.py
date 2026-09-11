@@ -9245,14 +9245,16 @@ def _oblique_s_max(vertices, d_hat, corner_pt, allocation_dir=None):
 
 
 def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
-    """🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標 `WG9268P_ANCHOR_GEOM`·預設 `off`）。
+    """🆕 `W-G.9-268′` `c1` → `c3`：起算垂線之**錨點更正**（`c3` **contract**·**旗標已移除**·**無條件執行**）。
 
     **受詞**（補令二 `§一` 逐字）：錨由「前一宗之**標稱終點**（起算點 ＋ `S_raw`）」
     改為「前一宗之**幾何終點**（其遠側界離開街廓之點 ＝ `S_req`·**帶軸框**·⛔ 框甲）」。
     **形**（補令三 `§二`）：**累積形**——以**當下**之幾何極值為推進基準，
     ⛔ 逐格獨立套用落檔之 `累積S` 2dp 值（其捨入噪聲會新生 `0.03`〜`0.17 ㎡` 之偽重疊）。
 
-    🔒 **旗標 `off` ⇒ 原值原樣回傳**（`cum_S` 一字未動）⇒ **行為逐位不變**。
+    🔒 `c3`（**contract**·補令十一 `§三`）：**旗標已移除** ⇒ 錨計算**無條件執行**。
+       🛑 其 `expand` 期之旗標名**⛔ 再現於生產碼**（`Q-2`：全 `34` 檔命中 `0`）。
+       🔒 **錨之語意⛔ 變**：`c3` 只拿掉旗標，⇒ 行為等同於 `c2` 後之預設（`on`）。
     🔒 **只移錨點**：⛔ 改面積目標、⛔ 解 `S`（⛔ 呼叫 `solve_G_binary`）。
     🔒 `s` 之取法 ＝ `_oblique_s_max`（`_strip_axis` 帶軸框·**倉內單一真相源**·#20 四處同源）
        ——⛔ 另寫第二份幾何定義。
@@ -9265,9 +9267,6 @@ def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
     `3.5m·R5·left j=0` `8.0600 → 11.3822`（`δ ＝ +3.3222`）；`0m·R1·right j=1`（`δ ＝ +0.3969`）。
     其餘 `39` 格之 `|δ| ≤ 0.01 m`（2dp 捨入量級）⇒ 偏差集中於 `j = 0`（街角第 1 宗）。
     """
-    import os as _os_a
-    if _os_a.environ.get('WG9268P_ANCHOR_GEOM', '1') != '1':
-        return cum_S                      # 🔒 旗標 off：**原值原樣**（⛔ 觸任何幾何）
     if not cut_coords or d_hat is None or base_pt is None:
         return cum_S
     _s = _oblique_s_max(cut_coords, d_hat, base_pt, allocation_dir)
