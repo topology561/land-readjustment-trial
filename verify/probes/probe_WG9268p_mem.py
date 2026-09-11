@@ -40,11 +40,13 @@ VERIFY = os.path.dirname(HERE)
 REPO = os.path.dirname(VERIFY)
 sys.path.insert(0, VERIFY)
 sys.path.insert(0, os.path.join(VERIFY, "fixtures"))
+sys.path.insert(0, HERE)
 
 from shapely.geometry import Polygon                                # noqa: E402
 from shapely.ops import unary_union                                 # noqa: E402
 
 from app_harvest import harvest                                     # noqa: E402
+import wg9268p_selector_liveness as _LIVE                          # noqa: E402
 import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
@@ -200,6 +202,10 @@ def main():                                                         # noqa: C901
     print()
 
     ns, fake_st = harvest()
+    if not _LIVE.assert_live(ns, "probe_WG9268p_mem.py"):
+        print("🔴 選擇器活體檢不過 ⇒ 本次輸出⛔ 出艙（⛔ 判綠·⛔ 靜默續跑）")
+        return 4
+    print()
     snapshot = rv.load_snapshot()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snapshot)
     rv.build_ownership(ns, fake_st, rv.ANON_XLSX)

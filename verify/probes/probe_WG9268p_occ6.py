@@ -21,8 +21,15 @@ REV = sys.argv[1]
 
 TARGETS = [("自誤", 343), ("自誤", 344), ("自誤", 345),
            ("GB", 158), ("GB", 159), ("GB", 160)]
+# 🔒 得由 `argv[2:]` 覆寫受詢集（形 ＝ `<前綴>:<號>`）；⛔ 改對照組與框。
+if len(sys.argv) > 2:
+    TARGETS = [(s.split(":")[0], int(s.split(":")[1])) for s in sys.argv[2:]]
 CONTROL_HI = [("自誤", 341), ("自誤", 340), ("GB", 157), ("GB", 156)]   # 須 ≥1
-CONTROL_LO = [("自誤", 8461), ("GB", 8461)]                            # 須 =0（人造）
+# 🩸 **哨兵之號⛔ 得為字面**（`GB-147`／`CLAUDE.md`：哨兵字樣宜**於執行期組出**，
+#    ⛔ 使其字面落入任何檔或 log）——本器初版寫死一個號並隨本檔入倉，
+#    致該號於次批之查中由**真零**變為**非零**（自捕·`W-G.9-268′ 補令十一 序 `1``）。
+#    ⇒ 改為**執行期自倉內掃出**一個三形皆 `0` 之號；其字面**⛔ 出艙**，一律以代稱 `⟨NEG⟩` 指之。
+CONTROL_LO_RANGE = (9000, 9999)
 
 
 def files():
@@ -110,9 +117,24 @@ hi = {}
 for pre, n in CONTROL_HI:
     hi[(pre, n)] = show(pre, n, "甲（須 ≥1）")
 print()
-print("── 對照組 乙（人造·須 `=0`）──")
-for pre, n in CONTROL_LO:
-    show(pre, n, "乙（須 =0）")
+print("── 對照組 乙（人造·**執行期自倉掃出**·須 `=0`·其號⛔ 出艙·代稱 `⟨NEG⟩`）──")
+lo_ok = {}
+for pre in ("自誤", "GB"):
+    picked = None
+    for cand in range(CONTROL_LO_RANGE[0], CONTROL_LO_RANGE[1] + 1):
+        r = scan(pre, cand)
+        if all(len(v) == 0 for v in r.values()):
+            picked = cand
+            break
+    if picked is None:
+        print("   %-4s ⟨NEG⟩ 🛑 於 `%d`–`%d` 內**無**三形皆 `0` 之號 ⇒ **loud 拒測**"
+              % (pre, CONTROL_LO_RANGE[0], CONTROL_LO_RANGE[1]))
+        lo_ok[pre] = False
+        continue
+    lo_ok[pre] = True
+    print("   %-4s ⟨NEG⟩（執行期選出·字面⛔ 出艙）　B 形 檔=0 列=0 ｜ C 形 檔=0 列=0 ｜ 鬆框 檔=0 列=0 ｜ ✅ 乙（須 =0）"
+          % pre)
+print("   🔒 **⟨NEG⟩ 之三形皆 `0` ⇒ 量測器能歸零**（⛔ 恆非零）")
 print()
 
 print("🔑 **`GB-158` 之受詞（B 形之量測器紅）逐形出艙**")

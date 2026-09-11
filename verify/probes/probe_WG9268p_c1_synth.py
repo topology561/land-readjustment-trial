@@ -23,7 +23,9 @@ REPO = (r"C:/Users/admin/Desktop/land-readjustment-trial/.claude/worktrees"
 sys.path.insert(0, os.path.join(REPO, "verify"))
 os.chdir(REPO)
 
+sys.path.insert(0, HERE)
 from app_harvest import harvest                                     # noqa: E402
+import wg9268p_selector_liveness as _LIVE                          # noqa: E402
 
 FAIL = []
 
@@ -45,6 +47,19 @@ print("=" * W)
 print()
 
 ns, _fake_st = harvest()      # 🩸 harvest() 回 (ns, fake_st) 之 tuple（本器首版誤取為 dict·自捕）
+
+# ── 選擇器活體檢（補令十一 `§二-2`·置於全部判定之前）────────────────
+# 🔴 **本支之活體檢⛔ 為本倉之證據**：上方 `REPO` 係**硬編之他窗 worktree**
+#    （且 `os.chdir(REPO)`）⇒ `harvest()` 所讀者為**該樹之 `app.py`**、⛔ 本倉者。
+#    ⇒ 縱 `c3` 於本倉移除旗標，只要該他窗之樹仍存旗標，本檢仍會通過 ⇒ **假綠**。
+#    🛑 其處置（改 `REPO` 之取得法）**逾補令十一之授權** ⇒ 已具名上呈，⛔ 於本批自行修。
+print("🛑 **本支之 `REPO` 係硬編之他窗 worktree** ⇒ 下列活體檢之受詞為**該樹**，⛔ 本倉")
+print("   `REPO` ＝ %s" % REPO)
+if not _LIVE.assert_live(ns, "probe_WG9268p_c1_synth.py（受詞 ＝ 硬編之他窗樹）"):
+    print("🔴 選擇器活體檢不過 ⇒ 本次輸出⛔ 出艙（⛔ 判綠·⛔ 靜默續跑）")
+    sys.exit(4)
+print()
+
 adv = ns["_wg9268p_anchor_advance"]
 osm = ns["_oblique_s_max"]
 print("🔒 受測符號自 `harvest()` 取得：`_wg9268p_anchor_advance` %s ／ `_oblique_s_max` %s"
