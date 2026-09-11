@@ -82,10 +82,9 @@ def build_base():
 
 def run_one(ns, fake_st, snap, cb_by, cad, temp, build, sb, on):
     """一 (情境, 旗標態) 之 trunk A。回 dict（含 `partial` 之處置·⛔ 靜默吞）。"""
-    if on:
-        os.environ[FLAG] = "1"
-    else:
-        os.environ.pop(FLAG, None)
+    # 🛑 二態一律**顯式設值**，⛔ 以「`pop` ⇒ `off`」為之——該式繫於**旗標之預設**，
+    #    而 `c2` 正是翻該預設者 ⇒ 於 `c2` 態其二態將**雙雙為 `on`**（閘恆真·`裁 H` 之族）。
+    os.environ[FLAG] = "1" if on else "0"
     try:
         ns["K917_DROPPED"].clear()       # 🔒 逐跑歸零（其為 module 級累加器）
     except Exception:                    # noqa: BLE001
@@ -107,6 +106,57 @@ def run_one(ns, fake_st, snap, cb_by, cad, temp, build, sb, on):
         out["gate"] = str(e)[:200]
     out["dropped"] = {k: list(v) for k, v in (ns.get("K917_DROPPED") or {}).items()}
     return out
+
+
+def run_one_default(ns, fake_st, snap, cb_by, cad, temp, build, sb):
+    """**不設環境變數**之態（走 `app.py` 之預設字面）。⛔ 於本函式內設 `FLAG`。"""
+    try:
+        ns["K917_DROPPED"].clear()
+    except Exception:                    # noqa: BLE001
+        pass
+    params = rv.build_param_table(ns, fake_st, cb_by, cad, snap, sb)
+    _d, _s, _o, wins, forced = run_corner_pk(
+        ns, fake_st, list(cb_by.values()), cad, params, temp, build, sb, snapshot=snap)
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snap, params, build,
+                            wins, forced, sb, eff_min_build_by_blk={})
+        return {"g": sg["g_rows"]}
+    except RuntimeError as e:
+        p = getattr(e, "partial", None) or {}
+        return {"g": p.get("g_rows") or []}
+
+
+def _sig(rows):
+    """逐宗之可比簽章（⛔ 只比列數）。"""
+    return sorted((str(r.get("暫編地號", "")),
+                   round(float(r.get("G(㎡)", 0) or 0), 6),
+                   round(float(r.get("宗地寬度(m)", 0) or 0), 6),
+                   round(float(r.get("累積S(m)", 0) or 0), 6)) for r in rows)
+
+
+def _defcheck(S, DEF):
+    """「翻預設 ≡ 翻環境變數」：預設態 vs 其所指之態，**逐宗逐值**相同。"""
+    tgt = _default_on()
+    print("── 「翻預設 ≡ 翻環境變數」之證（`c2` 之主檢）" + "─" * 56)
+    print("   `app.py` 旗標預設字面 ＝ %r ⇒ 預設態應等同 `%s` 態"
+          % (_flag_literal(), "on" if tgt else "off"))
+    allok = True
+    for tag, _sb in SCEN:
+        a, b = _sig(DEF[tag]["g"]), _sig(S[(tag, tgt)]["g"])
+        c = _sig(S[(tag, not tgt)]["g"])
+        same, diff = (a == b), (a != c)
+        allok = allok and same and diff
+        print("   %-5s 預設態 vs `%s` 態：%s（%d vs %d 宗）｜"
+              "判別力：預設態 vs `%s` 態 %s"
+              % (tag, "on" if tgt else "off",
+                 "**逐宗逐值相同** ✅" if same else "\U0001f534 **相異**",
+                 len(a), len(b), "off" if tgt else "on",
+                 "**相異** ✅" if diff else "\U0001f534 **相同** ⇒ 本檢失能"))
+    print("   ⇒ %s" % ("✅ **翻預設 ≡ 翻環境變數**（且二態確可分辨）"
+                       if allok else "\U0001f534 ⛔ 成立 ⇒ 停機"))
+    print()
+    return allok
 
 
 def f2(x):
@@ -154,7 +204,15 @@ def main():                                                          # noqa: C90
     for tag, sb in SCEN:
         for on in (False, True):
             S[(tag, on)] = run_one(ns, fake_st, snap, cb_by, cad, temp, build, sb, on)
+    # ── 🔑 「翻預設 ≡ 翻環境變數」之證（⛔ 以「應該一樣」推定）────────────────
+    #    第三態 ＝ **不設環境變數**（走 `app.py` 之預設字面）。其 `g_rows` 須與
+    #    「預設所指之態」**逐宗逐值相同**；⛔ 只比列數。
+    DEF = {}
+    for tag, sb in SCEN:
+        os.environ.pop(FLAG, None)
+        DEF[tag] = run_one_default(ns, fake_st, snap, cb_by, cad, temp, build, sb)
     os.environ.pop(FLAG, None)
+    _defcheck(S, DEF)
 
     # ── 對照組（`坑 u`／`坑 13`：三造·**先跑先判**）─────────────────────────
     print("── 三造對照（**先跑**·未全成立則 loud 拒測）" + "─" * 60)
