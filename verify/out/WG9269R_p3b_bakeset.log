@@ -1,0 +1,123 @@
+🔴 必答一（射程）：`WV_BAKE` 之**實際覆寫集**
+  捕捉側 dir ＝ C:/Users/admin/AppData/Local/Temp/claude/C--Users-admin-Desktop-land-readjustment-trial--claude-worktrees-wg9-268-review-window-42a7ad/c509000f-09c3-4c8d-a15a-9870ae2d5724/scratchpad/bake_capture
+  基數 ＝ **51** 檔（⛔ 僅九份）
+
+  ── 類甲：**九份**（在覆寫集內 9／9）──
+     退縮0m參數.csv                                     ✅ 在覆寫集
+     退縮3.5m參數.csv                                   ✅ 在覆寫集
+     第 1 宗街角地指配結果_退縮0m.csv                          ✅ 在覆寫集
+     第 1 宗街角地指配結果_退縮3.5m.csv                        ✅ 在覆寫集
+     W-D.1.2 診斷_退縮0m.csv                            ✅ 在覆寫集
+     W-D.1.2 診斷_退縮3.5m.csv                          ✅ 在覆寫集
+     v3/W-D.1.2 診斷_退縮0m.csv                         ✅ 在覆寫集
+     v3/W-D.1.2 診斷_退縮3.5m.csv                       ✅ 在覆寫集
+     W-D.1.3-d 驗收_退縮3.5m.csv                        ✅ 在覆寫集
+
+  ── 類乙：**其餘**（42 檔·⛔ 在九份之列而仍被覆寫）──
+      W-D.1.3-a 診斷_退縮0m.csv
+      W-D.1.3-a 診斷_退縮3.5m.csv
+      v3/G 值計算結果_退縮0m.csv
+      v3/G 值計算結果_退縮3.5m.csv
+      v3/W-D.2 §3 滑池槽診斷_退縮0m.csv
+      v3/W-D.2 §3 滑池槽診斷_退縮3.5m.csv
+      v3/W-D.4_四梯分級清單_退縮0m.csv
+      v3/W-D.4_四梯分級清單_退縮3.5m.csv
+      v3/W-D.4_碎片遞補對照_退縮0m.csv
+      v3/W-D.4_碎片遞補對照_退縮3.5m.csv
+      v3/W-D.4_跨占分配線_退縮0m.csv
+      v3/W-D.4_跨占分配線_退縮3.5m.csv
+      v3/wd3_fragment_edges.csv
+      v3/wd3_fragment_geom.csv
+      v3/逐槽 J 表_退縮0m.csv
+      v3/逐槽 J 表_退縮3.5m.csv
+      wf/f0/F.0_G值_退縮0m.csv
+      wf/f0/F.0_G值_退縮3.5m.csv
+      wf/f0/F.0_合併決策_退縮0m.csv
+      wf/f0/F.0_合併決策_退縮3.5m.csv
+      wf/f0/F.0_旗標消長_退縮0m.csv
+      wf/f0/F.0_旗標消長_退縮3.5m.csv
+      wf/f0/F.0_池差_退縮0m.csv
+      wf/f0/F.0_池差_退縮3.5m.csv
+      wf/f0/F.0_滑池槽診斷_退縮0m.csv
+      wf/f0/F.0_滑池槽診斷_退縮3.5m.csv
+      wf/f0/F.0_逐槽J表_退縮0m.csv
+      wf/f0/F.0_逐槽J表_退縮3.5m.csv
+      wf/f2/F.2_G值_退縮0m.csv
+      wf/f2/F.2_G值_退縮3.5m.csv
+      wf/f2/F.2_池流向_退縮0m.csv
+      wf/f2/F.2_池流向_退縮3.5m.csv
+      wf/f2/F.2_跨街廓調配_退縮0m.csv
+      wf/f2/F.2_跨街廓調配_退縮3.5m.csv
+      wf/f3/F.3_G值_退縮0m.csv
+      wf/f3/F.3_G值_退縮3.5m.csv
+      wf/f3/F.3_公設調配_退縮0m.csv
+      wf/f3/F.3_公設調配_退縮3.5m.csv
+      wf/f3/F.3_池流向_退縮0m.csv
+      wf/f3/F.3_池流向_退縮3.5m.csv
+      wf/f3/F.3_轉7-4_退縮0m.csv
+      wf/f3/F.3_轉7-4_退縮3.5m.csv
+
+==============================================================================
+🔴 必答二：`W-D.4_四梯分級清單_退縮{0m,3.5m}.csv` 是否在覆寫集內
+  v3/W-D.4_四梯分級清單_退縮0m.csv                     ✅ **在**（判 ＝ 甲）
+  v3/W-D.4_四梯分級清單_退縮3.5m.csv                   ✅ **在**（判 ＝ 甲）
+
+  對照乙（哨兵·執行期組出）在覆寫集 ＝ False （須 False）
+  對照甲（必在·`退縮0m參數.csv`）＝ True （須 True）
+
+==============================================================================
+逐檔：現行 baseline（改前）vs 捕捉檔（改後將寫入者）·file sha256 ＋ bytes
+檔                                              改前B        改前sha256           改後B        改後sha256           同
+W-D.1.2 診斷_退縮0m.csv                            2478       2fbcb0a6c1afa5aa   2442       acae39d7a81c324b   🔴 異
+W-D.1.2 診斷_退縮3.5m.csv                          2805       7da44119f77b4444   2865       0ed716009e541664   🔴 異
+W-D.1.3-a 診斷_退縮0m.csv                          886        ba97d84f88d5dd7e   886        ba97d84f88d5dd7e   ✅
+W-D.1.3-a 診斷_退縮3.5m.csv                        886        ba97d84f88d5dd7e   886        ba97d84f88d5dd7e   ✅
+W-D.1.3-d 驗收_退縮3.5m.csv                        140        d04e7f934d435f84   110        8a3bc23eb5e2bd1d   🔴 異
+v3/G 值計算結果_退縮0m.csv                            11450      ad4718bafc3862a0   17659      365864c611d640ba   🔴 異
+v3/G 值計算結果_退縮3.5m.csv                          11887      cf0425e476b9743e   17830      42ae302a8107c1fb   🔴 異
+v3/W-D.1.2 診斷_退縮0m.csv                         2478       c4fde365f65b187e   2442       686455954a503eb5   🔴 異
+v3/W-D.1.2 診斷_退縮3.5m.csv                       2805       818127a53d64aaaa   2865       523d6feff0de4782   🔴 異
+v3/W-D.2 §3 滑池槽診斷_退縮0m.csv                     942        be51bf0b1f1a4eb2   991        6c102033cb604843   🔴 異
+v3/W-D.2 §3 滑池槽診斷_退縮3.5m.csv                   976        b707631420ea29b3   1000       b3f8a8f0e6814db3   🔴 異
+v3/W-D.4_四梯分級清單_退縮0m.csv                       6527       f7e759d147a4934f   6328       c64a87519f057171   🔴 異
+v3/W-D.4_四梯分級清單_退縮3.5m.csv                     6593       8f79898dd4cce9da   6396       1d5ef5a8836231df   🔴 異
+v3/W-D.4_碎片遞補對照_退縮0m.csv                       252        3ae62497e15ec329   376        3df94b7235b1621e   🔴 異
+v3/W-D.4_碎片遞補對照_退縮3.5m.csv                     256        f4194801fb33bd7b   530        b7f0a5fe5f1b7a7d   🔴 異
+v3/W-D.4_跨占分配線_退縮0m.csv                        1174       29481509aa5ecdb2   810        457df36bf35ca883   🔴 異
+v3/W-D.4_跨占分配線_退縮3.5m.csv                      1216       13daec2479cacc40   838        27659bf151edd9bf   🔴 異
+v3/wd3_fragment_edges.csv                      1316       28175ea7cc8cc02e   1792       4a792f144e078082   🔴 異
+v3/wd3_fragment_geom.csv                       2198       2f0bec444e7b59f8   3001       b38c63cd3ec684fb   🔴 異
+v3/逐槽 J 表_退縮0m.csv                             1699       6affe621ff1e131a   1314       c25a661c47331f2f   🔴 異
+v3/逐槽 J 表_退縮3.5m.csv                           1659       d3951ab649d3d07e   1297       9682c97bb510cdf3   🔴 異
+wf/f0/F.0_G值_退縮0m.csv                          9089       ce994a8fbdb18b4c   16312      d348d44cf4d226b0   🔴 異
+wf/f0/F.0_G值_退縮3.5m.csv                        9522       81db346d15112f99   16471      0cf283c839d2b2a1   🔴 異
+wf/f0/F.0_合併決策_退縮0m.csv                        947        8d5589a8d926a1e7   0          e3b0c44298fc1c14   🔴 異
+wf/f0/F.0_合併決策_退縮3.5m.csv                      964        962e15db68d82310   0          e3b0c44298fc1c14   🔴 異
+wf/f0/F.0_旗標消長_退縮0m.csv                        998        68db47270d5e5b6c   661        b4f56f030715ec4c   🔴 異
+wf/f0/F.0_旗標消長_退縮3.5m.csv                      1060       21a490031fc75c87   703        731ec9052870cc93   🔴 異
+wf/f0/F.0_池差_退縮0m.csv                          215        4235171ade29f92b   213        c3a951bf22041cb9   🔴 異
+wf/f0/F.0_池差_退縮3.5m.csv                        226        4a8141e186e6231e   226        c94be75f388fcab8   🔴 異
+wf/f0/F.0_滑池槽診斷_退縮0m.csv                       940        384e99b24e1aab78   991        ae79403972470861   🔴 異
+wf/f0/F.0_滑池槽診斷_退縮3.5m.csv                     973        db09096ca147cf42   997        dea162117921476b   🔴 異
+wf/f0/F.0_逐槽J表_退縮0m.csv                        1311       93a56908cf8e01d8   1200       3b1291530602a179   🔴 異
+wf/f0/F.0_逐槽J表_退縮3.5m.csv                      1286       23fd9b0b8e0d0b75   1183       f5fc5b218d51b0f4   🔴 異
+wf/f2/F.2_G值_退縮0m.csv                          7853       6f54bdf335cb47d7   14015      8f63dfca58743a7e   🔴 異
+wf/f2/F.2_G值_退縮3.5m.csv                        8281       bb4350cd9aaf1af5   14174      ee17092805b527c3   🔴 異
+wf/f2/F.2_池流向_退縮0m.csv                         370        1eb1e9e4332fe5f4   370        6b51a8b46d3a09bb   🔴 異
+wf/f2/F.2_池流向_退縮3.5m.csv                       382        ccbdb09fe945aac1   382        e3a851ee00155809   🔴 異
+wf/f2/F.2_跨街廓調配_退縮0m.csv                       772        66ba1d884035bb1e   774        795e8b6f21281952   🔴 異
+wf/f2/F.2_跨街廓調配_退縮3.5m.csv                     786        dfe4ff2c4f3fb937   788        9065a261b55424e6   🔴 異
+wf/f3/F.3_G值_退縮0m.csv                          7800       157a74a3da4c01e3   13955      5cf026fe7c70fb80   🔴 異
+wf/f3/F.3_G值_退縮3.5m.csv                        8219       c956b1eb6ab10d64   14132      f6ddb1e69dc975f2   🔴 異
+wf/f3/F.3_公設調配_退縮0m.csv                        2988       26a56378eb49a886   2987       06d4b6061f0c4f7c   🔴 異
+wf/f3/F.3_公設調配_退縮3.5m.csv                      3068       6a28e74213be1fa9   3067       e10198c265821a00   🔴 異
+wf/f3/F.3_池流向_退縮0m.csv                         376        875d595d0e9c4f31   377        25e20e9c3ceada2d   🔴 異
+wf/f3/F.3_池流向_退縮3.5m.csv                       388        0304c737a9da56ce   389        07baf82a8981c770   🔴 異
+wf/f3/F.3_轉7-4_退縮0m.csv                        1978       b112c05b025c33c3   1978       b112c05b025c33c3   ✅
+wf/f3/F.3_轉7-4_退縮3.5m.csv                      2026       2a1c6f64a2af4e1e   2026       2a1c6f64a2af4e1e   ✅
+第 1 宗街角地指配結果_退縮0m.csv                          836        a3faebc1ef960080   833        477e60a42f147112   🔴 異
+第 1 宗街角地指配結果_退縮3.5m.csv                        817        1fc221c6e387e33c   828        e100b0ce4209aebd   🔴 異
+退縮0m參數.csv                                     593        988fd20ac82ee395   594        d294cccb49d838c6   🔴 異
+退縮3.5m參數.csv                                   595        a052387739e182d5   596        9c7c85528d729829   🔴 異
+
+  逐位相同 ＝ 4 檔 ／ 相異 ＝ 47 檔

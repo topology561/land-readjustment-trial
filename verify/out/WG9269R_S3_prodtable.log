@@ -1,0 +1,50 @@
+== HEAD == 305579bbe00ba0a5c8f6232a84766415a5a5bfed
+
+== 生產碼檔（正面列舉）== 34 檔
+  app.py                                     bytes=1458081 blob_sha1=1d7d7c7324719f13e7d61473a55001170ef44d8e file_sha256=b74fd07c3c86a914e602c00aecf90112f543f472bbf11a8b314eb0ce4452f9a4
+  verify/app_harvest.py                      bytes=7086      blob_sha1=fa1f213900dd3399
+  verify/b6_isomorphism.py                   bytes=6551      blob_sha1=b1edbc65ef4f69a0
+  verify/fixture_baseline_candidates.py      bytes=14879     blob_sha1=eafa85783c770991
+  verify/fixture_block_depth_n19p.py         bytes=19497     blob_sha1=c3e02dd18768f1f4
+  verify/fixture_cad_binding_order.py        bytes=7070      blob_sha1=e59837832f58589f
+  verify/fixture_corner_range_k8.py          bytes=18283     blob_sha1=0753c0169387988b
+  verify/fixture_e2e_termination.py          bytes=13457     blob_sha1=c6344e37da7573c1
+  verify/fixture_end_fallback.py             bytes=7669      blob_sha1=9d7e83c8b8a60cd2
+  verify/fixture_end_reserve.py              bytes=9515      blob_sha1=d0bafc940acf5ebd
+  verify/fixture_end_winner.py               bytes=11660     blob_sha1=45000ea7f94620a2
+  verify/fixture_g3_static_guards.py         bytes=16762     blob_sha1=35337f1d80ebdb92
+  verify/fixture_klui_t2diag.py              bytes=11394     blob_sha1=d3d00e52439692ad
+  verify/fixture_midlayer_6items.py          bytes=19740     blob_sha1=bd5feb1d74efc212
+  verify/fixture_n14_feed_chain.py           bytes=9589      blob_sha1=b3dcde41073fb61c
+  verify/fixture_n14_min_width.py            bytes=17653     blob_sha1=e4b131011cf162f2
+  verify/fixture_wf_ns_wiring.py             bytes=18015     blob_sha1=6e9ea0da90dff40e
+  verify/fixture_yi_construction.py          bytes=11562     blob_sha1=69f4a18ae03f1318
+  verify/run_all.py                          bytes=24681     blob_sha1=e5cf9a224517533b
+  verify/run_verification.py                 bytes=99531     blob_sha1=440a13624b3c1ea2
+  verify/selection_pipeline.py               bytes=35367     blob_sha1=167a7beb8e9f7176
+  verify/stepg_pipeline.py                   bytes=110206    blob_sha1=13e74a9f4c3faa95
+  verify/test_corner_first_lot_G.py          bytes=3529      blob_sha1=8fad7768d5936bb0
+  verify/wd3_fragment_geom.py                bytes=14148     blob_sha1=33ca1ee83ffa61f4
+  verify/wd4_tier_list.py                    bytes=27190     blob_sha1=cfd8de92c70eb706
+  verify/wf_f0.py                            bytes=32299     blob_sha1=926e064464b99abe
+  verify/wf_f1.py                            bytes=23671     blob_sha1=23a2e919f0bdd390
+  verify/wf_f2.py                            bytes=16220     blob_sha1=9cdff7386616c297
+  verify/wf_f3.py                            bytes=14138     blob_sha1=795aab76cbd86cac
+  verify/wf_f4.py                            bytes=101754    blob_sha1=df366b588800cb3f
+  verify/wg_g1_smoke.py                      bytes=5374      blob_sha1=c6572822f39672ff
+  verify/wg_g2_smoke.py                      bytes=5497      blob_sha1=d806507776d378f3
+  verify/wg_g3.py                            bytes=8764      blob_sha1=85a3ebcc77cdddd0
+  verify/wv_reconcile.py                     bytes=15907     blob_sha1=35e071a9fe484eae
+
+== _wg9268p_anchor_advance == 存在
+   函式列數 = 29  environ 命中 = 0 (須 0)
+   判別力：app.py 全檔 environ 命中 = 3 (須非零，否則該檢恆綠)
+
+== 四簿（各載母體與框）==
+  自誤：母體=docs/reports/W-G.9波_claude.ai側自誤登記.md (713555 B／8328 列)  相異=347  MAX=354  缺號=[106]
+        框(逐字) = '^#+[^0-9０-９\\n]*?自誤[\\s\u3000`]*`?([0-9]{1,4})`?'  +範圍框  扣首六則靜態清單
+  GB  ：母體=docs/reports/W-G.4_泛用阻塞項登記表.md (782385 B／6405 列)  相異=159  MAX=161  缺號=[12, 87]
+        框 = 標題形 ∪ 表列形（單框皆偽；三式各得 85／134／聯集 159）
+  VR  ：母體=docs/驗證裁定登記表.md (394392 B／5124 列)  相異=80  MAX=95  缺號=[73, 75]
+  K-9 ：母體=docs/rulings/K-6_街角地分配程序與可分配判準.md (295061 B／4057 列)  相異=28  MAX=29  缺號=[]
+  對照乙（哨兵·執行期組出）於自誤簿命中 = 0 (須 0)
