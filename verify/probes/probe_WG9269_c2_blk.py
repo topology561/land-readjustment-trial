@@ -25,14 +25,25 @@ from app_harvest import harvest                                     # noqa: E402
 import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
+import wg9269_selector_liveness as _liveness                        # noqa: E402
 
 # 受詞三宗 ＋ 其**同歸戶之另一宗**（`G011`／`G025`／`G030` 各二宗）
 SUBJ = ("628-42(1)", "628-53(2)", "628-27(1)", "628-42(2)", "628-53(1)", "628-27(2)")
 
 
 def main():
-    os.environ.pop("WG9269_K917_BACKFILL", None)      # 🔒 `off` 態
+    # 🩸 `W-G.9-269` 補令十四 `§三-2`（**本批自捕**）：原式為 `os.environ.pop(...)`，
+    #    其繫於**旗標之預設**；而 `c2` 已將該預設翻為 `"1"` ⇒ `pop` 後得 **`on`**
+    #    ⇒ 本器所量者**實為剔除後之態**而其自稱 `off` ⇒ **靜默之誤標**。
+    #    ⇒ 一律**顯式設值**（⛔ 依賴預設）。實測：`pop` ⇒ `True`／`"0"` ⇒ `False`。
+    os.environ["WG9269_K917_BACKFILL"] = "0"          # 🔒 `off` 態（**顯式**）
     ns, fake_st = harvest()
+    # 🛑 **選擇器活體檢**（補令十四 `§三-2`）——置於**全部判定之前**。
+    _lv_ok, _lv_msg = _liveness.check_flag_selector(ns)
+    print(_lv_msg)
+    if not _lv_ok:
+        return 4
+    _lv_c = _liveness.install(ns)
     snap = rv.load_snapshot()
     cb_by, cad = rv.build_pipeline(ns, fake_st, snap)
     rv.build_ownership(ns, fake_st, rv.ANON_XLSX)
@@ -59,6 +70,12 @@ def main():
             print("| `%s` | `%s` | `%s` | %.2f | `%s` |"
                   % (pid, tag, r.get("所屬街廓"), float(r.get("G(㎡)", 0) or 0),
                      r.get("驗_B藍影")))
+    # 🛑 **選擇器活體檢之第二款**（計數）——亦置於最終判定之前。
+    _ok2, _m2 = _liveness.check_single_off(None if _lv_c is None else _lv_c["n"], ns=ns)
+    print(_m2)
+    _liveness.uninstall(ns, _lv_c)
+    if not _ok2:
+        return 4
     if n == 0:                                        # loud 拒測（判定集為空）
         print("🔴 判定集為空 ⇒ loud 拒測")
         return 3

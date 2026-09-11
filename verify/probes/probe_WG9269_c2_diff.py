@@ -40,6 +40,10 @@ from app_harvest import harvest                                     # noqa: E402
 import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
+import wg9269_selector_liveness as _liveness                        # noqa: E402
+
+#: 🛑 選擇器活體檢之計數器（補令十四 `§三-2`）——`k917_should_drop` 之被呼叫次數。
+_LVC = {"c": None}
 
 W = 150
 FLAG = "WG9269_K917_BACKFILL"
@@ -85,6 +89,7 @@ def run_one(ns, fake_st, snap, cb_by, cad, temp, build, sb, on):
     # 🛑 二態一律**顯式設值**，⛔ 以「`pop` ⇒ `off`」為之——該式繫於**旗標之預設**，
     #    而 `c2` 正是翻該預設者 ⇒ 於 `c2` 態其二態將**雙雙為 `on`**（閘恆真·`裁 H` 之族）。
     os.environ[FLAG] = "1" if on else "0"
+    _liveness.reset(_LVC["c"])
     try:
         ns["K917_DROPPED"].clear()       # 🔒 逐跑歸零（其為 module 級累加器）
     except Exception:                    # noqa: BLE001
@@ -105,6 +110,7 @@ def run_one(ns, fake_st, snap, cb_by, cad, temp, build, sb, on):
         out["aborted"] = p.get("aborted_blk")
         out["gate"] = str(e)[:200]
     out["dropped"] = {k: list(v) for k, v in (ns.get("K917_DROPPED") or {}).items()}
+    out["_lv_n"] = None if _LVC["c"] is None else _LVC["c"]["n"]
     return out
 
 
@@ -200,6 +206,14 @@ def main():                                                          # noqa: C90
 
     ns, fake_st, snap, cb_by, cad, temp, build, own_map = build_base()
     resolve = ns["_resolve_ownership"]
+    # 🛑 **選擇器活體檢**（補令十四 `§三-2`）——置於**全部判定之前**。
+    _lv_ok, _lv_msg = _liveness.check_flag_selector(ns)
+    print("── **選擇器活體檢**（補令十四 `§三-2`）" + "─" * 62)
+    print("   " + _lv_msg)
+    if not _lv_ok:
+        print("🛑 ⇒ **loud 拒測**（⛔ 判綠、⛔ 靜默續跑）")
+        return 4
+    _LVC["c"] = _liveness.install(ns)
     S = {}
     for tag, sb in SCEN:
         for on in (False, True):
@@ -212,6 +226,14 @@ def main():                                                          # noqa: C90
         os.environ.pop(FLAG, None)
         DEF[tag] = run_one_default(ns, fake_st, snap, cb_by, cad, temp, build, sb)
     os.environ.pop(FLAG, None)
+    # 🛑 活體檢之第二款（計數·二態須相異 ⋀ `off` 為 `0` ⋀ `on` 為正）
+    _ok2, _m2 = _liveness.check_two_state(S[("0m", False)]["_lv_n"], S[("0m", True)]["_lv_n"])
+    print("   " + _m2)
+    _liveness.uninstall(ns, _LVC["c"])
+    if not _ok2:
+        print("🛑 ⇒ **loud 拒測**（⛔ 判綠、⛔ 靜默續跑）")
+        return 4
+    print("")
     _defcheck(S, DEF)
 
     # ── 對照組（`坑 u`／`坑 13`：三造·**先跑先判**）─────────────────────────

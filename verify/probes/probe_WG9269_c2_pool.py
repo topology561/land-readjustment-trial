@@ -39,6 +39,7 @@ from app_harvest import harvest                                     # noqa: E402
 import run_verification as rv                                       # noqa: E402
 from selection_pipeline import run_corner_pk                        # noqa: E402
 from stepg_pipeline import run_step_g                               # noqa: E402
+import wg9269_selector_liveness as _liveness                        # noqa: E402
 
 W = 116
 SCEN = (("0m", 0.0), ("3.5m", 3.5))
@@ -86,12 +87,15 @@ def pool_of(sg):
 
 def measure(on):
     """於旗標某態量 trunk A ＋ `F.0`。回 {tag: {...}}。"""
-    if on:
-        os.environ[FLAG] = "1"
-    else:
-        os.environ.pop(FLAG, None)
+    # 🩸 `W-G.9-269` 補令十四 `§三-2`（**本批自捕**）：原式之 `else` 為 `os.environ.pop(FLAG, None)`，
+    #    其繫於**旗標之預設**；而 `c2` 已將該預設翻為 `"1"` ⇒ `pop` 後得 **`on`**
+    #    ⇒ 二態**雙雙為 `on`** ⇒ 一切「Δ ＝ 0」之結論皆偽。⇒ 一律**顯式設值**。
+    os.environ[FLAG] = "1" if on else "0"
     import wf_f0
     ns, fake_st, snap, cb_by, cad, temp, build = build_base()
+    # 🛑 **選擇器活體檢**（補令十四 `§三-2`）：其可觀測量 ＝ `k917_should_drop` 之被呼叫次數。
+    #    ⚠️ 須於 `wf_f0`／梯3 隔離量測**之前**讀之（該二者亦跑 `trunkA`、會累加）。
+    _lvc = _liveness.install(ns)
     out, ctx = {}, {}
     for tag, sb in SCEN:
         sg, params, wins, forced = trunkA(ns, fake_st, snap, cb_by, cad, temp, build, tag, sb)
@@ -101,6 +105,10 @@ def measure(on):
                     "build": build, "params": params, "winners": wins, "forced": forced,
                     "setback": sb, "gA": sg["g_rows"], "poolA": sg["pool_diag"],
                     "temp": temp}
+    # 🔒 讀計數並**卸下替身**（其後之 `wf_f0`／梯3 輪⛔ 計入本觀測量）
+    out["_lv_n"] = None if _lvc is None else _lvc["n"]
+    out["_lv_ns"] = ns
+    _liveness.uninstall(ns, _lvc)
     err = None
     try:
         with contextlib.redirect_stdout(io.StringIO()):
@@ -197,6 +205,18 @@ def main():                                                         # noqa: C901
     print("── 必答 `2`：釋池之會計（旗標 `off` ⋀ `on` 各量一次）" + "─" * 46)
     OFF = measure(False)
     ON = measure(True)
+    # ── 🛑 **選擇器活體檢**（補令十四 `§三-2`）——置於**全部旗標相依之判定之前** ──
+    #    🔒 上開「必答 `1`」（`G011` 之四梯分級）係 `wd4_tier_list` 之量、**旗標無關**
+    #       ⇒ 其先於本檢⛔ 違「置於全部判定之前」之旨（本器逐字具名之）。
+    print("── **選擇器活體檢**（補令十四 `§三-2`·其後之判定皆旗標相依）" + "─" * 40)
+    _ok_a, _m_a = _liveness.check_flag_selector(ON["_lv_ns"])
+    print("   " + _m_a)
+    _ok_b, _m_b = _liveness.check_two_state(OFF["_lv_n"], ON["_lv_n"])
+    print("   " + _m_b)
+    if not (_ok_a and _ok_b):
+        print("🛑 ⇒ **loud 拒測**（⛔ 判綠、⛔ 靜默續跑）")
+        return 4
+    print("")
     print("  🔒 `wf_f0.TIER3_LOTS`（執行期自 `wf_f0` 取·⛔ 本器重寫）＝ %s" % OFF["_tier3"])
     for st, name in ((OFF, "off"), (ON, "on")):
         if st["_f0err"]:
