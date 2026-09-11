@@ -1,6 +1,13 @@
 # -*- coding: utf-8 -*-
 """`c1` 之**合成案**（`CLAUDE.md`：`main()` 內之敘述，`run_all` ⛔ 單獨作為驗收依據）。
 
+🗄️ **退役註**（`W-G.9-268′` 補令十七 `§三-2` 款 `2`·逐字）
+   本器之受詞（旗標之二態）已於 `c3` 消滅 ⇒ 其活體檢於 `c3` 態**必拒測**（`rc = 4`），
+   此為**正確訊號**、⛔ 破損。
+   其原造 `a′`（錨⛔ 後退）已移至 `probe_WG9268p_c3_unit.py`；
+   原造 `c`（旗標已無效）已移至 `probe_WG9268p_c3_noresidual.py`。
+   🛑 **⛔ 於本器補回該二組**——補回即生第二份定義（`W-G.9-268′` 補令十七 `§三`）。
+
 🩸 **本案之必要性**：`c1` 之四呼叫點中，**二處落於 `app.py` 之 `def main()` 內**
    （AST 實查·見 `§三`）；`harvest()` 以 AST 跳過 UI、harness 走 `run_step_g`
    ⇒ **該二處從不被 `run_all`／`run_verification` 執行**。
@@ -89,30 +96,9 @@ print("   斜交角 ＝ %.1f°（⛔ 正交）／頂點 %d 個／`s_i` ＝ %s"
 chk("`_oblique_s_max`（閉式期望 max(s_i)）", float(osm(CC, d_hat, corner, alloc)), S_GEO, 1e-9)
 print()
 
-print("── 造 `a′`：**錨⛔ 後退**（`max()` 之語意·造 `a` 唯一存活之不變量）──")
-# 🔧 **步二**（補令十三 `§二-3`）：`c3` 移除旗標後，`(a1)`／`(a2)` 之受詞
-#    （「旗標 off」）**結構上不復存在** ⇒ 二式俱已重擬。
-#    本造承其**唯一存活之不變量** ＝ `max()` 之語意（錨⛔ 後退）。
-# 🛑 容差沿用 `chk` 之既有 `1e-9`·⛔ 放寬。
-# 🔒 `cum_S ＝ 9.0` 一式係**自原造 `c` 移入**（其受詞 `s_geo < cum_S` 與本造
-#    **同一不變量**），保留以**⛔ 減損既有覆蓋**；原造 `c` 之位改載新造 `c`。
-chk("`cum_S ＝ 10.0` 而 `s_geo ＝ 7.25`（須仍 10.0）", float(adv(10.0, CC, d_hat, corner, alloc)), 10.0)
-chk("`cum_S ＝ 9.0` 而 `s_geo ＝ 7.25`（須仍 9.0·承原造 `c`）", float(adv(9.0, CC, d_hat, corner, alloc)), 9.0)
-print()
-
 print("── 造 `b`：旗標 **on** ∧ `s_geo > cum_S` ⇒ **須變為 `s_geo`**（判別力·證非死碼）──")
 os.environ["WG9268P_ANCHOR_GEOM"] = "1"
 chk("on·`cum_S ＝ 1.0` ⇒ 須 `7.25`", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
-print()
-
-print("── 造 `c`：**旗標已無效**（`c3` contract·正面斷言⛔ 殘留分支）──")
-# 🔧 **步二**（補令十三 `§二-3`）：把「旗標已移除」由**缺席**轉為**正面斷言**；
-#    與補令十一 `Q-2`（字樣命中 `0`）**互為兩證**——一為**字樣**、一為**行為**。
-# 🛑 二式之期望皆 ＝ 造 `b` 之結果（`S_GEO`）⇒ 若尚有殘留分支，其一必轉紅。
-os.environ["WG9268P_ANCHOR_GEOM"] = "0"
-chk("設 `'0'`（舊 off 值）⇒ 須同造 `b`（`7.25`）", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
-os.environ.pop("WG9268P_ANCHOR_GEOM", None)
-chk("未設 ⇒ 須同造 `b`（`7.25`）", float(adv(1.0, CC, d_hat, corner, alloc)), S_GEO)
 print()
 
 print("── 造 `d`：旗標 **on** ∧ 幾何缺 ⇒ 原值（⛔ 靜默造值）──")
@@ -196,6 +182,8 @@ if FAIL:
         print("   · %s" % x)
     print("=" * W)
     sys.exit(3)
-print("✅ 合成案全綠：閉式自證 ⋀ 造 a（off 原值）⋀ 造 b（on 必變）⋀ 造 c（max 語意）"
-      " ⋀ 造 d（缺值原值）⋀ 造 e（退化 raise）⋀ 四呼叫點 AST 實查")
+print("✅ 合成案全綠：閉式自證 ⋀ 造 b（on 必變）⋀ 造 d（缺值原值）"
+      " ⋀ 造 e（退化 raise）⋀ 四呼叫點 AST 實查")
+print("   🗄️ 造 `a′`（錨⛔ 後退）⇒ `probe_WG9268p_c3_unit.py`；"
+      "造 `c`（旗標已無效）⇒ `probe_WG9268p_c3_noresidual.py`（補令十七 `§三-2`）")
 print("=" * W)

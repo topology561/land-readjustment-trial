@@ -1,0 +1,51 @@
+======================================================================================================================
+【`W-G.9-268′` `c1` 合成案】`_wg9268p_anchor_advance`（**`main()` 內之敘述⛔ 由 run_all 驗**）
+======================================================================================================================
+
+🔒 **`REPO` 已改為倉相對定位（`GB-161` 之修）** ⇒ 下列各判之受詞 ＝ **本倉**
+   `REPO` ＝ C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\w-g-246r2-handoff-bfa943
+── 選擇器活體檢（`state-selector liveness`·補令十一 `§二-2`）──
+   受檢之探針 ＝ `probe_WG9268p_c1_synth.py（受詞 ＝ 本倉·GB-161 已修）`
+   具名之可觀測量 ＝ `(｀_oblique_s_max｀ 之被呼叫次數, 回傳值)`
+   旗標 `off`（顯式 `'0'`）⇒ (0, 0.0)
+   旗標 `on` （顯式 `'1'`）⇒ (1, 1.0)
+   ⇒ 二態於該量上**確有相異** ⇒ ✅ **選擇器仍活**
+
+🔒 受測符號自 `harvest()` 取得：`_wg9268p_anchor_advance` True ／ `_oblique_s_max` True
+
+── 合成之閉式自證（`_oblique_s_max` ＝ `max(s_i)`·恆等式 `s(corner+s0·d̂) ≡ s0`）──
+   斜交角 ＝ 3.7°（⛔ 正交）／頂點 8 個／`s_i` ＝ [0.5, 2.0, 7.25, 3.0]
+  `_oblique_s_max`（閉式期望 max(s_i)）                            得 7.2500000000       期 7.2500000000       ✅
+
+── 造 `b`：旗標 **on** ∧ `s_geo > cum_S` ⇒ **須變為 `s_geo`**（判別力·證非死碼）──
+  on·`cum_S ＝ 1.0` ⇒ 須 `7.25`                                得 7.2500000000       期 7.2500000000       ✅
+
+── 造 `d`：旗標 **on** ∧ 幾何缺 ⇒ 原值（⛔ 靜默造值）──
+  on·`cut_coords ＝ []`                                       得 3.5000000000       期 3.5000000000       ✅
+  on·`cut_coords ＝ None`                                     得 3.5000000000       期 3.5000000000       ✅
+  on·`d_hat ＝ None`                                          得 3.5000000000       期 3.5000000000       ✅
+  on·`base_pt ＝ None`                                        得 3.5000000000       期 3.5000000000       ✅
+
+── 造 `e`：旗標 **on** ∧ 帶軸退化（切線 ∥ 推進向）⇒ **須 raise**（no-silent-fallback）──
+  退化 ⇒ raise（loud）                                           🔴 _strip_axis：d_hat·m_hat ≈ 0（切線 ∥ 推進向 →… ✅
+
+======================================================================================================================
+【§三】四呼叫點之 **AST 實查**（⛔ 硬編行號·⛔ 以 grep 代）
+======================================================================================================================
+  app.py                       `def main` 區間 ＝ (14918, 24498)
+      :22136  引數 5 ＝ ('left_cum_S', "res.get('cut_coords')", 'd_hat', 'corner_pt', 'allocation_dir_block')   **在 `main()` 內 ＝ True**
+      :22258  引數 5 ＝ ('right_cum_S', "res.get('cut_coords')", 'd_hat_rev', 'end_pt', 'allocation_dir_block')   **在 `main()` 內 ＝ True**
+  verify/stepg_pipeline.py     `def main` 區間 ＝ None
+      :855    引數 5 ＝ ('left_cum_S', "res.get('cut_coords')", 'd_hat', 'corner_pt', 'allocation_dir_block')   **在 `main()` 內 ＝ False**
+      :964    引數 5 ＝ ('right_cum_S', "res.get('cut_coords')", 'd_hat_rev', 'end_pt', 'allocation_dir_block')   **在 `main()` 內 ＝ False**
+  呼叫點總數 ＝ 4（須 4）✅
+  引數形（去第 1 引數 `cum_S`）之相異形 ＝ 2：
+      ("res.get('cut_coords')", 'd_hat', 'corner_pt', 'allocation_dir_block')
+      ("res.get('cut_coords')", 'd_hat_rev', 'end_pt', 'allocation_dir_block')
+  ⇒ 恰為「左鏈 `(d_hat, corner_pt)`／右鏈 `(d_hat_rev, end_pt)`」二形 ＝ True ✅
+  🔴 **落於 `main()` 內者 ＝ 2 處**（＝ `run_all`／`run_verification` **從不執行**者）⇒ **本合成案即其唯一驗收路徑**
+
+======================================================================================================================
+✅ 合成案全綠：閉式自證 ⋀ 造 b（on 必變）⋀ 造 d（缺值原值） ⋀ 造 e（退化 raise）⋀ 四呼叫點 AST 實查
+   🗄️ 造 `a′`（錨⛔ 後退）⇒ `probe_WG9268p_c3_unit.py`；造 `c`（旗標已無效）⇒ `probe_WG9268p_c3_noresidual.py`（補令十七 `§三-2`）
+======================================================================================================================
