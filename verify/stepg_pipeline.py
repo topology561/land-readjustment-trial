@@ -835,6 +835,17 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     is_corner_first=bool(is_first_corner_l),
                     is_second_after_corner=(_lg_idx_left == 1),
                     chain_side='left', _label=blk_label)
+                # 🆕 `W-G.9-269` `c1` **站 3／4（harness 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
+                #   🔒 旗標 `off` ⇒ 本塊**不執行** ⇒ 逐位不變（`expand`）。
+                #   🔒 三名經 `ns` 取（**單一真相源在 `app.py`**·⛔ 另寫第二份定義）。
+                if ns['k917_backfill_enabled']():
+                    _k917_drop, _k917_v = ns['k917_should_drop'](
+                        res, bool(is_first_corner_l),
+                        entry is not left_group[-1], 'left', blk_label, k)
+                    if _k917_drop:
+                        # 🛑 受詞與 app 左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
+                        ns['k917_note_drop'](blk_label, 'left', k, res, tp)
+                        continue
                 _lg_idx_left += 1
                 if _has_left_corner:
                     if not _W0_left_set:
@@ -944,6 +955,16 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     is_corner_first=bool(is_first_corner_r),
                     is_second_after_corner=(_lg_idx_right == 1),
                     chain_side='right', _label=blk_label)
+                # 🆕 `W-G.9-269` `c1` **站 4／4（harness 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
+                #   🔒 旗標 `off` ⇒ 本塊**不執行** ⇒ 逐位不變（`expand`）。
+                if ns['k917_backfill_enabled']():
+                    _k917_drop, _k917_v = ns['k917_should_drop'](
+                        res, bool(is_first_corner_r),
+                        entry is not right_group[-1], 'right', blk_label, k)
+                    if _k917_drop:
+                        # 🛑 受詞與 app 左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
+                        ns['k917_note_drop'](blk_label, 'right', k, res, tp)
+                        continue
                 _lg_idx_right += 1
                 if _has_right_corner:
                     if not _W0_right_set:

@@ -9274,6 +9274,71 @@ def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
         return cum_S
     return max(float(cum_S), float(_s))
 
+
+# ── 🆕 `W-G.9-269` `c1`：`K-9-23` 閘一之消費 ＋ `K-9-17` 遞補迴圈（**expand**·旗標預設 `off`）──
+K917_BACKFILL_ENV = "WG9269_K917_BACKFILL"
+
+#: 🔒 逐 `(街廓, 側)` 之剔除紀錄（供 `c4` 差異表）。**⛔ 生產判之輸入**——只記不判。
+K917_DROPPED = {}
+
+
+def k917_backfill_enabled():
+    """🆕 `W-G.9-269` `c1`：`K-9-17` 遞補迴圈之旗標（**預設 `off`** ⇒ 逐位不變）。
+
+    🔒 `expand` 段之出口：`off` ⇒ 本波之一切新碼**皆不執行**；`on` ⇒ 遞補生效（`c2` 之受詞）。
+    🛑 其**預設之翻轉**係 `c2`（🔴 有土地後果·須 KL 單獨放行）；`c1` ⛔ 翻之。
+    """
+    import os as _os_k917
+    return str(_os_k917.environ.get(K917_BACKFILL_ENV, "0")).strip().lower() \
+        in ("1", "on", "true", "yes")
+
+
+def k917_should_drop(res, is_corner_first, has_successor, chain_side, blk_label, pid=""):
+    """🆕 `W-G.9-269` `c1`：判該宗是否依 `K-9-11 三` **不配地**。回 `(是否剔除, 其判)`。
+
+    🔒 **受詞 ＝ `K-9-23` 閘一（藍影·`_k923_gate1`）之判**，其落欄 ＝ `驗_B藍影`
+       （`_lot_gate` 所寫·⛔ 改其內部一字）。
+       🛑 **⛔ 取 `驗_rejected`**——其 ＝ `any(A, B, C)`，含 **`K-9-12`（閘二·射程外）**；
+          以之為受詞將使本批逾射程 `19` 宗（補令一 `§二-2`／補令三 `§零-2`）。
+    🔒 **四態⛔ 併三**（`_lg_fmt`）：只有逐字 `不合格` 者剔除；
+       `合格`／`不適用`／`無從判定` 一律**留**——**「無從判定」⛔ 與「判定為偽」共用出艙碼**。
+    🛑 **`K-9-9 六` 之 loud**：候選耗盡（無後繼可遞補）⇒ **raise**，⛔ 靜默兜底、⛔ 回 `None`。
+    🛑 **第 `1` 宗（街角地）⛔ 得被剔除**：其分配範圍由街角 PK 之 winner 之 `G` 單獨決定，
+       ⛔ 受遞補影響（**構造保證**）⇒ 此處之 `raise` 係 `GB-104` 所令之 loud 斷言
+       （「⛔ 得以『上游擋住了』為由不設」），**⛔ 為其判準**。
+    """
+    _v = str(((res or {}).get("_lg_cols") or {}).get("驗_B藍影", "") or "").strip()
+    if _v != "不合格":
+        return False, _v
+    if is_corner_first:
+        raise RuntimeError(
+            f"🔴 `K-9-17` 遞補：街廓 {blk_label} {chain_side} 側之**街角第 1 宗** {pid!r} "
+            f"竟為閘一『不合格』——其分配範圍係 winner 之 `G` 所單獨決定、⛔ 受遞補影響"
+            f"（構造保證）⇒ 此情狀⛔ 得發生（`GB-104` 之 loud 斷言）。")
+    if not has_successor:
+        raise RuntimeError(
+            f"🔴 `K-9-9 六`：街廓 {blk_label} {chain_side} 側之末位 {pid!r} 遭閘一剔除而"
+            f"**⛔ 後繼可遞補** ⇒ 候選耗盡。正典逐字「必然產生配餘地……⛔ 會發生『塞不下』」"
+            f"⇒ 此情狀⛔ 得發生（⛔ 靜默兜底·⛔ 回 `None`）。")
+    return True, _v
+
+
+def k917_note_drop(blk_label, chain_side, pid, res, tp=None):
+    """🆕 `W-G.9-269` `c1`：記一筆「不配地」（`K-9-11 三`）。**只記不判**。
+
+    🔒 **其地入調配池係<u>構造之必然</u>**：本管線之池 ＝ 街廓幾何餘（`ΣG` 以外者），
+       該宗既不進 `g_rows`，其幾何即歸池 ⇒ **⛔ 另設「入池」之碼**（⛔ 第二份定義）。
+    🔒 **⛔ 超配**（`K-9-11 三`）：本函式⛔ 動任何宗之 `G`。
+    """
+    K917_DROPPED.setdefault((str(blk_label), str(chain_side)), []).append({
+        "暫編地號": pid,
+        "G(㎡)": round(float((res or {}).get("G", 0.0) or 0.0), 4),
+        "宗地寬度(m)": round(float((res or {}).get("_宗地寬度", 0.0) or 0.0), 4),
+        "驗_B藍影": str(((res or {}).get("_lg_cols") or {}).get("驗_B藍影", "")),
+        "歸戶": (tp or {}).get("歸戶鍵Gxxx", (tp or {}).get("歸戶", "")),
+    })
+
+
 def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
                      tol=0.01, _label=''):
     """
@@ -14413,6 +14478,9 @@ _WF_NS_NAMES = [
     #   app 路徑（「執行七級調配」→ `_build_wf_ctx` → wf_f4.compute）取不到即 **KeyError**。
     #   舊 :1110 閘只驗 `_WF_NS_NAMES ⊆ ns`（單向）故抓不到「引擎要、清單沒有」——閘已改雙向。
     "_strip_axis", "_end_region_R",
+    # 🆕 `W-G.9-269` `c1`：`K-9-17` 遞補迴圈之三名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
+    #   🛑 漏列即 **app 生產路徑 KeyError**（`fixture_wf_ns_wiring` 之受詞）。
+    "k917_backfill_enabled", "k917_should_drop", "k917_note_drop",
     # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
     #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
@@ -22117,6 +22185,22 @@ def main():
                                     is_corner_first=bool(is_first_corner_l),
                                     is_second_after_corner=(_lg_idx_left == 1),
                                     chain_side='left', _label=blk_label)
+                                # 🆕 `W-G.9-269` `c1` **站 1／4（app 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
+                                #   🔒 旗標 `off` ⇒ 本塊**不執行** ⇒ 逐位不變（`expand`）。
+                                if k917_backfill_enabled():
+                                    _k917_drop, _k917_v = k917_should_drop(
+                                        res, bool(is_first_corner_l),
+                                        entry is not left_group[-1], 'left', blk_label, k)
+                                    if _k917_drop:
+                                        # 🛑 `K-9-11 三`：不配地 ＋ 其地入調配池（幾何餘·構造必然）＋ ⛔ 超配。
+                                        # 🛑 `K-9-17 二·四·五`：空位由**重排後序列之下一位**遞補
+                                        #    ——本迴圈之下一 `entry` 即之；`left_cum_S` **⛔ 推進**
+                                        #    ⇒ 其後各宗整體前移、`G` 隨之**全部重算**（款 `五`）。
+                                        #    🛑 **⛔ 依 `K-9-9 四` 字面之「重劃前投影順序」**
+                                        #       （`K-9-17` 晚於 `K-9-9`·以後者為準）。
+                                        # 🛑 `_lg_idx_left` **⛔ 推進**：後繼者遞補其**位**。
+                                        k917_note_drop(blk_label, 'left', k, res, tp)
+                                        continue
                                 _lg_idx_left += 1
                                 if _has_left_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_left = float(res.get('W_far', _W_prev_left))
@@ -22239,6 +22323,16 @@ def main():
                                     is_corner_first=bool(is_first_corner_r),
                                     is_second_after_corner=(_lg_idx_right == 1),
                                     chain_side='right', _label=blk_label)
+                                # 🆕 `W-G.9-269` `c1` **站 2／4（app 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
+                                #   🔒 旗標 `off` ⇒ 本塊**不執行** ⇒ 逐位不變（`expand`）。
+                                if k917_backfill_enabled():
+                                    _k917_drop, _k917_v = k917_should_drop(
+                                        res, bool(is_first_corner_r),
+                                        entry is not right_group[-1], 'right', blk_label, k)
+                                    if _k917_drop:
+                                        # 🛑 受詞與左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
+                                        k917_note_drop(blk_label, 'right', k, res, tp)
+                                        continue
                                 _lg_idx_right += 1
                                 if _has_right_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_right = float(res.get('W_far', _W_prev_right))
