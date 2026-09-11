@@ -1,0 +1,139 @@
+======================================================================================================================
+【`GB-161`】全族掃描：硬編絕對路徑 ／ 他窗 worktree ／ 樹相依
+======================================================================================================================
+三軸 (1) 來源 ＝ 工作區（`verify`）
+三軸 (2) 母體 ＝ `verify/**/*.py` **286** 支（⛔ `__pycache__`）
+三軸 (3) 粒度框 ＝ 檔框 ＋ 列框
+
+── 逐樣式之命中（**含命中 `0`**）──
+   樣式 `worktrees             ` ⇒ 檔 **14**／列 **27**
+   樣式 `os.chdir(             ` ⇒ 檔 **8**／列 **10**
+   樣式 `git -C                ` ⇒ 檔 **18**／列 **30**
+   樣式 `絕對路徑 C:/ 或 C:\\       ` ⇒ 檔 **7**／列 **9**
+
+🔑 對照組（須 > 0）`import os` ⇒ 檔 **265** ✅
+🔑 對照組（須 = 0）`⟨執行期組出之必不存在字樣⟩` ⇒ 檔 **0** ✅
+🔴 對照組（**必命中**·本類之已知成員）`verify/probes/probe_WG9268p_c1_synth.py` ⇒ 列 **1** ✅ **撈得到本類**
+
+======================================================================================================================
+【逐支】硬編 `worktrees/` 之支（**逐支載：所指之樹／用法／樹相依之判**）
+======================================================================================================================
+
+── `verify/fixture_wf_ns_wiring.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **待判**
+     :148 ｜ print(f"              （相對 `verify/`·⛔ 不含 `.claude/worktrees/`）")
+   🔑 `<rev>:<path>` 之形：['       {m} ← {f}:{ln}  函式 `{fn}`', '       實拋 {type(e).__name__} @ {where}｜{str(e).splitlines()[0][:150]}', '  → [竄改態] 自受限 ns 抽掉 `{victim}`（`stepg:{uncond[0][0]}`·無條件）後重跑']
+
+── `verify/probes/probe_D2b29_wg9_q1q3.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ False
+   樹相依之判 ＝ **待判**
+     :6 ｜ · 母體 ＝ 倉內全部 `*.py`，⛔ 排除 `.claude/worktrees/`（巢狀 worktree ＝ 完整倉副本）。
+     :39 ｜ `if os.sep + ".claude" + os.sep + "worktrees" in dp: continue`
+     :40 ｜ ——而本 session 之 ROOT **自身**即位於 `…/.claude/worktrees/<name>/`
+     :50 ｜ if rel_dir == ".claude/worktrees" or rel_dir.startswith(".claude/worktrees/"):
+
+── `verify/probes/probe_WG91_static_checks.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ False
+   樹相依之判 ＝ **待判**
+     :10 ｜ **排除 `.claude/worktrees/`** ⇒ 基準 SHA 實跑 **31** 行
+     :45 ｜ if rel == ".claude/worktrees" or rel.startswith(".claude/worktrees/"):
+     :61 ｜ say("【射程】倉內 *.py ＝ %d 檔（⛔ 已排除 .claude/worktrees/）" % len(files))
+
+── `verify/probes/probe_WG9268p_c1_synth.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ True ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ False
+   樹相依之判 ＝ **是**
+     :21 ｜ REPO = (r"C:/Users/admin/Desktop/land-readjustment-trial/.claude/worktrees"
+
+── `verify/probes/probe_WG9268p_gb161_sweep.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ True ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **是**
+     :27 ｜ #    （`…worktrees"` ／ `r"/w-g-…"`）⇒ 舊式 `worktrees[/\\]` 於該列**不命中**
+     :29 ｜ ("worktrees", re.compile(r"worktrees")),
+     :90 ｜ must = [x for x in hits_by_pat["worktrees"] if x[0] == CTL_MUST]
+     :99 ｜ print("【逐支】硬編 `worktrees/` 之支（**逐支載：所指之樹／用法／樹相依之判**）")
+
+── `verify/probes/probe_WG93_mp_definition_scope.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ False
+   樹相依之判 ＝ **待判**
+     :65 ｜ if rel.startswith(".claude/worktrees"):
+     :192 ｜ say("【目錄射程】全倉 `.md` ＝ **%d** 檔（⛔ 已排除 `.claude/worktrees/`）" % len(allmd))
+
+── `verify/probes/probe_WG971_wrap.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **待判**
+     :203 ｜ TPL = ('  File "C:\\Users\\admin\\Desktop\\land-readjustment-trial\\.claude\\worktrees\\'
+   🔑 `REV`／`SPEC` 之**實際形**（樹相依之關鍵·⛔ 以「有 `git -C`」逕判）：
+      FROZEN = os.path.join(OUTDIR, "K6A2_期望FAIL名單_WG97_名目加原因.txt")　⇒ **待人工判**
+
+── `verify/probes/probe_WG996_yi_invariants.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **待判**
+     :262 ｜ % sum(1 for p in files if ".claude/worktrees" in p))
+
+── `verify/probes/probe_WG997_reassign_order.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **待判**
+     :252 ｜ say("  🔒 索引內含 `.claude/worktrees` 者 ＝ **%d**"
+     :253 ｜ % sum(1 for p in files if ".claude/worktrees" in p))
+
+── `verify/probes/wg9268_bing_csv.py`
+   所指之樹 ＝ ['wg9-268-review-window-42a7ad']
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **是**
+     :13 ｜ REPO = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg9-268-review-window-42a7ad"
+
+── `verify/probes/wg9268_ingest_verify.py`
+   所指之樹 ＝ ['wg9-268-review-window-42a7ad']
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ True ／ 讀寫 `verify/out` ＝ False
+   樹相依之判 ＝ **待判（`git -C`）**
+     :19 ｜ REPO = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg9-268-review-window-42a7ad"
+
+── `verify/probes/wg9268_nameset_diff.py`
+   所指之樹 ＝ ['wg9-268-review-window-42a7ad']
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ True ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **待判（`git -C`）**
+     :18 ｜ REPO = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg9-268-review-window-42a7ad"
+   🔑 `REV`／`SPEC` 之**實際形**（樹相依之關鍵·⛔ 以「有 `git -C`」逕判）：
+      REV = "e57d2ef86894472761e1403974ff1f2ce1e6a2df"　⇒ **完整 SHA**（⇒ **樹無關**）
+      FROZEN = "verify/out/K6A2_期望FAIL名單_WG97_名目加原因.txt"　⇒ **待人工判**
+
+── `verify/tools/wg960_z_selfcheck.py`
+   所指之樹 ＝ ['wg953-handoff-ready-d1e3c0']
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ False ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ True
+   樹相依之判 ＝ **是**
+     :12 ｜ ROOT = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg953-handoff-ready-d1e3c0"
+
+── `verify/tools/wg99_anchor_audit.py`
+   所指之樹 ＝ —
+   本倉之樹 ＝ w-g-251r-handoff-traps-b6f8a9
+   用法：`os.chdir` ＝ True ／ `git -C` ＝ False ／ 讀寫 `verify/out` ＝ False
+   樹相依之判 ＝ **是**
+     :41 ｜ if "/worktrees" in root.replace("\\", "/"):
+   🔑 `<rev>:<path>` 之形：['  🔴 {f}:{ln} → CLAUDE.md:{n}']
+
+======================================================================================================================
+🛑 **本器只登記·⛔ 修任何檔**（補令十二 `§三-2`）
+======================================================================================================================
