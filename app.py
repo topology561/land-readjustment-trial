@@ -9275,26 +9275,12 @@ def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
     return max(float(cum_S), float(_s))
 
 
-# ── 🆕 `W-G.9-269` `c1`：`K-9-23` 閘一之消費 ＋ `K-9-17` 遞補迴圈（**expand**·旗標預設 `off`）──
-K917_BACKFILL_ENV = "WG9269_K917_BACKFILL"
+# ── 🆕 `W-G.9-269` `c3`：`K-9-23` 閘一之消費 ＋ `K-9-17` 遞補迴圈（**contract**·**無條件執行**）──
+#   🔒 旗標 `WG9269_K917_BACKFILL` 已於 `c3` 移除；遞補迴圈自此**無條件執行**。
+#   🛑 其語意⛔ 因本段而變（`c3` 係 `contract`·⛔ 為第二次語意變更）。
 
 #: 🔒 逐 `(街廓, 側)` 之剔除紀錄（供 `c4` 差異表）。**⛔ 生產判之輸入**——只記不判。
 K917_DROPPED = {}
-
-
-def k917_backfill_enabled():
-    """🆕 `W-G.9-269` `c2`：`K-9-17` 遞補迴圈之旗標（**預設 `on`**·🔴 **有土地後果**）。
-
-    🔒 `expand` 段之出口：`off` ⇒ 本波之一切新碼**皆不執行**；`on` ⇒ 遞補生效（`c2` 之受詞）。
-    🛑 **本函式之預設已於 `c2` 由 `"0"` 翻為 `"1"`**——其受詞 ＝ `K-9-23` 閘一判「不合格」之宗
-       依 `K-9-11 三` **不配地**、其地入調配池，空位由 `K-9-17` 之**重排後序列下一位**遞補。
-       🔴 **其土地後果已逐宗出艙**（差異表見 `docs/reports/W-G.9-269R_c2.md`）；**其併線經 KL 單獨放行**（`W-G.9-269` 補令十三 `§一`）。
-    🛑 **`c3` 將移除本旗標**（`contract` 段）；在其之前，設 `WG9269_K917_BACKFILL=0`
-       仍可取回 `c1` 之 `off` 行為——該路徑係**對拍之用**，⛔ 生產之退路。
-    """
-    import os as _os_k917
-    return str(_os_k917.environ.get(K917_BACKFILL_ENV, "1")).strip().lower() \
-        in ("1", "on", "true", "yes")
 
 
 def k917_should_drop(res, is_corner_first, has_successor, chain_side, blk_label, pid=""):
@@ -14484,7 +14470,7 @@ _WF_NS_NAMES = [
     "_strip_axis", "_end_region_R",
     # 🆕 `W-G.9-269` `c1`：`K-9-17` 遞補迴圈之三名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
     #   🛑 漏列即 **app 生產路徑 KeyError**（`fixture_wf_ns_wiring` 之受詞）。
-    "k917_backfill_enabled", "k917_should_drop", "k917_note_drop",
+    "k917_should_drop", "k917_note_drop",
     # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
     #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
@@ -22190,21 +22176,20 @@ def main():
                                     is_second_after_corner=(_lg_idx_left == 1),
                                     chain_side='left', _label=blk_label)
                                 # 🆕 `W-G.9-269` `c1` **站 1／4（app 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
-                                #   🔒 旗標 `off` ⇒ 本塊**不執行** ⇒ 逐位不變（`expand`）。
-                                if k917_backfill_enabled():
-                                    _k917_drop, _k917_v = k917_should_drop(
-                                        res, bool(is_first_corner_l),
-                                        entry is not left_group[-1], 'left', blk_label, k)
-                                    if _k917_drop:
-                                        # 🛑 `K-9-11 三`：不配地 ＋ 其地入調配池（幾何餘·構造必然）＋ ⛔ 超配。
-                                        # 🛑 `K-9-17 二·四·五`：空位由**重排後序列之下一位**遞補
-                                        #    ——本迴圈之下一 `entry` 即之；`left_cum_S` **⛔ 推進**
-                                        #    ⇒ 其後各宗整體前移、`G` 隨之**全部重算**（款 `五`）。
-                                        #    🛑 **⛔ 依 `K-9-9 四` 字面之「重劃前投影順序」**
-                                        #       （`K-9-17` 晚於 `K-9-9`·以後者為準）。
-                                        # 🛑 `_lg_idx_left` **⛔ 推進**：後繼者遞補其**位**。
-                                        k917_note_drop(blk_label, 'left', k, res, tp)
-                                        continue
+                                #   🔒 `c3`：**無條件執行**（旗標已移除）。
+                                _k917_drop, _k917_v = k917_should_drop(
+                                    res, bool(is_first_corner_l),
+                                    entry is not left_group[-1], 'left', blk_label, k)
+                                if _k917_drop:
+                                    # 🛑 `K-9-11 三`：不配地 ＋ 其地入調配池（幾何餘·構造必然）＋ ⛔ 超配。
+                                    # 🛑 `K-9-17 二·四·五`：空位由**重排後序列之下一位**遞補
+                                    #    ——本迴圈之下一 `entry` 即之；`left_cum_S` **⛔ 推進**
+                                    #    ⇒ 其後各宗整體前移、`G` 隨之**全部重算**（款 `五`）。
+                                    #    🛑 **⛔ 依 `K-9-9 四` 字面之「重劃前投影順序」**
+                                    #       （`K-9-17` 晚於 `K-9-9`·以後者為準）。
+                                    # 🛑 `_lg_idx_left` **⛔ 推進**：後繼者遞補其**位**。
+                                    k917_note_drop(blk_label, 'left', k, res, tp)
+                                    continue
                                 _lg_idx_left += 1
                                 if _has_left_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_left = float(res.get('W_far', _W_prev_left))
@@ -22328,15 +22313,14 @@ def main():
                                     is_second_after_corner=(_lg_idx_right == 1),
                                     chain_side='right', _label=blk_label)
                                 # 🆕 `W-G.9-269` `c1` **站 2／4（app 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
-                                #   🔒 旗標 `off` ⇒ 本塊**不執行** ⇒ 逐位不變（`expand`）。
-                                if k917_backfill_enabled():
-                                    _k917_drop, _k917_v = k917_should_drop(
-                                        res, bool(is_first_corner_r),
-                                        entry is not right_group[-1], 'right', blk_label, k)
-                                    if _k917_drop:
-                                        # 🛑 受詞與左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
-                                        k917_note_drop(blk_label, 'right', k, res, tp)
-                                        continue
+                                #   🔒 `c3`：**無條件執行**（旗標已移除）。
+                                _k917_drop, _k917_v = k917_should_drop(
+                                    res, bool(is_first_corner_r),
+                                    entry is not right_group[-1], 'right', blk_label, k)
+                                if _k917_drop:
+                                    # 🛑 受詞與左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
+                                    k917_note_drop(blk_label, 'right', k, res, tp)
+                                    continue
                                 _lg_idx_right += 1
                                 if _has_right_corner:   # thread 累積 W_前 給下一筆
                                     _W_prev_right = float(res.get('W_far', _W_prev_right))

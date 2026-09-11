@@ -1,0 +1,18 @@
+── 受檢（`c3` 態）（母體 ＝ 生產碼 **34** 檔·正面列舉）
+   **AST 去 docstring** 之命中 ＝ **0**   ｜   字樣框之命中 ＝ 1
+     app.py:—  僅字樣（註解／docstring）  1 次
+   判 ＝ ✅
+── 判別力對照（父態·須 `> 0`）（母體 ＝ 生產碼 **34** 檔·正面列舉）
+   **AST 去 docstring** 之命中 ＝ **9**   ｜   字樣框之命中 ＝ 10
+     app.py:9285  FunctionDef  k917_backfill_enabled
+     app.py:9279  Name  K917_BACKFILL_ENV
+     app.py:9279  Constant  WG9269_K917_BACKFILL
+     app.py:14487  Constant  k917_backfill_enabled
+     app.py:9296  Name  K917_BACKFILL_ENV
+     app.py:22194  Name  k917_backfill_enabled
+     app.py:22332  Name  k917_backfill_enabled
+     verify/stepg_pipeline.py:841  Constant  k917_backfill_enabled
+     verify/stepg_pipeline.py:960  Constant  k917_backfill_enabled
+   判 ＝ ✅
+
+判 ＝ ✅ `Q-2` 成立（受檢 AST `0` ⋀ 對照 AST `9` > 0 ⇒ 本檢⛔ 恆綠）

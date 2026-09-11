@@ -1,0 +1,14 @@
+── `app.py` ──
+   k917_backfill_enabled  已刪（674 bytes）
+   app 站 left             去 `if` 一層·塊 13 列去縮排 4
+   app 站 right            去 `if` 一層·塊 7 列去縮排 4
+── `verify/stepg_pipeline.py` ──
+   stepg 站 left           去 `if` 一層·塊 7 列去縮排 4
+   stepg 站 right          去 `if` 一層·塊 7 列去縮排 4
+── 殘留自檢（字樣框·AST 另驗）──
+   app.py                       K917_BACKFILL_ENV          = 0
+   app.py                       k917_backfill_enabled      = 0
+   app.py                       WG9269_K917_BACKFILL       = 1
+   verify/stepg_pipeline.py     K917_BACKFILL_ENV          = 0
+   verify/stepg_pipeline.py     k917_backfill_enabled      = 0
+   verify/stepg_pipeline.py     WG9269_K917_BACKFILL       = 0
