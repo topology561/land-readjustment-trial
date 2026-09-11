@@ -15,7 +15,7 @@ import os
 import re
 import subprocess
 
-REPO = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg9-268-review-window-42a7ad"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # 🔒 W-G.9-269 p2：自 `__file__` 上溯·⛔ 硬編他樹（GB-161）
 SP = os.path.dirname(os.path.abspath(__file__))
 REV = "e57d2ef86894472761e1403974ff1f2ce1e6a2df"
 FROZEN = "verify/out/K6A2_期望FAIL名單_WG97_名目加原因.txt"

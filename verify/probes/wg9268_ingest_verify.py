@@ -16,7 +16,7 @@ import os
 import subprocess
 import sys
 
-REPO = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg9-268-review-window-42a7ad"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # 🔒 W-G.9-269 p2：自 `__file__` 上溯·⛔ 硬編他樹（GB-161）
 SP = os.path.dirname(os.path.abspath(__file__))
 DL = r"C:\Users\admin\Downloads"
 WHERE = sys.argv[1] if len(sys.argv) > 1 else "staged"

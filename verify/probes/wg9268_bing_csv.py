@@ -10,7 +10,7 @@ import csv
 import io
 import os
 
-REPO = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg9-268-review-window-42a7ad"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # 🔒 W-G.9-269 p2：自 `__file__` 上溯·⛔ 硬編他樹（GB-161）
 
 for scen in ("0m", "3.5m"):
     p = os.path.join(REPO, "verify", "out", "got_G值_退縮%s_partial.csv" % scen)

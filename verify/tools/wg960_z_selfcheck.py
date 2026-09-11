@@ -9,7 +9,7 @@ import hashlib
 import io
 import os
 
-ROOT = r"C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\wg953-handoff-ready-d1e3c0"
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # 🔒 W-G.9-269 p2：自 `__file__` 上溯·⛔ 硬編他樹（GB-161）
 OUT = os.path.join(ROOT, "verify", "out", "_z60_selfcheck.txt")
 
 TARGET = {
