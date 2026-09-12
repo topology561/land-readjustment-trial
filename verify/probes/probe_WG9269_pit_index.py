@@ -42,8 +42,10 @@ NUM_LABELS = [str(i) for i in range(1, 27)]    # 數字系 1〜26
 #   🛑 **二字母形⛔ 與單字母形相混**——`D-T` 之比對為**整格相等**（`lab in labels`），
 #      引用之框為 `坑 ` ＋ 反引號 ＋ 標籤 ＋ 反引號 ⇒ `坑 \x60a\x60` ⛔ 命中 `坑 \x60aa\x60`。
 #   🔒 `ad`〜`ak` 係 `W-G.9-269` 補令十六段（`c3` 併線之收工交接）所立（本波末八坑）。
+#   🔒 `al`〜`ao` 係 `W-G.9-269` 補令十七段（`c4` 之收工交接）所立（本波末四坑）。
 ALPHA_LABELS = ([chr(c) for c in range(ord("a"), ord("z") + 1)]
-                + ["aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak"])
+                + ["aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak",
+                   "al", "am", "an", "ao"])
 
 
 def tracked_md(rev):
