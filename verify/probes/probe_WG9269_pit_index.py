@@ -49,7 +49,8 @@ NUM_LABELS = [str(i) for i in range(1, 27)]    # 數字系 1〜26
 #      （`W-G.9-270R2` 當場實測：擴充前 `67`、擴充後 `70`）。
 ALPHA_LABELS = ([chr(c) for c in range(ord("a"), ord("z") + 1)]
                 + ["aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak",
-                   "al", "am", "an", "ao", "ap", "aq", "ar"])
+                   "al", "am", "an", "ao", "ap", "aq", "ar",
+                   "as", "at", "au"])   # 🆕 `W-G.9-270` 補令四 §一-2 所准之三坑
 
 
 def tracked_md(rev):
@@ -275,9 +276,9 @@ def main():
             continue
         print("   ⇒ **器非紅** ✅")
         run(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`ak`")
+        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`au`")
         issuer_frame(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`ak`")
+        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`au`")
     return rc
 
 
