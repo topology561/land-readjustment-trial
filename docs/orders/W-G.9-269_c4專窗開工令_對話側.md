@@ -1,3 +1,5 @@
+> 🛑 **本文⛔ 為補令**——其為 `c4` 窗之開工令（KL 對話側交付）。本窗之工項零之正本 ＝ `docs/orders/W-G.9-269_補令十七_c3併線核可與c4續辦.md`（`file sha256 ee8b3a66…`）。更名之由見 `W-G.9-269` 補令十八 `§一`。
+
 【W-G.9-269 · `c4` 專窗 · 受詞 ＝ CC · 零生產碼 · 本批最後一項】
 
 倉：topology561/land-readjustment-trial。二 ref 皆以 `git ls-remote` 實查
