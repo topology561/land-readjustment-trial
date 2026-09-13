@@ -56,7 +56,8 @@ ALPHA_LABELS = ([chr(c) for c in range(ord("a"), ord("z") + 1)]
                    "ay", "az",        # 🆕 `W-G.9-270` 補令七 §二-A 所准之二坑
                    "ba",              # 🆕 `W-G.9-273` §二 所准之一坑
                    "bb",              # 🆕 `W-G.9-275` 補令一 §四 所准之一坑
-                   "bc"])             # 🆕 `W-G.9-276` §二 所准之一坑
+                   "bc",              # 🆕 `W-G.9-276` §二 所准之一坑
+                   "bd"])             # 🆕 `W-G.9-278` §三 所准之一坑
 
 
 def tracked_md(rev):
@@ -282,9 +283,9 @@ def main():
             continue
         print("   ⇒ **器非紅** ✅")
         run(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`bc`")
+        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`bd`")
         issuer_frame(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`bc`")
+        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`bd`")
     return rc
 
 
