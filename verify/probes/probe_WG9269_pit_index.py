@@ -37,7 +37,7 @@ BT = chr(96)                                   # 反引號·⛔ 令其經 bash �
 W = 112
 
 NUM_LABELS = [str(i) for i in range(1, 27)]    # 數字系 1〜26
-# 字母系：`a`〜`z` ＋ 二字母形 `aa`〜`ak`
+# 字母系：`a`〜`z` ＋ 二字母形 `aa`〜`aw`
 #   🔒 `y`／`z`／`aa`／`ab`／`ac` 係 `W-G.9-269` 補令十二段 `§二` 所立（本波末五坑）。
 #   🛑 **二字母形⛔ 與單字母形相混**——`D-T` 之比對為**整格相等**（`lab in labels`），
 #      引用之框為 `坑 ` ＋ 反引號 ＋ 標籤 ＋ 反引號 ⇒ `坑 \x60a\x60` ⛔ 命中 `坑 \x60aa\x60`。
@@ -50,7 +50,8 @@ NUM_LABELS = [str(i) for i in range(1, 27)]    # 數字系 1〜26
 ALPHA_LABELS = ([chr(c) for c in range(ord("a"), ord("z") + 1)]
                 + ["aa", "ab", "ac", "ad", "ae", "af", "ag", "ah", "ai", "aj", "ak",
                    "al", "am", "an", "ao", "ap", "aq", "ar",
-                   "as", "at", "au"])   # 🆕 `W-G.9-270` 補令四 §一-2 所准之三坑
+                   "as", "at", "au",    # 🆕 `W-G.9-270` 補令四 §一-2 所准之三坑
+                   "av", "aw"])         # 🆕 `W-G.9-270` 補令五 §一-A 所准之二坑
 
 
 def tracked_md(rev):
@@ -276,9 +277,9 @@ def main():
             continue
         print("   ⇒ **器非紅** ✅")
         run(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`au`")
+        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`aw`")
         issuer_frame(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`au`")
+        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`aw`")
     return rc
 
 
