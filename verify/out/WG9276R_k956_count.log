@@ -1,0 +1,176 @@
+====================================================================================================================================
+【`W-G.9-276` `§三-1`】`k956_W_from_mp` 計數之判別力補證（二法並施·逐法分列）
+====================================================================================================================================
+🛑 **⛔ 判 `k956` 是否未被消費、⛔ 判其為缺陷、⛔ 鑄 `GB`**——本器只證**器可信與否**並出艙事實。
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【法乙之標的】`f.__globals__ is ns` 之機驗（**⛔ 以斷言代之**）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · 全 8 次 drive 之 `probe_fn.__globals__ is ns` ⇒ **全為 `True`**
+   ⇒ 於本 harness，**法甲與法乙之標的為同一個 dict** ✅
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【自我驗證閘】框內省所錄之 `blk_label`（⛔ 不過即 loud 拒測·坑 `bb`）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · `0m` 態乙 法乙｜所錄 ＝ ['R1', 'R2', 'R4'] ⇒ ✅
+   · `0m` 態乙 法甲｜所錄 ＝ ['R1', 'R2', 'R4'] ⇒ ✅
+   · `0m` 態甲 法乙｜所錄 ＝ ['R1', 'R2', 'R6', 'R5', 'R3'] ⇒ ✅
+   · `0m` 態甲 法甲｜所錄 ＝ ['R1', 'R2', 'R6', 'R5', 'R3'] ⇒ ✅
+   · `3.5m` 態乙 法乙｜所錄 ＝ ['R1', 'R2', 'R4'] ⇒ ✅
+   · `3.5m` 態乙 法甲｜所錄 ＝ ['R1', 'R2', 'R4'] ⇒ ✅
+   · `3.5m` 態甲 法乙｜所錄 ＝ ['R1', 'R2', 'R6', 'R5', 'R3'] ⇒ ✅
+   · `3.5m` 態甲 法甲｜所錄 ＝ ['R1', 'R2', 'R6', 'R5', 'R3'] ⇒ ✅
+   ⇒ **器非紅** ✅（所錄 32 筆·皆為 `BLKS` 之成員）
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【主表】三函式 × 二法 ＝ `6` 格計數（逐情境 `0m`／`3.5m` × 逐態 甲／乙）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   | 情境 | 態 | 函式 | 角色 | 法甲 `ns[...]` | 法乙 `__globals__` | 判 |
+   |---|---|---|---|---|---|---|
+   | `0m` | 甲 | `k956_W_from_mp` | **受測** | **0** | **0** | 相同 |
+   | `0m` | 甲 | `_pool_strips_for_block` | 對照甲[必命中] | **6** | **6** | 相同 |
+   | `0m` | 甲 | `k6_step0_merge` | 對照乙[必命中·於態甲] | **1** | **1** | 相同 |
+   | `0m` | 乙 | `k956_W_from_mp` | **受測** | **0** | **0** | 相同 |
+   | `0m` | 乙 | `_pool_strips_for_block` | 對照甲[必命中] | **3** | **3** | 相同 |
+   | `0m` | 乙 | `k6_step0_merge` | 對照乙[必命中·於態甲] | **0** | **0** | 相同 |
+   | `3.5m` | 甲 | `k956_W_from_mp` | **受測** | **1** | **1** | 相同 |
+   | `3.5m` | 甲 | `_pool_strips_for_block` | 對照甲[必命中] | **6** | **6** | 相同 |
+   | `3.5m` | 甲 | `k6_step0_merge` | 對照乙[必命中·於態甲] | **1** | **1** | 相同 |
+   | `3.5m` | 乙 | `k956_W_from_mp` | **受測** | **1** | **1** | 相同 |
+   | `3.5m` | 乙 | `_pool_strips_for_block` | 對照甲[必命中] | **3** | **3** | 相同 |
+   | `3.5m` | 乙 | `k6_step0_merge` | 對照乙[必命中·於態甲] | **0** | **0** | 相同 |
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【準據之逐格判】（發單側定·`§三-1` 逐字）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   | 情境 | 態 | 法 | 對照甲 `_pool_strips_for_block` | 對照乙 `k6_step0_merge` | `k956` 計數 | 該法之計數 |
+   |---|---|---|---|---|---|---|
+   | `0m` | 乙 | 乙 | 3 | 0 | **0** | 部分（只一對照 `>0`） |
+   | `0m` | 乙 | 甲 | 3 | 0 | **0** | 部分（只一對照 `>0`） |
+   | `0m` | 甲 | 乙 | 6 | 1 | **0** | 可信 |
+   | `0m` | 甲 | 甲 | 6 | 1 | **0** | 可信 |
+   | `3.5m` | 乙 | 乙 | 3 | 0 | **1** | 部分（只一對照 `>0`） |
+   | `3.5m` | 乙 | 甲 | 3 | 0 | **1** | 部分（只一對照 `>0`） |
+   | `3.5m` | 甲 | 乙 | 6 | 1 | **1** | 可信 |
+   | `3.5m` | 甲 | 甲 | 6 | 1 | **1** | 可信 |
+
+   ⇒ **二對照皆 `>0`** 之格 ＝ **4**／8
+   ⇒ 於該等格，`k956` 之計數**得出艙為事實**（逐格具名於上表）。
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`k956` 之回傳值集合】（供 `§三-2` 逐位比對）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · `0m` 態乙 法乙 ⇒ n ＝ 0｜值 ＝ []
+   · `0m` 態乙 法甲 ⇒ n ＝ 0｜值 ＝ []
+   · `0m` 態甲 法乙 ⇒ n ＝ 0｜值 ＝ []
+   · `0m` 態甲 法甲 ⇒ n ＝ 0｜值 ＝ []
+   · `3.5m` 態乙 法乙 ⇒ n ＝ 1｜值 ＝ [6.98048044737404]
+   · `3.5m` 態乙 法甲 ⇒ n ＝ 1｜值 ＝ [6.98048044737404]
+   · `3.5m` 態甲 法乙 ⇒ n ＝ 1｜值 ＝ [6.98048044737404]
+   · `3.5m` 態甲 法甲 ⇒ n ＝ 1｜值 ＝ [6.98048044737404]
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【併出艙 `1`】`_k956_W_from_mp = ns["k956_W_from_mp"]` 之**綁定時點** vs 間諜**安裝時點**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · 逐字 `_k956_W_from_mp = ns["k956_W_from_mp"]` 之列框命中 ＝ **1**（列 [394]）
+   · `def run_step_g` 之列 ＝ [238]
+   · **AST 實查**：該列之最內層 def ＝ `_run_step_g_impl`（`277`–`1643`）
+   · ⇒ 其綁定於該 def 之**入口段**（**每次呼叫皆重新綁定**）；
+   · 間諜之安裝於 `harvest()` 後、`run_step_g` 呼叫**之前** ⇒ **安裝於綁定之前**。
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【併出艙 `1'`】`k956_W_from_mp` 各呼叫點之**包層 def 鏈**（AST 實查·⛔ 硬編）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · `app.py`：
+     - :22090  _W0_l = k956_W_from_mp(_gs_l, _side_mid_left,｜包層 ＝ `main > _advance_block_with_split`
+     - :22092  _Wn_l = k956_W_from_mp(_gs_l + float(_left_buffer_S) * _du_diag,｜包層 ＝ `main > _advance_block_with_split`
+     - :22102  _W0_r = k956_W_from_mp(_gs_r, _side_mid_right,｜包層 ＝ `main > _advance_block_with_split`
+     - :22104  _Wn_r = k956_W_from_mp(｜包層 ＝ `main > _advance_block_with_split`
+     - :22415  return float(k956_W_from_mp(_bp0, _mp, _adir, _dv))｜包層 ＝ `main > _mp_base_W0`
+   · `verify/stepg_pipeline.py`：
+     - :1036  return float(_k956_W_from_mp(_bp0, _mp, _adir, _dv))｜包層 ＝ `_run_step_g_impl > _mp_base_W0`
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【併出艙 `2`】`_fo_left`／`_fo_right` 之**實際值**（逐街廓 × 逐情境 × 逐態·全母體 `24` 格）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   源 ＝ `fake_st.session_state['f3L_forced_offset'][<街廓>]`（即 `verify/stepg_pipeline.py` 之 `_fo_block` 之同一來源）
+   | 街廓 | `0m` 態甲 | `0m` 態乙 | `3.5m` 態甲 | `3.5m` 態乙 |
+   |---|---|---|---|---|
+   | `R1` | L=False R=False | L=False R=False | L=False R=False | L=False R=False |
+   | `R2` | L=False R=False | L=False R=False | L=True R=False | L=True R=False |
+   | `R3` | L=False R=False | L=False R=False | L=False R=False | L=False R=True |
+   | `R4` | L=True R=False | L=False R=False | L=True R=False | L=False R=False |
+   | `R5` | L=False R=False | L=False R=False | L=False R=False | L=True R=False |
+   | `R6` | L=False R=False | L=False R=False | L=False R=False | L=False R=False |
+   ⇒ 格數 ＝ **24**（期 `24`）｜`True` 之總數 ＝ **6**
+   🔒 **判別力**：若全母體皆 `False` ⇒ 該欄⛔ 具鑑別力；實測 `True` 總數 ＝ **6** ⇒ 非全 `False`·具鑑別力 ✅
+   · 框內省交叉驗（`_select_pool_slot` 呼叫端之 `_fo_left`／`_fo_right`）：
+     - `0m` 態乙 法乙｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `0m` 態乙 法乙｜`R2`：_fo_left=False _fo_right=False _N=15 _deg=False
+     - `0m` 態乙 法乙｜`R4`：_fo_left=False _fo_right=False _N=2 _deg=False
+     - `0m` 態乙 法甲｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `0m` 態乙 法甲｜`R2`：_fo_left=False _fo_right=False _N=15 _deg=False
+     - `0m` 態乙 法甲｜`R4`：_fo_left=False _fo_right=False _N=2 _deg=False
+     - `0m` 態甲 法乙｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `0m` 態甲 法乙｜`R2`：_fo_left=False _fo_right=False _N=14 _deg=False
+     - `0m` 態甲 法乙｜`R6`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `0m` 態甲 法乙｜`R5`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `0m` 態甲 法乙｜`R3`：_fo_left=False _fo_right=False _N=10 _deg=False
+     - `0m` 態甲 法甲｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `0m` 態甲 法甲｜`R2`：_fo_left=False _fo_right=False _N=14 _deg=False
+     - `0m` 態甲 法甲｜`R6`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `0m` 態甲 法甲｜`R5`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `0m` 態甲 法甲｜`R3`：_fo_left=False _fo_right=False _N=10 _deg=False
+     - `3.5m` 態乙 法乙｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `3.5m` 態乙 法乙｜`R2`：_fo_left=True _fo_right=False _N=15 _deg=False
+     - `3.5m` 態乙 法乙｜`R4`：_fo_left=False _fo_right=False _N=2 _deg=False
+     - `3.5m` 態乙 法甲｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `3.5m` 態乙 法甲｜`R2`：_fo_left=True _fo_right=False _N=15 _deg=False
+     - `3.5m` 態乙 法甲｜`R4`：_fo_left=False _fo_right=False _N=2 _deg=False
+     - `3.5m` 態甲 法乙｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `3.5m` 態甲 法乙｜`R2`：_fo_left=True _fo_right=False _N=14 _deg=False
+     - `3.5m` 態甲 法乙｜`R6`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `3.5m` 態甲 法乙｜`R5`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `3.5m` 態甲 法乙｜`R3`：_fo_left=False _fo_right=False _N=10 _deg=False
+     - `3.5m` 態甲 法甲｜`R1`：_fo_left=False _fo_right=False _N=5 _deg=False
+     - `3.5m` 態甲 法甲｜`R2`：_fo_left=True _fo_right=False _N=14 _deg=False
+     - `3.5m` 態甲 法甲｜`R6`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `3.5m` 態甲 法甲｜`R5`：_fo_left=False _fo_right=False _N=8 _deg=False
+     - `3.5m` 態甲 法甲｜`R3`：_fo_left=False _fo_right=False _N=10 _deg=False
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【併出艙 `3`】`_fo_block.get('left_forced_offset')`／`('right_forced_offset')` 之**來源逐字**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   | `verify/stepg_pipeline.py:341` | `ss["f3L_forced_offset"] = forced_map` |
+   | `verify/stepg_pipeline.py:606` | `_v2_forced = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}` |
+   | `verify/stepg_pipeline.py:646` | `_fo_block = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {})` |
+   | `verify/stepg_pipeline.py:647` | `_fo_left = bool(_fo_block.get('left_forced_offset', False))` |
+   | `verify/selection_pipeline.py:602` | `# ── 🆕 W-D.2 P6：forced_offset_map（鏡射 app f3L_forced_offset，含 W-D.2 min_area 鍵）──` |
+   | `verify/selection_pipeline.py:617` | `'left_forced_offset': bool(_l_forced and _l_has_side),` |
+   | `app.py:7977` | `forced_offset         {'left_forced_offset', 'right_forced_offset',` |
+   | `app.py:8057` | `if forced_offset.get('left_forced_offset') else 0.0,` |
+   | `app.py:14644` | `"forced": _need("f3L_forced_offset"),` |
+   | `app.py:20953` | `'left_forced_offset': bool(_l_forced and _l_has_side),` |
+   | `app.py:20967` | `st.session_state['f3L_forced_offset'] = _forced_offset_map` |
+   | `app.py:21574` | `_f3L_forced_offset = (st.session_state.get('f3L_forced_offset', {}) or {})` |
+   | `app.py:21575` | `if _f3L_forced_offset:` |
+   | `app.py:21577` | `for _blk_lbl_fo, _fo in _f3L_forced_offset.items():` |
+   | `app.py:21579` | `if _fo.get('left_forced_offset'):` |
+   | `app.py:21847` | `st.session_state.get('f3L_forced_offset', {}) or {}` |
+   | `app.py:21885` | `'f3L_forced_offset', {}) or {}).get(blk_label, {})` |
+   | `app.py:21886` | `_fo_left = bool(_fo_block.get('left_forced_offset', False))` |
+   🔒 **判別力**：一人造字面（**執行期組出**）於 `verify/stepg_pipeline.py` ＝ **0**（須 `0`）
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【終止態】`run_step_g` 之中止閘（逐情境 × 逐態 × 逐法）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · `0m` 態乙 法乙 ⇒ 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.41（Δ=2.425 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R4·right] （無界面）
+   · `0m` 態乙 法甲 ⇒ 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.41（Δ=2.425 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R4·right] （無界面）
+   · `0m` 態甲 法乙 ⇒ None
+   · `0m` 態甲 法甲 ⇒ None
+   · `3.5m` 態乙 法乙 ⇒ 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.41（Δ=2.425 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R4·right] （無界面）
+   · `3.5m` 態乙 法甲 ⇒ 🔴 結構閘 理論＝實跑 破：街廓 R4 right 側 理論@k*=87.83 ≠ 實跑(階段1)=85.41（Δ=2.425 >0.1）｜參考 ΣΔ_i=+0.000（**⛔ 未用於本式**·實測反證見碼註）｜逐界面：[Δ_i·R4·right] （無界面）
+   · `3.5m` 態甲 法乙 ⇒ None
+   · `3.5m` 態甲 法甲 ⇒ None
+
+RESULT=OK
