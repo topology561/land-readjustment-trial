@@ -1,0 +1,16 @@
+================================================================================================
+【`W-G.9-270` 補令四 `§四-2`】`p9` `TIER_EXPECT` 之翻紅點（二分）
+================================================================================================
+區間 ＝ 7fa957e..HEAD ／ 候選 commit 數 ＝ 692
+EXPECT ＝ {"—": 8, "0": 13, "1": 7, "2": 3, "3": 2}
+判準 ＝ 任一情境之 tiers ≠ EXPECT ⇒ 紅
+
+  端 7fa957e  mina_qu=115.85  0m={"0": 13, "1": 7, "—": 8, "2": 3, "3": 2}  ⇒ 相符（期 相符）✅
+  端 8356f09  mina_qu=115.88  0m={"0": 11, "1": 9, "—": 8, "2": 3, "3": 2}  ⇒ 紅（期 紅）✅
+
+🛑 步 1：8a9f6ae 求值失敗 ⇒ **loud 拒測**（⛔ 視為紅）：compute 失敗（rc=1）：st(cb_by.values()), cad, snapshot,
+                    params, build, winners, forced, setback)
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\p8a\verify\stepg_pipeline.py", line 995, in run_step_g
+    raise RuntimeError(f"街廓 {blk_label} 抵費地計算失敗：{_eOff}")
+RuntimeError: 街廓 R2 抵費地計算失敗：🔴 ②-宗 圍堵閘破[R2]：宗-宗重疊 = 45.9766 > 上界 3.1129（(宗數15−1)×0.005×深度44.47）——**超出捨入量子可解釋範圍＝另有病**，停
+
