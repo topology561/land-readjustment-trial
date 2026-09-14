@@ -286,9 +286,9 @@ def main():
             continue
         print("   ⇒ **器非紅** ✅")
         run(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        run(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`bg`")
+        run(rev, ALPHA_LABELS, f"字母系 `a`〜`z` ＋ `aa`〜`{ALPHA_LABELS[-1]}`")
         issuer_frame(rev, NUM_LABELS, "數字系 `1`〜`26`")
-        issuer_frame(rev, ALPHA_LABELS, "字母系 `a`〜`z` ＋ `aa`〜`bg`")
+        issuer_frame(rev, ALPHA_LABELS, f"字母系 `a`〜`z` ＋ `aa`〜`{ALPHA_LABELS[-1]}`")
     return rc
 
 

@@ -1,0 +1,90 @@
+==============================================================================================================
+母體 ＝ `app.py`（**24582** 列·框 ＝ 倉側 blob `HEAD`）
+==============================================================================================================
+
+── `range_area` ⇒ **31** 列（**全部提及·逐列·⛔ 摘**）
+   :9332| def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
+   :9335|     §3 街角 forced band（plan v3 §3·補丁九）：**bisect 解 `buf` 使「真實池帶面積 == range_area」**
+   :9336|     （|Δ| ≤ tol）。**全精度回傳**（N0-18a·不 round）。取代舊矩形近似 `range_area ÷ avg_depth`
+   :9361|     `range_area`（逐案由 `_build_corner_range_v3` 算）／`allocation_dir`（逐塊自該塊 ALLOC）／
+   :9366|     if range_area is None or float(range_area) <= 0:
+   :9368|     range_area = float(range_area)
+   :9416|     if _f_hi < range_area:
+   :9419|             f"（f(hi)={_f_hi:.4f} < range={range_area:.4f}）——幾何前提破（range 大於可用 s 域），停")
+   :9423|         if _band_area(mid) < range_area:
+   :9430|     _resid = abs(_band_area(buf) - range_area)
+   :12483|     `has_side`（`{side: bool}`）／`corner_range_polys`／`corner_range_areas`（皆 `{side: …}`）／
+   :12568|     _rng = _f((_ctx.get('corner_range_areas') or {}).get(_side))
+   :12574|             _unknown.append('C:corner_range_area')
+   :13157|         _cr_areas_6 = _st_cr6.session_state.setdefault('f3_corner_range_areas', {})
+   :13291|                 cand_p1['_corner_range_area'] = (round(float(_corner_poly_p1_B4.area), 2)  # 🆕 W-D.1.3-b 項三分母（同 range 多邊形）
+   :13309|                 cand_p2['_corner_range_area'] = (round(float(_corner_poly_p2_B4.area), 2)  # 🆕 W-D.1.3-b 項三分母（同 range 多邊形）
+   :13326|     #   physical_overlap_area 不再被覆寫、不再作評分來源；候選 _corner_intersection_area / _corner_range_area 為項三真量。
+   :13414|         _tj_range = max(float(cand.get('_corner_range_area', 0) or 0), 1e-9)
+   :13607|         _v = _c.get('_corner_range_area')
+   :13610|                 "🔴 [K-9-24 二·⑤] %r（街廓 %r／端 %r）之 `_corner_range_area` ＝ %r"
+   :13669|                 #   🔒 範圍面積係**塊×側級**（`_corner_range_area`）⇒ ⛔ 依候選集；
+   :20836|                                                 '範圍面積(㎡)': round(float(_dc.get('_corner_range_area', 0) or 0), 2),
+   :20843|                                                 '範圍=門檻?': ('✅' if abs(float(_dc.get('_corner_range_area', 0) or 0)
+   :20848|                                                                           > float(_dc.get('_corner_range_area', 0) or 0) + 0.01
+   :20849|                                                                           and float(_dc.get('_corner_range_area', 0) or 0) > 0)
+   :20851|                                                                           / max(float(_dc.get('_corner_range_area', 0) or 0), 1e-9), 4)),
+   :21093|                                 'f3_corner_range_areas', {}
+   :21982|                             'corner_range_areas': _lg_cra,
+   :23677|                 #     （`f3_corner_range_areas`·即 winner 選拔所用者），判定由該門檻蘊含。
+   :23690|                 _cr_areas_jw = st.session_state.get('f3_corner_range_areas', {}) or {}
+   :23748|                         f"`f3_corner_range_areas` 之該側門檻（{'、'.join(_k4_no_thr[:6])}）"
+
+── `_corner_buffer_S` ⇒ **15** 列（**全部提及·逐列·⛔ 摘**）
+   :9332| def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
+   :9371|         raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：side 須為 'left'/'right'，得 {side!r}")
+   :9376|             f"🔴 _corner_buffer_S[{_label}]：缺 allocation_dir → `_block_strip` 將退 rot90(d_hat) "
+   :9380|         raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：allocation_dir 為零向量（同上·禁正交退路），停")
+   :9384|         raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：d_hat 非單位向量（方位契約·須傳 FRONT p1→p2 之 +d̂），停")
+   :9388|         raise RuntimeError(f"🔴 _corner_buffer_S[{_label}]：街廓 s 域不可定義（退化幾何），停")
+   :9392|             f"🔴 _corner_buffer_S[{_label}·{side}]：s_max={s_max:.4f} ≤0——方位契約疑破"
+   :9399|         print(f"🟡 _corner_buffer_S[{_label}·left]：s_min={s_min:.4f} <0，左帶下界夾 0 "
+   :9418|             f"🔴 _corner_buffer_S[{_label}·{side}]：帶吃滿全街廓仍不足 range"
+   :9433|             f"🔴 _corner_buffer_S[{_label}·{side}]：bisect 未收斂至 tol"
+   :14463|     "_strip_s_range", "_corner_buffer_S",
+   :14482|     #   函式置 app module 級、stepg 經 ns 取用（同 `_oblique_s_max`／`_corner_buffer_S` 先例·**禁 fork**）。
+   :21896|                             # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth`，改 `_corner_buffer_S`
+   :21903|                                         _left_buffer_S = _corner_buffer_S(
+   :21914|                                         _right_buffer_S = _corner_buffer_S(
+
+── `_build_corner_range_v3` ⇒ **17** 列（**全部提及·逐列·⛔ 摘**）
+   :1794|     #      致 `_build_corner_range_v3` 之 `K-9-5-14` 停機在 app 內被觸發。
+   :5808|     ⚠️ **另有一份不同號規之 BASELINE 法向**：`_build_corner_range_v3` 之
+   :6554|        ⚠️ ⛔ **不得改用 `_build_corner_range_v3` 之法向**——其號規不同（**GB-22** 已載）。
+   :9361|     `range_area`（逐案由 `_build_corner_range_v3` 算）／`allocation_dir`（逐塊自該塊 ALLOC）／
+   :10691| #     · **(Ⅰ) 街角規定範圍**＝`_build_corner_range_v3`（🆕 K-8 §三〜§五 新構造·見其 docstring）
+   :10744|     ⛔ **本函式不兜底**：二者皆無 ⇒ 回 `None`，由 `_build_corner_range_v3` 之
+   :11027|     生產仍走 `_build_corner_range_v3`（`grep -n "def _build_corner_range_v3" app.py`）。
+   :11229|     #   且**無任何呼叫端在讀它**（`_build_corner_range_v3` 只取 `t_star`／
+   :12615| def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
+   :12666|     _who = f"_build_corner_range_v3[{_label or '?'}·{_side or '?'}]"
+   :13059|     #       亦從未當引數傳出。跨占實際用的是 `_build_corner_range_v3` 之輸出
+   :13093|     # 🚨 W-B §5（🆕 K-8 §三〜§五 換構造）：讀 session 資料，以模組級 _build_corner_range_v3
+   :13136|             _rng_wb = _build_corner_range_v3(
+   :14480|     "_build_corner_range_v3",
+   :20412|                         # 幾何街角規定範圍面積（🆕 K-8 §三〜§五 `_build_corner_range_v3`）
+   :20432|                                 _rng_cr = _build_corner_range_v3(
+   :21084|                                         "『真交集』＝ parcel ∩ `_build_corner_range_v3`（**已用於評分**）、『範圍面積』＝同 range 多邊形面積（項三分母）；"
+==============================================================================================================
+母體 ＝ `verify/stepg_pipeline.py`（**1671** 列·框 ＝ 倉側 blob `HEAD`）
+==============================================================================================================
+
+── `range_area` ⇒ **3** 列（**全部提及·逐列·⛔ 摘**）
+   :271|             'corner_range_areas': _pcap.get('corner_range_areas'),
+   :450|         _pcap['corner_range_areas'] = dict(
+   :706|             'corner_range_areas': {_w_sg: (None if _lg_crp_sg[_w_sg] is None
+
+── `_corner_buffer_S` ⇒ **4** 列（**全部提及·逐列·⛔ 摘**）
+   :389|     _corner_buffer_S = ns["_corner_buffer_S"]               # §3 街角 band 幾何 bisect·side 參數化·單一真相源·#20
+   :653|             # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth` → `_corner_buffer_S`
+   :659|                         _left_buffer_S = _corner_buffer_S(
+   :670|                         _right_buffer_S = _corner_buffer_S(
+
+── `_build_corner_range_v3` ⇒ **2** 列（**全部提及·逐列·⛔ 摘**）
+   :398|     #      ——⛔ 自創第三源（單 `§三` 明令）。其 `_build_corner_range_v3` 早在 `_WF_NS_NAMES`；
+   :429|                 ctx['corner_range_polys'][(_crp_lbl, _crp_wh)] = ns['_build_corner_range_v3'](
