@@ -1,0 +1,187 @@
+================================================================================================================
+【`W-G.9-283` `§四`】`forced` band 之界 ＋ 否定性宣稱之射程補足
+================================================================================================================
+  三軸 (1) 來源 commit ＝ f5e9ca08849a99ae3972537acfbd1e044f07eca0
+       (2) 母體逐款具名（見各款）
+       (3) 粒度框 ＝ **列框**（另註者從其註）
+  app.py　1464014 B / 24582 列
+  verify/stepg_pipeline.py　111526 B / 1671 列
+
+################################################################################################################
+# 四-1 款 1　`_corner_buffer_S` 之「帶之構造」段與「bisect 解 buf」段**逐字**（本批重量）
+################################################################################################################
+  錨（無 ^ 錨·**二數並報**）＝ _corner_buffer_S｜母體 ＝ app.py ＋ verify/stepg_pipeline.py 二檔 ⇒ **命中檔數 2 / 命中列數 19**
+  🔒 **AST 區間**（⛔ 文字層估界）：`def` 於列 9332，`end_lineno` ＝ 9435（共 104 列）
+
+  ── 「bisect 解 buf」段（逐字·框 ＝ 含 `bisect` 或 `range_area ==` 之列）
+     [9335]     §3 街角 forced band（plan v3 §3·補丁九）：**bisect 解 `buf` 使「真實池帶面積 == range_area」**
+     [9367]         return 0.0                      # 無 forced（該側無強制抵費地）→ 不進 bisect
+     [9412]     # bisect 區間：左＝buf 為絕對 s 上界 [lo, s_max]／右＝buf 為寬 [0, s_max−s_min]
+     [9433]             f"🔴 _corner_buffer_S[{_label}·{side}]：bisect 未收斂至 tol"
+
+  ── 「帶之構造」段（逐字·框 ＝ 自含 `帶之構造` 之列起至次一 `── ` 標尺前）
+     [9346]     ── 帶之構造（side 參數化＝#25 之修·補丁九 約束 2）────────────────────────────
+     [9347]       `side='left'`  → 帶 `s ∈ [max(s_min, 0), buf]`   ← **上界＝`buf`**（**非** `lo+buf`·BLOCKED-1）
+     [9348]                         ∵ 消費端 `left_cum_S = buf` ⇒ 首宗自 `s=buf` 起 ⇒ 保留區恆為 `[s_min, buf]`
+     [9349]       `side='right'` → 帶 `s ∈ [s_max − buf, s_max]`   ← step 0 後 `amp == s_max`（`_oblique_s_max`）
+     [9350]     兩側語意**刻意不對稱**（左 `buf`＝絕對 s 上界／右 `buf`＝自 `s_max` 起之寬），**與消費端逐位對映**。
+     [9351] 
+
+################################################################################################################
+# 四-1 款 2　bisect 之**目標函式**：其面積由**實際多邊形**抑或**矩形／平均深度**近似算得
+################################################################################################################
+  母體 ＝ `_corner_buffer_S` 之**函式體**（AST 區間 9332–9435·⛔ 文字層估界）·粒度框 ＝ **列框**
+  逐字樣之命中（**逐項具名**·⛔ 只書「查無」）：
+     · `_block_strip(     ` ⇒ 列數 1
+     · `_strip_s_range(   ` ⇒ 列數 1
+     · `avg_depth         ` ⇒ 列數 1
+     · `矩形                ` ⇒ 列數 1
+     · `近似                ` ⇒ 列數 3
+     · `rect              ` ⇒ 列數 0
+     · `range_area        ` ⇒ 列數 10
+     · `area              ` ⇒ 列數 12
+     · `bisect            ` ⇒ 列數 4
+
+  [必命中] `_block_strip(` 於該函式體內 ＝ **1**（須 ≥ 1） ⇒ ✅
+  [必為零] 人造字樣（**執行期組出**·字面⛔ 出艙）＝ **0**（須 0） ⇒ ✅
+
+  ── 含 `_block_strip(` 之列（逐字）
+     [9409]         _g, _ar = _block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+  ── 含 `avg_depth`／`矩形`／`近似` 之列（逐字·供發單側判讀）
+     [9336]     （|Δ| ≤ tol）。**全精度回傳**（N0-18a·不 round）。取代舊矩形近似 `range_area ÷ avg_depth`
+     [9357]     `allocation_dir` 缺值/零向量時 `_strip_axis`/`_block_strip` 會**退 `rot90(d_hat)` 正交近似**——
+     [9377]             f"正交近似（補丁九 約束 1 禁假設 d̂⊥â·本案實測偏離垂直 4–5°、殘差 7–14㎡），停")
+
+################################################################################################################
+# 四-1 款 3　`range_area` 之**來源**：其產生式逐字 ＋ 所依之裁
+################################################################################################################
+  母體 ＝ 呼叫端二檔（**逐檔具名**）：app.py／verify/stepg_pipeline.py·粒度框 ＝ **列框**
+  ── app.py：`_corner_buffer_S(` 之呼叫列數 ＝ 3
+     [9332] def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
+              |                      tol=0.01, _label=''):
+              |     """
+              |     §3 街角 forced band（plan v3 §3·補丁九）：**bisect 解 `buf` 使「真實池帶面積 == range_area」**
+              |     （|Δ| ≤ tol）。**全精度回傳**（N0-18a·不 round）。取代舊矩形近似 `range_area ÷ avg_depth`
+              |     （四處同族病灶·#20：app／stepg／wf_f1／wf_f4）。
+              | 
+              |     ── 🔴 方位契約（BLOCKED-2·**釘死·勿違**）────────────────────────────────────
+              |     `front_p1`／`d_hat` **一律**傳 FRONT_LINE 之 **p1** 與 **+d̂**（p1→p2 單位向量），**左右側皆同**；
+     [21903]                                         _left_buffer_S = _corner_buffer_S(
+              |                                             blk_poly, d_hat, corner_pt, allocation_dir_block,
+              |                                             float(_l_min), 'left', _label=blk_label)
+     [21914]                                         _right_buffer_S = _corner_buffer_S(
+              |                                             blk_poly, d_hat, corner_pt, allocation_dir_block,
+              |                                             float(_r_min), 'right', _label=blk_label)
+  ── verify/stepg_pipeline.py：`_corner_buffer_S(` 之呼叫列數 ＝ 2
+     [659]                         _left_buffer_S = _corner_buffer_S(
+              |                             blk_poly, d_hat, corner_pt, allocation_dir_block,
+              |                             float(_l_min), 'left', _label=blk_label)
+     [670]                         _right_buffer_S = _corner_buffer_S(
+              |                             blk_poly, d_hat, corner_pt, allocation_dir_block,
+              |                             float(_r_min), 'right', _label=blk_label)
+
+  `range_area` 之上游（錨 ＝ _build_corner_range_v3·無 ^ 錨 ⇒ **二數並報**）⇒ 檔數 2 / 列數 19
+  ── 含 `range_area` 且含 `=` 之賦值列（`app.py`·逐字）
+     [9368]     range_area = float(range_area)
+
+################################################################################################################
+# 四-1 款 4　帶之**上界**是否即 `buf` ＋ 消費端 `left_cum_S = buf` 之逐位對映（本批重量）
+################################################################################################################
+  框（**有 ^ 錨**）＝ `^\s*left_cum_S = float`｜母體 ＝ verify/stepg_pipeline.py 單檔
+     ⇒ **命中檔數 1 / 命中列數 1**
+     [776]             left_cum_S = float(_left_buffer_S)
+  🔒 前批（`W-G.9-282R §四` 款 `2`／`3`）已得之逐位對拍：
+     `0m`   態甲 R4/left：left_cum_S = 4.49975224003872   ＝ buf（range_area = 116.08）
+     `3.5m` 態甲 R4/left：left_cum_S = 7.8185635189090075 ＝ buf（range_area = 226.01）
+  🛑 上二列係**轉引前批之實測**（其母體 ＝ `verify/out/WG9282R_branch.log`）——本款只重量其**框**，
+     ⛔ 於本批重跑該長跑（單 `§七`：⛔ 未經本單具名之長跑）。
+
+################################################################################################################
+# 四-2　否定性存在宣稱之**射程補足**（⛔ 只書「查無」·逐一列出所查之側）
+################################################################################################################
+  母體（**正面列舉**·`git ls-tree -z` 之原始位元組·坑 `bc`）：
+     · `verify/` 之全部 `.py`（**含子層**）＝ **333** 檔
+     · `docs/specs/` 之全部 `.md` ＝ **35** 檔
+     · 合計 ＝ **368** 檔
+  🔒 **⛔ 以 pathspec glob 界定**（坑 `be`：git 之 `*` 跨 `/`）——以上係逐檔過濾之結果。
+  可讀 ＝ 368（讀不到 0）
+
+  **所查之字樣（逐項具名·⛔ 只書「查無」）與其命中（檔數／列數）**：
+     · `抵費地               ` ⇒ 檔數 107  / 列數 432
+     · `強制抵費地             ` ⇒ 檔數 33   / 列數 95
+     · `抵費地多邊形            ` ⇒ 檔數 0    / 列數 0
+     · `抵費地_poly          ` ⇒ 檔數 0    / 列數 0
+     · `offset_poly       ` ⇒ 檔數 0    / 列數 0
+     · `_off_poly         ` ⇒ 檔數 0    / 列數 0
+     · `forced_poly       ` ⇒ 檔數 0    / 列數 0
+     · `range_poly        ` ⇒ 檔數 1    / 列數 8
+     · `forced_offset     ` ⇒ 檔數 47   / 列數 121
+     · `left_buffer_S     ` ⇒ 檔數 20   / 列數 61
+     · `right_buffer_S    ` ⇒ 檔數 12   / 列數 31
+     · `_corner_buffer_S  ` ⇒ 檔數 22   / 列數 61
+     · `_block_strip(     ` ⇒ 檔數 16   / 列數 23
+     · `橘色抵費地             ` ⇒ 檔數 0    / 列數 0
+     · `指配                ` ⇒ 檔數 26   / 列數 66
+     · `Polygon           ` ⇒ 檔數 85   / 列數 266
+     · `shapely           ` ⇒ 檔數 115  / 列數 285
+
+  ── **`抵費地` ∩ 幾何字樣**（`Polygon`／`poly`／`shapely`／`buffer`／`intersection`）之列
+     [docs/specs/W-G.4_CC交辦_v3.md:56] - **`app.py:15509` 由「§N5 檢視」改列「補償碼拆」**：`.buffer(0.001).buffer(-0.001)`，其上 `15470` 註解自承「防護二：buffer(0.001).buffer(-0.001) **消縫隙**」＝與 `wf_f1:24
+     [docs/specs/W-G.4_CC交辦_v3.md:77] **(甲-2) 閾值回溯盤點（N0-17 交付·plan 必含）**：全庫盤點現存閾值，逐一補依據或改；無依據者標 `⚠️ 殘餘定閘·待歸因`。已知清單：白縫 `<1㎡`／`area >= 1.0`／`buffer(0.001)`／`buffer(0.0011)`／抵費地碎片 `
+     [docs/specs/W-G.4_P2_兩階段落位_施工交接.md:79] - 三種錯法的後果（reviewer 算術）：只進 `g_rows` ⇒ 池帶仍覆蓋階段2宗、抵費地列**重算一次** ⇒ 守恆實破 `+ΣG_階段2` 而**閘全綠**；只進 `_adv_final` 或只進 `allocated_polys` ⇒ 停機③ 立紅。
+     [docs/specs/W-G.4_S0b_plan.md:25] | 補償-3 | `app.py:15509` | `_uu_off([_poly_l, _poly_s]).buffer(0.001).buffer(-0.001)`（Phase 8 抵費地<5㎡碎片合併·防護二） | 拆（見 §補償-3·WATCH） |
+     [docs/specs/W-G.4_S0b_plan.md:63] - **改法**：以 `_uunion_d = ns/_SP_d` 現有 shapely helper，**移除** 707-708 之 `.buffer(0.001)`+`difference`、移除 713-721 之 `area>=1.0` 過濾；改呼叫**新 helper
+     [docs/specs/W-G.4_S0b_plan.md:234] | 10 | 抵費地碎片 `<5㎡` | `app.py:15489`（Phase 8） | 濾網常數 | ⚠️ 殘餘定閘·待歸因（§N5 重審·**S0b 不改閾值**·僅拆其 buffer 補償） |
+     [docs/specs/W-G.4_S1_plan.md:91] - **⚠️ 錨 post-step0 重取（BLOCKED-2）**：v2 之 `R3右 5.2719` 係 pre-step0·**step 0 後位移至 `8.7290`**。**閘③ 錨改＝重烤後 `F.0_G值` 抵費地列之實際 buffer_S′**（非 pre-st
+     [docs/specs/W-G.4_S1_plan.md:176] | ③ | `buffer_S′` 命中 post-step0 錨（±0.001） | 重烤後 `F.0` 抵費地列實值（**禁湊 5.2719**） |
+     [docs/specs/W-G.4_S1_plan.md:195] - **WATCH（既存·不改）**：`app:16215` Rw 診斷讀 rounded buffer_S 未乘 cos_dn（**診斷非閘**·真閘在 `stepg:801-812`）；app 無 telescoping 閘（僅 stepg）；`app:6053/6056` 
+     [docs/specs/W-G.4_兩階段落位_plan_v3.md:384] | **B-1** | §三 P2「產出 rows **併入 `g_rows`**」**會靜默破守恆且閘抓不到**。`g_rows` 僅輸出容器；守恆帳來源是 `_adv_final['rows']`（:814/:824/:923）與 `allocated_polys`（:740
+     [docs/specs/W-G.4_規格_v3.md:88] 1. **W-C 發現白縫**（真因＝Tier3 把面積灌 G 沒灌幾何；gap 精準對上 R1 1.06×5／R3 5.59×14／R6 7.79×11）→ **儀表化、命名（白縫）、畫上 UI**（`app.py:15854` 「🔬 W-C 一次性唯讀診斷（白縫量…）」／`1
+     [docs/specs/W-G.4_規格_v3.md:207] - **判準＝「它出不出報表欄」**：`buffer_S′` **不出報表欄**（forced 抵費地列之 `S(m)` 現值即 **0.0**·`stepg:748`）
+     [docs/specs/W-G.4_規格_v3.md:208] → 其**法定產物**為「**抵費地面積（2dp ㎡）＋地籍界線（座標）**」，**buffer_S′ 本身非法定成果長度**。
+     [docs/specs/W-G.4_規格_v3.md:284] **🔴 精度之依據（KL 2026-07-17 落章·N0-18a）**：`buffer_S′` ＝**內部幾何構造參數**（**不出報表欄**；forced 抵費地列之 `S(m)` 現值即 0.0·`stepg:748`）→ **全精度、不受 N0-18（長度 2dp）拘束*
+     [docs/specs/W-G.4_規格_v3.md:453] - **`app.py:15509` 由「§N5 檢視」改列「補償碼拆」**：`_uu_off([...]).buffer(0.001).buffer(-0.001)`，其上 `15470` 註解自承「（含**防護二：buffer(0.001).buffer(-0.001) 消縫
+     [docs/specs/W-G.4_規格_v3.md:456] **(甲-2) 閾值回溯盤點（N0-17 交付·S0b plan 必含）**：全庫盤點現存閾值，逐一補依據（四類：幾何精度上限／法定值／數值極限／已證物理量）或改；無依據者標 `⚠️ 殘餘定閘·待歸因`。已知清單：白縫 `<1㎡`、`area >= 1.0`、`buffer(0.
+     [docs/specs/W-G.4_規格v3補丁十_N0-20末端塊fallback定案.md:52] - **[A]** F.4 E3 末端塊形式化：新模組級純函式 `_end_region_R(block, d̂, p1, cad_alloc, min_width, _label)`（`_pool_strips_for_block` 鄰·ns harvest·同 §3 `_co
+     [docs/specs/W-G.4_規格v3補丁四_差額地價域更正_S0d_三裁.md:22] **(a) N0-7 vs §N1——無衝突，N0-7 重述**：真不變量＝`ΣG＋Σ池＝Σ街廓面積`（幾何常數·守恆閘已管）。**Σ池 2299.26 係「代次錨」非法定量**（抵費地屬「得」保留·財務計畫層，無法定總量）；§N1 修 buffer → ΣG 合法變動 → Σ池
+     [docs/specs/W-G.5_裁定N_乙案_plan_v3.md:89] 左端若為 forced（`_left_buffer_S > 0`）則首宗 strip 起於 `p1 + buf·d̂`、與楔形隔著街角抵費地帶
+     [verify/fixture_end_fallback.py:72] frag_row = {"街廓": BLK, "暫編": f"{BLK}-抵費地-2", "poly": frag, "面積": round(frag.area, 2),
+     [verify/fixture_end_winner.py:105] frag_row = {"街廓": BLK, "暫編": f"{BLK}-抵費地-2", "poly": frag, "面積": round(frag.area, 2),
+     [verify/wf_f4.py:1458] for _k, _p in fb_polys.items():                    # 非疊複驗：抵費地末 vs 內移宗（KL/reviewer②）
+     [verify/wf_f4.py:1464] def _order_fb(polys):                              # 位次序不變（排除抵費地末·新增於末端位）
+  ⇒ 交集之列數 ＝ **23**
+
+  ── `docs/specs/` 內之**規格**（若碼面未實作 ⇒ loud 具名·⛔ 判其效力）
+     [docs/specs/W-G.4_CC交辦_v3.md:56] - **`app.py:15509` 由「§N5 檢視」改列「補償碼拆」**：`.buffer(0.001).buffer(-0.001)`，其上 `15470` 註解自承「防護二：buffer(0.001).buffer(-0.001) **消縫隙**」＝與 `wf_f1:24
+     [docs/specs/W-G.4_CC交辦_v3.md:77] **(甲-2) 閾值回溯盤點（N0-17 交付·plan 必含）**：全庫盤點現存閾值，逐一補依據或改；無依據者標 `⚠️ 殘餘定閘·待歸因`。已知清單：白縫 `<1㎡`／`area >= 1.0`／`buffer(0.001)`／`buffer(0.0011)`／抵費地碎片 `
+     [docs/specs/W-G.4_P2_兩階段落位_施工交接.md:79] - 三種錯法的後果（reviewer 算術）：只進 `g_rows` ⇒ 池帶仍覆蓋階段2宗、抵費地列**重算一次** ⇒ 守恆實破 `+ΣG_階段2` 而**閘全綠**；只進 `_adv_final` 或只進 `allocated_polys` ⇒ 停機③ 立紅。
+     [docs/specs/W-G.4_S0b_plan.md:25] | 補償-3 | `app.py:15509` | `_uu_off([_poly_l, _poly_s]).buffer(0.001).buffer(-0.001)`（Phase 8 抵費地<5㎡碎片合併·防護二） | 拆（見 §補償-3·WATCH） |
+     [docs/specs/W-G.4_S0b_plan.md:63] - **改法**：以 `_uunion_d = ns/_SP_d` 現有 shapely helper，**移除** 707-708 之 `.buffer(0.001)`+`difference`、移除 713-721 之 `area>=1.0` 過濾；改呼叫**新 helper
+     [docs/specs/W-G.4_S0b_plan.md:234] | 10 | 抵費地碎片 `<5㎡` | `app.py:15489`（Phase 8） | 濾網常數 | ⚠️ 殘餘定閘·待歸因（§N5 重審·**S0b 不改閾值**·僅拆其 buffer 補償） |
+     [docs/specs/W-G.4_S1_plan.md:91] - **⚠️ 錨 post-step0 重取（BLOCKED-2）**：v2 之 `R3右 5.2719` 係 pre-step0·**step 0 後位移至 `8.7290`**。**閘③ 錨改＝重烤後 `F.0_G值` 抵費地列之實際 buffer_S′**（非 pre-st
+     [docs/specs/W-G.4_S1_plan.md:108] **域裁**（N0-20·補丁五 §一）：**p1 端（無 SIDE_LINE）之端部機制**·與街角機制對稱（同族抽象＝端部規定範圍多邊形＋勝者規則＋嚴格等於之抵費地退路）。
+     [docs/specs/W-G.4_S1_plan.md:176] | ③ | `buffer_S′` 命中 post-step0 錨（±0.001） | 重烤後 `F.0` 抵費地列實值（**禁湊 5.2719**） |
+     [docs/specs/W-G.4_S1_plan.md:195] - **WATCH（既存·不改）**：`app:16215` Rw 診斷讀 rounded buffer_S 未乘 cos_dn（**診斷非閘**·真閘在 `stepg:801-812`）；app 無 telescoping 閘（僅 stepg）；`app:6053/6056` 
+     [docs/specs/W-G.4_兩階段落位_plan_v3.md:384] | **B-1** | §三 P2「產出 rows **併入 `g_rows`**」**會靜默破守恆且閘抓不到**。`g_rows` 僅輸出容器；守恆帳來源是 `_adv_final['rows']`（:814/:824/:923）與 `allocated_polys`（:740
+     [docs/specs/W-G.4_規格_v3.md:88] 1. **W-C 發現白縫**（真因＝Tier3 把面積灌 G 沒灌幾何；gap 精準對上 R1 1.06×5／R3 5.59×14／R6 7.79×11）→ **儀表化、命名（白縫）、畫上 UI**（`app.py:15854` 「🔬 W-C 一次性唯讀診斷（白縫量…）」／`1
+     [docs/specs/W-G.4_規格_v3.md:207] - **判準＝「它出不出報表欄」**：`buffer_S′` **不出報表欄**（forced 抵費地列之 `S(m)` 現值即 **0.0**·`stepg:748`）
+     [docs/specs/W-G.4_規格_v3.md:208] → 其**法定產物**為「**抵費地面積（2dp ㎡）＋地籍界線（座標）**」，**buffer_S′ 本身非法定成果長度**。
+     [docs/specs/W-G.4_規格_v3.md:256] 「**端部規定範圍多邊形 ＋ 勝者規則 ＋ 嚴格等於之抵費地退路**」。
+     [docs/specs/W-G.4_規格_v3.md:284] **🔴 精度之依據（KL 2026-07-17 落章·N0-18a）**：`buffer_S′` ＝**內部幾何構造參數**（**不出報表欄**；forced 抵費地列之 `S(m)` 現值即 0.0·`stepg:748`）→ **全精度、不受 N0-18（長度 2dp）拘束*
+     [docs/specs/W-G.4_規格_v3.md:453] - **`app.py:15509` 由「§N5 檢視」改列「補償碼拆」**：`_uu_off([...]).buffer(0.001).buffer(-0.001)`，其上 `15470` 註解自承「（含**防護二：buffer(0.001).buffer(-0.001) 消縫
+     [docs/specs/W-G.4_規格_v3.md:456] **(甲-2) 閾值回溯盤點（N0-17 交付·S0b plan 必含）**：全庫盤點現存閾值，逐一補依據（四類：幾何精度上限／法定值／數值極限／已證物理量）或改；無依據者標 `⚠️ 殘餘定閘·待歸因`。已知清單：白縫 `<1㎡`、`area >= 1.0`、`buffer(0.
+     [docs/specs/W-G.4_規格v3補丁五_端部機制_N0-20_W精化.md:14] 4. **與街角機制之對稱**：兩端各一機制（街角 range／末筆 range），同族抽象＝「端部規定範圍多邊形 ＋ 勝者規則 ＋ 嚴格等於之抵費地退路」。**端部殘片（R1 5.33／R3 78.24／R6 85.71 之類）自此非「碎片」——它們是 R_end 之內部組成*
+     [docs/specs/W-G.4_規格v3補丁十_N0-20末端塊fallback定案.md:52] - **[A]** F.4 E3 末端塊形式化：新模組級純函式 `_end_region_R(block, d̂, p1, cad_alloc, min_width, _label)`（`_pool_strips_for_block` 鄰·ns harvest·同 §3 `_co
+     [docs/specs/W-G.4_規格v3補丁四_差額地價域更正_S0d_三裁.md:22] **(a) N0-7 vs §N1——無衝突，N0-7 重述**：真不變量＝`ΣG＋Σ池＝Σ街廓面積`（幾何常數·守恆閘已管）。**Σ池 2299.26 係「代次錨」非法定量**（抵費地屬「得」保留·財務計畫層，無法定總量）；§N1 修 buffer → ΣG 合法變動 → Σ池
+     [docs/specs/W-G.5_裁定N_乙案_plan_v3.md:89] 左端若為 forced（`_left_buffer_S > 0`）則首宗 strip 起於 `p1 + buf·d̂`、與楔形隔著街角抵費地帶
+     [docs/specs/終態幾何消解波_規格.md:80] | 3 | R6 細碎片消解 | R6-抵費地-2（85.66）消失於 g_tab；帳併 R6 池；628-4(1) 滑動吞未臨正街多邊形：**a 不變、G 依 §1.5 重算（≥776.72）**、ΔG=G_new−776.72 由 R6 池扣（R6-抵費地-1＝273.35−
+  ⇒ `docs/specs/` 內之相關列數 ＝ **23**
+
+  [判別力必命中] 字樣 `def ` ⇒ 檔數 335 / 列數 2452
+  [判別力必為零] 人造字樣（**執行期組出**·字面⛔ 出艙）⇒ 檔數 0 / 列數 0
+  ⇒ 器 **非紅** ✅
+
+################################################################################################################
+🛑 **出艙即止**：⛔ 判該界為「真正的地界」抑或「替身線」（繫 §三 之出處判定）、
+⛔ 判碼面是否違反任何裁、⛔ 鑄號、⛔ 提修法主張、⛔ 呈 KL。
+################################################################################################################
