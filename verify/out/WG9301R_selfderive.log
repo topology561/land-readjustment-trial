@@ -1,0 +1,122 @@
+【`W-G.9-301` 工項四｜自導可行性之現查】
+態 ＝ 6a3c87c317fadcd9ef896a6caad4b952eca92269
+母體（**正面列舉**）＝ `git ls-tree HEAD --name-only verify/` ⋂ `*.py` ＋ `app.py`　基數 ＝ **34**　外部錨（`§零` 閘 `7`）＝ **34**　⇒ ✅ 相符
+
+================================================================================================================
+款 `1`　二函式之**定義處**與**簽章逐字**（框 ＝ AST `FunctionDef`／`AsyncFunctionDef`·二形並取）
+================================================================================================================
+
+`_corner_buffer_S`　**檔／處二數並報**：檔 ＝ **1**／處 ＝ **1**
+   檔 ＝ `app.py`　形 ＝ FunctionDef
+   簽章逐字 ＝ `def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side, tol=0.01, _label='')`
+   形參名序 ＝ ['block_poly', 'd_hat', 'front_p1', 'allocation_dir', 'range_area', 'side', 'tol', '_label']
+   體之列數 ＝ **104**（`9332`-`9435`）
+   字樣錨 ＝ `def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,`
+
+`_first_corner_alloc_dir`　**檔／處二數並報**：檔 ＝ **1**／處 ＝ **1**
+   檔 ＝ `app.py`　形 ＝ FunctionDef
+   簽章逐字 ＝ `def _first_corner_alloc_dir(side_mid)`
+   形參名序 ＝ ['side_mid']
+   體之列數 ＝ **36**（`13929`-`13964`）
+   字樣錨 ＝ `def _first_corner_alloc_dir(side_mid):`
+
+================================================================================================================
+款 `2`　二函式體內之**自由名**（框 ＝ `Name.Load` 扣形參／扣體內 `Store`／扣 `builtins`）
+================================================================================================================
+
+`_corner_buffer_S` 之自由名 ＝ **2** 個：
+   `_strip_s_range`             於 `ns` 之鍵框內 ＝ True
+   `_block_strip`               於 `ns` 之鍵框內 ＝ True
+   🔒 `ns` 之鍵框 ＝ `app.py` 之**頂層**名（`t.body`）·基數 ＝ **286**（⛔ 模組 `__globals__`·`W-G.9-298R` 已證 `ns` 係純 `dict`）
+
+`_first_corner_alloc_dir` 之自由名 ＝ **1** 個：
+   `np`                         於 `ns` 之鍵框內 ＝ True
+   🔒 `ns` 之鍵框 ＝ `app.py` 之**頂層**名（`t.body`）·基數 ＝ **286**（⛔ 模組 `__globals__`·`W-G.9-298R` 已證 `ns` 係純 `dict`）
+
+================================================================================================================
+款 `3`　🔑 **所需輸入集 `R`**（`_first_corner_alloc_dir` 求值所<u>實需</u>之輸入）
+================================================================================================================
+`R` ＝ 其**形參** ['side_mid'] ＋ 其體所消費之**自由名** ['np']
+
+逐名之**來源**（⛔ 判「可導」·只出艙來源）：
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   `side_mid`               ⇒ 於 `_corner_buffer_S` 之形參 ＝ False／於 `ns` ＝ False ⇒ 來源 ＝ **二者皆非**
+   `np`                     ⇒ 於 `_corner_buffer_S` 之形參 ＝ False／於 `ns` ＝ True  ⇒ 來源 ＝ `ns`
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+`_corner_buffer_S` 之現有形參（受詞）＝ ['block_poly', 'd_hat', 'front_p1', 'allocation_dir', 'range_area', 'side', 'tol', '_label']
+
+================================================================================================================
+款 `4`　🔑 `side_mid` 之等價量於 `_corner_buffer_S` 內之可得性（**只現查既有原語**·⛔ 自寫第二套幾何）
+================================================================================================================
+`_corner_buffer_S` 體內**已調用**之名 ＝ ['float', 'np.asarray', '_strip_s_range', 'max', '_band_area', 'range', 'abs', 'RuntimeError', 'print', '_block_strip', 'np.linalg.norm']
+
+其中屬 `ns` 之鍵者（＝ 既有原語·可於函式體內取用）：
+   `_strip_s_range`　簽章 ＝ `def _strip_s_range(geom, d_hat, corner_pt, allocation_dir=None)`
+      回傳結構（逐字·去重）＝ ['(min(ts), max(ts))', 'None']
+   `_block_strip`　簽章 ＝ `def _block_strip(block_poly, d_hat, baseline_pt, S, allocation_dir=None, n_hat_far=None)`
+      回傳結構（逐字·去重）＝ ['(None, 0.0)', "(cut, float(cut.area) if hasattr(cut, 'area') else 0.0)"]
+
+🔑 **`_first_corner_alloc_dir` 所消費之側界資料**（其 `Attribute`／`Subscript` 鏈·逐字）：
+   `_st_fc.session_state.get`
+   `_st_fc.session_state`
+   `_sd.get`
+   `_sd['p1']`
+   `_sd['p2']`
+   `_slbs.get`
+
+`_first_corner_alloc_dir` 體內之**字串常數**（＝ 其查表之鍵·逐字）＝ ['"🔴 **K-9-5-4 ②**（KL 裁 2026-08-08·D-2b）：街角**第 1 宗之遠側界 ∥SIDELINE**\\n    ⇒ 其切帶之 `allocation_dir` 改為 **`rot90_cw(SIDE 方向)`**\\n    （`_block_strip` 之 `n_hat = rot90(allocation_dir)` ⇒ 界線 ∥SIDELINE；\\n      `solve_G_binary` 之 `_n_alloc = normalize(allocation_dir)` ⇒ `W` 沿其法向＝**垂距**）。\\n\\n    🔒 **以 `side_mid` 幾何反查 SIDE_LINE**——⛔ **不靠任何字串標籤**。\\n       案由（D-2b-0 實測）：`_corner_first_lot_G` 之 `_label` 實為複合字串\\n       `\'R4·628(1)·左\'`、**非街廓標籤**；以其查表必 `None` ⇒ 靜默退回。\\n    ⛔ 查無即 **loud raise**（no-silent-fallback）。\\n    "', "'🔴 K-9-5-4②：`side_mid` 缺 ⇒ 無法定位側界（禁靜默沿用 ALLOC 方向）'", "'f3_cad_side_lines_by_side'", "'left'", "'right'", "'🔴 K-9-5-4②：`side_mid`='", "' 於 `f3_cad_side_lines_by_side` 查無對應側界 ⇒ 停（no-silent-fallback）'", "'mid'", "'p1'", "'p2'", "'🔴 K-9-5-4②：'", "'/'", "' 之 SIDE_LINE 退化為零長'"]
+
+🔑 **本街廓該側之側界線及其中點，是否在既有原語之回傳結構中**：
+   既有原語中，其體內含 `side_line`／`SIDE_LINE`／`f3_cad_side_lines_by_side` 者 ＝ []
+   ⇒ 🔴 **無**——側界資料⛔ 在既有原語之回傳結構中
+
+================================================================================================================
+款 `4′`　`_label`（`_corner_buffer_S` 唯一之「標籤狀」形參）之**實參逐字**（⛔ 推定·AST 實查）
+================================================================================================================
+🔑 其由：`_first_corner_alloc_dir` 之 docstring **逐字**令「以 `side_mid` 幾何反查 SIDE_LINE——⛔ **不靠任何字串標籤**」
+   ⇒ 「以 `_label` 查表」之路，**其禁止已寫在受詞函式自身之 docstring 內**；
+   本款只現查該實參**實際為何**，⛔ 判其可否用。
+
+   S1 `app.py                    ` 之 `_label` 實參逐字 ＝ `blk_label`
+   S2 `app.py                    ` 之 `_label` 實參逐字 ＝ `blk_label`
+   S3 `verify/stepg_pipeline.py  ` 之 `_label` 實參逐字 ＝ `blk_label`
+   S4 `verify/stepg_pipeline.py  ` 之 `_label` 實參逐字 ＝ `blk_label`
+   S5 `verify/wf_f1.py           ` 之 `_label` 實參逐字 ＝ `f'{lbl}·F.1'`
+   S6 `verify/wf_f4.py           ` 之 `_label` 實參逐字 ＝ `f'{blk}·E3'`
+   S7 `verify/wf_f4.py           ` 之 `_label` 實參逐字 ＝ `f'{blk}·E3'`
+
+================================================================================================================
+款 `5`　**非 `forced` 呼叫端之復驗**（🔒 本批**獨立重得**·⛔ 轉引 `W-G.9-300R`）
+================================================================================================================
+`S` ＝ **7** 處／**4** 檔（框 ＝ AST `Call`·二形並取）
+   S1 `app.py                    ` 命中之外圍 `test` ＝ If `_fo_left`
+   S2 `app.py                    ` 命中之外圍 `test` ＝ If `_fo_right`
+   S3 `verify/stepg_pipeline.py  ` 命中之外圍 `test` ＝ If `_fo_left`
+   S4 `verify/stepg_pipeline.py  ` 命中之外圍 `test` ＝ If `_fo_right`
+   S5 `verify/wf_f1.py           ` 命中之外圍 `test` ＝ If `fo.get('left_forced_offset')`
+   S6 `verify/wf_f4.py           ` 命中之外圍 `test` ＝ IfExp `fo.get('left_forced_offset')`
+   S7 `verify/wf_f4.py           ` 命中之外圍 `test` ＝ IfExp `fo.get('right_forced_offset')`
+
+⇒ **非 `forced` 之呼叫端 ＝ 0／7**（須 `0`／`7`）
+判別力[必為否] `def _corner_buffer_S` 之定義列：外圍 `If`／`IfExp` ＝ **0** 個 ⇒ 判 ＝ 否（須「否」）
+
+================================================================================================================
+款 `6`　判別力四造
+================================================================================================================
+[必非零] 二函式之定義處 `≥ 1` ⇒ `_corner_buffer_S` ＝ 1／`_first_corner_alloc_dir` ＝ 1 ⇒ ✅
+[必為 `34`] 母體基數之**外部錨**（坑 `bj`）⇒ 34 ⇒ ✅
+[必為零] 一**執行期組出**之人造函式名（字面⛔ 出艙）之定義處 ＝ 0 ⇒ ✅
+[必真] `_first_corner_alloc_dir` 在 `ns` 之鍵 ＝ True ⇒ ✅
+
+================================================================================================================
+🛑 `停四` 之**受詞**（本器只出艙·其成否之判由報告承載）
+================================================================================================================
+`停四` 逐字：款 `3` 之 `R` 中**有任一名**既⛔ 在 `_corner_buffer_S` 之現有形參內、亦⛔ 可自其現有形參經**既有原語**導出（款 `4`）⇒ 停、上呈。
+
+   `R` 之形參 `side_mid`：於 `_corner_buffer_S` 之現有形參 ＝ **False**
+
+   既有原語之回傳結構含側界資料者 ＝ []（款 `4`）
+   `_first_corner_alloc_dir` 查表之鍵（字串常數）＝ ['"🔴 **K-9-5-4 ②**（KL 裁 2026-08-08·D-2b）：街角**第 1 宗之遠側界 ∥SIDELINE**\\n    ⇒ 其切帶之 `allocation_dir` 改為 **`rot90_cw(SIDE 方向)`**\\n    （`_block_strip` 之 `n_hat = rot90(allocation_dir)` ⇒ 界線 ∥SIDELINE；\\n      `solve_G_binary` 之 `_n_alloc = normalize(allocation_dir)` ⇒ `W` 沿其法向＝**垂距**）。\\n\\n    🔒 **以 `side_mid` 幾何反查 SIDE_LINE**——⛔ **不靠任何字串標籤**。\\n       案由（D-2b-0 實測）：`_corner_first_lot_G` 之 `_label` 實為複合字串\\n       `\'R4·628(1)·左\'`、**非街廓標籤**；以其查表必 `None` ⇒ 靜默退回。\\n    ⛔ 查無即 **loud raise**（no-silent-fallback）。\\n    "', "'🔴 K-9-5-4②：`side_mid` 缺 ⇒ 無法定位側界（禁靜默沿用 ALLOC 方向）'", "'f3_cad_side_lines_by_side'", "'left'", "'right'", "'🔴 K-9-5-4②：`side_mid`='", "' 於 `f3_cad_side_lines_by_side` 查無對應側界 ⇒ 停（no-silent-fallback）'", "'mid'", "'p1'", "'p2'", "'🔴 K-9-5-4②：'", "'/'", "' 之 SIDE_LINE 退化為零長'"]
+
+✅ 判別力四造全數成立 ⇒ 本器非恆綠亦非恆紅
+🔒 **出艙即止**——⛔ 擬任何改法或 diff；`停四` 之成否與其處置**由報告承載**。
