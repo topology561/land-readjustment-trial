@@ -1,0 +1,350 @@
+# `W-G.9-302R`　執行報告：`自誤 406` 之鑄 ／ **側界資料之來源現查** ／ 🟢 **停五・停六皆未成就**
+
+> **單** ＝ `docs/orders/W-G.9-302_施工單_側界資料之來源現查.md`（工項零已入倉·`3f15fc17`）
+> **態**｜開工 ＝ `eaeb4224b4a6ddbc2a97ab77bd7913a27016630a`（`ls-remote` 實查·全 `40` 碼）
+> **分級** ＝ **中**（登記 ＋ 現查·**零生產碼**·**⛔ 長跑**·**⛔ 開分支**·**⛔ 修批**）
+> 🛑 **本批鑄號 ＝ `自誤 406`**（**一號**）；`GB`／`VR`／`K-9`／坑 **⛔ 鑄**；`ALPHA_LABELS` **⛔ 動一字**。
+> 🟢 **`§四-3` 之 `停五`／`停六` <u>皆未成就</u>** ⇒ 工項二**辦畢**、⛔ 停機。
+> 🛑 **⛔ 判「可施」或「不可施」**、⛔ 擬任何改法或 diff、⛔ 判 `停四` 為誤（其於其母體下**仍成立**）、**⛔ 呈 KL**。
+
+---
+
+## `§零`　開工閘（十一項·**每列同格載其產生指令**·`自誤 392`）
+
+| # | 受詞（**指令逐字**） | 期值／判準 | 實測 | 判 |
+|---|---|---|---|---|
+| `1` | `git ls-remote origin refs/heads/wip/s1-endpart` | `eaeb4224…` 或其後裔 | `eaeb4224b4a6ddbc2a97ab77bd7913a27016630a	refs/heads/wip/s1-endpart`（全 `40` 碼） | ✅ |
+| `1′` | `git merge-base --is-ancestor eaeb4224… FETCH_HEAD`；`rc` **緊接指令** | `rc = 0` | `rc = 0` | ✅ |
+| `2` | `git rev-parse HEAD:app.py`（🔒 **框 ＝ blob `sha1`**·`自誤 405`） | `4379108a4856714078c410ff4e6291ecfdf6d2c1` | `4379108a4856714078c410ff4e6291ecfdf6d2c1` | ✅ |
+| `3` | `git merge-base --is-ancestor 05a11bd665f6c2790ff821c9e3a1606651e345d4 HEAD`；`rc` 緊接指令 | 須**非**祖先（`rc = 1`） | `rc = 1` | ✅ |
+| `4` | `python verify/probes/probe_order_preflight.py <本單>` | `P-5` `SELF_SHA256` 逐位相符·`P-3` 不紅·🟡 **逐項具名處置** | `P-5` **`SELF_SHA256` ✅ 相符**（取檔內**最末**一個·受詞 `29517` B·實算 `754974cddc608cdf…`／單載 `754974cddc608cdf…`）·`P-3` **不紅**（`def main` ＝ `14975`-`24579`）·🔴 **`0`** 項·🟡 **`3`** 項（逐項處置見 `§零-1`） | ✅ |
+| `4′` | 受詞自證（坑 `bf`） | [必真] 含 `W-G.9-302`／[必偽] 含 `W-G.9-301` | 器印 `【order pre-flight】W-G.9-302_施工單_側界資料之來源現查.md（29595 B／272 列）` ⇒ `True`／`False` | ✅ |
+| `5` | 同 `4` ＋ `--selftest`；`python verify/tools/wg9223_acceptance_audit.py --selftest` | 二器 `rc = 0`·preflight 四靶逐項成立 | `rc = 0`／`rc = 0`；靶① `P-3` 紅 ✅／靶② `P-4` 提示 ✅／靶③ `P-6` 提示 ✅／**反靶** `-190R` 之 `P-3` 不紅 ✅ | ✅ |
+| `6` | `python verify/probes/probe_WG9267_issuer_measurers.py registry`（🔒 **器之輸出為正典**） | 四簿之數 | 自誤 相異 `395`／MAX `405`／缺 `[106, 355, 356, 357]`｜`GB` `168`／`170`／缺 `[12, 87]`｜`VR` `80`／`95`／缺 `[73, 75]`｜`K-9` `28`／`29`／缺 `[]` | ✅ |
+| `6′` | `python verify/probes/probe_WG9269_pit_index.py`（🛑 **等待綁行程結束**·⛔ `\| tail -N`） | `89`／`89`·末 `bk` ⇒ 下一 `bl` | **`89` 標籤／`89` 可解析**（⛔ 可解析之列 ＝ **`0`**）·末標籤 **`bk`**·母體 ＝ 追蹤 `.md` **`803`** 檔；造甲 坑 `n` 定義處 `6 ≥ 1` ✅／造乙 人造坑 `0`／`0` ✅ | ✅ |
+| `7` | `git ls-tree HEAD --name-only verify/` ⋂ `*.py` ＋ `app.py`（**正面列舉**·坑 `be`） | **`34`** 檔；子層須 `> 0` | **`34`**（`1 + 33`）；子層 `^verify/.+/.+\.py$` ＝ **`315`** `> 0` ✅（**逐批漂移**·`314`→`315` ＝ `W-G.9-301` 所增之一器·⛔ 定值） | ✅ |
+| `8` | `git ls-tree -r HEAD verify/baselines \| sha256sum`（`core.quotePath` **預設**） | `a898f4e1bba8…`·`298` | `a898f4e1bba8f8d230a9e279044f529175beb9186915aed1fa5590c1878a7ec9`·**`298`** 檔（`git config --get core.quotePath` ⇒ `rc = 1` ⇒ 未設） | ✅ |
+| `9` | `git ls-remote origin 'refs/heads/verify/*'` | `…-299-gb170` ＝ `0`；[必存在] `…-269-p3a` ＝ `1` | 族 **`20`**／**`0`**／**`1`** | ✅ |
+| `10` | **六物證落檔**（🔒 **框 ＝ blob `sha1`**·`git rev-parse <rev>:<path>`·先 `cat-file -e` 驗存在·三態分列·**取 bytes**·坑 `bk`） | 逐位未動 | 六者皆 **態1:存在**；blob `sha1` ＝ `1a35dc168655`／`f93eb2fcb7e6`／`16742f3805e0`／`5cef4c8dfe7a`／`476aac14eda5`／`b3ab88b73dda` ⇒ **逐位未動**。**二框並報**：內容 `sha256` ＝ `956bf39f56c6`／`000ae17f6f4b`／`46b4e9e96779`／`11fb216c6608`／`0ec3fc839805`／`6743f2a7e1e6`。[必存在] `app.py` ＝ 態1／[必為零] 執行期組出之人造路徑 ＝ 態2／人造 `rev` ＝ 態3 | ✅ |
+
+### `§零-1`　`P-4` 之**逐項處置**（⛔ 靜默略過·判定組**非空**）
+
+🟡 **`3`** 項。🔒 **歸類係<u>機械</u>所得**——逐段列出其**箭頭字元**與**所在列**（⛔ 憑閱讀）：
+
+| 段起 | 箭頭之實測 | 歸類 | 處置 |
+|---|---|---|---|
+| `:67` | `:67` `⇒`（`⇒ **✅ 全批核可。**`）／`:68` `→`（`_st_fc.session_state.get('f3_cad_side_lines_by_side')` → …） | **(丙)** 推論之連詞 ＋ **(甲)** **查表鏈**之串接 | ✅ **受具名豁免** |
+| `:157` | `:162`／`:164`／`:166`／`:169` `⇒`（皆前提 `⇒` 判）／`:168` `→`（同上查表鏈） | **(丙)** ＋ **(甲)** | ✅ **受具名豁免** |
+| `:254` | `:254`／`:255`／`:256` `→`（`§零` 開工閘 → `§零′` → 逐工項 → …） | **(甲)** **流程節序**之串接 | ✅ **受具名豁免** |
+
+🔒 **三項皆在單 `§零-1` 所定之三類內**；**⛔ 幾何向量之方向性轉引** ⇒ 無座標系可具名。
+🛑 本批**⛔ 出艙任何幾何向量之夾角** ⇒ 「釘其槽並以實邊機驗」之禁**無受詞**（照實具名·⛔ 以「未觸」充綠）。
+
+---
+
+## `§零′`　前批（`W-G.9-301`）之核可　🔒 **⛔ 重辦**（單明定「發單側已辦」）
+
+---
+
+## `§一`　工項零：**本單原封入倉**（主線·`commit 3f15fc17`）
+
+| 受詞 | 實測 |
+|---|---|
+| 落點 | `docs/orders/W-G.9-302_施工單_側界資料之來源現查.md`（新檔·`numstat` ＝ **`272` 增／`0` 刪**） |
+| **二框並報**（`自誤 405`·**產生指令逐字**） | blob `sha1`（`git rev-parse HEAD:<path>`）＝ `b1a7d42ed193d267c6bca6e461720cbce9ffec6b`；內容 `sha256`（`sha256(檔之全部 bytes)`）＝ `e226bcf99bca2e5d3a2328942e3b74269e428d4fd49fb04e67d6d1ab527b04d8` |
+| **三方逐位對拍** | 倉內 blob ＝ 磁碟 ＝ 源 ⇒ **`True`**（`29595` B） |
+| `CR`（框 ＝ `bytes.count(b'\r')`·**讀 blob 取 bytes**） | **`0`**；判別力[必非零] ＝ 倉內 blob `data/V6.dxf` `CR` **`12308`**（全長 `88341` B） |
+| **受詞自證**（坑 `bf`） | 含 `W-G.9-302` ＝ `True`[必真]／含 `W-G.9-301` ＝ `False`[必偽] |
+| 檔數自證（框 ＝ `os.path.isfile`） | 受詞 ＝ `1`；造甲[必≥1] `W-G.9-301` 之單 ＝ `True`／造乙[必為0] **執行期組出**之人造名 ＝ `False` |
+
+---
+
+## `§二`　工項一：`自誤 406` 之鑄（主線·`commit d13b33fa`）
+
+🔒 **payload 由檔案管線直接產生**（`常規七 一`）——自**倉內 blob** 抽 `ZW406` 二哨兵之間，**⛔ 剝層、⛔ 加 `> `、⛔ 改一字**。
+
+| 受詞 | 實測 |
+|---|---|
+| 哨兵唯一性（母體 ＝ **本單單檔**·**二數並報**） | `<!-- ZW406-BEGIN -->`：**整列逐位相等框 ＝ `1`**／子字串框 ＝ `2`；`<!-- ZW406-END -->`：**`1`**／`2` |
+| payload | **`31`** 列／**`3274`** B／`sha256` ＝ `8791a2d5892bf7ea…`；首列 ＝ `` `### 🩸 \`自誤 406\`　**停機款之受詞母體由發單側<u>預先窄化</u>…**` ``；payload 內含哨兵字樣 ＝ `False` |
+| 落點 | `docs/reports/W-G.9波_claude.ai側自誤登記.md`（**`32` 增／`0` 刪**·嚴格末端追加） |
+
+### 二-1　落地後之機驗（**繫於性質**）
+
+| 款 | 實測 | 判 |
+|---|---|---|
+| 鑄號框之**當場現查**（**自器碼取**·⛔ 轉引本單） | `RE_ZW_DEF` 逐字 ＝ `` r'^#{1,6} [^\w`]{0,6}`?自誤 `?(\d+)`?`?\s*[｜（　:：]' `` | ✅ |
+| **落地形自證**（`常規四（九）二 ①`） | payload 內經定義框命中之號 ＝ `[406]` | ✅ |
+| **以器本身量落地後之簿** | 自誤 相異 ＝ **`396`**（`395 + 1`）／MAX ＝ **`406`**；`406` 之定義列命中 ＝ **`1`**（⛔ `> 1`）。`GB` `168`／`170`·`VR` `80`／`95`·`K-9` `28`／`29` **一字未動** | ✅ |
+| **判別力二造** | [必命中] `自誤 399` ＝ `1` 列（`404`／`405` 亦各 `1`）／[必為零] 一**執行期組出**之人造號 ＝ `0` 列 | ✅ |
+| **哨兵⛔ 入簿** | 簿內 `ZW406`／`ZW406-BEGIN`／`ZW406-END` 命中**皆 `0`** | ✅ |
+| **append-only** | 期初 `842734` → 期末 `846009` B（**＋`3275`**·`+32`／`−0`）；嚴格前綴 ＝ `True`／`endswith(payload)` ＝ `True`；`CR` ＝ `0`；`wg942_append_audit.py`（`PYTHONIOENCODING=utf-8`）**`rc = 0`**·逐字「**結論：✅ 全部成立**」 | ✅ |
+
+---
+
+## `§三`　工項一 三-2：`GB-170` 之末端追加（主線·`commit 7ca8e3ad`）
+
+🔑 本 payload **⛔ 鑄任何號**（`戒 36`）⇒ 其形**逐字保留 `> `**（`> ` 起首之列 ＝ **`16`**）。
+
+| 受詞 | 實測 |
+|---|---|
+| 哨兵唯一性（**二數並報**） | `<!-- GB302-BEGIN -->`／`<!-- GB302-END -->`：**整列逐位相等框各 `1`**／子字串框各 `2` |
+| payload | **`22`** 列／**`2477`** B／`sha256` ＝ `ba8f706ab8af90fe…`；首列 ＝ `` `---` ``；末列 ＝ `` `> **失效條件 \`(2)\`／\`(3)\` 仍未成就**——⛔ 解除、⛔ 收窄、⛔ 提修法主張。` `` |
+| 落點 | `docs/reports/W-G.4_泛用阻塞項登記表.md`（**`23` 增／`0` 刪**·⛔ 上文一字不刪） |
+| **`GB-132` 之避讓** | payload 內 `^#` 起首而**列內含 `GB-`** 者 ＝ **`0`** ✅ |
+| append-only | 期初 `907796` → 期末 `910274` B（**＋`2478`**）；嚴格前綴 ＝ `True`／`endswith(payload)` ＝ `True`；`CR` ＝ `0` |
+
+### 三-1　**反向機驗**（**三形分列並報**·`GB-158`·框**自器碼當場取**）
+
+| 形（逐字） | 相異／MAX |
+|---|---|
+| `RE_GB_F1` ＝ `` r'^#{2,4} [^\w`]{0,8}`?GB-(\d{1,3})`?(?![0-9])' `` | `93`／`170` |
+| `RE_GB_F2` ＝ `` r'^\| *\*\*`?GB-(\d{1,3})`?\*\*' `` | `131`／`137` |
+| `RE_GB_F3` ＝ `` r'^#{1,6} .*?`?GB-(\d{1,3})`?(?![0-9])' `` | `95`／`170` |
+
+🔒 **聯集（扣哨兵 `997`）**：相異 **`168`**／MAX **`170`**／缺號 **`[12, 87]`** ⇒ **⛔ 鑄號之<u>性質</u>成立**
+（⛔ 以「未被框命中」充證）。判別力[必命中] `GB-170` 之命中形 ＝ `['RE_GB_F1', 'RE_GB_F3']`；
+[必為零] **執行期組出**之人造號於三形之命中形 ＝ `[]`。
+🔒 **三形皆非空**（`93`／`131`／`95`）⇒ 「二形以上皆 `0` 須 loud 具名」之款**無受詞**（照實具名）。
+
+---
+
+## `§四`　工項二：**側界資料之來源現查**（主線·**零生產碼**）
+
+🔒 **本項之器** ＝ `verify/probes/probe_WG9302_sidesrc.py`（**新檔**·`verify/` **子層**·**⛔ 在生產碼 `34` 檔母體內**；
+單 `§五` 逐字**准於 `verify/probes/` 新增量測器**）。
+🛑 **⛔ 改生產碼一字、⛔ 驅動 `run_verification`、⛔ 判「可施」或「不可施」、⛔ 擬任何改法或 diff。**
+【倉】`verify/out/WG9302R_sidesrc.log`
+
+🔑 **母體一律以<u>產生指令</u>界定**（`自誤 406` 攔法 ②）：
+`git ls-tree HEAD --name-only verify/` ⋂ `*.py` ＋ `app.py` ⇒ 基數 **`34`**·**外部錨**（`§零` 閘 `7`）＝ `34` ⇒ **相符**（坑 `bj`）。
+
+### 四-1　款 `1`：**側界符號之全量現查**（母體 ＝ `ns` 之全部鍵·**四字樣分列並報**·⛔ 合併）
+
+🔒 **`ns` 鍵框之產生指令** ＝ `app.py` 之 `ast.parse(...).body` 頂層名之集 ⇒ 基數 **`286`**
+（🛑 **本批自行重得**·與 `W-G.9-301R` 之 `286` **相符**）。
+
+| 字樣 | 命中之鍵數 | **全量列舉**（⛔ 只報基數） |
+|---|---|---|
+| `f3_cad_side_lines_by_side` | **`7`** | `_anchor_chamfers_topology`／`_annotate_temp_parcel_cut_type`／`_build_burden_range`／`_build_wf_ctx`／`_first_corner_alloc_dir`／`main`／`select_corner_lots_both_sides_v12` |
+| `side_line` | **`20`** | `_anchor_chamfers_topology`／`_annotate_temp_parcel_cut_type`／`_build_burden_range`／`_build_corner_range_v3`／`_build_wf_ctx`／`_chamfer_line_for_side`／`_compute_per_end_cutoff_areas`／`_extract_corner_cut_line`／`_first_corner_alloc_dir`／`_make_chamfer_tri_wb`／`_pk_one_side_v12`／`_rebuild_corners_topology`／`_split_cutoffs_by_side`／`build_cad_binding_table`／`k6_step0_block_locked`／`k6_step0_merge`／`k97_solve_alloc_t`／`main`／`parse_cad_precision_layers`／`select_corner_lots_both_sides_v12` |
+| `SIDE_LINE` | **`17`** | `_annotate_block_corner_flags`／`_build_burden_range`／`_build_corner_range_v3`／`_corner_block_true_G`／`_corner_first_lot_G`／`_extract_corner_cut_line`／`_first_corner_alloc_dir`／`_is_excluded_from_cadastral`／`_place_pool_parcels`／`_pool_overlap_len_s`／`_rebuild_corners_topology`／`_select_pool_slot`／`_shift_cut_block_range`／`k97_solve_alloc_t`／`k98_virtual_measure_block`／`main`／`parse_cad_precision_layers` |
+| `side_mid` | **`12`** | `_blue_shadow_tri`／`_build_burden_range`／`_corner_block_true_G`／`_corner_first_lot_G`／`_first_corner_alloc_dir`／`_lot_gate`／`_place_pool_parcels`／`_shift_cut_block_range`／`_solve_G_one`／`k956_W_from_mp`／`main`／`solve_G_binary` |
+
+🔒 判別力[必為零] 一**執行期組出**之人造字樣（字面⛔ 出艙）於全母體命中 ＝ **`0`** ✅
+🔴 **`_corner_buffer_S` ⛔ 見於四字樣之任一命中集**（照實具名·⛔ 判其可施與否）。
+
+### 四-2　款 `2`：`f3_cad_side_lines_by_side` 之全部**寫入處**與**讀取處**（**三形分列並報** ＋ 文字層對照）
+
+| 框 | 處／檔 |
+|---|---|
+| 形甲 `Subscript.slice` 為該常數 | **`2`** 處／**`2`** 檔 |
+| 形乙 `Assign` 之目標含之 | **`2`** 處／**`2`** 檔 |
+| 形丙 `.get(<該常數>)` 之 `Call` | **`9`** 處／**`2`** 檔 |
+| **三形之聯集** | **`11`** 處／**`3`** 檔 |
+| **文字層列框**（**二數並報**） | **`19`** 列／**`6`** 檔 — `app.py` `13`／`run_verification.py` `2`／`stepg_pipeline.py` `1`／`wg_g1_smoke.py` `1`／`wg_g2_smoke.py` `1`／`wg_g3.py` `1` |
+
+🛑 **loud 具名：二數相異**（`19` vs `11`·差 **`8`**）——**成因逐項**（⛔ 一句帶過）：
+
+> `(a)` **註解／docstring 之列**（`4` 列·皆 `app.py`）：`` `side_lines  {'left'/'right': …}（f3_cad_side_lines_by_side[blk]…` ``／
+> `` `#   side_lines_by_side    : \`f3_cad_side_lines_by_side\`…` ``／`` `| 「宗地側街臨街線…」 | 參數 \`side_mid\`（＝SIDE_LINE 中點·由 \`f3_cad_side_lines_by_side\`…` ``／
+> `` `"\`f3_cad_side_lines_by_side\` 查無對應側界 ⇒ 停…")` ``（**末者係 `raise` 之訊息字串**）。
+> `(b)` **`.get` 之常數在<u>續行</u>而其 `Call` 之 `lineno` 落於前一列**（`2` 列·`app.py`）：
+> `` `'f3_cad_side_lines_by_side', {}) or {}).get(_lbl, {})` ``／`` `'f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}` ``
+> ——其**已由三形計入**（其 `Call` 記於 `:20379`／`:21942`），文字層另計一列 ⇒ **⛔ 遺漏，係<u>列與節點之對位差</u>**。
+> `(c)` **`dict` 之<u>鍵字面</u>而非 `Subscript`／`.get`**（`4` 列·`run_verification.py`／`wg_g1_smoke.py`／`wg_g2_smoke.py`／`wg_g3.py`）：
+> `` `"f3_cad_side_lines_by_side": cad.get("side_lines_by_side", {}),` `` ——係**建構 `dict` 字面**之鍵，
+> 🔴 **三形皆不涵蓋**（`ast.Dict` 之 `keys`）⇒ **框之已知盲區·照實具名**（⛔ 逕改該框·單未授權）。
+
+**逐處之 `檔` ＋ 所在函式名 ＋ 字樣錨 ＋ 寫入／讀取之別**（**`11`** 處·⛔ 行號為錨）：
+
+| # | 檔 | 所在函式名 | 別 | **字樣錨** |
+|---|---|---|---|---|
+| `1` | `app.py` | `_annotate_temp_parcel_cut_type` | 讀取 | `` `_ss_k6.get('f3_cad_side_lines_by_side', {}) or {},` `` |
+| `2` | `app.py` | `select_corner_lots_both_sides_v12` | 讀取 | `` `_slbs_wb = _st_wb5.session_state.get('f3_cad_side_lines_by_side', {}) or {}` `` |
+| `3` | `app.py` | **`_first_corner_alloc_dir`** | 讀取 | `` `_slbs = (_st_fc.session_state.get('f3_cad_side_lines_by_side', {}) or {})` `` |
+| `4` | `app.py` | `_build_wf_ctx` | 讀取 | `` `"side_lines_by_side":   ss.get("f3_cad_side_lines_by_side", {}) or {},` `` |
+| `5` | `app.py` | `main` | 🔑 **寫入** | `` `st.session_state['f3_cad_side_lines_by_side'] = (` `` |
+| `6` | `app.py` | `main` | 讀取 | `` `_sls_a = (st.session_state.get(` `` |
+| `7` | `app.py` | `main` | 讀取 | `` `_slbs_cr = st.session_state.get('f3_cad_side_lines_by_side', {}) or {}` `` |
+| `8` | `app.py` | `main` | 讀取 | `` `_slb_ap = (st.session_state.get('f3_cad_side_lines_by_side', {})` `` |
+| `9` | `app.py` | `main` | 讀取 | `` `_side_lines_blk = (st.session_state.get(` `` |
+| `10` | `verify/run_verification.py` | `build_pipeline` | 🔑 **寫入** | `` `ss["f3_cad_side_lines_by_side"] = slm` `` |
+| `11` | `verify/stepg_pipeline.py` | `_run_step_g_impl` | 讀取 | `` `_side_lines_blk = (ss.get('f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}` `` |
+
+### 四-3　款 `3`：其表之**鍵結構**逐層（AST 之 `Subscript`／`Assign`／`.get` 鏈**逐字**·⛔ 讀來像是）
+
+**寫入處 ＝ `2` 處**，其賦值之目標逐字：
+
+| 檔 :: 函式 | 賦值目標逐字 |
+|---|---|
+| `app.py` :: `main` | `` `st.session_state['f3_cad_side_lines_by_side']` `` |
+| `verify/run_verification.py` :: `build_pipeline` | `` `ss['f3_cad_side_lines_by_side']` `` |
+
+🔑 **其鍵是否含街廓層**——**逐處之第二層鍵逐字**（`9` 個讀取處）：
+
+| 檔 :: 函式 | 第二層鍵**逐字** |
+|---|---|
+| `verify/stepg_pipeline.py` :: `_run_step_g_impl` | 🔑 **`blk_label`** |
+| `app.py` :: `main` | 🔑 **`blk_label`** |
+| `app.py` :: `main`（二處） | 🔑 **`_lbl`** |
+| `app.py` :: `_first_corner_alloc_dir`／`_annotate_temp_parcel_cut_type`／`select_corner_lots_both_sides_v12`／`_build_wf_ctx`／`main` | **無第二層**（其於**同列**未鏈第二層·見款 `3′`） |
+
+🔒 ⇒ **其鍵之第一層<u>確為街廓標籤</u>**（`blk_label`／`_lbl`·**`4` 處逐字坐實**）。
+
+### 四-4　款 `3′`：**消費端之鍵鏈逐層**（`_first_corner_alloc_dir` 體內·AST 逐字）
+
+`For` 之 `target`／`iter` 逐字：`` `for _lbl in _slbs:` `` ／ `` `for _w in ('left', 'right'):` ``
+`Subscript`／`.get` 之鍵逐字（序同 AST 走訪）：`'f3_cad_side_lines_by_side'`／`_w`／`'mid'`／`_lbl`／`'p1'`／`'p2'`／`1`／`0`
+
+🔒 ⇒ **表之鍵結構 ＝ 三層**：**層① 街廓標籤**（`_lbl`）→ **層② `'left'`／`'right'`**（`_w`）→ **層③ `'mid'`／`'p1'`／`'p2'`**。
+🔴 **惟 `_first_corner_alloc_dir` <u>⛔ 以街廓標籤索引</u>**——其 `for _lbl in _slbs` **遍歷全表**，
+再以 `'mid'` 與 `side_mid` 之**幾何比對**（`norm(...) < 1e-6`）定位。
+🔒 **此與其 docstring 逐字一致**（「以 `side_mid` 幾何反查 SIDE_LINE——⛔ 不靠任何字串標籤」）。
+🛑 **照實出艙·⛔ 判其可施**。
+
+### 四-5　款 `4`：**寫入之時機**（外圍 `For`／`While` 之 `target` 與 `iter` **逐字**）🔑 **`停五` 之受詞**
+
+| 寫入處 | 外圍 `For`／`While` | 判 |
+|---|---|---|
+| `app.py` :: `main` | **無** | ⇒ **⛔ 在逐街廓迴圈內**·其賦值之受詞 ＝ **整表一次賦值** |
+| `verify/run_verification.py` :: `build_pipeline` | **無** | ⇒ **⛔ 在逐街廓迴圈內**·其賦值之受詞 ＝ **整表一次賦值** |
+
+### 四-6　款 `5`：`_st_fc` 之可達性（**三態分列**）🔑 **`停六` 之受詞**
+
+`_st_fc` 之**賦值逐字**（其為何物）＝ `['import streamlit as _st_fc']`
+——🔒 **係 `_first_corner_alloc_dir` <u>體內</u>之區域 `import`**，**⛔ 頂層名**。
+
+| 態 | 判 | 依據（逐字） |
+|---|---|---|
+| ① **在 `ns`** | **`False`** | `_st_fc` ⛔ 在 `app.py` 之 `t.body` 頂層名之集內 |
+| ② 🔑 **⛔ 在 `ns` 而<u>可自他途</u>** | **`True`** | `ns` 之鍵 **`st`**，其頂層敘述逐字 ＝ `` `import streamlit as st` ``（`app.py` 頂層） |
+| ③ **⛔ 可達** | **`False`** | ——（① ∨ ② 已成立） |
+
+🔒 **`_corner_buffer_S` 之體內是否可解**（框 ＝ `app.py` 頂層名之集·⛔ 模組 `__globals__`；
+`W-G.9-298R` 已證 `ns` 係純 `dict` 且 harvest 之函式其 `__globals__` **即** `ns`）：
+名 `st` 於 `ns` 之鍵框內 ＝ **`True`** ⇒ `_corner_buffer_S` 體內該名**可經 `__globals__`(=`ns`) 解析**。
+🔒 **併記（⛔ 判其可施）**：`_corner_buffer_S` 體內**現有**之 `Name.Load` 是否已含 `st` ＝ **`False`**。
+
+### 四-7　款 `6`：`_first_corner_alloc_dir` 之**接觸面**（AST **二形並取**·本批**只量**）
+
+**定義處**：檔 **`1`**／處 **`1`** — `app.py`·字樣錨 `` `def _first_corner_alloc_dir(side_mid):` ``
+**呼叫端**：檔 **`1`**／處 **`1`**（判定組**非空** ⇒ ⛔ 拒測）
+
+| 檔 :: 函式 | 字樣錨 | 外圍守衛 `test` 逐字 | 命中 `forced` 旗字樣 |
+|---|---|---|---|
+| `app.py` :: `_solve_G_one` | `` `allocation_dir = _first_corner_alloc_dir(side_mid)` `` | `['If `is_corner`']` | 🔴 **無** |
+
+🔒 判別力[必為否] `` `def _first_corner_alloc_dir` `` 之定義列：外圍 `If`／`IfExp` ＝ **`0`** 個 ⇒ 判 **否** ✅
+🔒 **併記（⛔ 判其後果）**：其唯一呼叫端之守衛係 `` `is_corner` ``、**⛔ `forced` 族**
+——與 `_corner_buffer_S` 之 `7` 處**全為 `forced` 守衛**（`W-G.9-301R` 五-6）**相異**。
+
+### 四-8　款 `7`：判別力四造
+
+| 造 | 期 | 實測 | 判 |
+|---|---|---|---|
+| [必非零] 款 `2` 之處數 `≥ 1` | `≥ 1` | **`11`** | ✅ |
+| [必為 `34`] **母體基數之外部錨**（坑 `bj`） | `34` | **`34`** | ✅ |
+| [必為零] **執行期組出**之人造字樣於款 `1` 之框下命中 | `0` | **`0`** | ✅ |
+| [必真] `_first_corner_alloc_dir` 在 `ns` 之鍵 | `True` | **`True`** | ✅ |
+
+---
+
+## `§五`　🛑 **二停機款之判**（**合取項分列**）
+
+### `停五`（鍵結構·繫於性質）
+
+> 逐字：款 `3` 之鍵結構**⛔ 含街廓層**，**且**款 `4` 實測其寫入**不隨街廓更新**
+> （即**多街廓共用一份而未逐街廓覆寫**）⇒ …⇒ **停、上呈**。
+
+| 合取項 | 受詞 | 實測 | 判 |
+|---|---|---|---|
+| `(i)` 鍵結構**⛔ 含街廓層** | 讀取處之第二層鍵 ＋ 消費端之 `for` target | 🔑 **鍵結構<u>確含</u>街廓層**——第二層鍵逐字 ＝ `blk_label`（`stepg_pipeline` `1` 處·`app.py main` `1` 處）／`_lbl`（`app.py main` `2` 處）；消費端之層① ＝ `_lbl` | 🟢 **為偽** |
+| `(ii)` 寫入**不隨街廓更新**（＝ 多街廓**共用一份**而未逐街廓覆寫） | 二寫入處之外圍迴圈 | 二寫入處皆**⛔ 在逐街廓迴圈內**（外圍 `For`／`While` ＝ **無**），係**整表一次賦值**；🔒 **惟該表<u>本身即逐街廓之映射</u>**（層① ＝ 街廓標籤）⇒ **⛔ 「多街廓共用一份」** | 🟢 **為偽** |
+
+⇒ 🟢 **`停五` <u>未成就</u>**（二合取項**皆為偽**）。
+🔒 **併記（照實·⛔ 頂替）**：其所防之形（「於 `_corner_buffer_S` 內以 `side` **單鍵**取之 ⇒ 多街廓下必取他街廓之側界」）
+**於本表之結構下不成立**——因該表**須先以街廓標籤索引**方到 `'left'`／`'right'` 層。
+🛑 **⛔ 由此推「可施」**：街廓標籤之取得**本身**即 `W-G.9-301R` 五-5 所載之受阻處（`7` 處中 `3` 處之 `_label` 為複合字串）
+——該事**已登記**，本批**⛔ 就其作成任何判**。
+
+### `停六`（可達性·繫於性質）
+
+> 逐字：款 `5` 判 `_st_fc` 於 `_corner_buffer_S` 之體內**⛔ 可達** ⇒ 該路徑**不可施** ⇒ **停、上呈**。
+
+| 受詞 | 實測 | 判 |
+|---|---|---|
+| `_st_fc` 於 `_corner_buffer_S` 之體內是否**⛔ 可達** | **三態分列**：① 在 `ns` ＝ `False`／② **⛔ 在 `ns` 而可自他途 ＝ `True`**（`ns` 之鍵 `st`·頂層 `import streamlit as st`）／③ ⛔ 可達 ＝ **`False`** | 🟢 **為偽** |
+
+⇒ 🟢 **`停六` <u>未成就</u>**。
+🔒 **其精確之義**：`_st_fc` **此名**⛔ 可達（其為 `_first_corner_alloc_dir` 之區域 `import` 別名），
+惟其**所指之物**（`streamlit` 模組之 `session_state`）**可經 `ns` 之鍵 `st` 解析** ⇒ 態③ 為偽。
+🛑 **⛔ 由此推「可施」或擬任何改法**（⛔ 新增 `import` 之禁**仍在**·本判**⛔ 及於該禁**）。
+
+### 🛑 四禁於本批**仍在**（`W-G.9-301 §六-3` 逐字）
+
+**⛔ 新增形參、⛔ 改簽章、⛔ 新增 `import`、⛔ 自寫第二套幾何**——本批**⛔ 逾之**，亦⛔ 擬任何改法或 diff。
+
+---
+
+## `§六`　一句話推導
+
+> 側界表 `f3_cad_side_lines_by_side` 之寫入**僅 `2` 處**（`app.py::main` 與 `run_verification::build_pipeline`·
+> 皆**整表一次賦值**、**⛔ 在逐街廓迴圈內**），其鍵結構經 AST 逐字坐實為**三層**
+> （**層① 街廓標籤** → 層② `'left'`／`'right'` → 層③ `'mid'`／`'p1'`／`'p2'`）
+> ⇒ `停五` 之二合取項**皆為偽**；而 `_st_fc` 雖⛔ 在 `ns` 之鍵框內（其為區域 `import` 別名），
+> 其所指之物可經 `ns` 之鍵 **`st`**（頂層 `import streamlit as st`）解析 ⇒ `停六` 亦**為偽**
+> ⇒ **二停機款皆未成就**；🛑 **而本批⛔ 由此推「可施」**——`_first_corner_alloc_dir` 之
+> **`for _lbl in _slbs` 遍歷全表、以幾何比對定位**（⛔ 以標籤索引）一事僅**照實出艙**，其處置候發單側。
+
+---
+
+## `§七`　本批之**自解清單**（`常規九 一`·五項齊備·⛔ 略）
+
+🔒 **零項**——本批之唯一手段（於 `verify/probes/` **新增**量測器）係單 `§五` 逐字**明文所准**
+（「（准於 `verify/probes/` **新增**量測器）」）⇒ **⛔ 自解之受詞**。
+
+---
+
+## `§八`　⛔ **為之事**之逐項自檢（單 `§五`·**逐項**·⛔ 略）
+
+| 受詞 | 自檢 |
+|---|---|
+| ⛔ 改生產碼 `34` 檔**一字** | ✅ **未為**——`34` 檔 blob 期初＝期末**相異 `0`**·`app.py` ＝ `4379108a…` |
+| ⛔ 開任何分支；⛔ 併線（含 `p3a`）；⛔ 刪任何 ref | ✅ **未為**——`refs/heads/verify/*` 期末 **`20`**·`gb170` ＝ `0`·`p3a` `rc = 1` |
+| ⛔ 動用 KL 之放行 | ✅ **未為** |
+| ⛔ 驅動 `run_verification` 或任何長跑 | ✅ **未為**——本批**⛔ 執行** `run_verification`／`run_all` |
+| ⛔ 辦修批 | ✅ **未為** |
+| ⛔ 覆寫 `verify/baselines` 任一檔或**六物證落檔**任一 | ✅ **未為**——`baselines` `298` 檔·`a898f4e1…` 未變；六物證 blob 逐位未動 |
+| ⛔ `WV_BAKE` | ✅ **未設**（`os.environ.get('WV_BAKE')` ＝ `None`） |
+| ⛔ 引任何自 baseline 取得之數 | ✅ **未為**——本報告之數皆出自 AST 現查與二器之輸出 |
+| ⛔ 改任何函式簽章／新增形參／新增 `import` 於生產碼／改任何 `*_EXPECT` 一字 | ✅ **未為** |
+| ⛔ 自寫第二套幾何或第二份 `W`／`side_mid`／側界線之定義（`GB-48` 族） | ✅ **未為**——`§四` **只現查既有之寫入／讀取處與其鍵鏈** |
+| ⛔ 動 `ALPHA_LABELS` 一字 | ✅ **未為**——其載體之 `git diff --numstat` 輸出**空** |
+| ⛔ 動 `probe_WG9269_pit_index.py`／`probe_WG9292_pathC.py`／`probe_WG9295_joint.py`／`probe_WG9298_gate3.py`／`probe_WG9300_contact_surface.py`／`probe_WG9301_selfderive.py`／任何**既有**探針一字 | ✅ **未為**——本批於 `verify/probes/` **只新增一檔**（`probe_WG9302_sidesrc.py`·單明文所准） |
+| ⛔ 鑄 `GB`／`VR`／`K-9`／坑之任何號 | ✅ **未為**——`GB` `168`／`170`·`VR` `80`／`95`·`K-9` `28`／`29`·坑 `89`／`89` **皆一字未動** |
+| ⛔ 解除或收窄任何 `GB`（含 `GB-170`） | ✅ **未為** |
+| ⛔ 逕修 `side_mid` 之在域性（⛔ 移賦值列）；⛔ 逕修坑之定義框 | ✅ **未為** |
+| ⛔ 落地 `K-9-5-*`／`K-9-12`／`K-9-29` 之任何子項 | ✅ **未為** |
+| ⛔ 追改 `W-G.9-299`／`-300`／`-301`／補令一／交接註／`W-G.9-300R`／`W-G.9-301R` 或任何已入倉文件一字 | ✅ **未為**——本批 `deletions` 全 `0` |
+| ⛔ 擴 KL 放行之射程；⛔ 呈 KL；⛔ 擬第二次放行之呈文 | ✅ **未為** |
+| ⛔ 判 `GB-170` 可否解除／⛔ 判路丙之落點**可施與否**／⛔ 判 `停四` 之判為誤／⛔ 判孰是／⛔ 判孰誤／⛔ 提修法主張 | ✅ **未為**——`§五` 只就**二停機款自身之合取項**作判，並於二處明載「⛔ 由此推『可施』」；`停四` 於其母體下**仍成立**且**留倉不改** |
+| ⛔ 驗 `(甲)`／`(乙)` 逐位相同之機制 | ✅ **未為** |
+| ⛔ 於任何入倉文件宣稱一件尚未發生之事 | ✅ **未為**——`push` 後之 `ls-remote` 實查值**出艙於回報**（收工閘 `7`） |
+
+---
+
+## `§九`　逐 `commit`（**全 `40` 碼**）
+
+| # | `commit` | 題 |
+|---|---|---|
+| `1` | `3f15fc17bbe41ee6d9133d2ebb57a9981b54d4c0` | `W-G.9-302 工項零：本單原封入倉（三方逐位對拍·二框並報·受詞自證）⛔ 零生產碼` |
+| `2` | `d13b33fa27abf86ab1e088e75f4d3ad190ffb50f` | `W-G.9-302 工項一 三-1：自誤 406 之鑄（哨兵界·嚴格 append-only·⛔ 行號為錨）⛔ 零生產碼` |
+| `3` | `7ca8e3adbf459bbf928d3a2fc1fc7e458c0c1a1d` | `W-G.9-302 工項一 三-2：GB-170 之末端追加（⛔ 鑄任何號·⛔ 解除⛔ 收窄）⛔ 零生產碼` |
+| `4` | （本報告 ＋ 新器 ＋ 二物證落檔·其 `sha` 見回報） | `W-G.9-302 工項二：側界資料之來源現查 ＋ 🟢 停五・停六皆未成就 ⛔ 零生產碼` |
+
+---
+
+## `§十`　收工閘（**報告入倉後量**·嚴格末端追加）
+
+（本節於報告入倉後以**純末端追加**補之。）
