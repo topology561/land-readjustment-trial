@@ -1,0 +1,459 @@
+====================================================================================================================
+【`W-G.9-291` `§五` 工項三】二候選路之**接觸面現查**（🛑 出艙即止·⛔ 判孰優·⛔ 擬實作·⛔ 改碼一字）
+====================================================================================================================
+🔒 三軸：(1) 來源 commit ＝ edbeb81ffc4f2f220b56af13ef6004a54e09c8a9
+         (2) 母體 ＝ 生產碼 **34** 檔（`app.py` 1 ＋ `verify/` 頂層 `*.py` 33·**正面列舉**）
+              ＋ `verify/` **子層** `*.py` **305** 檔（判準 ＝ 須 `> 0`·⛔ 定值·`自誤 386`）  ⇒ 合計 **339** 檔
+         (3) 粒度框 ＝ **檔框 ＋ 列框**（框無 `^` 錨 ⇒ 二數並報）
+
+🔒 生產碼 34 檔之正面列舉（逐檔）：
+     app.py                             ｜ verify/app_harvest.py              ｜ verify/b6_isomorphism.py          
+     verify/fixture_baseline_candidates.py ｜ verify/fixture_block_depth_n19p.py ｜ verify/fixture_cad_binding_order.py
+     verify/fixture_corner_range_k8.py  ｜ verify/fixture_e2e_termination.py  ｜ verify/fixture_end_fallback.py    
+     verify/fixture_end_reserve.py      ｜ verify/fixture_end_winner.py       ｜ verify/fixture_g3_static_guards.py
+     verify/fixture_klui_t2diag.py      ｜ verify/fixture_midlayer_6items.py  ｜ verify/fixture_n14_feed_chain.py  
+     verify/fixture_n14_min_width.py    ｜ verify/fixture_wf_ns_wiring.py     ｜ verify/fixture_yi_construction.py 
+     verify/run_all.py                  ｜ verify/run_verification.py         ｜ verify/selection_pipeline.py      
+     verify/stepg_pipeline.py           ｜ verify/test_corner_first_lot_G.py  ｜ verify/wd3_fragment_geom.py       
+     verify/wd4_tier_list.py            ｜ verify/wf_f0.py                    ｜ verify/wf_f1.py                   
+     verify/wf_f2.py                    ｜ verify/wf_f3.py                    ｜ verify/wf_f4.py                   
+     verify/wg_g1_smoke.py              ｜ verify/wg_g2_smoke.py              ｜ verify/wg_g3.py                   
+     verify/wv_reconcile.py            
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## 款 `4`　判別力二造（🛑 任一不成立 ⇒ 判器紅、停、上呈）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   [必命中] `_build_corner_range_v3` 之呼叫端數（二形並取·須 ≥ 1）
+       形一（直呼 `_build_corner_range_v3(`）     ⇒ 檔 **5** ／ 列 **9**
+       形二（`ns` 字面·單引號） ⇒ 檔 **2** ／ 列 **2**
+       形二（`ns` 字面·雙引號） ⇒ 檔 **28** ／ 列 **50**
+       ⇒ 二形聯集之列 ＝ **61** ≥ 1 ⇒ ✅
+   [必為零] 一人造名（**執行期組出**·字面⛔ 出艙·代稱 Z）⇒ 檔 **0** ／ 列 **0**（須 0）⇒ ✅
+   ⇒ **款 `4` ＝ ✅ 二造皆成立 ⇒ 器非紅**
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## 款 `1`　路甲：擴 `_build_corner_range_v3` 之回傳
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+### `(a)` 全部呼叫端（**二形並取**·先驗唯一性·⛔ 逕取首命中）
+
+🔒 **文字框之全命中**（含註解／docstring ⇒ 須再以 AST 分辨真呼叫端）：
+     app.py:12615   def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
+     app.py:13136   _rng_wb = _build_corner_range_v3(
+     app.py:20432   _rng_cr = _build_corner_range_v3(
+     verify/fixture_corner_range_k8.py:263   return ns["_build_corner_range_v3"](**kw), kw["min_width"]
+     verify/probes/probe_D2_corner_range.py:108   rng = ns["_build_corner_range_v3"](
+     verify/probes/probe_D2_pre_freeze.py:79   rng = ns["_build_corner_range_v3"](
+     verify/probes/probe_E17_intersection.py:120   old = ns["_build_corner_range_v3"](
+     verify/probes/probe_K9_7d_layer2.py:179   _r_old = ns["_build_corner_range_v3"](
+     verify/probes/probe_K9_7d_layer2.py:188   _r_new = ns["_build_corner_range_v3"](
+     verify/probes/probe_K9_7d_pk_impact.py:120   _orig_range = ns["_build_corner_range_v3"]
+     verify/probes/probe_K9_7d_pk_impact.py:148   ns["_build_corner_range_v3"] = _patched_range
+     verify/probes/probe_K9_7d_pk_impact.py:166   ns["_build_corner_range_v3"] = _orig_range
+     verify/probes/probe_K9_7d_stageA.py:129   poly = ns["_build_corner_range_v3"](
+     verify/probes/probe_K9_7d_stageA.py:223   _orig = ns["_build_corner_range_v3"]
+     verify/probes/probe_K9_7d_stageA.py:239   ns["_build_corner_range_v3"] = _patched
+     verify/probes/probe_K9_7d_stageA.py:247   ns["_build_corner_range_v3"] = _orig
+     verify/probes/probe_K9_geo1_S1_construction.py:98   _ORIG_RNG = ns["_build_corner_range_v3"]
+     verify/probes/probe_K9_geo1_S1_construction.py:387   ns["_build_corner_range_v3"] = _make_new_rng(_ORIG_RNG) if _newR else _ORIG_RNG
+     verify/probes/probe_K9_geo1_S1_construction.py:397   ns["_build_corner_range_v3"] = _ORIG_RNG
+     verify/probes/probe_K9_geo1_S1_construction.py:650   f"**{ns['_build_corner_range_v3'] is _ORIG_RNG}**；"
+     verify/probes/probe_K9_s62_chord_vs_linedist.py:134   rng = ns["_build_corner_range_v3"](**_args)
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:155   _rng = ns["_build_corner_range_v3"](
+     verify/probes/probe_K9_s62c_attribution.py:153   _rng = ns["_build_corner_range_v3"](
+     verify/probes/probe_K9_s62c_attribution.py:337   L.append("     ⑥ `_corner_range_area`＝`_build_corner_range_v3(...).area`（本檔現算·同 param 表之式）")
+     verify/probes/probe_WG917_recon.py:78   if "_build_corner_range_v3(" in x and not x.lstrip().startswith("#")
+     verify/probes/probe_WG917_recon.py:81   f"判準＝含 `_build_corner_range_v3(` 且非註解、非 `def`）")
+     verify/probes/probe_WG917_recon.py:85   f"{sum(1 for x in STEPG if '_build_corner_range_v3(' in x and not x.lstrip().startswith('#'))}")
+     verify/probes/probe_WG918_downcast.py:60   ("① 產生", "_rng_cr = _build_corner_range_v3(",
+     verify/probes/probe_WG919_lowerbound.py:115   _orig = ns["_build_corner_range_v3"]
+     verify/probes/probe_WG919_lowerbound.py:130   ns["_build_corner_range_v3"] = w_rng
+     verify/probes/probe_WG919_lowerbound.py:134   ns["_build_corner_range_v3"] = _orig          # 🔒 還原（⛔ 不留 patch）
+     verify/probes/probe_WG922_three_vs_target.py:137   _orig = ns["_build_corner_range_v3"]
+     verify/probes/probe_WG922_three_vs_target.py:149   ns["_build_corner_range_v3"] = w_rng
+     verify/probes/probe_WG922_three_vs_target.py:154   ns["_build_corner_range_v3"] = _orig                # 🔒 還原（⛔ 不留 patch）
+     verify/probes/probe_WG9286_twolines.py:103   _o_rng = ns["_build_corner_range_v3"]
+     verify/probes/probe_WG9286_twolines.py:143   ns["_build_corner_range_v3"] = _spy_rng
+     verify/probes/probe_WG9287_landeffect.py:132   _o_rng = ns["_build_corner_range_v3"]
+     verify/probes/probe_WG9287_landeffect.py:169   ns["_build_corner_range_v3"] = _spy_rng
+     verify/probes/probe_WG9290_neardir.py:131   _o_rng = ns["_build_corner_range_v3"]
+     verify/probes/probe_WG9290_neardir.py:166   ns["_build_corner_range_v3"] = _spy_rng
+     verify/probes/probe_WG953_corner_and_sets.py:143   return ns["_build_corner_range_v3"](**kw)
+     verify/probes/probe_WG956_yi_style.py:299   return ns["_build_corner_range_v3"](**kw)
+     verify/probes/probe_WG958_dmax_robust.py:168   return ns["_build_corner_range_v3"](
+     verify/probes/probe_WG959_knife_edge.py:119   return ns["_build_corner_range_v3"](
+     verify/probes/probe_WG960_fitcore.py:85   return ns["_build_corner_range_v3"](
+     verify/probes/probe_WG970_q_scope.py:37   return ns["_build_corner_range_v3"](
+     verify/probes/probe_WG977_zong0.py:282   o_range = ns["_build_corner_range_v3"]
+     verify/probes/probe_WG977_zong0.py:302   ns["_build_corner_range_v3"] = spy_range(o_range)
+     verify/probes/probe_WG977_zong0.py:326   ns["_build_corner_range_v3"] = o_range
+     verify/probes/probe_k97_r5_attribution.py:99   _orig_range = ns["_build_corner_range_v3"]
+     verify/probes/probe_k97_r5_attribution.py:111   ns["_build_corner_range_v3"] = _patched_range
+     verify/probes/probe_k97_r5_attribution.py:144   ns["_build_corner_range_v3"] = _orig_range
+     verify/probes/probe_ruling_K9_7_alloc_t.py:129   _r_old = ns["_build_corner_range_v3"](
+     verify/probes/probe_ruling_K9_7_alloc_t.py:139   _r_new = ns["_build_corner_range_v3"](
+     verify/probes/probe_ruling_K9_7_pk_impact.py:122   _orig_range = ns["_build_corner_range_v3"]
+     verify/probes/probe_ruling_K9_7_pk_impact.py:150   ns["_build_corner_range_v3"] = _patched_range
+     verify/probes/probe_ruling_K9_7_pk_impact.py:168   ns["_build_corner_range_v3"] = _orig_range
+     verify/probes/probe_ruling_K9_corner_width.py:451   return ns["_build_corner_range_v3"](**kw), mw, kw["block_depth"]
+     verify/probes/probe_ruling_K9_corner_width.py:1178   L.append("           （＝ round(_build_corner_range_v3(...).area, 2)"
+     verify/run_verification.py:246   r = ns["_build_corner_range_v3"](
+     verify/stepg_pipeline.py:429   ctx['corner_range_polys'][(_crp_lbl, _crp_wh)] = ns['_build_corner_range_v3'](
+
+🔒 **AST 實查之真呼叫端**（`ast.Call`·⛔ 文字層）：
+     app.py:13136–13140   （直呼）
+     app.py:20432–20437   （直呼）
+     verify/fixture_corner_range_k8.py:263–263   （ns 字面）
+     verify/probes/probe_D2_corner_range.py:108–112   （ns 字面）
+     verify/probes/probe_D2_pre_freeze.py:79–83   （ns 字面）
+     verify/probes/probe_E17_intersection.py:120–124   （ns 字面）
+     verify/probes/probe_K9_7d_layer2.py:179–183   （ns 字面）
+     verify/probes/probe_K9_7d_layer2.py:188–191   （ns 字面）
+     verify/probes/probe_K9_7d_stageA.py:129–133   （ns 字面）
+     verify/probes/probe_K9_s62_chord_vs_linedist.py:134–134   （ns 字面）
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py:155–160   （ns 字面）
+     verify/probes/probe_K9_s62c_attribution.py:153–158   （ns 字面）
+     verify/probes/probe_WG953_corner_and_sets.py:143–143   （ns 字面）
+     verify/probes/probe_WG956_yi_style.py:299–299   （ns 字面）
+     verify/probes/probe_WG958_dmax_robust.py:168–178   （ns 字面）
+     verify/probes/probe_WG959_knife_edge.py:119–129   （ns 字面）
+     verify/probes/probe_WG960_fitcore.py:85–95   （ns 字面）
+     verify/probes/probe_WG970_q_scope.py:37–46   （ns 字面）
+     verify/probes/probe_ruling_K9_7_alloc_t.py:129–133   （ns 字面）
+     verify/probes/probe_ruling_K9_7_alloc_t.py:139–143   （ns 字面）
+     verify/probes/probe_ruling_K9_corner_width.py:451–451   （ns 字面）
+     verify/run_verification.py:246–249   （ns 字面）
+     verify/stepg_pipeline.py:429–439   （ns 字面）
+   ⇒ **真呼叫端 ＝ 23 處**（檔 20）
+
+### `(b)` 逐處之**回傳消費式逐字**（是否逕用 `rng`／是否解包）
+
+   ── app.py:13136–13140（直呼）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_rng_wb`｜**解包 ＝ 否**
+        |             _rng_wb = _build_corner_range_v3(
+        |                 _blk_verts_wb, _blk_cen_wb, _fpts_wb, _bpts_wb,
+        |                 [_sd_wb['p1'], _sd_wb['p2']], _alloc_wb, _depth_wb,
+        |                 _setback_B4, _legal_min_width_B4, _cham_wb,
+        |                 dxf_quantum=_q_wb, _label=_this_blk_B4, _side=_which_wb)
+   ── app.py:20432–20437（直呼）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_rng_cr`｜**解包 ＝ 否**
+        |                                 _rng_cr = _build_corner_range_v3(
+        |                                     _blk_verts_cr, _blk_cen_cr, _fpts_cr, _bpts_cr,
+        |                                     [_sd_cr['p1'], _sd_cr['p2']], _alloc_cr, _depth_use,
+        |                                     _setback_default, _legal_w_disp,
+        |                                     _make_chamfer_tri_wb(b, _wh_cr),
+        |                                     dxf_quantum=_q_cr, _label=_lbl, _side=_wh_cr)
+   ── verify/fixture_corner_range_k8.py:263–263（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |         return ns["_build_corner_range_v3"](**kw), kw["min_width"]
+   ── verify/probes/probe_D2_corner_range.py:108–112（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `rng`｜**解包 ＝ 否**
+        |                     rng = ns["_build_corner_range_v3"](
+        |                         b.get("vertices"), b.get("centroid"), [fl["p1"], fl["p2"]], bp,
+        |                         [sd["p1"], sd["p2"]], al_by.get(lbl), depth, setback, legal_w, chi,
+        |                         dxf_quantum=((bl_by.get(lbl) or {}).get("_match") or {}).get("q_detected"),
+        |                         _label=lbl, _side=which)
+   ── verify/probes/probe_D2_pre_freeze.py:79–83（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `rng`｜**解包 ＝ 否**
+        |                     rng = ns["_build_corner_range_v3"](
+        |                         b.get("vertices"), b.get("centroid"), [fl["p1"], fl["p2"]], bp,
+        |                         [sd["p1"], sd["p2"]], al_by.get(lbl), depth, setback, legal_w, chi,
+        |                         dxf_quantum=((bl_by.get(lbl) or {}).get("_match") or {}).get("q_detected"),
+        |                         _label=lbl, _side=which)
+   ── verify/probes/probe_E17_intersection.py:120–124（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `old`｜**解包 ＝ 否**
+        |                     old = ns["_build_corner_range_v3"](
+        |                         verts, b.get("centroid"), [fl["p1"], fl["p2"]], bp,
+        |                         [sd["p1"], sd["p2"]], al_by.get(lbl), depth, setback, legal_w, chi,
+        |                         dxf_quantum=((bl_by.get(lbl) or {}).get("_match") or {}).get("q_detected"),
+        |                         _label=lbl, _side=which)
+   ── verify/probes/probe_K9_7d_layer2.py:179–183（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_r_old`｜**解包 ＝ 否**
+        |                         _r_old = ns["_build_corner_range_v3"](
+        |                             b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
+        |                             al_by.get(lbl), _depth, setback, legal_w, _chi,
+        |                             dxf_quantum=_q, _label=lbl, _side=side,
+        |                             _t_override=rec["new"]["t_star_layer1"])
+   ── verify/probes/probe_K9_7d_layer2.py:188–191（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_r_new`｜**解包 ＝ 否**
+        |                     _r_new = ns["_build_corner_range_v3"](
+        |                         b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
+        |                         al_by.get(lbl), _depth, setback, legal_w, _chi,
+        |                         dxf_quantum=_q, _label=lbl, _side=side)
+   ── verify/probes/probe_K9_7d_stageA.py:129–133（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `poly`｜**解包 ＝ 否**
+        |                 poly = ns["_build_corner_range_v3"](
+        |                     b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
+        |                     al_by.get(lbl), _depth, setback, mw, _chi,
+        |                     dxf_quantum=_q, _label=lbl, _side=side,
+        |                     _t_override=r["t_star"])
+   ── verify/probes/probe_K9_s62_chord_vs_linedist.py:134–134（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `rng`｜**解包 ＝ 否**
+        |                     rng = ns["_build_corner_range_v3"](**_args)
+   ── verify/probes/probe_K9_s62_k98_line_vs_chord.py:155–160（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_rng`｜**解包 ＝ 否**
+        |                     _rng = ns["_build_corner_range_v3"](
+        |                         b.get("vertices"), b.get("centroid"), [fl["p1"], fl["p2"]], bp,
+        |                         [sd["p1"], sd["p2"]], au,
+        |                         float(blk.get("街廓分配深度_m") or 0.0), setback, legal_w, chi,
+        |                         dxf_quantum=((bl_by.get(lbl) or {}).get("_match") or {}).get("q_detected"),
+        |                         _label=lbl, _side=which)
+   ── verify/probes/probe_K9_s62c_attribution.py:153–158（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_rng`｜**解包 ＝ 否**
+        |                     _rng = ns["_build_corner_range_v3"](
+        |                         b.get("vertices"), b.get("centroid"), [fl["p1"], fl["p2"]], bp,
+        |                         [sd["p1"], sd["p2"]], au,
+        |                         float(blk.get("街廓分配深度_m") or 0.0), setback, legal_w, chi,
+        |                         dxf_quantum=((bl_by.get(lbl) or {}).get("_match") or {}).get("q_detected"),
+        |                         _label=lbl, _side=which)
+   ── verify/probes/probe_WG953_corner_and_sets.py:143–143（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |         return ns["_build_corner_range_v3"](**kw)
+   ── verify/probes/probe_WG956_yi_style.py:299–299（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |         return ns["_build_corner_range_v3"](**kw)
+   ── verify/probes/probe_WG958_dmax_robust.py:168–178（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |         return ns["_build_corner_range_v3"](
+        |             block_vertices=b["vertices"], block_centroid=b["centroid"],
+        |             front_pts=[fl["p1"], fl["p2"]],
+        |             baseline_pts=ns["_baseline_pts_from_manual"](mb, b["vertices"]),
+        |             side_line_pts=[sd["p1"], sd["p2"]],
+        |             alloc_dir=cad["alloc_dir_by_block"][lbl],
+        |             block_depth=float(snapshot["blocks"][lbl]["街廓分配深度_m"]),
+        |             setback=setback, min_width=mw,
+        |             chamfer_tri=ns["_make_chamfer_tri_wb"](b, which),
+        |             dxf_quantum=(mb.get("_match") or {}).get("q_detected"),
+        |             _label=lbl, _side=which)
+   ── verify/probes/probe_WG959_knife_edge.py:119–129（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |         return ns["_build_corner_range_v3"](
+        |             block_vertices=b["vertices"], block_centroid=b["centroid"],
+        |             front_pts=[fl["p1"], fl["p2"]],
+        |             baseline_pts=ns["_baseline_pts_from_manual"](mb, b["vertices"]),
+        |             side_line_pts=[sd["p1"], sd["p2"]],
+        |             alloc_dir=cad["alloc_dir_by_block"][lbl],
+        |             block_depth=float(snapshot["blocks"][lbl]["街廓分配深度_m"]),
+        |             setback=setback, min_width=mw,
+        |             chamfer_tri=ns["_make_chamfer_tri_wb"](b, which),
+        |             dxf_quantum=(mb.get("_match") or {}).get("q_detected"),
+        |             _label=lbl, _side=which)
+   ── verify/probes/probe_WG960_fitcore.py:85–95（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |     return ns["_build_corner_range_v3"](
+        |         block_vertices=b["vertices"], block_centroid=b["centroid"],
+        |         front_pts=[fl["p1"], fl["p2"]],
+        |         baseline_pts=ns["_baseline_pts_from_manual"](mb, b["vertices"]),
+        |         side_line_pts=[sd["p1"], sd["p2"]],
+        |         alloc_dir=cad["alloc_dir_by_block"][lbl],
+        |         block_depth=float(snapshot["blocks"][lbl]["街廓分配深度_m"]),
+        |         setback=setback, min_width=mw,
+        |         chamfer_tri=ns["_make_chamfer_tri_wb"](b, which),
+        |         dxf_quantum=(mb.get("_match") or {}).get("q_detected"),
+        |         _label=lbl, _side=which)
+   ── verify/probes/probe_WG970_q_scope.py:37–46（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |     return ns["_build_corner_range_v3"](
+        |         block_vertices=b["vertices"], block_centroid=b["centroid"],
+        |         front_pts=[fl["p1"], fl["p2"]],
+        |         baseline_pts=ns["_baseline_pts_from_manual"](mb, b["vertices"]),
+        |         side_line_pts=[sd["p1"], sd["p2"]],
+        |         alloc_dir=cad["alloc_dir_by_block"][LBL],
+        |         block_depth=float(snapshot["blocks"][LBL]["街廓分配深度_m"]),
+        |         setback=0.0, min_width=wd[LBL][0],
+        |         chamfer_tri=ns["_make_chamfer_tri_wb"](b, WHICH),
+        |         dxf_quantum=q, _label=LBL, _side=WHICH)
+   ── verify/probes/probe_ruling_K9_7_alloc_t.py:129–133（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_r_old`｜**解包 ＝ 否**
+        |                     _r_old = ns["_build_corner_range_v3"](
+        |                         b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
+        |                         al_by.get(lbl), _depth, setback, legal_w, _chi,
+        |                         dxf_quantum=_q, _label=lbl, _side=side,
+        |                         _t_override=_tleg)
+   ── verify/probes/probe_ruling_K9_7_alloc_t.py:139–143（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `_r_new`｜**解包 ＝ 否**
+        |                         _r_new = ns["_build_corner_range_v3"](
+        |                             b.get("vertices"), b.get("centroid"), _fp, _bp, _sp,
+        |                             al_by.get(lbl), _depth, setback, legal_w, _chi,
+        |                             dxf_quantum=_q, _label=lbl, _side=side,
+        |                             _t_override=new["t_star"])
+   ── verify/probes/probe_ruling_K9_corner_width.py:451–451（ns 字面）｜敘述型別 ＝ `Return`｜綁定標的 ＝ `（未綁定·逕回傳）`｜**解包 ＝ 否**
+        |         return ns["_build_corner_range_v3"](**kw), mw, kw["block_depth"]
+   ── verify/run_verification.py:246–249（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Name）`｜綁定標的 ＝ `r`｜**解包 ＝ 否**
+        |             r = ns["_build_corner_range_v3"](
+        |                 verts, cen, _fpts, _bpts, [side[which]["p1"], side[which]["p2"]],
+        |                 alloc.get(lbl), depth, setback, legal_w, chi,
+        |                 dxf_quantum=_q, _label=lbl, _side=which)
+   ── verify/stepg_pipeline.py:429–439（ns 字面）｜敘述型別 ＝ `Assign（標的 ＝ Subscript）`｜綁定標的 ＝ `（Subscript·非 Name）`｜**解包 ＝ 否**
+        |                 ctx['corner_range_polys'][(_crp_lbl, _crp_wh)] = ns['_build_corner_range_v3'](
+        |                     block_vertices=_crp_b['vertices'], block_centroid=_crp_b['centroid'],
+        |                     front_pts=[_crp_fl['p1'], _crp_fl['p2']],
+        |                     baseline_pts=ns['_baseline_pts_from_manual'](_crp_mb, _crp_b['vertices']),
+        |                     side_line_pts=[_crp_sd['p1'], _crp_sd['p2']],
+        |                     alloc_dir=_crp_adm.get(_crp_lbl),
+        |                     block_depth=float(SB[_crp_lbl]['街廓分配深度_m']),
+        |                     setback=setback, min_width=_crp_mw,
+        |                     chamfer_tri=ns['_make_chamfer_tri_wb'](_crp_b, _crp_wh),
+        |                     dxf_quantum=(_crp_mb.get('_match') or {}).get('q_detected'),
+        |                     _label=_crp_lbl, _side=_crp_wh)
+
+### `(c)` 若改為回傳 `tuple`／`dict`，**須同批改之呼叫端數**
+
+   🔒 現況之**逐型別歸類**（AST·⛔ 概稱）：
+       Assign（標的 ＝ Name）              ＝ **14** 處
+       Assign（標的 ＝ Subscript）         ＝ **1** 處
+       Return                         ＝ **8** 處
+       **解包（`Assign` 之標的為 `Tuple`）＝ 0 處**
+   ⇒ 回傳由 `Polygon` 改為 `tuple`／`dict` 者，**每一處之消費式皆須同批改**（⛔ 有一處現已解包）
+       ⇒ **須同批改之呼叫端數 ＝ 23**（其下游之用法另計於下表）
+
+   🔒 **逐處之綁定標的<u>其後</u>之用法**（同一 scope 內·**列號 > 該敘述之 `end_lineno`**·框 ＝ 該名之**詞界**錨定框 `(?<![A-Za-z0-9_])name(?![A-Za-z0-9_])`·⛔ 子字串比對）：
+     app.py  綁定標的 `_rng_wb`（scope ＝ `select_corner_lots_both_sides_v12` AST 12974–13343·起算列 13141）⇒ 其後之**詞界**命中 **2** 列
+         app.py:13142  _corner_range_left = _rng_wb
+         app.py:13144  _corner_range_right = _rng_wb
+     app.py  綁定標的 `_rng_cr`（scope ＝ `main` AST 14975–24579·起算列 20438）⇒ 其後之**詞界**命中 **2** 列
+         app.py:20439  _left_min = round(float(_rng_cr.area), 2)
+         app.py:20441  _right_min = round(float(_rng_cr.area), 2)
+     verify/fixture_corner_range_k8.py:263  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_D2_corner_range.py  綁定標的 `rng`（scope ＝ `main` AST 57–154·起算列 113）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_D2_corner_range.py:113  _a = float(rng.area)
+     verify/probes/probe_D2_pre_freeze.py  綁定標的 `rng`（scope ＝ `main` AST 32–139·起算列 84）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_D2_pre_freeze.py:84  L.append(f"{sb:<6}{lbl + '/' + which:<12}{float(rng.area):>16.4f}")
+     verify/probes/probe_E17_intersection.py  綁定標的 `old`（scope ＝ `main` AST 64–314·起算列 125）⇒ 其後之**詞界**命中 **2** 列
+         verify/probes/probe_E17_intersection.py:126  old = None
+         verify/probes/probe_E17_intersection.py:157  RNG[(sb, lbl, which)] = (old, new)
+     verify/probes/probe_K9_7d_layer2.py  綁定標的 `_r_old`（scope ＝ `main` AST 105–391·起算列 184）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_K9_7d_layer2.py:184  rec["a_old"] = float(_r_old.area)
+     verify/probes/probe_K9_7d_layer2.py  綁定標的 `_r_new`（scope ＝ `main` AST 105–391·起算列 192）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_K9_7d_layer2.py:192  rec["a_new"] = float(_r_new.area)
+     verify/probes/probe_K9_7d_stageA.py  綁定標的 `poly`（scope ＝ `main` AST 74–273·起算列 134）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_K9_7d_stageA.py:137  edge = fx._alloc_edge_of(poly, cad, lbl)
+     verify/probes/probe_K9_s62_chord_vs_linedist.py  綁定標的 `rng`（scope ＝ `main` AST 75–423·起算列 135）⇒ 其後之**詞界**命中 **16** 列
+         verify/probes/probe_K9_s62_chord_vs_linedist.py:136  rec["err"] = "rng：" + str(e).splitlines()[0][:90]
+         verify/probes/probe_K9_s62_chord_vs_linedist.py:170  # `L(t*)` ← 自 `rng` 還原：平行 alloc_dir 且離側界最遠之邊
+         verify/probes/probe_K9_s62_chord_vs_linedist.py:172  _ring = list(rng.exterior.coords)
+         verify/probes/probe_K9_s62_chord_vs_linedist.py:186  rec["err"] = "rng 上無平行 alloc_dir 之邊 ⇒ L(t*) 不可還原"
+         verify/probes/probe_K9_s62_chord_vs_linedist.py:222  for _q in rng.exterior.coords]
+         verify/probes/probe_K9_s62_chord_vs_linedist.py:242  _cg = _line.intersection(rng)
+         …（餘 10 列見同檔）
+     verify/probes/probe_K9_s62_k98_line_vs_chord.py  綁定標的 `_rng`（scope ＝ `main` AST 87–490·起算列 161）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_K9_s62_k98_line_vs_chord.py:161  rec["rng_area"] = float(_rng.area)
+     verify/probes/probe_K9_s62c_attribution.py  綁定標的 `_rng`（scope ＝ `main` AST 73–670·起算列 159）⇒ 其後之**詞界**命中 **2** 列
+         verify/probes/probe_K9_s62c_attribution.py:159  rec["rng"] = _rng
+         verify/probes/probe_K9_s62c_attribution.py:160  rec["rng_area"] = float(_rng.area)
+     verify/probes/probe_WG953_corner_and_sets.py:143  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_WG956_yi_style.py:299  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_WG958_dmax_robust.py:168  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_WG959_knife_edge.py:119  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_WG960_fitcore.py:85  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_WG970_q_scope.py:37  （非 Assign ⇒ 無綁定標的）
+     verify/probes/probe_ruling_K9_7_alloc_t.py  綁定標的 `_r_old`（scope ＝ `main` AST 65–259·起算列 134）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_ruling_K9_7_alloc_t.py:134  a_old = float(_r_old.area) if _r_old is not None else None
+     verify/probes/probe_ruling_K9_7_alloc_t.py  綁定標的 `_r_new`（scope ＝ `main` AST 65–259·起算列 144）⇒ 其後之**詞界**命中 **1** 列
+         verify/probes/probe_ruling_K9_7_alloc_t.py:144  a_new = float(_r_new.area) if _r_new is not None else None
+     verify/probes/probe_ruling_K9_corner_width.py:451  （非 Assign ⇒ 無綁定標的）
+     verify/run_verification.py  綁定標的 `r`（scope ＝ `rng` AST 242–250·起算列 250）⇒ 其後之**詞界**命中 **1** 列
+         verify/run_verification.py:250  return round(float(r.area), 2) if r is not None else None
+
+   🔑 **判別力（詞界框 vs 子字串框）**：於 `verify/run_verification.py` 之 `def rng` 區間（`242`–`250`）查名 `r` ⇒ 子字串框 **6** 列／**詞界框 2** 列 ⇒ 二數相異 ⇒ 該修**確有效**
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## 款 `2`　路乙：自 `corner_range_polys[(blk,side)]` 取其**遠側境界線**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+### `(a)` 該物於**每一** `forced` 消費端之可達性（**三態**·框同 `W-G.9-289 §三`）
+
+   🔒 三態之定義（逐字承 `W-G.9-289R §二-4`）：`(i)` 同一 scope 可達／`(ii)` 頂層全域可達／`(iii)` ⛔ 可達
+
+   | `forced` 消費端所在 scope | AST 區間 | scope 名數 | 頂層全域數 | `corner_range_polys` | `ctx` | **判** |
+   |---|---|---|---|---|---|---|
+   | `app.py` `main` | `14975`–`24579` | `2127` | `286` | scope `False`／全域 `False` | scope `False` | 🔴 `(iii)` ⛔ 可達 |
+   | `verify/stepg_pipeline.py` `_run_step_g_impl` | `277`–`1643` | `400` | `6` | scope `False`／全域 `False` | scope `True` | ✅ `(i)` 同一 scope 可達 |
+   | `verify/wf_f1.py` `compute` | `184`–`419` | `117` | `20` | scope `False`／全域 `False` | scope `False` | 🔴 `(iii)` ⛔ 可達 |
+   | `verify/wf_f4.py` `_reshape_block` | `1323`–`1549` | `115` | `54` | scope `False`／全域 `False` | scope `False` | 🔴 `(iii)` ⛔ 可達 |
+
+   🔑 **判別力二造**：[必可達] `ns` 於 `_run_step_g_impl` 之 scope ＝ **True**（須 True）／[必⛔ 可達] 一人造名（執行期組出·字面⛔ 出艙）＝ **False**（須 False）⇒ ✅ 器非紅
+
+### `(b)` `corner_range_polys` 之**現有消費端全部**（🛑 本批**重量**·⛔ 轉引前批之數）
+
+   🔒 框 ＝ 字樣 `corner_range_polys`（**無 `^` 錨 ⇒ 二數並報**）｜母體 ＝ 上開 **339** 檔
+   ⇒ **檔 4 ／ 列 23**
+
+     app.py                            :12483  註解／docstring     `has_side`（`{side: bool}`）／`corner_range_polys`／`corner_range_areas`（皆 `{side: …}`）／
+     app.py                            :12529  讀                _cp = (_ctx.get('corner_range_polys') or {}).get(_side)
+     app.py                            :13166  **寫**            _cr_polys_6 = _st_cr6.session_state.setdefault('f3_corner_range_polys', {})
+     app.py                            :21959  讀                _lg_crp_raw = (st.session_state.get('f3_corner_range_polys', {}) or {}).get(blk_label) o
+     app.py                            :21981  —                'corner_range_polys': _lg_crp,
+     app.py                            :23219  讀                _crp = st.session_state.get('f3_corner_range_polys', {}) or {}
+     app.py                            :23324  —                _verd = '代表點無（缺 corner_range_polys，需重跑步驟C）'
+     verify/stepg_pipeline.py          :413    —                ctx = {'corner_range_polys': {}, 'corner_range_errors': {}}
+     verify/stepg_pipeline.py          :429    **寫**            ctx['corner_range_polys'][(_crp_lbl, _crp_wh)] = ns['_build_corner_range_v3'](
+     verify/stepg_pipeline.py          :449    —                '%s/%s' % _k for _k in ctx['corner_range_polys'])
+     verify/stepg_pipeline.py          :452    —                for _k, _v in ctx['corner_range_polys'].items())
+     verify/stepg_pipeline.py          :691    註解／docstring     #   🔒 `corner_range_polys` 取自 `W-G.9-247` 工項二所鋪之 `ctx`（`I-7`）——⛔ 自建第二源。
+     verify/stepg_pipeline.py          :696    讀                _lg_crp_sg = {_w_sg: ctx['corner_range_polys'].get((blk_label, _w_sg))
+     verify/stepg_pipeline.py          :705    —                'corner_range_polys': _lg_crp_sg,
+     verify/stepg_pipeline.py          :1642   —                'corner_range_polys': ctx['corner_range_polys'],
+     verify/probes/probe_WG9287_landeffect.py:11     —                ＝ `_lot_gate` 之實參 `blk_ctx['corner_range_polys'][chain_side]` —— 即單所稱之
+     verify/probes/probe_WG9287_landeffect.py:12     註解／docstring     `corner_range_polys[_side]` **本身**（`verify/stepg_pipeline.py` `_lg_crp_sg` 所鋪）。
+     verify/probes/probe_WG9287_landeffect.py:24     註解／docstring     `(ii)` 多邊形甲 `is` 碼面之 `corner_range_polys[_side]`（⛔ 另建第二份之機驗）。
+     verify/probes/probe_WG9287_landeffect.py:263    讀                cp = (ctx.get("corner_range_polys") or {}).get(side)
+     verify/probes/probe_WG9287_landeffect.py:440    註解／docstring     # ── 自我驗證閘 (ii)：多邊形甲 ＝ 碼面之 `corner_range_polys[_side]` ──
+     verify/probes/probe_WG9287_landeffect.py:444    —                "`blk_ctx['corner_range_polys'][%r]` `is` `_build_corner_range_v3` 之回傳 ⇒ **%s**"
+     verify/probes/probe_WG9287_landeffect.py:453    —                say("**款 `1`　多邊形甲 ＝ `corner_range_polys[%r]`（規定範圍）**" % side)
+     verify/probes/probe_WG9290_neardir.py:380    —                say("   `corner_range_polys[%r]` 之**遠側境界線**：錨 `_Tp` ＝ %s ／ 方向單位向量 ＝ %s"
+
+   🔒 **`f3_corner_range_polys`（session 鍵·同族·框另計）**：
+   ⇒ **檔 1 ／ 列 3**
+     app.py:13166  _cr_polys_6 = _st_cr6.session_state.setdefault('f3_corner_range_polys', {})
+     app.py:21959  _lg_crp_raw = (st.session_state.get('f3_corner_range_polys', {}) or {}).get(blk_label) or {}
+     app.py:23219  _crp = st.session_state.get('f3_corner_range_polys', {}) or {}
+
+### `(c)` 自該多邊形取其**遠側境界線**所需之運算（**逐項具名**·🛑 ⛔ 判其是否構成「另算第二份」）
+
+   🔒 事實基礎（`app.py` `_build_corner_range_v3` 之末段·當場現查）：
+     錨 `cut = _LS3([(_Tp[0] - sux * _ext` ⇒ ✅ 唯一
+         app.py:12881  cut = _LS3([(_Tp[0] - sux * _ext, _Tp[1] - suy * _ext),
+     錨 `rng = min(pieces, key=` ⇒ ✅ 唯一
+         app.py:12890  rng = min(pieces, key=lambda g: g.distance(_anchor))
+     錨 `rng = rng.difference(chamfer_tri)` ⇒ ✅ 唯一
+         app.py:12894  rng = rng.difference(chamfer_tri)      # §五：面積扣除截角三角形
+     錨 `return rng` ⇒ ✅ 唯一
+         app.py:12899  return rng
+
+   ① 取多邊形之外環逐邊
+       `rng.exterior.coords` 之相鄰點對；🛑 `rng` 於 `difference(chamfer_tri)` 後可為 `MultiPolygon` ⇒ 須顯式處理**退化態**（`常規八 四`）
+   ② 取得側界之**線向** `(sux, suy)` 以辨識何邊為「平移後 SIDELINE」
+       碼面之 `sux`／`suy` 係 `_build_corner_range_v3` 之**區域值**（同 `W-G.9-289R §二-2` 之判）⇒ 須自 `f3_cad_side_lines_by_side[blk][side]` 之端點**另行重算**
+   ③ 取得「遠近」之基準
+       遠側界 ＝ 過 `_Tp` 之線（`_Tp = S1 + σ·S1_par·d̂`·`app.py` 末段逐字）；判「遠」須有 `corner_pt` 與 `d_hat` 以作 `s` 投影比較 —— 二者於 `forced` 消費端**皆已在 scope 內**
+   ④ 排除**截角後**之邊
+       `rng` 已 `difference(chamfer_tri)` ⇒ 其邊界含截角邊；`K-8 §五`「兩套側界·禁混用」⇒ 須以角度／長度門檻濾之（門檻值⛔ 現存於碼面）
+   ⑤ 自該邊求 `cum_S`（即起算點）
+       取該邊任一端點對 `corner_pt` 沿 `d_hat` 之投影 ⇒ 其值即 `S1_par` 之**重算**
+   ⑥ 對每一 `forced` 側逐側為之
+       `(blk, side)` 之鍵已存在於 `ctx['corner_range_polys']`（`verify/stepg_pipeline.py:429` 之寫入式）⇒ 讀之⛔ 需新參數
+
+   🛑 **本器⛔ 判其是否構成「另算第二份」**——該判屬發單側（單 `§五 款 2 (c)` 逐字）。
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+## 款 `3`　二路共同：`if _fo_left:` 分支與其 `cum_S` 之二支賦值式
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+### `(3-1)` `verify/stepg_pipeline.py` 之 `if _fo_left:`（**當場現查**·⛔ 採單所載之行號）
+
+   錨 `if _fo_left:` @ `verify/stepg_pipeline.py` ⇒ 命中 **1** 列 ⇒ ✅ 唯一
+       verify/stepg_pipeline.py:655  if _fo_left:
+   錨 `if _fo_right:` @ `verify/stepg_pipeline.py` ⇒ 命中 **1** 列 ⇒ ✅ 唯一
+       verify/stepg_pipeline.py:666  if _fo_right:
+   🔑 判別力自檢：寬字樣 `_fo_left` @ `verify/stepg_pipeline.py` ⇒ 命中 **3** 列 ⇒ 該檢**⛔ 恆為 1**
+
+   🛑 **單 `§四(1)` 所載之 `verify/stepg_pipeline.py:657` 與當場現查相異**——實為 `:655`（照實回報·單自載「⛔ 採此行號」）
+
+### `(3-2)` `cum_S` 之**二支賦值式逐字**（`verify/stepg_pipeline.py`）
+
+   錨 `left_cum_S = float(_left_buffer_S)` ⇒ 命中 **1** 列（✅ 唯一）
+       verify/stepg_pipeline.py:776  |             left_cum_S = float(_left_buffer_S)
+   錨 `right_cum_S = float(_right_buffer_S)` ⇒ 命中 **1** 列（✅ 唯一）
+       verify/stepg_pipeline.py:777  |             right_cum_S = float(_right_buffer_S)
+   🔑 判別力自檢：寬字樣 `cum_S` @ `verify/stepg_pipeline.py` ⇒ 命中 **18** 列 ⇒ ⛔ 恆為 1
+
+### `(3-3)` `app.py` **同形之處**（🛑 ⛔ 本批改·逐處具名）
+
+   錨 `left_cum_S = float(_left_buffer_S)`
+       ⇒ @ `app.py` 命中 **1** 列（✅ 唯一）
+           app.py:22055  |                             left_cum_S = float(_left_buffer_S)
+   錨 `right_cum_S = float(_right_buffer_S)`
+       ⇒ @ `app.py` 命中 **1** 列（✅ 唯一）
+           app.py:22056  |                             right_cum_S = float(_right_buffer_S)   # 同理右側
+   錨 `_fo_left = bool(_fo_block.get('left_forced_offset', False))`
+       ⇒ @ `app.py` 命中 **1** 列（✅ 唯一）
+           app.py:21886  |                         _fo_left = bool(_fo_block.get('left_forced_offset', False))
+   🔑 判別力自檢：寬字樣 `cum_S` @ `app.py` ⇒ 命中 **39** 列 ⇒ ⛔ 恆為 1
+
+   🔒 **app 側之 scope**：上二式落於 `app.py` 之 `def main` 內（AST 實查·見下）
+       app.py:22055 落於 `def main`（AST `14975`–`24579`）＝ **True**
+       app.py:22056 落於 `def main`（AST `14975`–`24579`）＝ **True**
+
+====================================================================================================================
+🛑 **出艙即止**：本器⛔ 判孰優、⛔ 擬任何實作形、⛔ 改碼一字、⛔ 開分支、⛔ 動用 KL 之放行、
+   ⛔ 鑄任何 `GB`、⛔ 解除或收窄 `GB-170`、⛔ 提修法主張、⛔ 呈 KL。
+====================================================================================================================
