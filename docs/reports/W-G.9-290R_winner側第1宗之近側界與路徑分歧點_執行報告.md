@@ -297,3 +297,44 @@ verify/stepg_pipeline.py:855   _near_dir_left = res.get('_alloc_dir_used')   ←
 `ls-remote`／`SELF_SHA256`／`preflight`／`selftest`／`acceptance_audit`／`quotePath`／`uniq`／`deletions`／
 `is_second_after_corner`／`corner_range_polys`／`_k923_gate1`／`_build_corner_range_v3`／`_corner_buffer_S`／
 `cum_S`／`W_0`／`S1_par`／`GB-170`／`ast`／`numstat`／`ALPHA_LABELS`／`baselines`／`sha256`／`ls-tree`／`merge-base`。
+
+
+---
+
+## `§八`　收工閘（**入倉後**之末端追加·⛔ 預寫）
+
+🛑 **本節之一切數皆於二 `commit`（`1333898`／`e6f9b06`）入倉**後**當場量**（`先跑再寫`）。
+
+| # | 受詞（**產生指令**） | 實測 | 判 |
+|---|---|---|---|
+| `1` | `git -c core.quotePath=false show --numstat --format= <commit>` 逐檔具名 | `1333898` `+157 −0`（單）；`e6f9b06` `+19 −0`（`GB` 登記表）／`+299 −0`（本報告）／`+0 −0`／`+218 −0`／`+1 −0`（`neardir` 三檔）／`+0 −0`／`+116 −0`／`+1 −0`（`pitindex_pre` 三檔）／`+494 −0`（器）⇒ **刪除欄非 `0` 之檔數 ＝ `0`** | ✅ |
+| `2` | `git diff --name-only <a> <b> -- <34 檔正面列舉>` | `39ab6e3..1333898` **`0`** 行／`1333898..e6f9b06` **`0`** 行／`39ab6e3..HEAD` **`0`** 行；對照組[必非零] `17fd981^..17fd981` ＝ **`2`** 行 | ✅ |
+| `3` | `git show HEAD:<path> \| tr -cd '\r' \| wc -c` | 本批異動 **`10`** 檔逐檔 `CR` ＝ `0`·合計 **`0`**；判別力[必非零] `verify/out/KL_UI_3.5m_2e08a41_stdout.log` 之 blob `CR` ＝ **`2987`** | ✅ |
+| `4` | `python verify/probes/probe_WG9267_issuer_measurers.py registry` | 自誤 `383`／`393`｜`GB` `168`／`170`｜`VR` `80`／`95`｜`K-9` `28`／`29` ⇒ **四簿逐位未動**（期初＝期末·**坐實⛔ 鑄號**） | ✅ |
+| `5` | `python verify/probes/probe_WG9269_pit_index.py` | **`87`／`87`** 全數可解析·🔴 命中 **`0`**·末標籤 `bi` ⇒ **下一標籤 `bj`**（母體 ＝ `HEAD` 之追蹤 `.md` **`780`** 檔·期初 `778` ⇒ `+2` ＝ 本批新增之單與報告·**自洽**）；造甲 坑 `n` 定義處 `6` ≥ `1`／造乙 人造坑 `0`／`0` ⇒ **器非紅**；`stderr` `0` B；`ALPHA_LABELS` 一字未動（`git diff --numstat 39ab6e32..HEAD -- verify/probes/probe_WG9269_pit_index.py` 之輸出為**空**） | ✅ |
+| `5'` | `python verify/tools/wg9223_acceptance_audit.py <本單> <本報告>` | `rc = 0`·【驗收】段 ＝ `:150`–`:154`·判定組（反引號 token）**`27`** 個 ⇒ **命中 `0` 之字樣 ＝ `0`**（受詞係 `index` ⇒ 已先 `git add`） | ✅ |
+| `6` | 自限復驗 | `34` 檔 blob 期初＝期末 **相異 `0`**；`baselines` **`298`** 檔·框 `sha256` ＝ `a898f4e1bba8f8d230a9e279044f529175beb9186915aed1fa5590c1878a7ec9`；`p3a` `merge-base --is-ancestor` `rc` ＝ `1` ⇒ **非祖先**；`WV_BAKE` ＝ `None`；`K-9-29` 任何子項⛔ 落地／`GB-79`／`167`／`168`／`169`／`170` **⛔ 修** ⇒ 由「`34` 檔 blob 相異 `0`」**機械蘊含** | ✅ |
+| `6'` | `git ls-remote origin 'refs/heads/verify/*'` | `verify/W-G.9-289-gb170` 命中 **`0`**（⇒ **⛔ 開**·本批亦**⛔ 開**任何分支）；判別力[必存在] `p3a` 命中 **`1`**（其 `20` 個 `verify/*` ref 全列已出艙於落檔） | ✅ |
+| `7` | `git ls-remote origin refs/heads/wip/s1-endpart`（`push` **後**） | 🛑 **於推送後出艙於聊天**（⛔ 預寫·⛔ 於入倉文件宣稱一件尚未發生之事） | — |
+
+🩸 **坑 `g`（照實併記）**：本批四個落檔中二個為 `CRLF`——`WG9290R_pitindex_pre.log`（`11527` B·`CR` `116` ＝ `LF` `116`）／
+`WG9290R_neardir.log`（`32616` B·`CR` `218` ＝ `LF` `218`）⇒ **入倉前以二進位歸正**至 `LF`
+（`11411` B／`32398` B·`CR` 皆 `0`·`Δ` ＝ `−116`／`−218` ＝ 各自之列數·**自洽**）。
+`WG9290R_pitindex_post.log` 於本節落筆後同法歸正並入 `commit 3`。
+🩸 **閘之量測與其所守護之動作為<u>分開之呼叫</u>**（`W-G.9-199` 常規補款 `一`）：閘 `1`–`6'` 之量測與 `push` **⛔ 置於同一命令塊**。
+
+---
+
+## `§九`　逐 `commit`
+
+| # | `commit` | 主旨 | `numstat`（`+`／`−`） |
+|---|---|---|---|
+| `1` | `1333898` | `W-G.9-290` 工項零：本單原封入倉（三方逐位對拍·受詞自證·同格載產生指令）⛔ 零生產碼 | `+157`／**`−0`** |
+| `2` | `e6f9b06` | `W-G.9-290` 工項一／二：winner 側第 1 宗之近側界係由鏈交遞取得（逐位 ∥SIDELINE）＋ 一則末端追加 ⛔ 零生產碼·⛔ 鑄號 | `+1148`／**`−0`**（`9` 檔） |
+| `3` | （本 `commit`） | `W-G.9-290` 收工：收工閘 `1`〜`7` 之實測（報告入倉後量·嚴格末端追加）⛔ 零生產碼 | 見其自身之 `numstat` |
+
+🔒 **本批為零生產碼批**（`常規一` 補款 `🔧 一`：零生產碼 `commit` **逕行 `push`**·⛔ 請示），
+其判法（`git diff --name-only <前一已 push 之 HEAD>..<本 commit> \| grep -xE 'app\\.py|verify/stepg_pipeline\\.py|verify/run_all\\.py|verify/run_verification\\.py'`）
+於**逐 `commit`** 皆為**空輸出** ⇒ 見上開收工閘 `2`。
+🛑 **KL 之放行仍<u>未被動用</u>**——本批⛔ 改生產碼一字、⛔ 開任何分支。
+🛑 **主線之 `ls-remote` 實查**（全 `40` 碼）於**推送後**出艙於聊天——**⛔ 預寫**。
