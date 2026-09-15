@@ -1,0 +1,124 @@
+====================================================================================================================
+【`W-G.9-303` 靜態量測器 v2 —— 框補正】
+====================================================================================================================
+母體之產生指令 = git ls-tree HEAD --name-only verify/ | grep '\.py$'  ＋ app.py
+母體基數 = 34（外部錨 `§零` 閘 `7` ＝ 34）⇒ 相符 = True
+
+====================================================================================================================
+`§三` 款 `1` 補正　**第五形 `.setdefault`**（單所令四形⛔ 涵蓋之）
+====================================================================================================================
+形 `.setdefault` 且其 receiver 逐字含 `side_lines_by_side`／`f3_cad_side_lines_by_side` ⇒ 1 處
+   app.py :: parse_cad_precision_layers
+       逐字        = _by_side_wb = result['side_lines_by_side'].setdefault(_hit_blk, {})
+       receiver    = result['side_lines_by_side']
+       🔑 層① 鍵   = _hit_blk   （AST = Name）
+
+====================================================================================================================
+`§三` 款 `1` 補正（續）　層① 鍵之名**逐層溯至源頭之產生式**
+====================================================================================================================
+
+   ● 層① 鍵之名 = `_hit_blk`   （於 app.py :: parse_cad_precision_layers）
+       [Store] 逐字 = _hit_blk, _ov_sl, _rk_sl = _best_block(
+               產生式 = _best_block(
+            [(float(p[0]), float(p[1])) for p in _spts], 'SIDE_LINE', sl.get('handle', ''))
+               🔑 **源頭之名 = `_best_block`**（`Call`·其位序回傳）
+               `_best_block` 之定義 :: parse_cad_precision_layers   形參 = ['_pts_l', '_layer_nm', '_handle']
+               層級 = 🔴 **內層閉包**（於 `parse_cad_precision_layers` 之內·⛔ 在 `ns` 內）
+               Return 逐字 = _rk[0]['block'], _rk[0]['overlap_m'], _rk
+               Return 逐字 = None, 0.0, _rk
+
+====================================================================================================================
+`§四` 款 `1` 補正　`is_corner` 之**五形分列**（v1 之二形⛔ 涵蓋字面鍵）
+====================================================================================================================
+
+── 形 `Name-Store` ⇒ 0 處 ──
+   🛑 **loud**：無命中
+
+── 形 `arg(形參)` ⇒ 3 處 ──
+   app.py :: (形參)
+       逐字 = is_corner: bool = False,
+   app.py :: (形參)
+       逐字 = is_corner: bool = False,
+   app.py :: (形參)
+       逐字 = S_max, is_corner, side, avg_depth, B, C, tab6_burden,
+
+── 形 `Subscript-Store(字面鍵)` ⇒ 7 處 ──
+   app.py :: main::_f3_corner_picker_fragment
+       逐字 = curr['is_corner'] = new_is
+   app.py :: main
+       逐字 = _existing['is_corner'] = False
+   app.py :: main
+       逐字 = _existing['is_corner'] = True
+   app.py :: main
+       逐字 = _existing['is_corner'] = True
+   app.py :: main::_f3_unified_map_fragment
+       逐字 = curr['is_corner'] = True
+   app.py :: main::_f3_unified_map_fragment
+       逐字 = curr['is_corner'] = False
+   app.py :: main::_f3_unified_map_fragment
+       逐字 = curr['is_corner'] = True
+
+── 形 `Dict 鍵字面` ⇒ 0 處 ──
+   🛑 **loud**：無命中
+
+── 形 `Load(讀)` ⇒ 4 處 ──
+   app.py :: _solve_G_one   ×3
+   app.py :: solve_G_binary   ×1
+
+🔑 **受詞係逐宗抑或逐街廓**（以其賦值式所消費之名判·逐字出艙）
+   app.py :: main::_f3_corner_picker_fragment
+       receiver（被寫之物）逐字 = curr
+       值（賦值式）逐字         = new_is
+   app.py :: main
+       receiver（被寫之物）逐字 = _existing
+       值（賦值式）逐字         = False
+   app.py :: main
+       receiver（被寫之物）逐字 = _existing
+       值（賦值式）逐字         = True
+   app.py :: main
+       receiver（被寫之物）逐字 = _existing
+       值（賦值式）逐字         = True
+   app.py :: main::_f3_unified_map_fragment
+       receiver（被寫之物）逐字 = curr
+       值（賦值式）逐字         = True
+   app.py :: main::_f3_unified_map_fragment
+       receiver（被寫之物）逐字 = curr
+       值（賦值式）逐字         = False
+   app.py :: main::_f3_unified_map_fragment
+       receiver（被寫之物）逐字 = curr
+       值（賦值式）逐字         = True
+
+====================================================================================================================
+`§三` 款 `4` 補正　母體**二層分列**（頂層 `ns` 鍵 ／ 內層閉包）
+====================================================================================================================
+頂層 `FunctionDef` = 429 ／ 內層 `FunctionDef` = 208（母體 34 檔）
+
+── 頂層（＝ 款 `4` 所令之母體） ⇒ 命中 1 ──
+   app.py :: _hash_polys_for_overlay   形參 = ['parcel_polys', 'classified_blocks']
+       Return 逐字 = [(b.get('id'), b.get('label', ''), b.get('category', ''),
+                 round(b.get('area_m2', 0), 2), len(b.get('vertices', []
+
+── 🔴 內層閉包（⛔ 在該母體內） ⇒ 命中 2 ──
+   app.py :: _solve_one   形參 = ['_a_m2', '_A', '_l_front', '_l_side', '_F', '_blk_poly', '_d_hat', '_baseline_pt', '_S_max', '_is_corner', '_side', '_avg_depth', '_allocation_dir', '_side_mid', '_W_prev', '_near_dir', '_is_chain_head']
+       Return 逐字 = _solve_G_one(
+                            a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F,
+                            bl
+   verify/stepg_pipeline.py :: _solve_one   形參 = ['_a_m2', '_A', '_l_front', '_l_side', '_F', '_blk_poly', '_d_hat', '_baseline_pt', '_S_max', '_is_corner', '_side', '_avg_depth', '_allocation_dir', '_side_mid', '_W_prev', '_near_dir', '_is_chain_head']
+       Return 逐字 = ns["_solve_G_one"](
+            a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F,
+            blk_poly=_blk_poly, d_hat=_d
+
+🔑 **`_best_block` 之二獨立結構性成因**（其為本案唯一之「幾何 → 街廓識別」實質映射）
+   定義 = app.py :: _best_block（內層閉包·宿主 = `parse_cad_precision_layers`）
+   形參 = ['_pts_l', '_layer_nm', '_handle']
+   成因① 其為**內層閉包** ⇒ ⛔ 在 `t.body` 頂層名（`ns` 鍵）之母體內
+   成因② 其形參⛔ 含 ['block_poly', 'poly', 'geom'] 任一字樣 ⇒ 縱置於頂層，款 `4` 之框亦⛔ 命中
+   Return 逐字 = _rk[0]['block'], _rk[0]['overlap_m'], _rk
+   Return 逐字 = None, 0.0, _rk
+
+判別力[必為零] 人造名（執行期組出·字面⛔ 出艙）於 AST 命中 = 0（須 0）
+判別力[必非零] `is_corner` 五形合計 = 14（須 ≥ 1）
+
+====================================================================================================================
+【本器⛔ 判「可信／不可信」·⛔ 擬任何改法或 diff】
+====================================================================================================================

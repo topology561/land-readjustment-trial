@@ -1,0 +1,236 @@
+====================================================================================================================
+【`W-G.9-303` `§三`／`§四` 靜態量測器】
+====================================================================================================================
+母體之產生指令 = git ls-tree HEAD --name-only verify/ | grep '\.py$'   ＋ app.py
+母體基數 = 34 檔（外部錨 ＝ `§零` 閘 `7` 之 `34`）⇒ 相符 = True
+
+====================================================================================================================
+`§三` 款 `1`　`f3_cad_side_lines_by_side` 之**寫入端**與層① 鍵之源頭（**四形分列**·⛔ 三形盲框）
+====================================================================================================================
+
+── 形 `Subscript` ⇒ 2 處 ──
+   app.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = st.session_state['f3_cad_side_lines_by_side'] = (
+   verify/run_verification.py :: build_pipeline   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = ss["f3_cad_side_lines_by_side"] = slm
+
+── 形 `Assign` ⇒ 0 處 ──
+   🛑 **loud**：該形於母體內**無命中**（母體基數 = 34 檔）
+
+── 形 `.get` ⇒ 23 處 ──
+   app.py :: build_cad_binding_table   鍵 = 'side_lines_by_side'
+       逐字 = _sl = (cad_layers or {}).get('side_lines_by_side') or {}
+   app.py :: _first_corner_alloc_dir   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _slbs = (_st_fc.session_state.get('f3_cad_side_lines_by_side', {}) or {})
+   app.py :: _annotate_temp_parcel_cut_type   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _ss_k6.get('f3_cad_side_lines_by_side', {}) or {},
+   app.py :: select_corner_lots_both_sides_v12   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _slbs_wb = _st_wb5.session_state.get('f3_cad_side_lines_by_side', {}) or {}
+   app.py :: _build_wf_ctx   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = "side_lines_by_side":   ss.get("f3_cad_side_lines_by_side", {}) or {},
+   app.py :: main   鍵 = 'side_lines_by_side'
+       逐字 = _cad_layers.get('side_lines_by_side', {}) or {}
+   app.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _slbs_cr = st.session_state.get('f3_cad_side_lines_by_side', {}) or {}
+   app.py :: main   鍵 = 'side_lines_by_side'
+       逐字 = _sl_map_pp = _cad_layers.get('side_lines_by_side', {}) or {}
+   app.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _sls_a = (st.session_state.get(
+   app.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _side_lines_blk = (st.session_state.get(
+   app.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _slb_ap = (st.session_state.get('f3_cad_side_lines_by_side', {})
+   verify/fixture_corner_range_k8.py :: main   鍵 = 'side_lines_by_side'
+       逐字 = sides = cad.get("side_lines_by_side", {}) or {}
+   verify/run_verification.py :: build_pipeline   鍵 = 'side_lines_by_side'
+       逐字 = slm = cad.get("side_lines_by_side", {}) or {}
+   verify/run_verification.py :: build_param_table   鍵 = 'side_lines_by_side'
+       逐字 = slm = cad.get("side_lines_by_side", {}) or {}
+   verify/run_verification.py :: build_anchor_diag   鍵 = 'side_lines_by_side'
+       逐字 = slm = cad.get("side_lines_by_side", {}) or {}
+   verify/run_verification.py :: main   鍵 = 'side_lines_by_side'
+       逐字 = "f3_cad_side_lines_by_side": _cad.get("side_lines_by_side", {}),
+   verify/selection_pipeline.py :: run_corner_pk   鍵 = 'side_lines_by_side'
+       逐字 = _side_lines_pc = cad.get("side_lines_by_side", {}) or {}
+   verify/stepg_pipeline.py :: _run_step_g_impl   鍵 = 'side_lines_by_side'
+       逐字 = _crp_slbs = cad.get('side_lines_by_side', {}) or {}
+   verify/stepg_pipeline.py :: _run_step_g_impl   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _side_lines_blk = (ss.get('f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+   verify/wd3_fragment_geom.py :: compute   鍵 = 'side_lines_by_side'
+       逐字 = slm = cad.get("side_lines_by_side", {}) or {}
+   verify/wg_g1_smoke.py :: main   鍵 = 'side_lines_by_side'
+       逐字 = "f3_cad_side_lines_by_side": cad.get("side_lines_by_side", {}),
+   verify/wg_g2_smoke.py :: main   鍵 = 'side_lines_by_side'
+       逐字 = "f3_cad_side_lines_by_side": cad.get("side_lines_by_side", {}),
+   verify/wg_g3.py :: _seed_ctx   鍵 = 'side_lines_by_side'
+       逐字 = "f3_cad_side_lines_by_side": cad.get("side_lines_by_side", {}),
+
+── 形 `Dict/DictComp` ⇒ 6 處 ──
+   app.py :: parse_cad_precision_layers   鍵 = 'side_lines_by_side'
+       逐字 = result = {
+   app.py :: _build_wf_ctx   鍵 = 'side_lines_by_side'
+       逐字 = cad = {
+   verify/run_verification.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = _seed = {
+   verify/wg_g1_smoke.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = seed.update({
+   verify/wg_g2_smoke.py :: main   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = seed.update({
+   verify/wg_g3.py :: _seed_ctx   鍵 = 'f3_cad_side_lines_by_side'
+       逐字 = seed.update({
+
+====================================================================================================================
+`§三` 款 `1`（續）　層① 鍵之**源頭之名**（逐層溯至產生式）
+====================================================================================================================
+
+====================================================================================================================
+`§三` 款 `2`　母體 ＝ `ns` 全部鍵（`app.py` 之 `t.body` 頂層名）＋ `_corner_buffer_S` 之八形參
+====================================================================================================================
+`ns` 鍵基數 = 286（產生指令 ＝ ast.parse(app.py).body 之頂層定義名）
+`_corner_buffer_S` 之形參（8 個·逐名）= ['block_poly', 'd_hat', 'front_p1', 'allocation_dir', 'range_area', 'side', 'tol', '_label']
+款 `2` 之母體基數 = 294（`ns` 鍵 286 ∪ 形參 8）
+
+── 字樣 `blk` ⇒ 命中 1（**全量逐名**·⛔ 只報基數）──
+   - `k91_min_alloc_contrib_by_blk`  [頂層名] （頂層 `def`·逐字 = def k91_min_alloc_contrib_by_blk(min_alloc_area_by_blk, eff_min_build_by_blk):）
+
+── 字樣 `label` ⇒ 命中 3（**全量逐名**·⛔ 只報基數）──
+   - `_label`  [形參] （`_corner_buffer_S` 之第 8 形參）
+   - `bl_pts_by_label`  [頂層名] （頂層 `def`·逐字 = def bl_pts_by_label(classified_blocks, manual_baseline_by):）
+   - `n19p_depth_info_by_label`  [頂層名] （頂層 `def`·逐字 = def n19p_depth_info_by_label(build_blocks, alloc_dir_by, front_lines_by, manual_baseline_b）
+
+── 字樣 `lbl` ⇒ 命中 0（**全量逐名**·⛔ 只報基數）──
+   🛑 **loud**：無命中；母體基數 = 294
+
+── 字樣 `block_id` ⇒ 命中 0（**全量逐名**·⛔ 只報基數）──
+   🛑 **loud**：無命中；母體基數 = 294
+
+判別力[必為零]（字樣**執行期組出**·字面⛔ 出艙）⇒ 命中 0（須 0）⇒ ✅
+判別力[必非零] `ns` 鍵基數 = 286（須 ≥ 1）⇒ ✅
+
+====================================================================================================================
+`§三` 款 `3`　`_corner_buffer_S` 各呼叫點之 `_label` 實參**逐處溯源**（⛔ 以名同判物同）
+====================================================================================================================
+呼叫點總數（`Name` ∪ `Attribute` ∪ `ns[<字面>]` 三形並取）= 7
+
+   ● app.py :: main   （呼叫列逐字）
+       _left_buffer_S = _corner_buffer_S(
+       `_label` 實參逐字 = blk_label
+       其所含之名 = ['blk_label']
+       └ `blk_label` 於 `main` 內之賦值來源 ⇒ 3 處
+           [Assign] blk_label = tp['所屬街廓']
+           [For.target] for blk_label, parcels_in_blk in parcels_by_block.items():
+           [Assign] blk_label = matched.get('所屬街廓', '')
+
+   ● app.py :: main   （呼叫列逐字）
+       _right_buffer_S = _corner_buffer_S(
+       `_label` 實參逐字 = blk_label
+       其所含之名 = ['blk_label']
+       └ `blk_label` 於 `main` 內之賦值來源 ⇒ 3 處
+           [Assign] blk_label = tp['所屬街廓']
+           [For.target] for blk_label, parcels_in_blk in parcels_by_block.items():
+           [Assign] blk_label = matched.get('所屬街廓', '')
+
+   ● verify/stepg_pipeline.py :: _run_step_g_impl   （呼叫列逐字）
+       _left_buffer_S = _corner_buffer_S(
+       `_label` 實參逐字 = blk_label
+       其所含之名 = ['blk_label']
+       └ `blk_label` 於 `_run_step_g_impl` 內之賦值來源 ⇒ 1 處
+           [For.target] for blk_label, parcels_in_blk in parcels_by_block.items():
+
+   ● verify/stepg_pipeline.py :: _run_step_g_impl   （呼叫列逐字）
+       _right_buffer_S = _corner_buffer_S(
+       `_label` 實參逐字 = blk_label
+       其所含之名 = ['blk_label']
+       └ `blk_label` 於 `_run_step_g_impl` 內之賦值來源 ⇒ 1 處
+           [For.target] for blk_label, parcels_in_blk in parcels_by_block.items():
+
+   ● verify/wf_f1.py :: compute   （呼叫列逐字）
+       left_buffer_S = ns["_corner_buffer_S"](
+       `_label` 實參逐字 = f"{lbl}·F.1"
+       其所含之名 = ['lbl']
+       └ `lbl` 於 `compute` 內之賦值來源 ⇒ 1 處
+           [Assign] lbl = "R1"
+
+   ● verify/wf_f4.py :: _reshape_block   （呼叫列逐字）
+       buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,
+       `_label` 實參逐字 = f"{blk}·E3"
+       其所含之名 = ['blk']
+       └ `blk` 於 `_reshape_block` 內之賦值來源 ⇒ 1 處
+           [形參] def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
+
+   ● verify/wf_f4.py :: _reshape_block   （呼叫列逐字）
+       buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,
+       `_label` 實參逐字 = f"{blk}·E3"
+       其所含之名 = ['blk']
+       └ `blk` 於 `_reshape_block` 內之賦值來源 ⇒ 1 處
+           [形參] def _reshape_block(ns, snap, cb_by, cad, forced, rows_E, blk, frag, tag, mina):
+
+====================================================================================================================
+`§三` 款 `4`　既有之「幾何 → 街廓識別」映射（**全量**·⛔ 自寫第二套幾何）
+====================================================================================================================
+母體 ＝ `ns` 全部鍵（基數 286）；框 ＝ 形參含 ['block_poly', 'poly', 'geom'] ⋀ `Return` 值含 ['blk', 'label', 'lbl', 'block_id']
+命中 = 1
+
+   ● `_hash_polys_for_overlay`   形參 = ['parcel_polys', 'classified_blocks']
+       Return 逐字 = [(b.get('id'), b.get('label', ''), b.get('category', ''),
+                 round(b.get('area_m2', 0), 2), len(b.get('vertices', []
+
+====================================================================================================================
+`§四` 款 `1`　`is_corner` 之 `Store`／`Load` **二形分列** ＋ 文字層列框對照
+====================================================================================================================
+AST `Store`（含形參）= 3 處
+AST `Load`（含 `Attribute`／字面鍵）= 23 處
+文字層**列框** = 90 列（逐檔：{'app.py': 73, 'verify/fixture_end_reserve.py': 1, 'verify/stepg_pipeline.py': 15, 'verify/test_corner_first_lot_G.py': 1}）
+🛑 二數相異之成因：AST 數以**出現節點**計（一列可含多個），文字層以**列**計 ⇒ 口徑不同，⛔ 應相等
+
+── `Store` 之全量（`檔 :: 函式` ＋ 賦值產生式逐字）──
+   app.py :: (形參)
+       逐字 = is_corner: bool = False,
+   app.py :: (形參)
+       逐字 = is_corner: bool = False,
+   app.py :: (形參)
+       逐字 = S_max, is_corner, side, avg_depth, B, C, tab6_burden,
+
+判別力[必為零]（人造名·執行期組出）⇒ AST 命中 0（須 0）
+判別力[必非零] `Store` 處數 = 3（須 ≥ 1）
+
+====================================================================================================================
+`§四` 款 `2`　`corner`／`first`／`_fc` **三字樣分列** 之 `FunctionDef`／頂層 `Assign`
+====================================================================================================================
+
+── 字樣 `corner` ⇒ `FunctionDef` 14 ／ 頂層 `Assign` 1（**全量**）──
+   [def] app.py :: _annotate_block_corner_flags
+   [def] app.py :: _rebuild_corners_topology
+   [def] app.py :: _find_block_corner
+   [def] app.py :: _auto_detect_corner_side
+   [def] app.py :: _corner_buffer_S
+   [def] app.py :: _corner_range_eps
+   [def] app.py :: _build_corner_range_v3
+   [def] app.py :: select_corner_lots_both_sides_v12
+   [def] app.py :: _extract_corner_cut_line
+   [def] app.py :: _first_corner_alloc_dir
+   [def] app.py :: _corner_first_lot_G
+   [def] app.py :: _corner_block_true_G
+   [def] app.py :: assign_corner_side_by_projection
+   [def] verify/selection_pipeline.py :: run_corner_pk
+   [assign] verify/fixture_end_fallback.py :: corner_abate   逐字 = corner_abate = 0.0
+
+── 字樣 `first` ⇒ `FunctionDef` 2 ／ 頂層 `Assign` 0（**全量**）──
+   [def] app.py :: _first_corner_alloc_dir
+   [def] app.py :: _corner_first_lot_G
+
+── 字樣 `_fc` ⇒ `FunctionDef` 0 ／ 頂層 `Assign` 0（**全量**）──
+   🛑 **loud**：無命中（母體 = 34 檔）
+
+====================================================================================================================
+判別力四造（`§三` 款 `5` ／ `§四` 款 `5`）
+====================================================================================================================
+[必為 `34`] 生產碼母體基數 = 34 ⇒ ✅
+[必非零] `ns` 鍵基數 = 286 ⇒ ✅
+[必為零] 人造字樣於款 `2` 之框下命中 = 0 ⇒ ✅
+[必真] `st` 在 `ns` 之鍵 = True ⇒ ✅
+[必相異] `§四` 款 `1` 之 AST 數（Store 3 ＋ Load 23 ＝ 26）與文字層列框 90 ⇒ 相異 = True
+
+====================================================================================================================
+【本器⛔ 判「可信／不可信」·⛔ 擬任何改法或 diff】
+====================================================================================================================
