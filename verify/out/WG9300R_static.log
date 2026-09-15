@@ -1,0 +1,266 @@
+【`W-G.9-300` 工項一｜路丙之接觸面之現查】mode ＝ static
+態 ＝ 5b39171cf3be193c52a78b52edeb1ccfbbfd630b
+
+================================================================================================================
+款 1　`S` ＝ `_corner_buffer_S` 之全部呼叫端（**AST**·二形並取）
+================================================================================================================
+母體（**正面列舉**）＝ `git ls-tree HEAD --name-only verify/` ⋂ `*.py` ＋ `app.py`　rc ＝ 0　基數 ＝ **34**（1 + 33）
+**檔／處二數並報**：檔 ＝ **4**／處 ＝ **7**
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S1  檔 ＝ `app.py`
+     形            ＝ 形甲 Name
+     所在函式名     ＝ `main`
+     字樣錨（⛔ 行號為錨）＝ `_left_buffer_S = _corner_buffer_S(`
+     　唯一性 ＝ 1（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 3 ⇒ 非恆為 1：True
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `allocation_dir_block`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **True**（`def main` ＝ 14975-24579）
+     ⛔ 非錨·當態 blob 之位 ＝ :21903
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S2  檔 ＝ `app.py`
+     形            ＝ 形甲 Name
+     所在函式名     ＝ `main`
+     字樣錨（⛔ 行號為錨）＝ `_right_buffer_S = _corner_buffer_S(`
+     　唯一性 ＝ 1（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 3 ⇒ 非恆為 1：True
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `allocation_dir_block`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **True**（`def main` ＝ 14975-24579）
+     ⛔ 非錨·當態 blob 之位 ＝ :21914
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S3  檔 ＝ `verify/stepg_pipeline.py`
+     形            ＝ 形甲 Name
+     所在函式名     ＝ `_run_step_g_impl`
+     字樣錨（⛔ 行號為錨）＝ `_left_buffer_S = _corner_buffer_S(`
+     　唯一性 ＝ 1（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 2 ⇒ 非恆為 1：True
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `allocation_dir_block`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **False**
+     ⛔ 非錨·當態 blob 之位 ＝ :659
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S4  檔 ＝ `verify/stepg_pipeline.py`
+     形            ＝ 形甲 Name
+     所在函式名     ＝ `_run_step_g_impl`
+     字樣錨（⛔ 行號為錨）＝ `_right_buffer_S = _corner_buffer_S(`
+     　唯一性 ＝ 1（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 2 ⇒ 非恆為 1：True
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `allocation_dir_block`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **False**
+     ⛔ 非錨·當態 blob 之位 ＝ :670
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S5  檔 ＝ `verify/wf_f1.py`
+     形            ＝ 形乙 ns[...]
+     所在函式名     ＝ `compute`
+     字樣錨（⛔ 行號為錨）＝ `left_buffer_S = ns["_corner_buffer_S"](`
+     　唯一性 ＝ 1（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 0 ⇒ 非恆為 1：False
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `alloc_dir`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **False**
+     ⛔ 非錨·當態 blob 之位 ＝ :216
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S6  檔 ＝ `verify/wf_f4.py`
+     形            ＝ 形乙 ns[...]
+     所在函式名     ＝ `_reshape_block`
+     字樣錨（⛔ 行號為錨）＝ `buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,`
+     　唯一性 ＝ 2（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 0 ⇒ 非恆為 1：False
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `alloc_dir`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **False**
+     ⛔ 非錨·當態 blob 之位 ＝ :1351
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S7  檔 ＝ `verify/wf_f4.py`
+     形            ＝ 形乙 ns[...]
+     所在函式名     ＝ `_reshape_block`
+     字樣錨（⛔ 行號為錨）＝ `buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,`
+     　唯一性 ＝ 2（該檔·列框）／判別力自檢 寬字樣 `_corner_buffer_S(` ＝ 0 ⇒ 非恆為 1：False
+     `allocation_dir` 位之實參逐字（`ast.unparse`）＝ `alloc_dir`（取位 位置#4）
+     落於該檔 `def main` 內（**AST 實查**）＝ **False**
+     ⛔ 非錨·當態 blob 之位 ＝ :1362
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+── **文字層**之數（以資對照·`_corner_buffer_S(` 之**列框**）──
+   app.py                             列框 ＝ 3
+   verify/stepg_pipeline.py           列框 ＝ 2
+   文字層合計 ＝ **5** 列／AST 之處 ＝ **7**
+   🛑 **loud 具名：二數相異**（差 ＝ -2）——成因逐項：
+     · `app.py` ⛔ 非 `Call` 之列：`def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,`
+
+================================================================================================================
+款 4　**判準載體**之現查（頂層 `*_EXPECT` 之 AST 賦值 ＋ `baselines` 列框）
+================================================================================================================
+母體 ＝ 全 `34` 檔（供 `S ∪ F` 之取用·逐檔二數並報）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   app.py                             頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 22  
+   verify/fixture_baseline_candidates.py 頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 6   
+   verify/fixture_block_depth_n19p.py 頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 1   
+   verify/fixture_cad_binding_order.py 頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 2   
+   verify/fixture_corner_range_k8.py  頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 4   
+   verify/run_all.py                  頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 1   
+   verify/run_verification.py         頂層 `*_EXPECT` ＝ 1   `baselines` 列框 ＝ 16  　`K_STAR_EXPECT`
+   verify/stepg_pipeline.py           頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 4   
+   verify/wd3_fragment_geom.py        頂層 `*_EXPECT` ＝ 0   `baselines` 列框 ＝ 1   
+   verify/wd4_tier_list.py            頂層 `*_EXPECT` ＝ 7   `baselines` 列框 ＝ 1   　`MINA_QU_EXPECT`, `HALF_EXPECT`, `FLAGGED_EXPECT`, `TRACK_EXPECT`, `TIER_EXPECT`, `PUB_PARCELS_EXPECT`, `PUB_HOLDER_GROUPS_EXPECT`
+   verify/wf_f0.py                    頂層 `*_EXPECT` ＝ 1   `baselines` 列框 ＝ 5   　`GSA_EXPECT`
+   verify/wf_f4.py                    頂層 `*_EXPECT` ＝ 2   `baselines` 列框 ＝ 1   　`COMP_EXPECT`, `E0_EXPECT`
+
+   全母體頂層 `*_EXPECT` 合計 ＝ **11** 個／分布於 **4** 檔：`verify/run_verification.py`, `verify/wd4_tier_list.py`, `verify/wf_f0.py`, `verify/wf_f4.py`
+   🔒 發單側之預查（⛔ 充結論·本器自行重得）＝ `11` 個·分布 `run_verification.py`／`wd4_tier_list.py`／`wf_f0.py`／`wf_f4.py`
+   ⇒ 本器實得 ＝ **11** 個／**4** 檔 ⇒ 與預查 相符
+
+================================================================================================================
+款 2 (甲)　**靜態**：`verify/run_verification.py` 之遞移 `import` 閉包（母體 ＝ 34 檔）
+================================================================================================================
+閉包之**全量列舉**（基數 ＝ **11**）：
+   01 verify/run_verification.py
+   02 verify/app_harvest.py
+   03 verify/selection_pipeline.py
+   04 verify/stepg_pipeline.py
+   05 verify/wf_f0.py
+   06 verify/wd3_fragment_geom.py
+   07 verify/wd4_tier_list.py
+   08 verify/wf_f1.py
+   09 verify/wf_f2.py
+   10 verify/wf_f3.py
+   11 verify/wf_f4.py
+
+S 之各檔是否在閉包內：
+   app.py                             ⇒ 🔴 **⛔ 在閉包內**
+   verify/stepg_pipeline.py           ⇒ ✅ 在閉包內
+   verify/wf_f1.py                    ⇒ ✅ 在閉包內
+   verify/wf_f4.py                    ⇒ ✅ 在閉包內
+
+================================================================================================================
+款 3（靜態半）　`_first_corner_alloc_dir` 之可達性 ＋ `side_mid` 之在域性（`t.body` 頂層）
+================================================================================================================
+S1 `app.py` :: `main`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **True**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ ['_side_mid_left', '_side_mid_right']
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S2 `app.py` :: `main`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **True**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ ['_side_mid_left', '_side_mid_right']
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S3 `verify/stepg_pipeline.py` :: `_run_step_g_impl`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **False**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ ['_side_mid_left', '_side_mid_right']
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S4 `verify/stepg_pipeline.py` :: `_run_step_g_impl`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **False**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ ['_side_mid_left', '_side_mid_right']
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S5 `verify/wf_f1.py` :: `compute`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **False**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ **空**
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S6 `verify/wf_f4.py` :: `_reshape_block`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **False**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ **空**
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S7 `verify/wf_f4.py` :: `_reshape_block`
+   `_first_corner_alloc_dir` 於**該檔頂層**（`t.body`）＝ **False**
+   `ns` 於該檔頂層 ＝ False；該檔含 `ns["_first_corner_alloc_dir"]` 之列框 ＝ 0
+   `side_mid` 族之名於該函式內（**二鍵並報**·⛔ 只報其一）：
+      **呼叫列之前**已賦值 ＝ **空**
+      **呼叫列之後**方賦值 ＝ **空**
+   ⇒ 靜態在域性判 ＝ 🔴 **⛔ 可取（呼叫列之前無任何 `side_mid` 族之名被賦值）**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+================================================================================================================
+款 4′　各處**是否為 `forced` 之路徑**（`停二` 之受詞·⛔ 憑閱讀·**AST 實查**）
+================================================================================================================
+**其判之產生指令**（逐字）：對每一 `Call` 節點，取其於該檔 AST 中之**全部外圍**
+`ast.If`／`ast.IfExp` 節點（判準 ＝ `n.lineno <= call.lineno <= n.end_lineno`，
+且 `IfExp` 以 `body`／`orelse` 之行域界之），將其 `test` 以 `ast.unparse` 出艙；
+**旗字樣集**（逐字）＝ ('_fo_left', '_fo_right', 'forced_offset', 'forced')；任一外圍 `test` 命中即判其為 `forced` 路徑。
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S1 `app.py` :: `main`
+    　 If     `selected_tab == TAB_LAND_TRADE`
+    　 If     `selected_tab == TAB_BUILDING_TRADE`
+    　 If     `selected_tab == TAB_LAND_DEV`
+    　 If     `selected_tab == TAB_EXPECTED_DEV`
+    　 If     `selected_tab == TAB_PRICE_ZONE`
+    　 If     `selected_tab == TAB_FINANCE`
+    　 If     `selected_tab == TAB_LAND_AGGREGATION`
+    　 If     `selected_tab == TAB_BLOCK_INTERACT`
+    　 If     `temp_parcels`
+    　 If     `not build_parcels`
+    　 If     `_btn_clicked or _auto_recalc`
+    　 If     `_row_for_buffer and avg_depth_default > 0`
+    🔑 **命中** If     `_fo_left`
+    　 If     `_l_min is not None and _l_min != float('inf')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S2 `app.py` :: `main`
+    　 If     `selected_tab == TAB_LAND_TRADE`
+    　 If     `selected_tab == TAB_BUILDING_TRADE`
+    　 If     `selected_tab == TAB_LAND_DEV`
+    　 If     `selected_tab == TAB_EXPECTED_DEV`
+    　 If     `selected_tab == TAB_PRICE_ZONE`
+    　 If     `selected_tab == TAB_FINANCE`
+    　 If     `selected_tab == TAB_LAND_AGGREGATION`
+    　 If     `selected_tab == TAB_BLOCK_INTERACT`
+    　 If     `temp_parcels`
+    　 If     `not build_parcels`
+    　 If     `_btn_clicked or _auto_recalc`
+    　 If     `_row_for_buffer and avg_depth_default > 0`
+    🔑 **命中** If     `_fo_right`
+    　 If     `_r_min is not None and _r_min != float('inf')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S3 `verify/stepg_pipeline.py` :: `_run_step_g_impl`
+    　 If     `_row_for_buffer and avg_depth_default > 0`
+    🔑 **命中** If     `_fo_left`
+    　 If     `_l_min is not None and _l_min != float('inf')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S4 `verify/stepg_pipeline.py` :: `_run_step_g_impl`
+    　 If     `_row_for_buffer and avg_depth_default > 0`
+    🔑 **命中** If     `_fo_right`
+    　 If     `_r_min is not None and _r_min != float('inf')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S5 `verify/wf_f1.py` :: `compute`
+    🔑 **命中** If     `fo.get('left_forced_offset')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S6 `verify/wf_f4.py` :: `_reshape_block`
+    　 If     `side == 'left'`
+    🔑 **命中** IfExp  `fo.get('left_forced_offset')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+S7 `verify/wf_f4.py` :: `_reshape_block`
+    　 If     `side == 'left'`
+    🔑 **命中** IfExp  `fo.get('right_forced_offset')`
+    ⇒ **是否 `forced` 之路徑 ＝ **是****
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+判別力[必為否] 一**非** `forced` 之對照受詞：`_corner_buffer_S` 之定義列（`def _corner_buffer_S`）其外圍 `If`／`IfExp` ＝ 0 個 ⇒ 判 ＝ 否（須「否」）
+
+================================================================================================================
+款 5　判別力五造
+================================================================================================================
+[必非零] `|S| ≥ 1` ⇒ |S| ＝ 7 ⇒ ✅
+[必相異] 文字層之數（5）與 AST 之數（7）**各自出艙** ⇒ ✅（⛔ 只報其一）
+[必為零] 一**執行期組出**之人造函式名（字面⛔ 出艙）於款 1 之框下命中 ＝ 0 ⇒ ✅
+[必命中] `verify/run_verification.py` 在款 2 甲形之閉包內（自反）＝ True ⇒ ✅
+[必為 34] 母體基數（外部錨 ＝ `§零` 閘 `7`）＝ 34 ⇒ ✅　🔒 本造係本器自捕母體塌陷（`34`→`1`）後所增·⛔ 原四造能偵之
+
+✅ 判別力四造全數成立 ⇒ 本器非恆綠亦非恆紅
