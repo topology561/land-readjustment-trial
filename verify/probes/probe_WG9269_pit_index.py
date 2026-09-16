@@ -65,6 +65,7 @@ ALPHA_LABELS += ["bj", "bk"]       # 🆕 `W-G.9-301` §四 所准之二坑
 ALPHA_LABELS += ["bl"]             # 🆕 `W-G.9-303` 補令四 §五 所准之一坑
 ALPHA_LABELS += ["bm"]             # 🆕 `W-G.9-304` §四 所准之一坑
 ALPHA_LABELS += ["bn", "bo"]       # 🆕 `W-G.9-305` §四 所准之二坑
+ALPHA_LABELS += ["bp"]             # 🆕 `W-G.9-307` §三 所准之一坑
 
 
 def tracked_md(rev):
