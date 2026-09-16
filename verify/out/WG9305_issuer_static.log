@@ -1,0 +1,79 @@
+====================================================================================================
+【probe_WG9305_issuer_static】rev = HEAD
+rev-parse = ff3408f450bc2bc7005fc2950ed7cc6fcd0564ab
+====================================================================================================
+[錨] git ls-tree HEAD --name-only verify/ ⋂ *.py ＋ app.py ⇒ 34 檔
+
+── 節 A　app.py :: _solve_G_one（定義處 1）──
+受詞名集（逐字·承 W-G.9-304R §六-1）＝ ['_alloc_dir_used', '_r', 'allocation_dir']
+A1（Name∪arg 節點）：出現 17／相異形 9
+     4  ('Assign', 'targets', 'Store')
+     4  ('Subscript', 'value', 'Load')
+     2  ('Assign', 'value', 'Load')
+     2  ('Tuple', 'elts', 'Load')
+     1  ('Attribute', 'value', 'Load')
+     1  ('Compare', 'left', 'Load')
+     1  ('arguments', 'kwonlyargs', '-')
+     1  ('comprehension', 'iter', 'Load')
+     1  ('keyword', 'value', 'Load')
+A2（每一欄位值·構造上）：出現 20／相異形 11
+     4  ('Name.id', 'Assign', 'targets', 'Store')
+     4  ('Name.id', 'Subscript', 'value', 'Load')
+     2  ('Constant.value', 'Subscript', 'slice', '-')
+     2  ('Name.id', 'Assign', 'value', 'Load')
+     2  ('Name.id', 'Tuple', 'elts', 'Load')
+     1  ('Name.id', 'Attribute', 'value', 'Load')
+     1  ('Name.id', 'Compare', 'left', 'Load')
+     1  ('Name.id', 'comprehension', 'iter', 'Load')
+     1  ('Name.id', 'keyword', 'value', 'Load')
+     1  ('arg.arg', 'arguments', 'kwonlyargs', '-')
+     1  ('keyword.arg', 'Call', 'keywords', '-')
+A2 ∖ A1（A1 之定義結構上⛔ 及者）：出現 3／形 2 ⇒ [(('Constant.value', 'Subscript', 'slice', '-'), 2), (('keyword.arg', 'Call', 'keywords', '-'), 1)]
+自洽：A2 之 Name/arg 部分 ＝ A1 ？ True
+判別力[必為零] 人造名於 A2 ⇒ 0
+判別力[必非零] A2 出現 ⇒ 20
+非頂層基數（自誤 411 攔法 ②）：_solve_G_one 內 FunctionDef/AsyncFunctionDef/Lambda ＝ 0
+
+── 節 B　verify/stepg_pipeline.py :: _run_step_g_impl（定義處 1）──
+巢狀作用域（Function/Async/Lambda/ClassDef ＋ 四種 comprehension）＝ 52 ⇒ {'DictComp': 9, 'FunctionDef': 13, 'GeneratorExp': 14, 'Lambda': 1, 'ListComp': 14, 'SetComp': 1}
+其中具名者 ＝ 13 ⇒ ['_build_g_row', '_solve_one', '_mark_zaling', '_advance_block_with_split', '_rw_real_wd2', '_rw_stage1_only', '_dir_is_alloc', '_chain', '_iface_deltas', '_fmt_ifaces', '_side_alloc_degenerate', '_guard_auth_scope', '_mp_base_W0']
+
+名集（逐字）＝ ['res', '_n', '_nodes', '_prev_dir', '_near_dir_left', '_near_dir_right', '_alloc_dir_used']
+  res              Store/形參 所屬作用域 ⇒ {'_advance_block_with_split': 3}
+                   Load 所屬作用域      ⇒ {'_advance_block_with_split': 43}
+                   其餘 str 欄位（含字串常數）⇒ {('_chain', 'Constant.value'): 1, ('_iface_deltas', 'Constant.value'): 4}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 0
+  _n               Store/形參 所屬作用域 ⇒ {'_iface_deltas': 1, '_guard_auth_scope': 1}
+                   Load 所屬作用域      ⇒ {'_iface_deltas': 7, '_guard_auth_scope': 2}
+                   其餘 str 欄位（含字串常數）⇒ {}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 1
+  _nodes           Store/形參 所屬作用域 ⇒ {'_iface_deltas(形參)': 1, '_guard_auth_scope(形參)': 1}
+                   Load 所屬作用域      ⇒ {'_iface_deltas': 1, '_guard_auth_scope': 1}
+                   其餘 str 欄位（含字串常數）⇒ {}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 0
+  _prev_dir        Store/形參 所屬作用域 ⇒ {'_iface_deltas': 2}
+                   Load 所屬作用域      ⇒ {'_iface_deltas': 3}
+                   其餘 str 欄位（含字串常數）⇒ {}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 0
+  _near_dir_left   Store/形參 所屬作用域 ⇒ {'_advance_block_with_split': 2}
+                   Load 所屬作用域      ⇒ {'_advance_block_with_split': 1}
+                   其餘 str 欄位（含字串常數）⇒ {}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 0
+  _near_dir_right  Store/形參 所屬作用域 ⇒ {'_advance_block_with_split': 2}
+                   Load 所屬作用域      ⇒ {'_advance_block_with_split': 2}
+                   其餘 str 欄位（含字串常數）⇒ {}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 0
+  _alloc_dir_used  Store/形參 所屬作用域 ⇒ {}
+                   Load 所屬作用域      ⇒ {}
+                   其餘 str 欄位（含字串常數）⇒ {('_advance_block_with_split', 'Constant.value'): 2, ('_iface_deltas', 'Constant.value'): 1}
+                   其 Name-Store 位於 comprehension 作用域內者（本器將其併入外層具名函式·自限）⇒ 0
+
+逐街廓 For（iter 含字樣 parcels_by_block）＝ 1 處
+  For 所屬作用域 = _run_step_g_impl
+  _corner_buffer_S 之 Name 形呼叫 ⇒ 2 處；所屬作用域 ⇒ ['_run_step_g_impl']
+  於本 For 內定義之巢狀具名函式 ⇒ 11 個 ⇒ ['_mark_zaling', '_advance_block_with_split', '_mp_base_W0', '_rw_real_wd2', '_rw_stage1_only', '_dir_is_alloc', '_chain', '_iface_deltas', '_fmt_ifaces', '_side_alloc_degenerate', '_guard_auth_scope']
+  全部 13 個巢狀具名函式（含本 For 外定義者）於本 For 內之 Name 形呼叫 ⇒ 34 處 ⇒ {'_advance_block_with_split': 3, '_build_g_row': 2, '_chain': 3, '_dir_is_alloc': 1, '_fmt_ifaces': 6, '_guard_auth_scope': 2, '_iface_deltas': 3, '_mark_zaling': 2, '_mp_base_W0': 2, '_rw_real_wd2': 4, '_rw_stage1_only': 2, '_side_alloc_degenerate': 1, '_solve_one': 3}
+  （位序·⛔ 為錨）上開 34 處呼叫之位序先於最末一處強制呼叫者 ⇒ 0 處 ⇒ []
+  （位序·⛔ 為錨）於本 For 內定義之 11 個中，其定義位序先於首處強制呼叫者 ⇒ 0 個 ⇒ []
+
+【本器⛔ 判可施與否·⛔ 擬任何改法】
