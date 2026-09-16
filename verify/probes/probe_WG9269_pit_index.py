@@ -63,6 +63,7 @@ ALPHA_LABELS = ([chr(c) for c in range(ord("a"), ord("z") + 1)]
 ALPHA_LABELS += ["bh", "bi"]       # 🆕 `W-G.9-284` §五-2 所准之二坑
 ALPHA_LABELS += ["bj", "bk"]       # 🆕 `W-G.9-301` §四 所准之二坑
 ALPHA_LABELS += ["bl"]             # 🆕 `W-G.9-303` 補令四 §五 所准之一坑
+ALPHA_LABELS += ["bm"]             # 🆕 `W-G.9-304` §四 所准之一坑
 
 
 def tracked_md(rev):
