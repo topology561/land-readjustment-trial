@@ -1,0 +1,216 @@
+====================================================================================================================
+【`W-G.9-304` `§六` 靜態量測器】
+====================================================================================================================
+母體之產生指令 = git ls-tree HEAD --name-only verify/ | grep '\.py$'  ＋ app.py
+母體基數 = 34（外部錨 ＝ `§一` 閘 `7` 之 34）⇒ 相符 = True
+
+====================================================================================================================
+款 `1`-0　`_solve_G_one` 之定義處（**函式名二形並取**）
+====================================================================================================================
+形① `def _solve_G_one` ⇒ 1 處：['app.py']
+形② 字面 `'_solve_G_one'`（`ns[<字面>]` 族）⇒ 4 處（逐檔：['app.py', 'verify/stepg_pipeline.py', 'verify/test_corner_first_lot_G.py']）
+其定義 ＝ `app.py` :: `_solve_G_one`（形參 0 個·kwonly 20 個）
+🔑 **非頂層之基數**（本框⛔ 及於該層）：`_solve_G_one` 體內之 `FunctionDef`／`Lambda` ＝ **0**
+
+====================================================================================================================
+款 `1`　值之流：自 `allocation_dir` 之 `Store` 起，逐層追其**派生名**
+====================================================================================================================
+追蹤之名（含派生）＝ ['_alloc_dir_used', '_r', 'allocation_dir']
+   派生 `_alloc_dir_used` ← 逐字 = _alloc_dir_used = (None if allocation_dir is None
+   派生 `_r` ← 逐字 = _r['_alloc_dir_used'] = _alloc_dir_used          # D-2b-3 §二-3（純加性·fallback 路徑同記）
+
+====================================================================================================================
+款 `1`　受詞之全部出現（**依實際父節點型別分類**·構造上窮舉·⛔ 十三形清單）
+====================================================================================================================
+受詞之出現總數 = 17 ／ 相異之 (父節點型別, 欄位, ctx) ＝ 9
+
+| 父節點型別 | 欄位 | `ctx` | 次數 | 名 | 逐字（首例） |
+|---|---|---|---|---|---|
+| `Assign` | `targets` | `Store` | 4 | ['_alloc_dir_used', '_r', 'allocation_dir'] | _alloc_dir_used = (None if allocation_dir is None |
+| `Subscript` | `value` | `Load` | 4 | ['_r'] | _r['area_geom'] = round(_r.get('S', 0) * avg_depth, 2) |
+| `Assign` | `value` | `Load` | 2 | ['_alloc_dir_used'] | _r['_alloc_dir_used'] = _alloc_dir_used          # D-2b-3 §二-3（純加性·fallback 路徑同記 |
+| `Tuple` | `elts` | `Load` | 2 | ['_r'] | return _r, '代數迭代(fallback)' |
+| `Attribute` | `value` | `Load` | 1 | ['_r'] | _r['area_geom'] = round(_r.get('S', 0) * avg_depth, 2) |
+| `Compare` | `left` | `Load` | 1 | ['allocation_dir'] | _alloc_dir_used = (None if allocation_dir is None |
+| `arguments` | `kwonlyargs` | `-` | 1 | ['allocation_dir'] | allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None, |
+| `comprehension` | `iter` | `Load` | 1 | ['allocation_dir'] | else tuple(float(_c) for _c in allocation_dir)) |
+| `keyword` | `value` | `Load` | 1 | ['allocation_dir'] | allocation_dir=allocation_dir, |
+
+── 與單所令之**十三形**對照（⛔ 以其為窮舉之上限）──
+   命中十三形者 = ['Name-Store', '形參 arg']
+   🔴 **十三形之外**者（＝ 該清單⛔ 窮舉之直證）= [(('Assign', 'value', 'Load'), '(未對映)'), (('Tuple', 'elts', 'Load'), '(未對映)'), (('Compare', 'left', 'Load'), '（十三形外）比較之左運算元'), (('comprehension', 'iter', 'Load'), '（十三形外）comprehension 之 iter'), (('Attribute', 'value', 'Load'), '(未對映)')]
+   十三形中**本案零命中**者 = ['.get', '.setdefault', '.update', 'Attribute-Store', 'Call 之實參', 'Dict 鍵字面', 'DictComp', 'For target', 'Return', 'Subscript-Store', '解包 Store'] ⇒ 逐項 loud：其於本案非真形（⛔ 判為「無此受詞」）
+
+   判別力[必為零] 人造名（執行期組出·字面⛔ 出艙）之出現數 = 0（須 0）
+   判別力[必非零] 受詞之出現總數 = 17（須 ≥ 1）
+
+====================================================================================================================
+款 `2`　跨呼叫可見之容器（receiver **⛔ 為該函式之區域名**者）
+====================================================================================================================
+   `_solve_G_one` 之區域名（Store ∪ 形參）基數 = 23
+   其 `Return` 處數 = 2 ／ `Return` 所含之名 = ['_r']
+
+   受詞被寫入之 `Subscript` 容器 ⇒ 3 處
+
+   ● receiver 逐字 = `_r`
+     鍵逐字 = 'area_geom'   （鍵之 AST ＝ 字串常數）
+     賦值逐字 = _r['area_geom'] = round(_r.get('S', 0) * avg_depth, 2)
+     receiver 是否為本函式之區域名 ＝ True ／ 是否為<u>回傳值</u> ＝ True
+     ⇒ 跨呼叫可見 ＝ True（依款 `2` 之列舉：`ns` 之項／`session_state` 之項／傳入之可變實參／模組級名／**回傳值**）
+     🔑 **鍵是否含街廓識別** ＝ False（鍵為**字串常數**·逐字 'area_geom'·⛔ 含 `blk`／`label`／`lbl`／`block_id`）
+
+   ● receiver 逐字 = `_r`
+     鍵逐字 = '_alloc_dir_used'   （鍵之 AST ＝ 字串常數）
+     賦值逐字 = _r['_alloc_dir_used'] = _alloc_dir_used          # D-2b-3 §二-3（純加性·fallback 路徑同記）
+     receiver 是否為本函式之區域名 ＝ True ／ 是否為<u>回傳值</u> ＝ True
+     ⇒ 跨呼叫可見 ＝ True（依款 `2` 之列舉：`ns` 之項／`session_state` 之項／傳入之可變實參／模組級名／**回傳值**）
+     🔑 **鍵是否含街廓識別** ＝ False（鍵為**字串常數**·逐字 '_alloc_dir_used'·⛔ 含 `blk`／`label`／`lbl`／`block_id`）
+
+   ● receiver 逐字 = `_r`
+     鍵逐字 = '_alloc_dir_used'   （鍵之 AST ＝ 字串常數）
+     賦值逐字 = _r['_alloc_dir_used'] = _alloc_dir_used      # D-2b-3 §二-3（純加性）
+     receiver 是否為本函式之區域名 ＝ True ／ 是否為<u>回傳值</u> ＝ True
+     ⇒ 跨呼叫可見 ＝ True（依款 `2` 之列舉：`ns` 之項／`session_state` 之項／傳入之可變實參／模組級名／**回傳值**）
+     🔑 **鍵是否含街廓識別** ＝ False（鍵為**字串常數**·逐字 '_alloc_dir_used'·⛔ 含 `blk`／`label`／`lbl`／`block_id`）
+
+====================================================================================================================
+款 `2`（續）　該容器之鍵於生產碼 `34` 檔之**消費端**（正面列舉）
+====================================================================================================================
+
+   鍵 = '_alloc_dir_used'
+      app.py ⇒ 8 列
+         由推進迴圈以 `res['_alloc_dir_used']` **交遞**（D-2b-3 §二-3 之純加性欄）。
+         #     不再自行 ∥ALLOC，改由推進迴圈以 `near_dir`（＝**前一宗**之 `_alloc_dir_used`）交遞
+         _alloc_dir_used = (None if allocation_dir is None
+         _r['_alloc_dir_used'] = _alloc_dir_used      # D-2b-3 §二-3（純加性）
+         _r['_alloc_dir_used'] = _alloc_dir_used          # D-2b-3 §二-3（純加性·fallback 路徑同記）
+         #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
+         _near_dir_left = res.get('_alloc_dir_used')
+         _near_dir_right = res.get('_alloc_dir_used')
+      verify/stepg_pipeline.py ⇒ 6 列
+         #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
+         _near_dir_left = res.get('_alloc_dir_used')
+         _near_dir_right = res.get('_alloc_dir_used')
+         #     方向之來源 ＝ **生產路徑輸出** `res['_alloc_dir_used']`（`app.py` `_solve_G_one` 純加性欄）
+         _prev_dir = _n['res'].get('_alloc_dir_used')
+         此斷言**可證偽**，能抓到：`_alloc_dir_used` 來源錯誤／`_PAR_TOL` 與
+
+   鍵 = 'area_geom'
+      app.py ⇒ 24 列
+         `{a_requested, G, area_geom, S_raw, placed, why}`：`a_rem` 係**重劃前 a 單位**而
+         'G': 0.0, 'area_geom': 0.0, 'S_raw': 0.0,
+         _area_actual = float(_res.get('area_geom', 0.0))
+         'area_geom': _area_actual,     # ＝本位置**實可容**之幾何面積（帳層據以縮灌）
+         'area_geom': _area_actual, 'S_raw': _S_actual,
+         每輪猜 S_guess → 從 baseline_pt 沿 d_hat 切出 block strip 多邊形 → 計算 area_geom；
+         |area_geom − G_target| ≤ tol 即收斂。
+         回傳：{'G', 'S', 'W', 'Rw_pct', 'area_geom', 'iterations', 'converged', 'trace',
+         cut, area_geom = _cut_strip(S_guess)
+         diff = area_geom - G_target
+         last_G_target = G_target; last_area = area_geom
+         'area_geom': round(area_geom, 2),
+         W_conv = W; Rw_conv = Rw_pct; area_conv = area_geom
+         #       **實切回復未捨入 S_conv·推進亦吃全精度 S_raw**（顯示欄 'S'/area_geom 照舊 2dp）——
+         #   影響面：final_cut 幾何（cut_coords）＋ area_geom（全精度實切）；帳對幾何閘之 S 量子項歸零（6823）。
+         # S0c 第 2 項（S0d 沿用）：area_geom 改取**實切**（S0d：未捨入 S_conv）之幾何面積 → 帳實一致
+         #   area_geom 之真值就是 0，不得悄悄留用 bisect 迴圈之未捨入值。
+         'area_geom': round(area_conv, 2),
+         _r['area_geom'] = round(_r.get('S', 0) * avg_depth, 2)
+         '幾何面積(㎡)': round(_res.get('area_geom', 0.0), 2),
+         _area_actual = float(res.get('area_geom', 0.0))
+         if (float(res.get('area_geom', 0)) < 0.5
+         if float(_r2.get('area_geom', 0)) >= 0.5:
+         _area_actual = float(res.get('area_geom', 0.0))
+      verify/fixture_end_reserve.py ⇒ 1 列
+         return ({"G": 10.0, "area_geom": 10.0, "S": 1.0, "S_raw": 1.0,
+      verify/stepg_pipeline.py ⇒ 5 列
+         '幾何面積(㎡)': round(_res.get('area_geom', 0.0), 2),
+         _area_actual = float(res.get('area_geom', 0.0))
+         if (float(res.get('area_geom', 0)) < 0.5
+         if float(_r2.get('area_geom', 0)) >= 0.5:
+         _area_actual = float(res.get('area_geom', 0.0))
+      verify/wf_f0.py ⇒ 1 列
+         # 池差（釋池量＝area_geom；真閘＝池差 baseline）
+      verify/wf_f4.py ⇒ 2 列
+         （`area_geom`＝該位置實可容之面積）；**換算留在本層**（`_conv`／比例）——
+         _fit = float(_fb.get("area_geom", 0.0) or 0.0)
+
+====================================================================================================================
+款 `3`　`_corner_buffer_S` **強制呼叫端**之 `allocation_dir` 實參逐字（本批獨立重得）
+====================================================================================================================
+   `_corner_buffer_S` 之呼叫點（三形並取）＝ 7 處
+
+   ● app.py :: main
+     呼叫逐字（首列）= _left_buffer_S = _corner_buffer_S(
+     **第 4 位序實參（`allocation_dir`）逐字 = allocation_dir_block**
+     其名 `allocation_dir_block` 於該函式內之 `Store` ⇒ 2 處：['allocation_dir_block = None   # 🆕 Phase 11 v2', 'allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+   ● app.py :: main
+     呼叫逐字（首列）= _right_buffer_S = _corner_buffer_S(
+     **第 4 位序實參（`allocation_dir`）逐字 = allocation_dir_block**
+     其名 `allocation_dir_block` 於該函式內之 `Store` ⇒ 2 處：['allocation_dir_block = None   # 🆕 Phase 11 v2', 'allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+   ● verify/stepg_pipeline.py :: _run_step_g_impl
+     呼叫逐字（首列）= _left_buffer_S = _corner_buffer_S(
+     **第 4 位序實參（`allocation_dir`）逐字 = allocation_dir_block**
+     其名 `allocation_dir_block` 於該函式內之 `Store` ⇒ 1 處：['allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+   ● verify/stepg_pipeline.py :: _run_step_g_impl
+     呼叫逐字（首列）= _right_buffer_S = _corner_buffer_S(
+     **第 4 位序實參（`allocation_dir`）逐字 = allocation_dir_block**
+     其名 `allocation_dir_block` 於該函式內之 `Store` ⇒ 1 處：['allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+   ● verify/wf_f1.py :: compute
+     呼叫逐字（首列）= left_buffer_S = ns["_corner_buffer_S"](
+     **第 4 位序實參（`allocation_dir`）逐字 = alloc_dir**
+     其名 `alloc_dir` 於該函式內之 `Store` ⇒ 1 處：['alloc_dir = ns["alloc_normal_axis"]((cad.get("alloc_dir_by_block") or {}).get(lbl))']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ False
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ False
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+   ● verify/wf_f4.py :: _reshape_block
+     呼叫逐字（首列）= buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,
+     **第 4 位序實參（`allocation_dir`）逐字 = alloc_dir**
+     其名 `alloc_dir` 於該函式內之 `Store` ⇒ 1 處：['alloc_dir = ns["alloc_normal_axis"]((cad.get("alloc_dir_by_block") or {}).get(blk))']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ False
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+   ● verify/wf_f4.py :: _reshape_block
+     呼叫逐字（首列）= buf = (ns["_corner_buffer_S"](block_poly, d_hat, p1, alloc_dir,
+     **第 4 位序實參（`allocation_dir`）逐字 = alloc_dir**
+     其名 `alloc_dir` 於該函式內之 `Store` ⇒ 1 處：['alloc_dir = ns["alloc_normal_axis"]((cad.get("alloc_dir_by_block") or {}).get(blk))']
+     🛑 款 `2` 之容器鍵 '_alloc_dir_used' 是否**在該函式內出現** ＝ False
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+     🛑 款 `2` 之容器鍵 'area_geom' 是否**在該函式內出現** ＝ True
+        ⛔ **以「在域」充「可取」**（坑 `bg`）——其**當場之值**須由款 `4` 之動態量測判
+
+====================================================================================================================
+款 `5`　判別力四造
+====================================================================================================================
+[必為 `34`] 外部錨（坑 `bj`）＝ 34 ⇒ ✅
+[必非零] 款 `1` 之去向處數 ＝ 17 ⇒ ✅
+[必為零] 人造名於款 `1` 之框下命中 ＝ 0 ⇒ ✅
+[必真] `_first_corner_alloc_dir` 在 `ns` 之鍵 ＝ True ⇒ ✅
+
+====================================================================================================================
+【本器⛔ 判其可施或不可施·⛔ 擬任何改法或 diff】
+====================================================================================================================
