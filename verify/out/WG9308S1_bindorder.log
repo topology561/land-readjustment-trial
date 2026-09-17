@@ -1,0 +1,62 @@
+====================================================================================================
+【W-G.9-308 補令一 工項四】強制呼叫與側界名之綁定次序（靜態·rev=bd8084f7f4d23eff40d84a8d60458cd3ddc31c9b）
+====================================================================================================
+判別力二造：[必命中] 通則命中 1（呼叫數 1）｜[必為零] 通則命中 0（呼叫數 2）
+⇒ 器 非紅 ✅
+母體：生產碼 34 檔（verify/ 頂層 *.py 33 ＋ app.py）｜判別力[必不命中] 子層 *.py = 329
+呼叫總數 = 7（Name 形 4／Subscript 形 3）
+
+| # | 檔:列 | 形 | 最內層迴圈 | 通則命中 | 引數含後綁之名 |
+|---|---|---|---|---|---|
+| 1 | verify/stepg_pipeline.py:659 | Name | For 526-1634 | [] | [] |
+| 2 | verify/stepg_pipeline.py:670 | Name | For 526-1634 | [] | [] |
+| 3 | verify/wf_f1.py:216 | Subscript | For 187-418 | [] | [] |
+| 4 | verify/wf_f4.py:1351 | Subscript | 無 | [] | [] |
+| 5 | verify/wf_f4.py:1362 | Subscript | 無 | [] | [] |
+| 6 | app.py:21903 | Name | For 21671-22691 | [] | [] |
+| 7 | app.py:21914 | Name | For 21671-22691 | [] | [] |
+
+名集 N7 之逐呼叫明細（首次 Store 列／首次 Store 前之 Load 列）
+  #1 verify/stepg_pipeline.py:659
+     _side_lines_blk      Store@679  前置Load=[]
+     _sl_left             Store@680  前置Load=[]
+     _sl_right            Store@681  前置Load=[]
+     _side_mid_left       Store@682  前置Load=[]
+     _side_mid_right      Store@683  前置Load=[]
+     _has_left_corner     Store@684  前置Load=[]
+     _has_right_corner    Store@685  前置Load=[]
+  #2 verify/stepg_pipeline.py:670
+     _side_lines_blk      Store@679  前置Load=[]
+     _sl_left             Store@680  前置Load=[]
+     _sl_right            Store@681  前置Load=[]
+     _side_mid_left       Store@682  前置Load=[]
+     _side_mid_right      Store@683  前置Load=[]
+     _has_left_corner     Store@684  前置Load=[]
+     _has_right_corner    Store@685  前置Load=[]
+  #3 verify/wf_f1.py:216
+     _side_lines_blk      Store@None  前置Load=[]
+     _sl_left             Store@None  前置Load=[]
+     _sl_right            Store@None  前置Load=[]
+     _side_mid_left       Store@None  前置Load=[]
+     _side_mid_right      Store@None  前置Load=[]
+     _has_left_corner     Store@None  前置Load=[]
+     _has_right_corner    Store@None  前置Load=[]
+  #6 app.py:21903
+     _side_lines_blk      Store@21942  前置Load=[]
+     _sl_left             Store@21944  前置Load=[]
+     _sl_right            Store@21945  前置Load=[]
+     _side_mid_left       Store@21946  前置Load=[]
+     _side_mid_right      Store@21947  前置Load=[]
+     _has_left_corner     Store@21948  前置Load=[]
+     _has_right_corner    Store@21949  前置Load=[]
+  #7 app.py:21914
+     _side_lines_blk      Store@21942  前置Load=[]
+     _sl_left             Store@21944  前置Load=[]
+     _sl_right            Store@21945  前置Load=[]
+     _side_mid_left       Store@21946  前置Load=[]
+     _side_mid_right      Store@21947  前置Load=[]
+     _has_left_corner     Store@21948  前置Load=[]
+     _has_right_corner    Store@21949  前置Load=[]
+
+彙總：通則命中合計 = 0｜引數含後綁之名合計 = 0｜N7 首次 Store 前之 Load 合計 = 0
+器紅 = False
