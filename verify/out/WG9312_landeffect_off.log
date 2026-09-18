@@ -1,0 +1,692 @@
+====================================================================================================================================
+【`W-G.9-287` `§三`／`§四`】二線分歧之**土地後果** ／ 藍影未求值之成因 —— 🛑 **純量測·出艙即止**
+====================================================================================================================================
+🔒 `_k923_gate1` 之**唯一呼叫端**（字樣錨·唯一性已於報告內具名）＝ `app.py` 之 `_lot_gate` 內；其守衛逐字 ＝
+      if is_second_after_corner and bool((_ctx.get('has_side') or {}).get(_side)):
+      …  _miss = [名 for 名, 值 in ((corner_range_poly, _cp), (side_pts, _sp), (side_mid, _sm), (front_p1), (front_p2), (alloc_dir), (block_centroid)) if 值 is None]
+      …  if len(_bp) < 2: _miss.append('baseline_pts')；if len(_coords) < 3: _miss.append('res.cut_coords')
+      …  if _miss: _B = None  else: try: _bl = _blue_shadow_tri(...); _B, _Bd = _k923_gate1(...)
+
+====================================================================================================================================
+【SB ＝ 0.0 m·態甲】`_build_corner_range_v3` 24 次（`run_step_g` 段 8）／`_corner_buffer_S` 1 次（段內 1）／`_lot_gate` 91 次／`_k923_gate1` 18 次
+　`run_step_g` 之終局 ＝ （未拋）
+　`g_rows` ＝ 56 列（拋出時取 `e.partial`）／`shapely` ＝ 2.1.2／`GEOS` ＝ 3.13.1
+====================================================================================================================================
+🔒 **`forced` 側之全部成員（當場重量·⛔ 轉引）**　框 ＝ `fake_st.session_state['f3L_forced_offset']`
+   R1 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R2 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R3 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False
+   R5 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R6 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   ⇒ **`forced` 側 ＝ 1 格**：[('R4', 'left')]
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+── 格 `R4/left@0.0m` ── `_build_corner_range_v3` 命中 3 筆／`_corner_buffer_S` 命中 1 筆（皆取**最末**·坑 `bi`）
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+🔒 **自我驗證閘 (i)**（碼面閉式回代）`|S1_par·sinθ − S1_perp|` ＝ 0.0（須 ≤ 1e-9）⇒ ✅
+🔒 **自我驗證閘 (ii)**　`_lot_gate` 於本格 1 筆；`blk_ctx['corner_range_polys']['left']` `is` `_build_corner_range_v3` 之回傳 ⇒ **True**
+
+**款 `1`　多邊形甲 ＝ `corner_range_polys['left']`（規定範圍）**
+   `setback` ＝ 0.0 ／ `min_width` ＝ 3.5 ／ `S1_perp` ＝ 3.6954999940774775
+   面積 ＝ **116.07949125015402** ／ 外環頂點 5 點（`repr` 全位·⛔ 捨入）：
+      甲[0] ＝ (310495.1684, 2651916.16941)
+      甲[1] ＝ (310514.65953, 2651938.3875)
+      甲[2] ＝ (310519.65862949967, 2651938.4822599906)
+      甲[3] ＝ (310497.72059001046, 2651913.474911513)
+      甲[4] ＝ (310495.1684, 2651916.16941)
+
+**款 `2`　多邊形乙 ＝ `buf` 帶（`s ∈ [max(s_min,0), buf]`）**
+   還原式（逐字 ＝ `_corner_buffer_S._band_area`）：
+      a, b = (_lo, float(buf)) if side == 'left' else (s_max - float(buf), s_max)
+      w = b - a ；bp = front_p1 + a * d̂ ；_block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+   `s_min` ＝ 0.1759031656417404 ／ `s_max` ＝ 98.71633001483886 ／ `_lo` ＝ 0.1759031656417404 ／ `buf` ＝ 4.49975224003872
+   ⇒ `a` ＝ 0.1759031656417404 ／ `b` ＝ 4.49975224003872 ／ `w` ＝ 4.32384907439698 ／ `bp` ＝ (310517.22802022507, 2651941.0497588385)
+   面積（`_block_strip` 之第二回傳）＝ **116.08000000450889** ／ `.area` ＝ 116.08000000450889
+   外環頂點 7 點：
+      乙[0] ＝ (310495.1684, 2651916.16941)
+      乙[1] ＝ (310514.659529998, 2651938.387499998)
+      乙[2] ＝ (310514.6595300002, 2651938.3875)
+      乙[3] ＝ (310519.65863, 2651938.48226)
+      乙[4] ＝ (310520.2005905654, 2651937.9097755877)
+      乙[5] ＝ (310497.1785082169, 2651914.0472194394)
+      乙[6] ＝ (310495.1684, 2651916.16941)
+
+**款 `3`　二者之面積差**
+   `tol` 之來源（逐字）＝ `_corner_buffer_S(…, tol=0.01, _label='')` 之**預設值**；本格之實際繫結值 ＝ **0.01**（`inspect` 綁定所得·⛔ 憑記憶）
+   `|A甲 − A乙|` ＝ **0.0005087543548683016**（`A甲` ＝ 116.07949125015402 ／ `A乙` ＝ 116.08000000450889）⇒ ✅ ≤ tol
+   （併記：`range_area` 實參 ＝ 116.08 ／ `|range_area − A甲|` ＝ 0.0005087498459772632）
+
+**款 `4`　對稱差之面積（＝「位置錯開了多少地」）**
+   幾何庫 ＝ `shapely` **2.1.2**（`GEOS` 3.13.1）
+   `(甲∖乙)` ＝ **6.527687807211929** ㎡　（幾何型別 Polygon）
+   `(乙∖甲)` ＝ **6.5281919472685885** ㎡　（幾何型別 Polygon）
+   `對稱差`  ＝ **13.055884224441684** ㎡　（幾何型別 MultiPolygon）
+   自洽驗算：`(甲∖乙) + (乙∖甲) − 對稱差` ＝ -4.469961165654013e-06
+   併記：`甲∩乙` ＝ 109.55180344257046 ㎡ ／ `甲∪乙` ＝ 122.60768766701216 ㎡
+
+**款 `5`　對稱差之最大偏離距離**（有向·離散·母體 ＝ 外環頂點）
+   甲之頂點 → 乙之邊界　最大 ＝ **0.7882823312347691** m
+   乙之頂點 → 甲之邊界　最大 ＝ **0.7849449523540448** m
+   （併記 `shapely.hausdorff_distance(甲, 乙)` ＝ 0.7882823312347691）
+   前批同族之實測出處 ＝ `verify/out/WG9286R_twolines.log`【倉】
+
+**款 `6`　負擔率**（純函式求值·⛔ 重跑分配·一律 `ns['rw_from_width']`·⛔ 器內另算）
+   | 輸入 | **來源（逐格具名）** | 值 (m) | `R(·)` (%) |
+   |---|---|---|---|
+   | `W_0` | `solve_G_binary` 鏈頭筆之回傳 `W_near`（碼面實際所用） | 4.48 | **40.776** |
+   | `buf線垂距@∩FRONT` | `buf` 線（錨 `front_p1 + s*·d̂`·向 `allocation_dir`）與 FRONT∞ 之交點 → SIDELINE 之垂距 | 4.480444756023346 | **40.77875748734474** |
+   | `buf線垂距@∩BASELINE` | 同上·與 BASELINE∞ 之交點 → SIDELINE 之垂距 | 730.3628739265594 | **100.0** |
+   | `S1_perp` | `_build_corner_range_v3` 之區域值（規定範圍遠側界之垂距） | 3.6954999940774775 | **35.8207499615036** |
+   ⇒ `R(W_0) − R(S1_perp)` ＝ **4.955250038496402** 個百分點
+   ⇒ `R(buf線垂距@∩FRONT) − R(S1_perp)` ＝ **4.95800752584114** 個百分點
+   ⇒ `R(buf線垂距@∩BASELINE) − R(S1_perp)` ＝ **64.1792500384964** 個百分點
+   （併記：`|cos|`（遠側界向 vs `allocation_dir`）＝ 0.04734528804692001 ⇒ 二線**⛔ 平行**）
+
+**款 `7`　該側之抵費地面積與第 2 宗**
+   `range_area`（`_corner_buffer_S` 實參）＝ **116.08** ㎡
+   🔒 **「第 2 宗」之識別規則（具名·⛔ 推定）** ＝ 該側**強制抵費地為第 1 宗**（其 `推進側別` 欄為 `'抵費地'`·⛔ 該側之側標）⇒ **第 2 宗 ＝ 該側 `g_rows` 之首列**（＝ `is_chain_head` 之宗）。
+   ⇒ **第 2 宗之暫編地號 ＝ `628(1)+`** ／ `G(㎡)` ＝ **2017.54** ／ `W(m)` ＝ 65.14 ／ `Rw(%)` ＝ 59.22 ／ `負擔比率` ＝ 0.3668
+   該側 `g_rows` 全列（序 ＝ 產生序）：
+      [0] 628(1)+ ｜G ＝ 2017.54 ｜W ＝ 65.14 ｜Rw ＝ 59.22 ｜街角地 ＝ 是
+   該街廓之 `推進側別=='抵費地'` 列：[('R4-抵費地-1', 1022.05), ('R4-抵費地-2', 116.08), ('R4-抵費地-3', 26.11), ('R4-抵費地-4', 26.09)]
+
+====================================================================================================================================
+【`§四` 工項二·SB ＝ 0.0 m】`_k923_gate1` 之呼叫端與守衛分項
+====================================================================================================================================
+   `_lot_gate` 之筆數 ＝ 91／`_k923_gate1` ＝ 18／`_blue_shadow_tri` ＝ 18
+
+── 格 `R1/left@0.0m` ── `_lot_gate` 5 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-37(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-35(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-36(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-37(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-35(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R1/right@0.0m` ── `_lot_gate` 5 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(5)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 7｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-34(3)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628(5)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 7｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-34(3)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-36(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R2/left@0.0m` ── `_lot_gate` 14 筆／**預測** `_k923_gate1` 6 次／**實際** 6 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-41(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 7｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-42(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-27(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-40(1)+`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-30(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-39(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-31(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-41(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 7｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-42(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-27(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [10] `628-40(1)+`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [11] `628-30(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [12] `628-39(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [13] `628-31(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R2/right@0.0m` ── `_lot_gate` 14 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-35(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-34(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-49(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-50(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-51(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-52(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-32(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-35(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-34(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-49(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [10] `628-50(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [11] `628-51(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [12] `628-52(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [13] `628-32(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R3/left@0.0m` ── `_lot_gate` 10 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(4)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-34(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-46(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-47(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-32(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628(4)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-34(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-46(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-47(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-32(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R3/right@0.0m` ── `_lot_gate` 10 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-30(3)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-42(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-27(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-29(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-31(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-30(3)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-42(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-27(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-29(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-31(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R4/left@0.0m` ── `_lot_gate` 1 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(1)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R5/left@0.0m` ── `_lot_gate` 10 筆／**預測** `_k923_gate1` 4 次／**實際** 4 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-18(2)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-53(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-7(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-45(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-18(2)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-53(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-7(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-45(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-31(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-32(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R5/right@0.0m` ── `_lot_gate` 6 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-21(2)+`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-32(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-31(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-21(2)+`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R6/left@0.0m` ── `_lot_gate` 7 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(2)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-4(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-23(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-20(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628(2)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-4(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-23(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R6/right@0.0m` ── `_lot_gate` 9 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-18(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-53(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-38(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-7(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-18(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-53(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-38(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-7(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-20(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+====================================================================================================================================
+【SB ＝ 3.5 m·態甲】`_build_corner_range_v3` 24 次（`run_step_g` 段 8）／`_corner_buffer_S` 2 次（段內 2）／`_lot_gate` 91 次／`_k923_gate1` 13 次
+　`run_step_g` 之終局 ＝ （未拋）
+　`g_rows` ＝ 59 列（拋出時取 `e.partial`）／`shapely` ＝ 2.1.2／`GEOS` ＝ 3.13.1
+====================================================================================================================================
+🔒 **`forced` 側之全部成員（當場重量·⛔ 轉引）**　框 ＝ `fake_st.session_state['f3L_forced_offset']`
+   R1 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R2 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False
+   R3 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False
+   R5 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   R6 ⇒ left_forced_offset ＝ False ／ right_forced_offset ＝ False
+   ⇒ **`forced` 側 ＝ 2 格**：[('R2', 'left'), ('R4', 'left')]
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+── 格 `R2/left@3.5m` ── `_build_corner_range_v3` 命中 3 筆／`_corner_buffer_S` 命中 1 筆（皆取**最末**·坑 `bi`）
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+🔒 **自我驗證閘 (i)**（碼面閉式回代）`|S1_par·sinθ − S1_perp|` ＝ 0.0（須 ≤ 1e-9）⇒ ✅
+🔒 **自我驗證閘 (ii)**　`_lot_gate` 於本格 14 筆；`blk_ctx['corner_range_polys']['left']` `is` `_build_corner_range_v3` 之回傳 ⇒ **True**
+
+**款 `1`　多邊形甲 ＝ `corner_range_polys['left']`（規定範圍）**
+   `setback` ＝ 3.5 ／ `min_width` ＝ 3.5 ／ `S1_perp` ＝ 7.0
+   面積 ＝ **308.1653997358061** ／ 外環頂點 6 點（`repr` 全位·⛔ 捨入）：
+      甲[0] ＝ (310366.24511611415, 2651917.3404371985)
+      甲[1] ＝ (310399.4807436314, 2651887.170689292)
+      甲[2] ＝ (310394.8013, 2651881.96454)
+      甲[3] ＝ (310364.1393, 2651909.79807)
+      甲[4] ＝ (310363.91004, 2651914.79281)
+      甲[5] ＝ (310366.24511611415, 2651917.3404371985)
+
+**款 `2`　多邊形乙 ＝ `buf` 帶（`s ∈ [max(s_min,0), buf]`）**
+   還原式（逐字 ＝ `_corner_buffer_S._band_area`）：
+      a, b = (_lo, float(buf)) if side == 'left' else (s_max - float(buf), s_max)
+      w = b - a ；bp = front_p1 + a * d̂ ；_block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+   `s_min` ＝ 0.2677422217893655 ／ `s_max` ＝ 100.02740781108571 ／ `_lo` ＝ 0.2677422217893655 ／ `buf` ＝ 8.696079893776137
+   ⇒ `a` ＝ 0.2677422217893655 ／ `b` ＝ 8.696079893776137 ／ `w` ＝ 8.428337671986771 ／ `bp` ＝ (310361.6961695455, 2651912.3774268823)
+   面積（`_block_strip` 之第二回傳）＝ **308.1699999967815** ／ `.area` ＝ 308.1699999967815
+   外環頂點 6 點：
+      乙[0] ＝ (310367.39107777126, 2651918.5907103987)
+      乙[1] ＝ (310398.34671565285, 2651885.909018157)
+      乙[2] ＝ (310394.8013, 2651881.96454)
+      乙[3] ＝ (310364.1393, 2651909.79807)
+      乙[4] ＝ (310363.91004, 2651914.79281)
+      乙[5] ＝ (310367.39107777126, 2651918.5907103987)
+
+**款 `3`　二者之面積差**
+   `tol` 之來源（逐字）＝ `_corner_buffer_S(…, tol=0.01, _label='')` 之**預設值**；本格之實際繫結值 ＝ **0.01**（`inspect` 綁定所得·⛔ 憑記憶）
+   `|A甲 − A乙|` ＝ **0.0046002609753941215**（`A甲` ＝ 308.1653997358061 ／ `A乙` ＝ 308.1699999967815）⇒ ✅ ≤ tol
+   （併記：`range_area` 實參 ＝ 308.17 ／ `|range_area − A甲|` ＝ 0.004600264193925341）
+
+**款 `4`　對稱差之面積（＝「位置錯開了多少地」）**
+   幾何庫 ＝ `shapely` **2.1.2**（`GEOS` 3.13.1）
+   `(甲∖乙)` ＝ **19.031794145970423** ㎡　（幾何型別 Polygon）
+   `(乙∖甲)` ＝ **19.036394407279545** ㎡　（幾何型別 Polygon）
+   `對稱差`  ＝ **38.06818855324997** ㎡　（幾何型別 MultiPolygon）
+   自洽驗算：`(甲∖乙) + (乙∖甲) − 對稱差` ＝ 0.0
+   併記：`甲∩乙` ＝ 289.1336055863156 ㎡ ／ `甲∪乙` ＝ 327.2017941395656 ㎡
+
+**款 `5`　對稱差之最大偏離距離**（有向·離散·母體 ＝ 外環頂點）
+   甲之頂點 → 乙之邊界　最大 ＝ **1.6909451344714073** m
+   乙之頂點 → 甲之邊界　最大 ＝ **1.6959789475044116** m
+   （併記 `shapely.hausdorff_distance(甲, 乙)` ＝ 1.6959789475690172）
+   前批同族之實測出處 ＝ `verify/out/WG9286R_twolines.log`【倉】
+
+**款 `6`　負擔率**（純函式求值·⛔ 重跑分配·一律 `ns['rw_from_width']`·⛔ 器內另算）
+   | 輸入 | **來源（逐格具名）** | 值 (m) | `R(·)` (%) |
+   |---|---|---|---|
+   | `W_0` | `solve_G_binary` 鏈頭筆之回傳 `W_near`（碼面實際所用） | None | **None** |
+   | `buf線垂距@∩FRONT` | `buf` 線（錨 `front_p1 + s*·d̂`·向 `allocation_dir`）與 FRONT∞ 之交點 → SIDELINE 之垂距 | 8.69597921246311 | **64.71909190480817** |
+   | `buf線垂距@∩BASELINE` | 同上·與 BASELINE∞ 之交點 → SIDELINE 之垂距 | 566.1605689615299 | **100.0** |
+   | `S1_perp` | `_build_corner_range_v3` 之區域值（規定範圍遠側界之垂距） | 7.0 | **55.7** |
+   ⇒ `R(buf線垂距@∩FRONT) − R(S1_perp)` ＝ **9.019091904808164** 個百分點
+   ⇒ `R(buf線垂距@∩BASELINE) − R(S1_perp)` ＝ **44.3** 個百分點
+   （併記：`|cos|`（遠側界向 vs `allocation_dir`）＝ 0.07536112595772865 ⇒ 二線**⛔ 平行**）
+
+**款 `7`　該側之抵費地面積與第 2 宗**
+   `range_area`（`_corner_buffer_S` 實參）＝ **308.17** ㎡
+   🔒 **「第 2 宗」之識別規則（具名·⛔ 推定）** ＝ 該側**強制抵費地為第 1 宗**（其 `推進側別` 欄為 `'抵費地'`·⛔ 該側之側標）⇒ **第 2 宗 ＝ 該側 `g_rows` 之首列**（＝ `is_chain_head` 之宗）。
+   ⇒ **第 2 宗之暫編地號 ＝ `628-42(1)`** ／ `G(㎡)` ＝ **4.77** ／ `W(m)` ＝ 7.09 ／ `Rw(%)` ＝ 0.58 ／ `負擔比率` ＝ 0.4281
+   該側 `g_rows` 全列（序 ＝ 產生序）：
+      [0] 628-42(1) ｜G ＝ 4.77 ｜W ＝ 7.09 ｜Rw ＝ 0.58 ｜街角地 ＝ 否
+      [1] 628-41(1) ｜G ＝ 183.23 ｜W ＝ 11.16 ｜Rw ＝ 20.2 ｜街角地 ＝ 否
+      [2] 628-27(1) ｜G ＝ 29.61 ｜W ＝ 11.82 ｜Rw ＝ 2.83 ｜街角地 ＝ 否
+      [3] 628-40(1)+ ｜G ＝ 299.51 ｜W ＝ 18.48 ｜Rw ＝ 20.77 ｜街角地 ＝ 否
+      [4] 628-30(2) ｜G ＝ 89.97 ｜W ＝ 20.49 ｜Rw ＝ 0.0 ｜街角地 ＝ 否
+      [5] 628-39(1) ｜G ＝ 236.54 ｜W ＝ 25.76 ｜Rw ＝ 0.0 ｜街角地 ＝ 否
+      [6] 628-31(2) ｜G ＝ 391.66 ｜W ＝ 34.5 ｜Rw ＝ 0.0 ｜街角地 ＝ 否
+   該街廓之 `推進側別=='抵費地'` 列：[('R2-抵費地-1', 1466.26), ('R2-抵費地-2', 308.17)]
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+── 格 `R4/left@3.5m` ── `_build_corner_range_v3` 命中 3 筆／`_corner_buffer_S` 命中 1 筆（皆取**最末**·坑 `bi`）
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+🔒 **自我驗證閘 (i)**（碼面閉式回代）`|S1_par·sinθ − S1_perp|` ＝ 0.0（須 ≤ 1e-9）⇒ ✅
+🔒 **自我驗證閘 (ii)**　`_lot_gate` 於本格 1 筆；`blk_ctx['corner_range_polys']['left']` `is` `_build_corner_range_v3` 之回傳 ⇒ **True**
+
+**款 `1`　多邊形甲 ＝ `corner_range_polys['left']`（規定範圍）**
+   `setback` ＝ 3.5 ／ `min_width` ＝ 3.5 ／ `S1_perp` ＝ 7.0
+   面積 ＝ **226.00643589362406** ／ 外環頂點 6 點（`repr` 全位·⛔ 捨入）：
+      甲[0] ＝ (310495.1684, 2651916.16941)
+      甲[1] ＝ (310514.65953, 2651938.3875)
+      甲[2] ＝ (310519.65863, 2651938.48226)
+      甲[3] ＝ (310521.94020316016, 2651936.0721859974)
+      甲[4] ＝ (310500.00274720637, 2651911.0655026967)
+      甲[5] ＝ (310495.1684, 2651916.16941)
+
+**款 `2`　多邊形乙 ＝ `buf` 帶（`s ∈ [max(s_min,0), buf]`）**
+   還原式（逐字 ＝ `_corner_buffer_S._band_area`）：
+      a, b = (_lo, float(buf)) if side == 'left' else (s_max - float(buf), s_max)
+      w = b - a ；bp = front_p1 + a * d̂ ；_block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+   `s_min` ＝ 0.1759031656417404 ／ `s_max` ＝ 98.71633001483886 ／ `_lo` ＝ 0.1759031656417404 ／ `buf` ＝ 7.8185635189090075
+   ⇒ `a` ＝ 0.1759031656417404 ／ `b` ＝ 7.8185635189090075 ／ `w` ＝ 7.642660353267267 ／ `bp` ＝ (310517.22802022507, 2651941.0497588385)
+   面積（`_block_strip` 之第二回傳）＝ **226.0099999990639** ／ `.area` ＝ 226.0099999990639
+   外環頂點 7 點：
+      乙[0] ＝ (310495.1684, 2651916.16941)
+      乙[1] ＝ (310514.659529998, 2651938.387499998)
+      乙[2] ＝ (310514.6595300002, 2651938.3875)
+      乙[3] ＝ (310519.65863, 2651938.48226)
+      乙[4] ＝ (310522.48221297504, 2651935.499649562)
+      乙[5] ＝ (310499.4607432708, 2651911.637728424)
+      乙[6] ＝ (310495.1684, 2651916.16941)
+
+**款 `3`　二者之面積差**
+   `tol` 之來源（逐字）＝ `_corner_buffer_S(…, tol=0.01, _label='')` 之**預設值**；本格之實際繫結值 ＝ **0.01**（`inspect` 綁定所得·⛔ 憑記憶）
+   `|A甲 − A乙|` ＝ **0.00356410543983543**（`A甲` ＝ 226.00643589362406 ／ `A乙` ＝ 226.0099999990639）⇒ ✅ ≤ tol
+   （併記：`range_area` 實參 ＝ 226.01 ／ `|range_area − A甲|` ＝ 0.0035641063759328517）
+
+**款 `4`　對稱差之面積（＝「位置錯開了多少地」）**
+   幾何庫 ＝ `shapely` **2.1.2**（`GEOS` 3.13.1）
+   `(甲∖乙)` ＝ **6.525812827986511** ㎡　（幾何型別 MultiPolygon）
+   `(乙∖甲)` ＝ **6.529376933853159** ㎡　（幾何型別 Polygon）
+   `對稱差`  ＝ **13.05518976183967** ㎡　（幾何型別 MultiPolygon）
+   自洽驗算：`(甲∖乙) + (乙∖甲) − 對稱差` ＝ 0.0
+   併記：`甲∩乙` ＝ 219.48062306488612 ㎡ ／ `甲∪乙` ＝ 232.53581282672576 ㎡
+
+**款 `5`　對稱差之最大偏離距離**（有向·離散·母體 ＝ 外環頂點）
+   甲之頂點 → 乙之邊界　最大 ＝ **0.7881691119017614** m
+   乙之頂點 → 甲之邊界　最大 ＝ **0.7850159124658364** m
+   （併記 `shapely.hausdorff_distance(甲, 乙)` ＝ 0.7881691119017614）
+   前批同族之實測出處 ＝ `verify/out/WG9286R_twolines.log`【倉】
+
+**款 `6`　負擔率**（純函式求值·⛔ 重跑分配·一律 `ns['rw_from_width']`·⛔ 器內另算）
+   | 輸入 | **來源（逐格具名）** | 值 (m) | `R(·)` (%) |
+   |---|---|---|---|
+   | `W_0` | `solve_G_binary` 鏈頭筆之回傳 `W_near`（碼面實際所用） | 7.79 | **59.966** |
+   | `buf線垂距@∩FRONT` | `buf` 線（錨 `front_p1 + s*·d̂`·向 `allocation_dir`）與 FRONT∞ 之交點 → SIDELINE 之垂距 | 7.785015718243802 | **59.93908487851653** |
+   | `buf線垂距@∩BASELINE` | 同上·與 BASELINE∞ 之交點 → SIDELINE 之垂距 | 727.0387318552846 | **100.0** |
+   | `S1_perp` | `_build_corner_range_v3` 之區域值（規定範圍遠側界之垂距） | 7.0 | **55.7** |
+   ⇒ `R(W_0) − R(S1_perp)` ＝ **4.265999999999998** 個百分點
+   ⇒ `R(buf線垂距@∩FRONT) − R(S1_perp)` ＝ **4.239084878516529** 個百分點
+   ⇒ `R(buf線垂距@∩BASELINE) − R(S1_perp)` ＝ **44.3** 個百分點
+   （併記：`|cos|`（遠側界向 vs `allocation_dir`）＝ 0.04734528804692001 ⇒ 二線**⛔ 平行**）
+
+**款 `7`　該側之抵費地面積與第 2 宗**
+   `range_area`（`_corner_buffer_S` 實參）＝ **226.01** ㎡
+   🔒 **「第 2 宗」之識別規則（具名·⛔ 推定）** ＝ 該側**強制抵費地為第 1 宗**（其 `推進側別` 欄為 `'抵費地'`·⛔ 該側之側標）⇒ **第 2 宗 ＝ 該側 `g_rows` 之首列**（＝ `is_chain_head` 之宗）。
+   ⇒ **第 2 宗之暫編地號 ＝ `628(1)+`** ／ `G(㎡)` ＝ **2023.33** ／ `W(m)` ＝ 68.62 ／ `Rw(%)` ＝ 40.06 ／ `負擔比率` ＝ 0.365
+   該側 `g_rows` 全列（序 ＝ 產生序）：
+      [0] 628(1)+ ｜G ＝ 2023.33 ｜W ＝ 68.62 ｜Rw ＝ 40.06 ｜街角地 ＝ 是
+   該街廓之 `推進側別=='抵費地'` 列：[('R4-抵費地-1', 906.32), ('R4-抵費地-2', 226.01), ('R4-抵費地-3', 26.11), ('R4-抵費地-4', 26.08)]
+
+====================================================================================================================================
+【`§四` 工項二·SB ＝ 3.5 m】`_k923_gate1` 之呼叫端與守衛分項
+====================================================================================================================================
+   `_lot_gate` 之筆數 ＝ 91／`_k923_gate1` ＝ 13／`_blue_shadow_tri` ＝ 13
+
+── 格 `R1/left@3.5m` ── `_lot_gate` 4 筆／**預測** `_k923_gate1` 1 次／**實際** 1 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-36(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-35(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-37(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-36(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R1/right@3.5m` ── `_lot_gate` 6 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(5)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 7｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-34(3)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628(5)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 7｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-34(3)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-37(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-35(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R2/left@3.5m` ── `_lot_gate` 14 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-42(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-41(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-27(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-40(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-30(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-39(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-31(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-42(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-41(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-27(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [10] `628-40(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [11] `628-30(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [12] `628-39(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [13] `628-31(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R2/right@3.5m` ── `_lot_gate` 14 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-35(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-34(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-49(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-50(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-51(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-52(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-32(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-35(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-34(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-49(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [10] `628-50(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [11] `628-51(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [12] `628-52(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [13] `628-32(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R3/left@3.5m` ── `_lot_gate` 10 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(4)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-34(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-46(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-47(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-32(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628(4)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-34(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-46(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-47(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-32(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R3/right@3.5m` ── `_lot_gate` 10 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-30(3)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-42(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-27(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-29(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-31(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-30(3)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-42(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-27(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-29(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-31(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R4/left@3.5m` ── `_lot_gate` 1 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(1)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R5/left@3.5m` ── `_lot_gate` 10 筆／**預測** `_k923_gate1` 4 次／**實際** 4 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-45(1)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-53(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-18(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-7(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-45(1)+`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-53(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 4｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不合格'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-18(2)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-7(2)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-31(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [9] `628-32(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R5/right@3.5m` ── `_lot_gate` 6 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-21(2)+`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-32(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-31(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628(3)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-21(2)+`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R6/left@3.5m` ── `_lot_gate` 7 筆／**預測** `_k923_gate1` 0 次／**實際** 0 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628(2)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-4(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-23(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-20(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628(2)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-4(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-23(1)+`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['left']` ＝ False ∧ `_miss == []` ＝ False
+       `_miss` ＝ ['corner_range_poly', 'side_pts', 'side_mid']｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+── 格 `R6/right@3.5m` ── `_lot_gate` 9 筆／**預測** `_k923_gate1` 2 次／**實際** 2 次 ⇒ 自我驗證閘 (iii) ✅
+   [0] `628-18(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [1] `628-53(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [2] `628-38(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [3] `628-7(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [4] `628-18(1)`｜`驗_宗序` ＝ 街角第1宗｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 6｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [5] `628-53(1)`｜`驗_宗序` ＝ 第2宗｜**分項**： `is_second_after_corner` ＝ True  ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '合格'｜`驗_不可判輸入` ＝ '—'
+   [6] `628-38(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [7] `628-7(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+   [8] `628-20(1)`｜`驗_宗序` ＝ 其後｜**分項**： `is_second_after_corner` ＝ False ∧ `has_side['right']` ＝ True  ∧ `_miss == []` ＝ True 
+       `_miss` ＝ []｜`len(cut_coords)` ＝ 5｜`len(baseline_pts)` ＝ 2｜`驗_B藍影` ＝ '不適用'｜`驗_不可判輸入` ＝ '—'
+
+====================================================================================================================================
+【判別力三造（`§三` 款 `8`）】
+====================================================================================================================================
+   `(1)` [必命中] `forced` 側之鏈頭格數 ＝ **3**（須 ≥ 1）⇒ ✅
+   `(2)` [必非零] `R4/left@0.0` 之對稱差面積 ＝ 13.055884224441684 ⇒ ✅
+   `(2)` [必非零] `R2/left@3.5` 之對稱差面積 ＝ 38.06818855324997 ⇒ ✅
+   `(2)` [必非零] `R4/left@3.5` 之對稱差面積 ＝ 13.05518976183967 ⇒ ✅
+   `(3)` [必為零] **多邊形甲與其自身**之對稱差
+        🔒 **可滿足性之先證**：`X.symmetric_difference(X)` 於 GEOS 之疊合回傳**空幾何**，其 `.area` ＝ `0.0` 係**精確**（⛔ 浮點餘裕）——⛔ 同 `-286` 之「一般向量正規化」型（該型於 IEEE754 下結構上不可滿足）。
+        `R4/left@0.0`：甲⊖甲 ＝ **0.0** ⇒ ✅
+        `R2/left@3.5`：甲⊖甲 ＝ **0.0** ⇒ ✅
+        `R4/left@3.5`：甲⊖甲 ＝ **0.0** ⇒ ✅
+   `(3')` [必非零·證 `(3)` ⛔ 恆為零] 同一運算子施於**甲與乙** ＝ **13.055884224441684**（須 `> 0`）⇒ ✅
+
+====================================================================================================================================
+【判別力二造（`§四` 款 `4`）】
+====================================================================================================================================
+   `(1)` [必非零] `R2/left` 之 `_k923_gate1` 求值次數（二情境合計）＝ **8**（須 > 0）⇒ ✅
+   `(2)` [必為零] 一**執行期組出**之人造街廓（字面⛔ 出艙·`GB-147`）之求值次數 ＝ **0**（須 `0`）⇒ ✅
+
+🛑 **出艙即止**：⛔ 判碼面是否違反任何裁、⛔ 判藍影為缺陷、⛔ 鑄 `GB`、⛔ 提修法主張、⛔ 呈 KL。
