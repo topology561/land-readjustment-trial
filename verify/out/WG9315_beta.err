@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\w-g-251r-handoff-traps-b6f8a9\verify\probes\probe_WG9315_k95_12_stateB.py", line 596, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\w-g-251r-handoff-traps-b6f8a9\verify\probes\probe_WG9315_k95_12_stateB.py", line 557, in main
+    ks = sorted(set(fo) & set(fn))
+TypeError: '<' not supported between instances of 'NoneType' and 'str'
