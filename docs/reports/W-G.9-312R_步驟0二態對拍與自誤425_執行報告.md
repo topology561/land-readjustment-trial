@@ -456,3 +456,144 @@
 | `16244f1` | 基座 ＝ `16244f13ca269ace1ce3245736c536908bb97986`；`§一` 閘 `1` 以 `is-ancestor` 證後裔 |
 
 【單止】本單受詞 ＝ CC 施工窗。發單側 ＝ `claude.ai`。**⛔ 呈 KL。**
+
+---
+
+## `§六`　收工閘（**報告入倉後量**·嚴格末端追加·判準逐條自本單條文重新錄入·⛔ 沿用他批）
+
+### 閘 `1`　`git show --numstat --format= <各 commit>` 逐檔具名
+
+| `commit` | 檔 | `+` | `-` |
+|---|---|---|---|
+| `9010c7e` | `"docs/orders/W-G.9-312_\346\226\275\345\267\245\345\226\256_\346\255\245\351\251\2370\344\272\214\346\205\213\345\260\215\346\213\215\350\210\207\350\207\252\350\252\244425.md"` | `209` | `0` |
+| `75dbbad` | `"docs/reports/W-G.9\346\263\242_claude.ai\345\201\264\350\207\252\350\252\244\347\231\273\350\250\230.md"` | `16` | `0` |
+| `3e758fa` | `verify/out/WG9312_landeffect_off.err` | `0` | `0` |
+| `3e758fa` | `verify/out/WG9312_landeffect_off.log` | `692` | `0` |
+| `3e758fa` | `verify/out/WG9312_landeffect_off.rc` | `1` | `0` |
+| `3e758fa` | `verify/out/WG9312_landeffect_on.err` | `0` | `0` |
+| `3e758fa` | `verify/out/WG9312_landeffect_on.log` | `692` | `0` |
+| `3e758fa` | `verify/out/WG9312_landeffect_on.rc` | `1` | `0` |
+| `3e758fa` | `verify/out/WG9312_runall_off.err` | `0` | `0` |
+| `3e758fa` | `verify/out/WG9312_runall_off.log` | `326` | `0` |
+| `3e758fa` | `verify/out/WG9312_runall_off.rc` | `1` | `0` |
+| `3e758fa` | `verify/out/WG9312_runall_on.err` | `0` | `0` |
+| `3e758fa` | `verify/out/WG9312_runall_on.log` | `1029` | `0` |
+| `3e758fa` | `verify/out/WG9312_runall_on.rc` | `1` | `0` |
+| `e8612e9` | `"docs/reports/W-G.9-312R_\346\255\245\351\251\2370\344\272\214\346\205\213\345\260\215\346\213\215\350\210\207\350\207\252\350\252\244425_\345\237\267\350\241\214\345\240\261\345\221\212.md"` | `458` | `0` |
+
+🔒 **受檢檔數 ＝ `15`**（`> 0` ⇒ ⛔ 空集假綠）；**刪除欄非 `0` 者 ＝ `0`** ⇒ 🟢 **刪除欄全 `0`**
+
+### 閘 `2`　生產碼 `34` 檔（**正面列舉**·⛔ 空 `pathspec`）
+
+| 項 | 值 |
+|---|---|
+| 母體基數 | **`34`**（`app.py` ＋ `verify/` 頂層 `*.py` `33`） |
+| 期初 vs 期末 blob **相異** | **`0`** 🟢 |
+| `app.py` 期末 blob | `4379108a4856714078c410ff4e6291ecfdf6d2c1` ✅ ＝ `4379108a…` |
+
+### 閘 `3`　本批異動檔之 `CR`（**倉內 blob**·取 bytes）
+
+| 檔 | blob bytes | `CR` | 判 |
+|---|---|---|---|
+| `docs/orders/W-G.9-312_施工單_步驟0二態對拍與自誤425.md` | `25834` | `0` | ✅ `.md` ＝ `0` |
+| `docs/reports/W-G.9-312R_步驟0二態對拍與自誤425_執行報告.md` | `35718` | `0` | ✅ `.md` ＝ `0` |
+| `docs/reports/W-G.9波_claude.ai側自誤登記.md` | `900540` | `0` | ✅ `.md` ＝ `0` |
+| `verify/out/WG9312_landeffect_off.err` | `0` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_landeffect_off.log` | `86404` | `692` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_landeffect_off.rc` | `2` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_landeffect_on.err` | `0` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_landeffect_on.log` | `86404` | `692` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_landeffect_on.rc` | `2` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_runall_off.err` | `0` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_runall_off.log` | `36032` | `326` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_runall_off.rc` | `2` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_runall_on.err` | `0` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_runall_on.log` | `161089` | `1029` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+| `verify/out/WG9312_runall_on.rc` | `2` | `0` | 🛑 ⛔ 逕期 `0`·照實（成因 ＝ Windows 子行程 `stdout` 之 `CRLF`·`CR` 數 ＝ 列數） |
+
+🔒 `.md` 之 `CR` 非 `0` 者 ＝ **`0`** ⇒ 🟢
+
+### 閘 `4`　四簿期末（器之輸出）
+
+```
+【發單側自擬框·單檔母體·缺號 [MIN..MAX]】
+  自誤 : {'相異': 415, 'MAX': 425, 'MIN': 7, '缺號': [106, 355, 356, 357]}
+  GB   : {'相異': 168, 'MAX': 170, 'MIN': 1, '缺號': [12, 87]}   （997 在聯集內？ False ⇒ 扣哨兵為空操作： True ）
+  VR   : {'相異': 80, 'MAX': 95, 'MIN': 14, '缺號': [73, 75]}   （999 在定義框內？ True ）
+  K-9  : {'相異': 39, 'MAX': 40, 'MIN': 2, '缺號': []}
+```
+
+| 簿 | 期 | 判 |
+|---|---|---|
+| 自誤 | 相異 `415`／MAX `425`／缺 `[106, 355, 356, 357]` | ✅ |
+| `K-9` | `39`／`40` 一字未動 | ✅ |
+| `GB` | `168`／`170` 一字未動 | ✅ |
+| `VR` | `80`／`95` 一字未動 | ✅ |
+
+### 閘 `5`　append-only（自誤簿）
+
+| 項 | 值 |
+|---|---|
+| `§一` 閘 `8` 之期初 bytes | `898339` |
+| 期末 bytes（`HEAD` blob） | `900540` |
+| 差 | `2201`（＝ payload `2201`）✅ |
+| **期末 bytes 之前綴 ＝ 期初 bytes** | 🟢 ✅ |
+
+### 閘 `6`　自限復驗（**本批之真受詞**）
+
+| 受詞 | 期 | 實得 | 判 |
+|---|---|---|---|
+| `verify/baselines` | `a898f4e1…`·`298` 列 | `a898f4e1bba8f8d230a9e279044f529175beb918…`·`298` 列 | ✅ 未動 |
+| `data/` 全樹 | 未動 | 期初 `9f96d802a107` ／ 期末 `9f96d802a107` | ✅ 未動 |
+| `CLAUDE.md` | blob 未動 | `0ec424b0d274` ／ `0ec424b0d274` | ✅ 未動 |
+| `docs/rulings/K-6_街角地分配程序與可分配判準.md` | blob 未動 | `234f8f9d7f41` ／ `234f8f9d7f41` | ✅ 未動 |
+| `docs/reports/W-G.4_泛用阻塞項登記表.md` | blob 未動 | `9dc9e780511e` ／ `9dc9e780511e` | ✅ 未動 |
+| `refs/heads/verify/*` | `20` 支 | `20` | ✅ |
+| `verify/W-G.9-299-gb170` | `0` | `0` | ✅ |
+| `verify/W-G.9-269-p3a` `is-ancestor` | `rc` ＝ `1` | `rc` ＝ `1` | ✅ ⛔ 併線 |
+| `WV_BAKE` | `None` | `None` | ✅ |
+| **`WV_K6_STEP0`**（父行程末態） | `None` | `None` | ✅ |
+| `verify/out/` 之倉內檔數 | **得增**（`§五` 正令其入倉） | `901` → `913`（新增 `12`·消失 `0`） | ✅ |
+
+**逐檔具名新增者（`12` 檔）**：
+
+- `verify/out/WG9312_landeffect_off.err`
+- `verify/out/WG9312_landeffect_off.log`
+- `verify/out/WG9312_landeffect_off.rc`
+- `verify/out/WG9312_landeffect_on.err`
+- `verify/out/WG9312_landeffect_on.log`
+- `verify/out/WG9312_landeffect_on.rc`
+- `verify/out/WG9312_runall_off.err`
+- `verify/out/WG9312_runall_off.log`
+- `verify/out/WG9312_runall_off.rc`
+- `verify/out/WG9312_runall_on.err`
+- `verify/out/WG9312_runall_on.log`
+- `verify/out/WG9312_runall_on.rc`
+
+### 閘 `7`　標籤對照（`自誤 416`）——**當場以程式自資料列計數**·⛔ 轉引單之自載數
+
+🛑 **每一標籤須同格載其<u>時點</u>**——本節量於 `e8612e9`（**報告入倉後**），而報告本文之數量於 `§一` 開工閘時點（**工項零後·工項一前**）⇒ **凡受詞隨本批增長者，二數必異，此係<u>時點之別</u>、⛔ 錯**。
+
+| 報告內之標籤 | **其指涉之集合**（框逐字） | 報告本文之數（`§一` 時點） | **本節實算**（報告入倉後） | 差之歸因 |
+|---|---|---|---|---|
+| 名目 `64`（甲態） | `WG9312_runall_on.log` 之含 `✅ PASS` 或 `🔴 FAIL` 之**列** | **`64`** | **`64`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| 名目 `34`（乙態） | `WG9312_runall_off.log` 之同框**列** | **`34`** | **`34`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| `PASS` `24`／`12` | 同上·僅 `✅ PASS` | **`24／12`** | **`24／12`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| `FAIL` `40`／`22` | 同上·僅 `🔴 FAIL` | **`40／22`** | **`40／22`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| 落檔列數 `1029`／`326` | `bytes.count(b'\n')` | **`1029／326`** | **`1029／326`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| 生產碼 `34` 檔 | `app.py` ＋ `git ls-tree HEAD verify/` ⋂ `*.py` | **`34`** | **`34`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| 全樹 `2406` 檔 | `git ls-tree -r --name-only -z HEAD` | `2406` | **`2419`** | 🟡 ＋`13` ＝ 落檔 `12` ＋ 報告 `1`（單 `1` 檔於 `§一` 時點**已入倉**⇒ 已計入 `2406`；自誤簿係**修改**⛔ 新增） |
+| 全 `docs/` `815` 檔 | `git ls-tree -r --name-only -z HEAD docs/` | `815` | **`816`** | 🟡 本批於 `docs/` 新增報告 `1` 檔 |
+| `got_*` `20` 檔 | 工作區 `verify/out/` 中 basename 以 `got_` 起首者 | **`20`** | **`20`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+| 本批 commit `5` 個 | 本報告所列之 `commit`（含本節之 commit） | **`5`** | **`5`** | 🟢 ＝（受詞⛔ 隨本批增長） |
+
+🔒 **對照組（證器非紅）**：一必不存在之字樣（**執行期組出**·其字樣⛔ 入倉·`GB-147`）於 `WG9312_runall_on.log` 之列框命中 ＝ **`0`**；必存在之字樣 `🔴 FAIL` ＝ **`40`** ⇒ 量測器**非紅**。
+
+### 閘 `8`　`git ls-remote origin refs/heads/wip/s1-endpart`（`push` **後**）
+
+🔒 **出艙於回報·⛔ 入倉**（單 `§六` 閘 `8` 逐字）。
+
+---
+
+🛑 **停機款之判**：閘 `1`／`2`／`5`／`6` **逐項如期** ⇒ 🟢 **⛔ 觸停機**；閘 `3`／`4` 與期相異者已**照實具名**。`run_all` 之紅**⛔ 為本節之停機款**（`§零-2` 裁 `5`）。
+
