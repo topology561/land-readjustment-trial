@@ -829,7 +829,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _W_prev=_W_prev_left,
                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                     _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
-                    _w0_start=_b_L0,   # 🆕 W-G.9-318：K-9-41 ①
+                    _w0_start=(0.0 if not _fo_left else None),   # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
                 )
                 # 🆕 `W-G.9-246′` 工項二 **站 3／4（harness 左鏈）**：`res` 定案後、鏈推進前。
                 #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
@@ -931,7 +931,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _W_prev=_W_prev_right,
                     _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                     _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
-                    _w0_start=_b_R0,   # 🆕 W-G.9-318：K-9-41 ①
+                    _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
                 )
                 if (float(res.get('area_geom', 0)) < 0.5
                     and d_hat_rev is not None and baseline_pt is not None):
@@ -947,7 +947,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                             _W_prev=_W_prev_right,
                             _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                             _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
-                            _w0_start=_b_R0,   # 🆕 W-G.9-318：K-9-41 ①
+                            _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
                         )
                         if float(_r2.get('area_geom', 0)) >= 0.5:
                             res, solver_label = _r2, _sl2
