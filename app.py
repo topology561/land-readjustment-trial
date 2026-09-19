@@ -10090,6 +10090,7 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
                    tol: float = 0.01, max_iter: int = 80,
                    allocation_dir=None,
                    side_mid=None, W_prev: float = 0.0,
+                   w0_start=None,
                    near_dir=None) -> dict:
     """
     幾何驅動的二分法解 S：
@@ -10206,6 +10207,20 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
             _bp_w = np.asarray(baseline_pt, dtype=float)
             _mp_w = np.asarray(side_mid, dtype=float)
             _W_near = float(np.dot(_bp_w - _mp_w, _ahat))
+            # 🆕 K-9-41 ① 之落地（W-G.9-318）：起算點之二分由**選槽側單一產生者**供給。
+            #   非強制抵費地為首宗之側 ⇒ 呼叫端傳 0.0；為強制抵費地之側 ⇒ 傳該抵費地之 W
+            #   （＝ `_mp_base_W0(…)`·`GB-48` 族：⛔ 在此另寫第二份推導）。
+            #   🛑 ⛔ 靜默退 0：不可解析或非有限值一律 loud raise。
+            if w0_start is not None:
+                try:
+                    _w0s = float(w0_start)
+                except (TypeError, ValueError) as _e:
+                    raise ValueError(
+                        "🔴 K-9-41 ①：w0_start ⛔ 可解析為 float：%r" % (w0_start,)) from _e
+                if not np.isfinite(_w0s):
+                    raise ValueError("🔴 K-9-41 ①：w0_start 非有限值：%r" % (w0_start,))
+                if is_corner or is_chain_head:
+                    _W_near = _w0s
             W = float(np.dot(_bp_w + S_guess * _dhu - _mp_w, _ahat))
             _W_near_out = _W_near                    # 常數（不隨 S_guess）·供 telescoping 閘 W₀
             # 🔴 **K-9-5-6 W 鏈之唯一決定點**（KL 裁 2026-08-08·D-2b-4·§二-1「決定點恰一處」）：
