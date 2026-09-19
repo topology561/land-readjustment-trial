@@ -1,0 +1,126 @@
+====================================================================================================================================
+【`W-G.9-316` `§三`】`W₀` 之**消費者全定位**（🛑 全唯讀·⛔ 驅動·⛔ 修任何檔一字）
+====================================================================================================================================
+🛑 **⛔ 判孰為正確、⛔ 提修法主張、⛔ 擬任何 diff、⛔ 稱任何處為「缺陷」**——照實具名。
+🔒 母體（**正面列舉**）＝ `app.py` ＋ `verify/` 之全部 `*.py` ＝ **366** 檔
+🔒 其中 **AST 解析失敗** ＝ **0** 檔（⇒ 母體零缺口）
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【判別力二造·先決】甲[必有命中] `rw_increment` 之呼叫節點 `> 0`／乙[必為零] 一人造函式名
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · 造甲：`rw_increment` 之呼叫節點 ＝ **3**（須 `> 0`）⇒ ✅
+   · 造乙：一人造函式名（**執行期組出**）之呼叫節點 ＝ **0**（須 ＝ `0`）⇒ ✅
+   ⇒ **器非紅** ✅
+
+   · **與 `GB-168` 二次精化之外部錨對拍**（⛔ 人造之數）：
+     | 包層函式 | 本器實得 | `GB-168` 二次精化所載 | 判 |
+     |---|---|---|---|
+     | `iterate_G_S` | **2** | `2` | ✅ 逐位相符 |
+     | `solve_G_binary` | **1** | `1` | ✅ 逐位相符 |
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`a`】`_tele_exp` 之賦值式逐字與其所在（**列框**·母體 ＝ `verify/stepg_pipeline.py` 單檔）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · 含 `_tele_exp` 之列 ＝ **3**
+     - `verify/stepg_pipeline.py:1470`　`_tele_exp = _rw_from_width(_sd_Wf) - _rw_from_width(_sd_W0)`
+     - `verify/stepg_pipeline.py:1471`　`if abs(_sum_rw_side - _tele_exp) > _IFACE_TOL:`
+     - `verify/stepg_pipeline.py:1475`　`f"={_tele_exp:.2f}（Δ={abs(_sum_rw_side - _tele_exp):.3f} >{_IFACE_TOL}）"`
+   · 其**綁定節點**（AST）：
+     - `verify/stepg_pipeline.py:1470`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_tele_exp = _rw_from_width(_sd_Wf) - _rw_from_width(_sd_W0)`
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`b`】`_sd_W0` 之**產生鏈**（AST·⛔ 文字層·⛔ 以推定代之）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · **環**：`_sd_W0` @ `verify/stepg_pipeline.py` ⇒ 綁定節點 **1** 個
+     - `verify/stepg_pipeline.py:1447`｜包層 `_run_step_g_impl`｜`For`｜逐字 ＝ `for (_sd_tag, _sd_has, _sd_W0, _sd_Wf) in (('left', _has_left_corner, _adv_final['W0_left'], _adv_final['Wf_left']), ('right', _has_right_corner, _adv_final['W0_right'], _adv_final['Wf_right'])):`
+   · **環**：`_adv_final` @ `verify/stepg_pipeline.py` ⇒ 綁定節點 **9** 個
+     - `verify/stepg_pipeline.py:1017`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final = _advance_block_with_split(_k_star, True)`
+     - `verify/stepg_pipeline.py:1063`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final = _advance_block_with_split(_k_star, True)`
+     - `verify/stepg_pipeline.py:1117`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['rows'] = list(_adv_final['rows']) + list(_s2['rows'])`
+     - `verify/stepg_pipeline.py:1118`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['left_results'] = list(_adv_final['left_results']) + list(_s2['left_results'])`
+     - `verify/stepg_pipeline.py:1120`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['right_results'] = list(_adv_final['right_results']) + list(_s2['right_results'])`
+     - `verify/stepg_pipeline.py:1124`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['Wf_left'] = _s2['Wf_left']`
+     - `verify/stepg_pipeline.py:1125`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['Wf_right'] = _s2['Wf_right']`
+     - `verify/stepg_pipeline.py:1127`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['left_cum_S'] = _s2['left_cum_S']`
+     - `verify/stepg_pipeline.py:1128`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_adv_final['right_cum_S'] = _s2['right_cum_S']`
+   · **環**：`W0_left`／`W0_right` 之**鍵**之寫入處（母體 ＝ 全部 `*.py`·**列框**）
+     - `app.py:22110`　`'W-G.9-4_W0_left': _W0_l,`
+     - `app.py:22111`　`'W-G.9-4_W0_right': _W0_r,`
+     - `verify/stepg_pipeline.py:782`　`_W0_left = 0.0; _W0_right = 0.0`
+     - `verify/stepg_pipeline.py:783`　`_W0_left_set = False; _W0_right_set = False`
+     - `verify/stepg_pipeline.py:850`　`if not _W0_left_set:`
+     - `verify/stepg_pipeline.py:851`　`_W0_left = float(res.get('W_near', 0.0)); _W0_left_set = True`
+     - `verify/stepg_pipeline.py:1006`　`'W0_left': _W0_left, 'W0_right': _W0_right,`
+     - `verify/stepg_pipeline.py:1448`　`('left', _has_left_corner, _adv_final['W0_left'], _adv_final['Wf_left']),`
+     - `verify/stepg_pipeline.py:782`　`_W0_left = 0.0; _W0_right = 0.0`
+     - `verify/stepg_pipeline.py:783`　`_W0_left_set = False; _W0_right_set = False`
+     - `verify/stepg_pipeline.py:968`　`if not _W0_right_set:`
+     - `verify/stepg_pipeline.py:969`　`_W0_right = float(res.get('W_near', 0.0)); _W0_right_set = True`
+     - `verify/stepg_pipeline.py:1006`　`'W0_left': _W0_left, 'W0_right': _W0_right,`
+     - `verify/stepg_pipeline.py:1449`　`('right', _has_right_corner, _adv_final['W0_right'], _adv_final['Wf_right'])):`
+     - `verify/probes/probe_WG920_pp_lowerbound.py:235`　`d.get("W-G.9-4_W0_left")),`
+     - `verify/probes/probe_WG920_pp_lowerbound.py:265`　`d.get("W-G.9-4_W_new_left"), d.get("W-G.9-4_W0_left"), sum(w[:k])),`
+     - `verify/probes/probe_WG920_pp_lowerbound.py:237`　`d.get("W-G.9-4_W0_right"))):`
+     - `verify/probes/probe_WG920_pp_lowerbound.py:267`　`d.get("W-G.9-4_W_new_right"), d.get("W-G.9-4_W0_right"),`
+     - `verify/probes/probe_WG9316_w0_consumers.py:208`　`say("   · **環**：`W0_left`／`W0_right` 之**鍵**之寫入處（母體 ＝ 全部 `*.py`·**列框**）")`
+     - `verify/probes/probe_WG9316_w0_consumers.py:211`　`for key in ("W0_left", "W0_right"):`
+     - `verify/probes/probe_WG9316_w0_consumers.py:216`　`say("     \U0001f6d1 **⛔ 可達·其止於** `W0_left`／`W0_right`（全母體無其字樣）")`
+     - `verify/probes/probe_WG9316_w0_consumers.py:310`　`for key in ("W0_left", "W0_right"):`
+     - `verify/probes/probe_WG9316_w0_consumers.py:208`　`say("   · **環**：`W0_left`／`W0_right` 之**鍵**之寫入處（母體 ＝ 全部 `*.py`·**列框**）")`
+     - `verify/probes/probe_WG9316_w0_consumers.py:211`　`for key in ("W0_left", "W0_right"):`
+     - `verify/probes/probe_WG9316_w0_consumers.py:216`　`say("     \U0001f6d1 **⛔ 可達·其止於** `W0_left`／`W0_right`（全母體無其字樣）")`
+     - `verify/probes/probe_WG9316_w0_consumers.py:310`　`for key in ("W0_left", "W0_right"):`
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`c`】`rw_increment` 之**全部呼叫節點**及其實參（`ast.unparse`）＋ 包層函式
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   | # | 檔:列 | 包層函式 | 呼叫之逐字（`ast.unparse`） |
+   |---|---|---|---|
+   | 1 | `app.py:6458` | `iterate_G_S` | `rw_increment(W_prev, W_cur)` |
+   | 2 | `app.py:6486` | `iterate_G_S` | `rw_increment(W_prev, W_cur)` |
+   | 3 | `app.py:10244` | `solve_G_binary` | `rw_increment(_rw_start, W)` |
+   ⇒ 合計 **3** 個呼叫節點（母體 ＝ 上開 **366** 檔）
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`d`】`_rw_start` 之決定式逐字 ＋ `W_cur = W_prev + S` 之 `W_prev` 執行緒初值
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · `_rw_start` 之**綁定節點**（AST·母體 ＝ 全部 `*.py`）：
+     - `app.py:10183`｜包層 `solve_G_binary`｜`Assign`｜逐字 ＝ `_rw_start = 0.0`
+     - `app.py:10243`｜包層 `solve_G_binary`｜`Assign`｜逐字 ＝ `_rw_start = _W_near if is_corner or is_chain_head else float(W_prev)`
+   · `W_cur` 之**綁定節點**（AST·⛔ 文字層）：
+     - `app.py:6447`｜包層 `iterate_G_S`｜`Assign`｜逐字 ＝ `W_cur = W_prev`
+     - `app.py:6485`｜包層 `iterate_G_S`｜`Assign`｜逐字 ＝ `W_cur = W_prev + S`
+     - `app.py:6457`｜包層 `iterate_G_S`｜`Assign`｜逐字 ＝ `W_cur = W_prev + S`
+   · `W_prev` 之**綁定節點**（AST·**限上開 `W_cur` 之包層**·即其執行緒之初值候選）：
+     - `app.py:6436`｜包層 `iterate_G_S`｜`Assign`｜逐字 ＝ `W_prev = float(W_prev or 0.0)`
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`e`】`rw_from_width` 之**全部呼叫節點** ＋ 包層 ＋ 實參
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · 名 `rw_from_width` ⇒ 呼叫節點 **4** 個
+      1. `app.py:5760`｜包層 `rw_increment`｜`rw_from_width(W_cur)`
+      2. `app.py:5760`｜包層 `rw_increment`｜`rw_from_width(W_prev)`
+      3. `app.py:23139`｜包層 `main`｜`rw_from_width(wlast)`
+      4. `app.py:23139`｜包層 `main`｜`rw_from_width(_w_start)`
+   · 名 `_rw_from_width` ⇒ 呼叫節點 **8** 個
+      1. `verify/stepg_pipeline.py:1470`｜包層 `_run_step_g_impl`｜`_rw_from_width(_sd_Wf)`
+      2. `verify/stepg_pipeline.py:1470`｜包層 `_run_step_g_impl`｜`_rw_from_width(_sd_W0)`
+      3. `verify/stepg_pipeline.py:1504`｜包層 `_run_step_g_impl`｜`_rw_from_width(_Wf_t2)`
+      4. `verify/stepg_pipeline.py:1504`｜包層 `_run_step_g_impl`｜`_rw_from_width(_W1_end_t2)`
+      5. `verify/stepg_pipeline.py:1331`｜包層 `_iface_deltas`｜`_rw_from_width(_wstart)`
+      6. `verify/stepg_pipeline.py:1331`｜包層 `_iface_deltas`｜`_rw_from_width(_prev_far)`
+      7. `verify/stepg_pipeline.py:1333`｜包層 `_iface_deltas`｜`_rw_from_width(_wnear)`
+      8. `verify/stepg_pipeline.py:1333`｜包層 `_iface_deltas`｜`_rw_from_width(_prev_far)`
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【`f`】`_fo_left`／`_fo_right` 之賦值節點 ＋ 包層 ＋ 與 `b` 之 `W₀` 賦值節點**是否同框**
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   · `_fo_left` ⇒ `app.py:21886`｜包層 `main`｜`Assign`｜逐字 ＝ `_fo_left = bool(_fo_block.get('left_forced_offset', False))`
+   · `_fo_left` ⇒ `verify/stepg_pipeline.py:647`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_fo_left = bool(_fo_block.get('left_forced_offset', False))`
+   · `_fo_right` ⇒ `app.py:21887`｜包層 `main`｜`Assign`｜逐字 ＝ `_fo_right = bool(_fo_block.get('right_forced_offset', False))`
+   · `_fo_right` ⇒ `verify/stepg_pipeline.py:648`｜包層 `_run_step_g_impl`｜`Assign`｜逐字 ＝ `_fo_right = bool(_fo_block.get('right_forced_offset', False))`
+   · `b` 之 `W₀` 鍵所在之包層（AST `Constant`）＝ [('verify/probes/probe_WG9316_w0_consumers.py', 'main'), ('verify/stepg_pipeline.py', '_advance_block_with_split'), ('verify/stepg_pipeline.py', '_run_step_g_impl')]
+   · `f` 之 `forced` 旗標所在之包層 ＝ [('app.py', 'main'), ('verify/stepg_pipeline.py', '_run_step_g_impl')]
+   ⇒ **是否同框**：交集 ＝ **1** 個 [('verify/stepg_pipeline.py', '_run_step_g_impl')] ⇒ 🟢 **有同框者**
+
+RESULT=OK
