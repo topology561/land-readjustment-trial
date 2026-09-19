@@ -1,0 +1,321 @@
+================================================================================================================================
+【`W-G.9-317` `§四` 工項二】落地前之最後定位（**全唯讀**）
+================================================================================================================================
+三軸 (1) 來源 ＝ 工作區（`HEAD` ＝ 4ca2546a780a1b3699c90060c9ffe6383f8c2c45／`git status` 條目 ＝ 2）
+三軸 (2) 母體 ＝ `app.py` ＋ `verify/` 之全部 `*.py` ＝ **367** 檔（本器自身含在內）
+三軸 (3) 粒度框 ＝ AST 節點（`a`、`b`、`c`、`d`、`f`）／列框（`e`、`g`）
+  AST 解析失敗 ＝ **0** 檔
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+【判別力二造・先決】
+  造甲[必有命中] `_solve_G_one` 之呼叫節點 ＝ **6**（須 `> 0`）⇒ ✅
+  造乙[必為零] 一人造之函式名（**執行期組出**·字面⛔ 出艘）＝ **0**（須 ＝ `0`）⇒ ✅
+  ⇒ **器非紅** ✅
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`a`】`_solve_G_one` 之完整簽章（AST·母體 ＝ `app.py`）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  定義節點數 ＝ **1**
+  - `app.py:13967`｜包層 ＝ （頂層）｜逐字 ＝
+      def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt, S_max, is_corner, side, avg_depth, B, C, tab6_burden, allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None, is_chain_head=False):
+      體列數 ＝ 9（`lineno` 13967 – 14030）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`b`】`_solve_G_one` 之全部呼叫節點
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   | # | 檔:列 | 包層函式 | 呼叫之逐字（`ast.unparse`） |
+   |---|---|---|---|
+   | 1 | `app.py:14117` | `_corner_first_lot_G` | `_solve_G_one(a_m2=a_m2, A=A_ratio, l_front=l_front, l_side=l_side, F=F, blk_poly=block_poly, d_hat=_dh_use, baseline_pt=_bp, S_max=max(0.1, _s_max), is_corner=True, side=_side_cn, avg_depth=avg_depth, B=B, C=C, tab6_burden=tab6_burden, allocation_dir=allocation_dir, side_mid=side_mid, W_prev=0.0)` |
+   | 2 | `app.py:21661` | `_solve_one` | `_solve_G_one(a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F, blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt, S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth, B=B_value, C=C_for_calc, tab6_burden=_tab6_burden, allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev, near_dir=_near_dir, is_chain_head=_is_chain_head)` |
+   | 3 | `verify/probes/probe_K9_s62c_attribution.py:513` | `_solve` | `ns['_solve_G_one'](a_m2=_a_m2, A=_A, l_front=_lfront, l_side=_lside_prod, F=F_, blk_poly=_bpoly, d_hat=-_dh, baseline_pt=bp_, S_max=max(0.1, smax_), is_corner=True, side='右側', avg_depth=_depth, B=_B, C=_C, tab6_burden=_tab6, allocation_dir=_ax, side_mid=_smid, W_prev=wprev_)` |
+   | 4 | `verify/probes/probe_WG914_gate_decomp.py:79` | `w_solve` | `orig['_solve_G_one'](**kw)` |
+   | 5 | `verify/probes/probe_WG916_isolate.py:57` | `w_solve` | `orig['_solve_G_one'](**kw)` |
+   | 6 | `verify/stepg_pipeline.py:516` | `_solve_one` | `ns['_solve_G_one'](a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F, blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt, S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth, B=B_value, C=C_for_calc, tab6_burden=_tab6_burden, allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev, near_dir=_near_dir, is_chain_head=_is_chain_head)` |
+   ⇒ 合計 **6** 個（**未扣除本器**）／**6** 個（**已扣除本器自身**）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`c`】每一呼叫節點之包層函式內，七名是否出現（AST `Name`／`arg`）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+🔒 **二框並報（本器自捕·入倉前）**：
+   框 `c-1`（**單之逐字框**）＝ 只掃**最內層**包層函式之 AST 子樹；
+   框 `c-2`（**包層鏈框**）＝ 掃**自最內層逐層向外至模組頂層**之全部包層函式。
+   🔴 **二框相異之因**：巢狀函式之外層名⛔ 落於其自身之子樹
+   ⇒ `c-1` 之 `⛔` 只證「**不在本函式之字面內**」，**⛔ 證「不可見」**。
+   🛑 本器只出二框之數，**⛔ 判孰為單所欲之受詞**。
+
+  ── 框 `c-1`（最內層）
+   | # | 檔:列 | 包層 | `_fo_left` | `_fo_right` | `_b_L0` | `_b_R0` | `_mp_base_W0` | `_left_buffer_S` | `_right_buffer_S` |
+   |---|---|---|---|---|---|---|---|---|---|
+   | 1 | `app.py:14117` | `_corner_first_lot_G` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 2 | `app.py:21661` | `_solve_one` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 3 | `verify/probes/probe_K9_s62c_attribution.py:513` | `_solve` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 4 | `verify/probes/probe_WG914_gate_decomp.py:79` | `w_solve` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 5 | `verify/probes/probe_WG916_isolate.py:57` | `w_solve` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 6 | `verify/stepg_pipeline.py:516` | `_solve_one` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+
+  ── 框 `c-2`（包層鏈）
+   | # | 檔:列 | 包層鏈 | `_fo_left` | `_fo_right` | `_b_L0` | `_b_R0` | `_mp_base_W0` | `_left_buffer_S` | `_right_buffer_S` |
+   |---|---|---|---|---|---|---|---|---|---|
+   | 1 | `app.py:14117` | `_corner_first_lot_G` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 2 | `app.py:21661` | `_solve_one` ← `main` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+   | 3 | `verify/probes/probe_K9_s62c_attribution.py:513` | `_solve` ← `main` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 4 | `verify/probes/probe_WG914_gate_decomp.py:79` | `w_solve` ← `install` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 5 | `verify/probes/probe_WG916_isolate.py:57` | `w_solve` ← `install` | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ | ⛔ |
+   | 6 | `verify/stepg_pipeline.py:516` | `_solve_one` ← `_run_step_g_impl` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`d`】`_mp_base_W0` 之全部定義節點與其逐字比對
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  定義節點數 ＝ **3**（母體 ＝ 上開 367 檔）
+  🔴 **單之受詞逐字 ＝ 「`app.py` ＋ `verify/stepg_pipeline.py`」之二者**；
+     而全母體實得 **3** 個定義節點 ⇒ 第三個係**射程外**，照實具名、**⛔ 入比對**。
+
+  ── `app.py:22403`｜包層 ＝ `main`｜體 bytes（`ast.unparse`）＝ 381｜**單之受詞**
+      def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
+          if _gs is None or _mp is None or _adir is None or (_dv is None):
+              return 0.0
+          _dv2 = _np_d.asarray(_dv, dtype=float)
+          _dn = float(_np_d.linalg.norm(_dv2))
+          _du = _dv2 / _dn if _dn > 1e-09 else _dv2
+          _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
+          return float(k956_W_from_mp(_bp0, _mp, _adir, _dv))
+
+  ── `verify/probes/probe_WG91_buf_metric_and_candidates.py:247`｜包層 ＝ `main`｜體 bytes（`ast.unparse`）＝ 197｜🟡 **射程外·⛔ 入比對**
+      def _mp_base_W0(_gs, _bf):
+          a_ = adir / float(np.linalg.norm(adir))
+          ao = a_ if float(np.dot(dh, a_)) >= 0 else -a_
+          return float(np.dot(np.asarray(_gs, float) + float(_bf) * dh - mp, ao))
+
+  ── `verify/stepg_pipeline.py:1023`｜包層 ＝ `_run_step_g_impl`｜體 bytes（`ast.unparse`）＝ 382｜**單之受詞**
+      def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
+          if _gs is None or _mp is None or _adir is None or (_dv is None):
+              return 0.0
+          _dv2 = _np_d.asarray(_dv, dtype=float)
+          _dn = float(_np_d.linalg.norm(_dv2))
+          _du = _dv2 / _dn if _dn > 1e-09 else _dv2
+          _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
+          return float(_k956_W_from_mp(_bp0, _mp, _adir, _dv))
+
+  ⇒ **單所名之二者（`app.py` vs `verify/stepg_pipeline.py`）逐字相同 ＝ 🔴 否**
+     bytes ＝ 381 ／ 382
+     逐字差（`unified_diff`·前 ＝ `app.py`／後 ＝ `stepg`）：
+      --- 
+      +++ 
+      @@ -7,2 +7,2 @@
+           _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
+      -    return float(k956_W_from_mp(_bp0, _mp, _adir, _dv))
+      +    return float(_k956_W_from_mp(_bp0, _mp, _adir, _dv))
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`e`】「強制抵費地⛔ 計 `G`」之碼面現況
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  查法一（AST）：掃全母體之 `If`／`IfExp` 節點，其 `test` 之 `ast.unparse` 含上列任一 forced 字樣者，
+           再於其 `body` 內尋「跳過」（`Continue`／`Pass`／`Break`）或「歸零」（目標名含 `G` 且值為常數 `0`）。
+  查法二（列框）：逐檔計 forced 字樣與 `G` 同列之命中。
+
+  查法一之命中 ＝ **3** 筆
+   - `app.py:23310`｜包層 `main`｜`test` ＝ `not _fo.get(f'{_side}_forced')`｜Continue
+   - `verify/probes/probe_D2b30_forced_band_width.py:193`｜包層 `main`｜`test` ＝ `not forced`｜Continue
+   - `verify/wf_f4.py:963`｜包層 `compute`｜`test` ＝ `fm.get('left_forced_offset') or fm.get('right_forced_offset')`｜Continue
+
+  查法二之逐檔列框（forced 字樣 ⋀ 同列含 `G`）：
+   - `app.py` ＝ **6** 列
+   - `verify/stepg_pipeline.py` ＝ **2** 列
+   - `verify/wf_f1.py` ＝ **0** 列
+   - `verify/wf_f4.py` ＝ **0** 列
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`f`】`_W_near`／`_W_near_out` 之全部出現節點
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   | # | 檔:列 | 包層 | `ctx` | 所在敍述之逐字（`ast.unparse`） |
+   |---|---|---|---|---|
+   | 1 | `app.py:10182` | `solve_G_binary` | `Store` | `_W_near_out = 0.0` |
+   | 2 | `app.py:10208` | `solve_G_binary` | `Store` | `_W_near = float(np.dot(_bp_w - _mp_w, _ahat))` |
+   | 3 | `app.py:10210` | `solve_G_binary` | `Store` | `_W_near_out = _W_near` |
+   | 4 | `app.py:10210` | `solve_G_binary` | `Load` | `_W_near_out = _W_near` |
+   | 5 | `app.py:10335` | `solve_G_binary` | `Load` | `return {'G': round(G_conv, 2), 'S': round(S_conv, 2), 'S_raw': S_conv, 'W': round(W_conv, 2), 'W_far': round(W_conv, 2), 'W_near': round(_W_near_out, …` |
+   | 6 | `app.py:10243` | `solve_G_binary` | `Load` | `_rw_start = _W_near if is_corner or is_chain_head else float(W_prev)` |
+   ⇒ 合計 **6**（未扣除本器）／**6**（已扣除本器）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`f′`】**本器之附帶量·⛔ 單之受詞·照實具名**：鍵 `'W_near'` 之全部出現節點
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   （其用：`f` 已定位 `_W_near_out` 止於 `solve_G_binary` 之回傳字典；本項只出該鍵之讀寫處，**⛔ 判其為同一鎖**。）
+   | # | 檔:列 | 包層 | 所在敍述之逐字 |
+   |---|---|---|---|
+   | 1 | `app.py:10335` | `solve_G_binary` | `return {'G': round(G_conv, 2), 'S': round(S_conv, 2), 'S_raw': S_conv, 'W': round(W_conv, 2), 'W_far': round(W_conv, 2), 'W_near': round(_W_near_out, …` |
+   | 2 | `verify/probes/probe_D2b6_split.py:46` | （頂層） | `KEYS = ('S_raw', 'W_far_raw', 'Rw_raw', 'W_rw_start_raw', 'G', 'S', 'W', 'W_far', 'W_near', 'Rw_pct', 'area_geom', 'iterations', 'converged', '_alloc_…` |
+   | 3 | `verify/probes/probe_WG914_gate_decomp.py:89` | `w_solve` | `REC['solve'].append({'side': kw.get('side'), 'a_m2': kw.get('a_m2'), 'W_prev': kw.get('W_prev'), 'is_corner': kw.get('is_corner'), 'W_near': d.get('W_…` |
+   | 4 | `verify/probes/probe_WG914_gate_decomp.py:235` | `report` | `say(f"          [{i}] a={x['a_m2']}｜W_prev={x['W_prev']}｜is_corner={x['is_corner']}｜W_near={x['W_near']}｜W_far={x['W_far']}｜Rw={x['Rw_pct']}｜宗地寬={x['w…` |
+   | 5 | `verify/probes/probe_WG916_isolate.py:61` | `w_solve` | `REC['solve'].append({'a_m2': kw.get('a_m2'), 'side': kw.get('side'), 'is_corner': kw.get('is_corner'), 'W_prev': kw.get('W_prev'), 'S': d.get('S'), '宗…` |
+   | 6 | `verify/probes/probe_WG916_isolate.py:172` | `report` | `say(f"      {'宗地字面':<14}{'side':<6}{'S':>9}{'宗地寬度':>10}{'W_near':>10}{'W_far':>10}{'ΔW=far−near':>13}{'w−ΔW':>9}")` |
+   | 7 | `verify/probes/probe_WG916_isolate.py:176` | `report` | `wn, wf = (r['W_near'], r['W_far'])` |
+   | 8 | `verify/probes/probe_WG916_isolate.py:297` | `main` | `re_adv = float(chain[-1]['W_far']) - float(chain[0]['W_near'])` |
+   | 9 | `verify/probes/probe_WG916_isolate.py:313` | `main` | `dW = float(r['W_far']) - float(r['W_near'])` |
+   | 10 | `verify/probes/probe_WG916_isolate.py:322` | `main` | `gp = float(chain[i + 1]['W_near']) - float(chain[i]['W_far'])` |
+   | 11 | `verify/probes/probe_WG916_isolate.py:299` | `main` | `say(f"      **理論** Σw[:{k}] ＝ {th:.4f}｜**實跑** {_f(chain[-1]['W_far'])} − {_f(chain[0]['W_near'])} ＝ {re_adv:.4f}｜**差 ＝ {diff:+.4f} m**")` |
+   | 12 | `verify/probes/probe_WG916_isolate.py:324` | `main` | `say(f"          {lot_of(chain[i])}→{lot_of(chain[i + 1])}: W_far={_f(chain[i]['W_far'])} W_near={_f(chain[i + 1]['W_near'])} 差 **{gp:+.4f}**")` |
+   | 13 | `verify/probes/probe_WG9281_w0chain.py:111` | `_spy_sgb` | `recs.append({'p_baseline_pt': P.get('baseline_pt'), 'p_side_mid': P.get('side_mid'), 'p_allocation_dir': P.get('allocation_dir'), 'p_d_hat': P.get('d_…` |
+   | 14 | `verify/probes/probe_WG9286_twolines.py:212` | `_spy_sgb` | `SGB.append({'blk': c.get('blk_label'), 'side': sd, 'is_corner': P.get('is_corner'), 'is_chain_head': P.get('is_chain_head'), 'W_prev': P.get('W_prev')…` |
+   | 15 | `verify/probes/probe_WG9286_twolines.py:428` | `analyse` | `w0 = _f(h['W_near'])` |
+   | 16 | `verify/probes/probe_WG9286_twolines.py:426` | `analyse` | `say('            `W_near` ＝ %r ／ `W_rw_start_raw` ＝ %r ／ `W_prev` ＝ %r' % (_f(h['W_near']), _f(h['W_rw_start_raw']), _f(h['W_prev'])))` |
+   | 17 | `verify/probes/probe_WG9287_landeffect.py:238` | `_spy_sgb` | `SGB.append({'blk': c.get('blk_label'), 'side': sd, 'k': c.get('k'), 'is_corner': P.get('is_corner'), 'is_chain_head': P.get('is_chain_head'), 'W_prev'…` |
+   | 18 | `verify/probes/probe_WG9287_landeffect.py:554` | `analyse` | `w0 = _f(heads[-1]['W_near']) if heads else None` |
+   | 19 | `verify/probes/probe_WG9290_neardir.py:224` | `_spy_sgo` | `SGO.append({'blk': c.get('blk_label'), 'side': side, 'id': c.get('k'), 'idx': c.get('_lg_idx_left') if side == 'left' else c.get('_lg_idx_right'), 'is…` |
+   | 20 | `verify/probes/probe_WG9290_neardir.py:393` | `detail` | `say('      **款 `3`**\u3000`cum_S`（入）＝ %r ／ `W_prev` ＝ %r ／ `W_near`（回傳）＝ %r ／ `G` ＝ %r ／ `S` ＝ %r ／ 解法 ＝ %s' % (_f(x['cum_S_in']), _f(x['W_prev']), _f…` |
+   | 21 | `verify/probes/probe_WG9317_w0_landing_scope.py:380` | `main` | `if isinstance(n, ast.Constant) and n.value == 'W_near':
+    st = enclosing_stmt(n)
+    enc = enclosing_func(n)
+    key = (p, getattr(st, 'lineno', n.l…` |
+   | 22 | `verify/stepg_pipeline.py:1319` | `_iface_deltas` | `_wnear = float(_n['res'].get('W_near', 0.0) or 0.0)` |
+   | 23 | `verify/stepg_pipeline.py:851` | `_advance_block_with_split` | `_W0_left = float(res.get('W_near', 0.0))` |
+   | 24 | `verify/stepg_pipeline.py:969` | `_advance_block_with_split` | `_W0_right = float(res.get('W_near', 0.0))` |
+   ⇒ 合計 **24**（未扣除本器）／**23**（已扣除本器）
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+【`g`】`left_forced_offset`／`right_forced_offset` 之產生處 ＋ 倉內既有落檔之值
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  一、產生處（AST：含該字串常數之敍述）
+   - `app.py:8050`｜包層 `_spatial_order_parcels_v2`｜`return {'ordered': pre_seq_meta, 'right_corner_offset_area': float(forced_offset.get('right_corner_min_area', 0) or 0) if forced_offset.get('right_forced_offset…`
+   - `app.py:14633`｜包層 `_build_wf_ctx`｜`return {'ns': _ns, 'fake_st': _fake_st, 'cb_by': cb_by, 'cad': cad, 'snap': snap, 'omap': _need('t8_ownership_map'), 'build': _need('f3_build_parcels'), 'temp':…`
+   - `app.py:20952`｜包層 `main`｜`_forced_offset_map[_lbl_pk] = {'left_forced_offset': bool(_l_forced and _l_has_side), 'right_forced_offset': bool(_r_forced and _r_has_side), 'left_has_side': b…`
+   - `app.py:20967`｜包層 `main`｜`st.session_state['f3L_forced_offset'] = _forced_offset_map`
+   - `app.py:21574`｜包層 `main`｜`_f3L_forced_offset = st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `app.py:21579`｜包層 `main`｜`if _fo.get('left_forced_offset'):
+    _sides_fo.append('左側')`
+   - `app.py:21581`｜包層 `main`｜`if _fo.get('right_forced_offset'):
+    _sides_fo.append('右側')`
+   - `app.py:21846`｜包層 `main`｜`_v2_forced = (st.session_state.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}`
+   - `app.py:21884`｜包層 `main`｜`_fo_block = (st.session_state.get('f3L_forced_offset', {}) or {}).get(blk_label, {})`
+   - `app.py:21886`｜包層 `main`｜`_fo_left = bool(_fo_block.get('left_forced_offset', False))`
+   - `app.py:21887`｜包層 `main`｜`_fo_right = bool(_fo_block.get('right_forced_offset', False))`
+   - `verify/fixture_end_fallback.py:62`｜包層 `build_case`｜`forced.update({'left_forced_offset': False, 'right_forced_offset': False, 'left_corner_min_area': 0.0, 'right_corner_min_area': 0.0})`
+   - `verify/fixture_end_winner.py:115`｜包層 `_outcome`｜`forced = {f'{side}_has_side': has_side, ('right' if side == 'left' else 'left') + '_has_side': True, 'left_forced_offset': False, 'right_forced_offset': False, …`
+   - `verify/probes/probe_D2_pre_freeze.py:93`｜包層 `main`｜`L.append(f"{'情境':<6}{'街廓':<6}{'left_forced_offset':>22}{'right_forced_offset':>22}")`
+   - `verify/probes/probe_D2_pre_freeze.py:104`｜包層 `main`｜`_l = bool(fo.get('left_forced_offset', False))`
+   - `verify/probes/probe_D2_pre_freeze.py:105`｜包層 `main`｜`_r = bool(fo.get('right_forced_offset', False))`
+   - `verify/probes/probe_K9_7d_pk_impact.py:189`｜包層 `_pick`｜`forced = bool(_f.get('left_forced_offset' if side == 'left' else 'right_forced_offset'))`
+   - `verify/probes/probe_WG9173_r2inputs.py:67`｜包層 `main`｜`say('   f3L_forced_offset(ss) = %r' % (ss.get('f3L_forced_offset'),))`
+   - `verify/probes/probe_WG919_lowerbound.py:146`｜包層 `main`｜`for sd, key in (('left', 'left_forced_offset'), ('right', 'right_forced_offset')):
+    if not bool((fo or {}).get(key, False)):
+        continue
+    col = f"【{(…`
+   - `verify/probes/probe_WG922_three_vs_target.py:163`｜包層 `forced_set`｜`for sd, key, col in (('left', 'left_forced_offset', '【左】街角最小面積(㎡)'), ('right', 'right_forced_offset', '【右】街角最小面積(㎡)')):
+    if not bool((fo or {}).get(key, Fals…`
+   - `verify/probes/probe_WG9276_k956_count.py:149`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9276_k956_count.py:153`｜包層 `drive`｜`fo_tab[b] = (bool(d.get('left_forced_offset', False)), bool(d.get('right_forced_offset', False)))`
+   - `verify/probes/probe_WG9276_k956_count.py:349`｜包層 `main`｜`if 'left_forced_offset' in ln or 'f3L_forced_offset' in ln:
+    say('   | `%s:%d` | `%s` |' % (path, i + 1, ln.strip()[:112]))`
+   - `verify/probes/probe_WG9276_k956_count.py:351`｜包層 `main`｜`nos = 'left_forced_offset' + chr(95) + 'NOSUCH'`
+   - `verify/probes/probe_WG9277_wchain.py:135`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9277_wchain.py:136`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9279_rw0.py:137`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9279_rw0.py:138`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9281_w0chain.py:167`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9281_w0chain.py:168`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9282_branch.py:152`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9282_branch.py:153`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9286_twolines.py:280`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9286_twolines.py:281`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9287_landeffect.py:363`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9287_landeffect.py:364`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9290_neardir.py:274`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9290_neardir.py:275`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9292_pathC.py:253`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9292_pathC.py:254`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9293_tol.py:259`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9293_tol.py:260`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9294_rangearea.py:120`｜包層 `drive`｜`fo = fake_st.session_state.get('f3L_forced_offset', {}) or {}`
+   - `verify/probes/probe_WG9294_rangearea.py:121`｜包層 `drive`｜`fo_tab = {b: (bool((fo.get(b) or {}).get('left_forced_offset', False)), bool((fo.get(b) or {}).get('right_forced_offset', False))) for b in BLKS}`
+   - `verify/probes/probe_WG9308R_sites2.py:45`｜包層 （頂層）｜`REG_LIT = 'f3L_forced_offset'`
+   - `verify/probes/probe_ruling_K9_7_pk_impact.py:192`｜包層 `_pick`｜`forced = bool(_f.get('left_forced_offset' if side == 'left' else 'right_forced_offset'))`
+   - `verify/probes/probe_ruling_K9_corner_width.py:139`｜包層 （頂層）｜`_FORCED_OF = {'left': 'left_forced_offset', 'right': 'right_forced_offset'}`
+   - `verify/probes/probe_ruling_N_recon.py:186`｜包層 `_run_tag`｜`L.append(f"{blk:5}{g['s_min']:11.4f}{g['s_max']:11.4f}{g['s_p2']:11.4f}{near:11.4f}{far:11.4f}{g['area']:11.4f}{('有' if fo.get('left_has_side') else '無'):>8}{('…`
+   - `verify/probes/probe_ruling_N_recon.py:192`｜包層 `_run_tag`｜`csv_rows.append(dict(情境=tag, 街廓=blk, s_min=round(g['s_min'], 4), s_max=round(g['s_max'], 4), s_p2=round(g['s_p2'], 4), 近端超界面積=round(near, 4), 遠端超界面積=round(far, …`
+   - `verify/run_verification.py:1358`｜包層 `main`｜`_seed = {'f3_G_values': _nat['gA'], 'f3_corner_winners': _nat['winners'], 'f3L_corner_min_table': _nat['params'], 'f3L_forced_offset': _nat['forced'], 'f3_class…`
+   - `verify/selection_pipeline.py:616`｜包層 `run_corner_pk`｜`_forced_offset_map[_lbl_pk] = {'left_forced_offset': bool(_l_forced and _l_has_side), 'right_forced_offset': bool(_r_forced and _r_has_side), 'left_has_side': b…`
+   - `verify/stepg_pipeline.py:341`｜包層 `_run_step_g_impl`｜`ss['f3L_forced_offset'] = forced_map`
+   - `verify/stepg_pipeline.py:606`｜包層 `_run_step_g_impl`｜`_v2_forced = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}`
+   - `verify/stepg_pipeline.py:646`｜包層 `_run_step_g_impl`｜`_fo_block = (ss.get('f3L_forced_offset', {}) or {}).get(blk_label, {})`
+   - `verify/stepg_pipeline.py:647`｜包層 `_run_step_g_impl`｜`_fo_left = bool(_fo_block.get('left_forced_offset', False))`
+   - `verify/stepg_pipeline.py:648`｜包層 `_run_step_g_impl`｜`_fo_right = bool(_fo_block.get('right_forced_offset', False))`
+   - `verify/wd3_fragment_geom.py:190`｜包層 `compute`｜`at_forced_end = _fm.get('left_forced_offset') and s_rel is not None and (s_rel < 0.12) or (_fm.get('right_forced_offset') and s_rel is not None and (s_rel > 0.8…`
+   - `verify/wf_f1.py:154`｜包層 `_classify_fragments`｜`at_forced = fm.get('left_forced_offset') and s_rel is not None and (s_rel < 0.12) or (fm.get('right_forced_offset') and s_rel is not None and (s_rel > 0.88))`
+   - `verify/wf_f1.py:215`｜包層 `compute`｜`if fo.get('left_forced_offset'):
+    left_buffer_S = ns['_corner_buffer_S'](block_poly, d_hat, corner_pt, alloc_dir, float(fo.get('left_corner_min_area', 0.0) o…`
+   - `verify/wf_f1.py:225`｜包層 `compute`｜`if fo.get('right_forced_offset'):
+    raise RuntimeError(f'🔴 [{tag}] F.1 {lbl}：right_forced_offset 為真，然本檔推進結構為左向（且硬釘 R1）——右鷹架未實作（W-7·#18④ 禁補未證死碼）。撞到即停機上呈·禁靜默走左向…`
+   - `verify/wf_f4.py:963`｜包層 `compute`｜`if fm.get('left_forced_offset') or fm.get('right_forced_offset'):
+    continue`
+   - `verify/wf_f4.py:1351`｜包層 `_reshape_block`｜`buf = ns['_corner_buffer_S'](block_poly, d_hat, p1, alloc_dir, float(fo.get('left_corner_min_area', 0.0) or 0.0), 'left', _label=f'{blk}·E3') if fo.get('left_fo…`
+   - `verify/wf_f4.py:1362`｜包層 `_reshape_block`｜`buf = ns['_corner_buffer_S'](block_poly, d_hat, p1, alloc_dir, float(fo.get('right_corner_min_area', 0.0) or 0.0), 'right', _label=f'{blk}·E3') if fo.get('right…`
+   ⇒ 合計 **63** 筆
+
+  二、倉內既有落檔（`verify/out/`·**⛔ 新驅動**）中之字樣
+   母體 ＝ `verify/out/` 之追蹤檔 **927**
+   - 字樣 `right_forced_offset` ⇒ **21** 檔
+       HEAD:verify/out/D1_runall.log:3
+       HEAD:"verify/out/K6A2_\346\234\237\346\234\233FAIL\345\220\215\345\226\256_D1\345\210\207\346\217\233\345\276\214.txt":1
+       HEAD:verify/out/M_before_capdecomp.log:1
+       HEAD:verify/out/WG9173_r2inputs_68f7bfab.json:6
+       HEAD:verify/out/WG9276R_k956_count.log:2
+       HEAD:verify/out/WG9286R_twolines.log:12
+       HEAD:verify/out/WG9287R_landeffect.log:12
+       HEAD:verify/out/WG9289R_k5_closedform.log:12
+       （餘 13 檔略）
+   - 字樣 `W0_right` ⇒ **8** 檔
+       HEAD:verify/out/WG9268pR_c02_samesource.log:2
+       HEAD:verify/out/WG9308R_sites2.log:16
+       HEAD:verify/out/WG9316_w0_consumers.log:22
+       HEAD:verify/out/probe_WG9189_S6_replica.log:4
+       HEAD:verify/out/probe_WG9190R_S6_after.log:4
+       HEAD:verify/out/probe_WG9190R_S6_final.log:4
+       HEAD:verify/out/probe_WG9190R_class4.log:2
+       HEAD:verify/out/probe_WG9190_S6_open.log:4
+   - 字樣 `Wf_right` ⇒ **8** 檔
+       HEAD:verify/out/WG9307R_sites.log:10
+       HEAD:verify/out/WG9308R_sites2.log:12
+       HEAD:verify/out/WG9316_w0_consumers.log:3
+       HEAD:verify/out/probe_WG9189_S6_replica.log:1
+       HEAD:verify/out/probe_WG9190R_S6_after.log:1
+       HEAD:verify/out/probe_WG9190R_S6_final.log:1
+       HEAD:verify/out/probe_WG9190R_class4.log:1
+       HEAD:verify/out/probe_WG9190_S6_open.log:1
+
+  三、**實掃**：含 `right_forced_offset` 之每一檔，逐檔判其是否同檔載
+     `(i)` 態乙之標記（字樣 `WV_K6_STEP0` 或 `態乙`）｜`(ii)` 態甲之標記（字樣 `態甲`）｜
+     `(iii)` 一列同時含 `R4` 與 `right_forced_offset`（其值逐字）
+   | # | 檔 | 態乙標記 | 態甲標記 | `R4` 同列之值（逐字·至多二筆） |
+   |---|---|---|---|---|
+   | 1 | `verify/out/D1_runall.log` | ⛔ | ⛔ | `（無）` |
+   | 2 | `verify/out/K6A2_\346\234\237\346\234\233FAIL\345\220\215\345\226\256_D1\345\210\207\346\217\233\345\276\214.txt` | ⛔ | ⛔ | `（無）` |
+   | 3 | `verify/out/M_before_capdecomp.log` | ⛔ | ⛔ | `（無）` |
+   | 4 | `verify/out/WG9173_r2inputs_68f7bfab.json` | ⛔ | ⛔ | `（無）` |
+   | 5 | `verify/out/WG9276R_k956_count.log` | ✅ | ✅ | `（無）` |
+   | 6 | `verify/out/WG9286R_twolines.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 7 | `verify/out/WG9287R_landeffect.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 8 | `verify/out/WG9289R_k5_closedform.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 9 | `verify/out/WG9300R_static.log` | ⛔ | ⛔ | `（無）` |
+   | 10 | `verify/out/WG9301R_selfderive.log` | ⛔ | ⛔ | `（無）` |
+   | 11 | `verify/out/WG9307R_landeffect_pre.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 12 | `verify/out/WG9307R_sites.log` | ⛔ | ⛔ | `（無）` |
+   | 13 | `verify/out/WG9308R_sites2.log` | ⛔ | ⛔ | `（無）` |
+   | 14 | `verify/out/WG9311_landeffect.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 15 | `verify/out/WG9312_landeffect_off.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 16 | `verify/out/WG9312_landeffect_on.log` | ⛔ | ✅ | `R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False ／ R4 ⇒ left_forced_offset ＝ True  ／ right_forced_offset ＝ False` |
+   | 17 | `verify/out/WG9316_w0_consumers.log` | ⛔ | ⛔ | `（無）` |
+   | 18 | `verify/out/probe_D2\345\210\207\346\217\233\345\211\215\345\207\215\345\255\230.log` | ⛔ | ⛔ | `（無）` |
+   | 19 | `verify/out/probe_D2b1\345\210\207\346\217\233\345\211\215\345\207\215\345\255\230.log` | ⛔ | ⛔ | `（無）` |
+   | 20 | `verify/out/probe_WG9173_r2inputs.log` | ⛔ | ⛔ | `forced_map    = {'R4': {'left_forced_offset': False, 'right_forced_off` |
+   | 21 | `verify/out/probe_capacity_decomp.log` | ⛔ | ⛔ | `（無）` |
+
+   🔒 **實掃之得數**：同檔具「態乙標記 ⋀ `R4` 列」者 ＝ **0** 檔；
+     判別力[必非零]：同檔具「態甲標記 ⋀ `R4` 列」者 ＝ **7** 檔 ⇒ ✅ 本檢⛔ 恒為零
+
+   🔒 本案 `R4` **右**側於**態乙**之 `right_forced_offset`：
+     【**⛔ 可得·其止於**】上表實掃 ＝ **0** 檔同檔具「態乙標記 ⋀ `R4` 列」；
+     取得之法須**新驅動**（單 `§七` 之禁）⇒ **候發單側另單**。
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+🔒 **本器只出定位·⛔ 判孰為正確·⛔ 提修法主張·⛔ 擬任何 diff·⛔ 稱任何處為「缺陷」**
