@@ -1,0 +1,13 @@
+【判別力·必綠之對照】（先跑·⛔ 以空集／同色充綠）
+🔴 S0d 異常：S_cut(未捨入)=10.0 > 0 但實切面積 = 0.0（side=左側）——切帶與街廓不交？入報告（no-silent-fallback）
+🔴 S0d 異常：S_cut(未捨入)=10.0 > 0 但實切面積 = 0.0（side=左側）——切帶與街廓不交？入報告（no-silent-fallback）
+🔴 S0d 異常：S_cut(未捨入)=10.0 > 0 但實切面積 = 0.0（side=左側）——切帶與街廓不交？入報告（no-silent-fallback）
+  未傳 ⇒ G=0.0 W_near=0.0
+  w0_start=None ⇒ G=0.0 W_near=0.0 ⇒ 與未傳逐位相同 = True
+  w0_start=3.0（is_corner=True）⇒ G=0.0 W_near=3.0 ⇒ 覆寫確已生效 = True
+
+【閘 c5-1】⛔ 靜默——三造皆須 raise（出艙 err 首行逐字）
+母體 ＝ solve_G_binary（app.py:10083）·框 ＝ 例外之型別 ＋ str(e) 首行
+  造① 不可解析之字串 ⇒ ✅ raise ValueError｜err 首行逐字 ＝ 🔴 K-9-41 ①：w0_start ⛔ 可解析為 float：'x'
+  造② 不可解析之非字串 ⇒ ✅ raise ValueError｜err 首行逐字 ＝ 🔴 K-9-41 ①：w0_start ⛔ 可解析為 float：[1, 2]
+  造③ 非有限值 ⇒ ✅ raise ValueError｜err 首行逐字 ＝ 🔴 K-9-41 ①：w0_start 非有限值：nan
