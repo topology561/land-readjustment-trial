@@ -22190,6 +22190,7 @@ def main():
                                     _W_prev=_W_prev_left,
                                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                                     _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
+                                    _w0_start=_b_L0,   # 🆕 W-G.9-318：K-9-41 ①
                                 )
                                 # 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
                                 #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
@@ -22304,6 +22305,7 @@ def main():
                                     _W_prev=_W_prev_right,
                                     _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                                     _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
+                                    _w0_start=_b_R0,   # 🆕 W-G.9-318：K-9-41 ①
                                 )
                                 # 極端防呆 2 後援：右側起點數值微修
                                 if (float(res.get('area_geom', 0)) < 0.5
@@ -22320,6 +22322,7 @@ def main():
                                             _W_prev=_W_prev_right,
                                             _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                                             _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
+                                            _w0_start=_b_R0,   # 🆕 W-G.9-318：K-9-41 ①
                                         )
                                         if float(_r2.get('area_geom', 0)) >= 0.5:
                                             res, solver_label = _r2, _sl2
