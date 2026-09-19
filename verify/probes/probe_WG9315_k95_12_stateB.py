@@ -554,7 +554,7 @@ def main():
     say("─" * W)
     for tag in ("0m", "3.5m"):
         fo, fn = _final(OFF[tag]["solved"]), _final(ON[tag]["solved"])
-        ks = sorted(set(fo) & set(fn))
+        ks = sorted(set(fo) & set(fn), key=lambda k: (str(k[0]), str(k[1]), str(k[2])))
         dG = [float(fn[k]["G"]) - float(fo[k]["G"]) for k in ks
               if fo[k].get("G") is not None and fn[k].get("G") is not None]
         po = sum(sum(v[-1]) for v in OFF[tag]["pool"].values() if v and v[-1])
