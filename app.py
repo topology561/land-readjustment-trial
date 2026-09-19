@@ -13982,6 +13982,7 @@ def _first_corner_alloc_dir(side_mid):
 def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                  S_max, is_corner, side, avg_depth, B, C, tab6_burden,
                  allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None,
+                 w0_start=None,
                  is_chain_head=False):
     """🆕 P-0b（裁定M·Q-M4）：G 解算**單一真相源**——幾何二分法優先，失敗 fallback 至代數迭代。
 
@@ -14025,12 +14026,17 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                 allocation_dir=allocation_dir,
                 side_mid=side_mid, W_prev=W_prev,
                 near_dir=near_dir,                       # 🆕 D-2b-23【甲】：界面單線（⛔ 不在此推導）
+                w0_start=w0_start,                       # 🆕 W-G.9-318：K-9-41 ① 起算點（薄殼直通·⛔ 在此推導）
             )
             _r['_alloc_dir_used'] = _alloc_dir_used      # D-2b-3 §二-3（純加性）
             return _r, '幾何二分法'
         except Exception:
             pass
     # fallback：代數迭代（同樣攜帶 W_prev 累積差額，§4）
+    if w0_start is not None and (is_corner or is_chain_head):
+        raise RuntimeError(
+            "🔴 K-9-41 ①：solve_G_binary 失敗而落入 iterate_G_S，"
+            "該路徑未實作 w0_start ⇒ ⛔ 靜默改用舊起算點（W-G.9-318 §四-c6）")
     _r = iterate_G_S(
         a=a_m2, A=A, B=B, C=C,
         l_front=l_front, l_side=l_side, F=F, W=0.0,
@@ -21666,6 +21672,7 @@ def main():
                     def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
                                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                                    _allocation_dir=None, _side_mid=None, _W_prev=0.0,
+                                   _w0_start=None,
                                    _near_dir=None, _is_chain_head=False):
                         """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
 
@@ -21680,6 +21687,7 @@ def main():
                             B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
                             allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
                             near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
+                            w0_start=_w0_start,   # 🆕 W-G.9-318：K-9-41 ①（薄殼直通·⛔ 在此推導）
                             is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·不推導）
 
                     st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
