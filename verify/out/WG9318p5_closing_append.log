@@ -1,0 +1,19 @@
+受詞 ＝ `docs/reports/W-G.9-318R6_補令五_裁3之撤回與自誤443及恆常附款z_aa_執行報告.md`
+── 期初（**三值**·`恆常附款 x`）──
+  期初錨之態 `HEAD` 之 blob：存在（11232 B）
+  工作區 bytes ＝ 11232
+  工作區 ＝ 期初錨之 blob：True
+
+── payload ──
+  bytes ＝ 7278（含末換行）／列 ＝ 115／CR ＝ 0
+  sha256 ＝ 412ef766894bb365510e2a9e99f760ffd0ca9e9749edab442c4007588aa0883a
+
+── 期末之期值（算式）──
+  期末 bytes ＝ 期初 11232 ＋ payload 7278 ＝ **18510**
+
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（18510）
+  ④ 期末 sha256 ＝ b95383e8e20fcb5917d771192bfeb5c62567fe17af83058bc8f1518ad0c24539
+  CR 全檔 ＝ 0
