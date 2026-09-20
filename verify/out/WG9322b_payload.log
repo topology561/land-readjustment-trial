@@ -1,0 +1,18 @@
+══ 工項零　本補令原封入倉
+  bytes **16597**／列 `198`／`CR` `0`
+  `sha256` `90e87d64e1dd79bbcfa723b0fd626476a57fea1266e8e041a2deb00eead81a28`
+  落檔前已存在：False
+  逐位相符：**True**
+
+══ `SELF_SHA256` 之自驗（`P-5` 原口徑）
+  受詞 `16519` B／實算 `353aa73012353ddf0821ca1869bc6557ac0f97e6ecc16073da9d34f3f12130f2`
+  單載 `353aa73012353ddf0821ca1869bc6557ac0f97e6ecc16073da9d34f3f12130f2`
+  ⇒ **逐位相符：True**
+
+══ 工項五　payload（fence 自動定位·⛔ 硬編列號）
+  ```markdown @ `:29`／``` @ `:112` ⇒ payload ＝ `:30`–`:111`（**`82`** 列）
+  首列 ＝ # CC 側新窗交接文（`W-G.9-322` 補令一 工項五·發單側所備）
+  末列 ＝ 🛑 **本次⛔ 及於**上開任一項之解除、收窄或修法主張。
+  落檔 ＝ verify/out/WG9322b_R0_payload.md
+  bytes **7899**／`sha256` `dad6fcbee509835251dde8c6c2535a47e20dc5ace0bb2b4b0a293b842ab8c3fc`／`CR` `0`
+  `§六` 空節題在 payload 內：**True**（工項六之受詞）
