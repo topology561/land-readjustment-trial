@@ -16,9 +16,13 @@ REV = "bc97c9d72d1680e820872aba787ecc453fa3a509"
 def main():
     rel, payfile = sys.argv[1], sys.argv[2]
     apply = "--apply" in sys.argv
+    # 本批新建之檔於開工態⛔ 存在 ⇒ 其期初錨須繫於**本批之前一 commit**
+    rev = REV
+    if "--rev" in sys.argv:
+        rev = sys.argv[sys.argv.index("--rev") + 1]
     tgt = REPO + "\\" + rel.replace("/", "\\")
 
-    p = subprocess.run(["git", "show", "%s:%s" % (REV, rel)],
+    p = subprocess.run(["git", "show", "%s:%s" % (rev, rel)],
                        cwd=REPO, capture_output=True)
     exists = p.returncode == 0
     base = p.stdout if exists else b""
@@ -26,12 +30,12 @@ def main():
 
     print("受詞 ＝ `%s`" % rel)
     print("── 期初（**三值**·`恆常附款 x`）──")
-    print("  開工態 `%s` 之 blob：%s（%d B）"
-          % (REV[:7], "存在" if exists else "⛔ 存在（新檔）", len(base)))
+    print("  期初錨之態 `%s` 之 blob：%s（%d B）"
+          % (rev[:7], "存在" if exists else "⛔ 存在（新檔）", len(base)))
     print("  工作區 bytes ＝ %d" % len(before))
-    print("  工作區 ＝ 開工態 blob：%s" % (before == base))
+    print("  工作區 ＝ 期初錨之 blob：%s" % (before == base))
     if before != base:
-        raise SystemExit("🛑 期初與開工態不符 ⇒ 停機")
+        raise SystemExit("🛑 期初與錨態不符 ⇒ 停機")
 
     payload = open(payfile, "rb").read().replace(b"\r\n", b"\n")
     print("\n── payload ──")

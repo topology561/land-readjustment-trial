@@ -1,0 +1,19 @@
+受詞 ＝ `docs/reports/W-G.9-318R5_補令四_復驗受領與恆常附款簿及自誤442_執行報告.md`
+── 期初（**三值**·`恆常附款 x`）──
+  期初錨之態 `HEAD` 之 blob：存在（19026 B）
+  工作區 bytes ＝ 19026
+  工作區 ＝ 期初錨之 blob：True
+
+── payload ──
+  bytes ＝ 6244（含末換行）／列 ＝ 100／CR ＝ 0
+  sha256 ＝ 14c0e3b0e1abb84485e0c88f249bf63d516c8678d17ad837088c1ce4f3e0c79c
+
+── 期末之期值（算式）──
+  期末 bytes ＝ 期初 19026 ＋ payload 6244 ＝ **25270**
+
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（25270）
+  ④ 期末 sha256 ＝ 364f8f7568a1d8e590dfdbb0b891f327d2ffc5dd199d03f89f6bcd2c9b878515
+  CR 全檔 ＝ 0
