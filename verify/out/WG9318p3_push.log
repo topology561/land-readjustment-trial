@@ -1,0 +1,42 @@
+===== W-G.9-318 補令三 §一 之 push 後出艙（⛔ 延後）=====
+本地 HEAD = cfffdbdbcabd549f88dcb5b4968ac72109499f6e
+
+--- ① wip/s1-endpart（須仍 ＝ 40375702378af4cefd2d11515fdf3f98c0791580）---
+40375702378af4cefd2d11515fdf3f98c0791580	refs/heads/wip/s1-endpart
+
+--- ② 遠端分支總數（期 25）---
+25
+
+--- ③ refs/heads/verify/*（期 20）---
+20
+
+--- ④ preserve 支之全 40 碼（須與本地 HEAD 逐位相符）---
+cfffdbdbcabd549f88dcb5b4968ac72109499f6e	refs/heads/wip/W-G.9-318-preserve
+
+--- ⑤ 逐筆 git branch -r --contains（21 筆皆須在遠端）---
+   1 cfffdbd  遠端分支：origin/wip/W-G.9-318-preserve
+   2 13e2913  遠端分支：origin/wip/W-G.9-318-preserve
+   3 6780dd1  遠端分支：origin/wip/W-G.9-318-preserve
+   4 f7a31d3  遠端分支：origin/wip/W-G.9-318-preserve
+   5 d9e06c0  遠端分支：origin/wip/W-G.9-318-preserve
+   6 43753e0  遠端分支：origin/wip/W-G.9-318-preserve
+   7 f6be00a  遠端分支：origin/wip/W-G.9-318-preserve
+   8 b5f398f  遠端分支：origin/wip/W-G.9-318-preserve
+   9 8e056b4  遠端分支：origin/wip/W-G.9-318-preserve
+  10 c6d6561  遠端分支：origin/wip/W-G.9-318-preserve
+  11 1729a90  遠端分支：origin/wip/W-G.9-318-preserve
+  12 b5110ca  遠端分支：origin/wip/W-G.9-318-preserve
+  13 f346f0c  遠端分支：origin/wip/W-G.9-318-preserve
+  14 fd02962  遠端分支：origin/wip/W-G.9-318-preserve
+  15 b1141a3  遠端分支：origin/wip/W-G.9-318-preserve
+  16 6cc51e6  遠端分支：origin/wip/W-G.9-318-preserve
+  17 7c07a36  遠端分支：origin/wip/W-G.9-318-preserve
+  18 7c346b1  遠端分支：origin/wip/W-G.9-318-preserve
+  19 7f43924  遠端分支：origin/wip/W-G.9-318-preserve
+  20 596ea3f  遠端分支：origin/wip/W-G.9-318-preserve
+  21 0ee3c4a  遠端分支：origin/wip/W-G.9-318-preserve
+  ⇒ 本批筆數 = 21｜已在遠端 = 21
+
+--- ⑤ 判別力[必不命中]：4037570 之前一 commit 是否落於本批 21 筆內 ---
+  4037570^ = f181f9cc1bc39e4190996bf1a6511684f03a5876
+  ✅ ⛔ 落於本批之 21 筆內（該檢非恆真）
