@@ -1,0 +1,69 @@
+===== W-G.9-318 補令二 §一-1（純讀）之逐列出艙 =====
+態｜HEAD(當時) = d9e06c0f768d64639e7d42317be660ac609aa621
+
+--- git status --porcelain=v1 -uall ---
+?? docs/reports/W-G.9-318R3_補令二_換窗前之保全與GB-171及自誤439_440_執行報告.md
+?? verify/out/WG9318p2_preserve.log
+(空)
+
+--- git stash list（🛑 與主 checkout 共用·⛔ 觸之）---
+stash@{0}: WIP on main: 1794763 W-G.4 補丁二入倉：(b) S0c 提前併入·單次重烤＋N0-19 池片定義＋重大勘誤（G 非幾何量）
+
+--- 本地 commit 之全 40 碼（4037570..HEAD·開工時 17 筆·現 19 筆）---
+6780dd1edefa0958574baa6113a0440721450362 W-G.9-318 補令二 §三：工項三 登記（c19·零生產碼·未解除亦未收窄任何 GB）
+f7a31d383fd8be469359c124f167408fd05e8e18 W-G.9-318 補令二：本補令原封入倉（c18·零生產碼）
+d9e06c0f768d64639e7d42317be660ac609aa621 W-G.9-318R2 §八-實測 收工閘（報告入倉後量·嚴格末端追加·c17·零生產碼）
+43753e059660cdf2d672368e8d1bb34f7739210f W-G.9-318R2（補令一）執行報告入倉（c16·零生產碼）
+f6be00aaca1da0d09ffa0936a84a2b9b261081d7 W-G.9-318 補令一 §四：工項三 登記（c15·零生產碼·未解除亦未收窄任何 GB）
+b5f398fd20b5e06ec721683d3a6b41ed08a52fd3 W-G.9-318 補令一 §二 之閘 ＋ §三 工項二 對帳（c14·零生產碼）
+8e056b4c792bdbe164e94bd16601e58c608e9515 W-G.9-318 補令一 §二：c7′ forced 側不傳 _b_*0（GB-170 之避讓）
+c6d6561fccb8746c0794ef50108385e2e76c55af W-G.9-318 補令一：本補令原封入倉（c12·零生產碼）
+1729a900b66af1b72be2c3f807eb1a836263724b W-G.9-318R §七-實測 收工閘（報告入倉後量·嚴格末端追加·c11·零生產碼）
+b5110caf53eee8bc5c7cce19c61746c31c53f3e8 W-G.9-318R 執行報告入倉（c10·零生產碼）
+f346f0c4e28b807dde91f82265d0582008033abf W-G.9-318 工項四：登記（c9·零生產碼·未解除亦未收窄任何 GB）
+fd02962001a5be9fdc101a4185d4e0b12459511c W-G.9-318 工項三：落地後之二態對拍（c8·零生產碼）
+b1141a3f95e6aff7f5646882e35f234e2f555198 W-G.9-318 §四-c7：六呼叫端傳之（純插入·deletions = 0）
+6cc51e6183c534d4bc410f544082a2ae38a1ec99 W-G.9-318 §四-c6：_solve_G_one 與 _solve_one 之薄殼直通（未在殼內推導）
+7c07a360c9ee00bcc4b61982c287fa774c23785a W-G.9-318 §四-c5：solve_G_binary 新增關鍵字 w0_start（預設 None ⇒ 行為逐位不變）
+7c346b19120744242d964c8c178d5e81ff6c663a W-G.9-318 §四-c4：verify/stepg_pipeline.py 之同構上移（純位移 ＋ 縮排·未改一可執行字）
+7f43924c53f5c4f8b98bd9a48f5ffeff3506e0a0 W-G.9-318 §四-c3：app.py 之 _mp_base_W0 區塊上移（純位移 ＋ 縮排·未改一可執行字）
+596ea3f3eb47739afb912fd413f6e32c79a21d33 W-G.9-318 工項一：態乙之 forced 旗標與 W0／Wf 之一次唯讀驅動（c2·零生產碼）
+0ee3c4a2a95911ed9e38d2afbd48f9ccb5d3762b W-G.9-318 工項零：本單原封入倉（c1·零生產碼）
+
+--- bundle（⛔ 入倉·⛔ 唯一保全）---
+path=/tmp/WG9318_all.bundle bytes=73140493 sha256=15a5e6d204bcd586d4629d5aad5458cba92ffc624af15f5dc21ae41649c41f94
+git bundle verify ⇒ The bundle records a complete history.
+
+--- branch / remote ---
+branch --show-current = claude/landing-w0-adjustment-d81995
+origin	https://github.com/topology561/land-readjustment-trial.git (fetch)
+origin	https://github.com/topology561/land-readjustment-trial.git (push)
+
+--- 遠端實態（CC 自跑）---
+claude/wg9-95z-v3-resume-hgpzfs
+main
+verify/W-G.9-198R-c1
+verify/W-G.9-198R-c2
+verify/W-G.9-198R-c3
+verify/W-G.9-219R2-c1
+verify/W-G.9-229-c1
+verify/W-G.9-243-c1
+verify/W-G.9-244-c1
+verify/W-G.9-244-c2
+verify/W-G.9-246-c1
+verify/W-G.9-247-c1
+verify/W-G.9-248-c1
+verify/W-G.9-255-c1
+verify/W-G.9-261-c1
+verify/W-G.9-268p-c1
+verify/W-G.9-268p-c2
+verify/W-G.9-268p-c3
+verify/W-G.9-269-c1
+verify/W-G.9-269-c2
+verify/W-G.9-269-c3
+verify/W-G.9-269-p3a
+wip/W-G.4-S0b-S0c
+wip/s1-endpart
+總數 = 24
+wip/s1-endpart = 40375702378af4cefd2d11515fdf3f98c0791580	refs/heads/wip/s1-endpart
+wip/W-G.9-318-preserve = 0 列（0 ⇒ 未建·§一-2 被擋）
