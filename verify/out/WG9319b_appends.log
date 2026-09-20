@@ -1,0 +1,21 @@
+════ docs/reports/W-G.9波_claude.ai側自誤登記.md
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（949253）
+  ④ 期末 sha256 ＝ 0961ada8720cdfc93b1059cd5cc377e38a6fc7635b6fca2644d470ee098aa822
+  CR 全檔 ＝ 0
+════ docs/reports/W-G.9波_恆常附款登記表.md
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（43950）
+  ④ 期末 sha256 ＝ c2469e6efaa46aa8da02c793c588127a4f0b23c8d129614c1fcb7423d92cb6fb
+  CR 全檔 ＝ 0
+════ docs/reports/W-G.9-319R_二寬度之量差與GB170三格現查及自誤445_執行報告.md
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（27894）
+  ④ 期末 sha256 ＝ 688e50f76223d7fa7fb12dc480a2637867131b1702ac0286636da0fa9c13c8e7
+  CR 全檔 ＝ 0
