@@ -1,0 +1,11 @@
+── `恆常附款 v①` 標題形之複刻自證 ──
+  簿內最近一則 ＝ ### 🩸 `自誤 442`　**待放行清單依「何者為現行碼…
+  本 payload 首列 ＝ ### 🩸 `自誤 443`　**以二個框出艙「恆常附款 `…
+  前綴同族（`### 🩸 \`自誤 N\`　**`）：True
+
+── payload ──
+  列數 ＝ 10（含前導分隔空列 1）
+  bytes ＝ 2062（**含**前導分隔 `\n` 與末換行·`恆常附款 l②`）
+  sha256 ＝ 0e5032d326f2e955dd339dd618cfae5b5d742010bee4bf21848a2a41aa1c3d3d
+  CR ＝ 0
+  落檔 ＝ C:\Users\admin\Desktop\land-readjustment-trial\.claude\worktrees\land-readjustment-trial-docs-196235\verify\out\WG9318p5_ziwu443_payload.md

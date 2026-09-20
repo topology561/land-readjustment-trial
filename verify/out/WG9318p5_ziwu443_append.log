@@ -1,0 +1,19 @@
+受詞 ＝ `docs/reports/W-G.9波_claude.ai側自誤登記.md`
+── 期初（**三值**·`恆常附款 x`）──
+  期初錨之態 `549121b` 之 blob：存在（936618 B）
+  工作區 bytes ＝ 936618
+  工作區 ＝ 期初錨之 blob：True
+
+── payload ──
+  bytes ＝ 2062（含末換行）／列 ＝ 10／CR ＝ 0
+  sha256 ＝ 0e5032d326f2e955dd339dd618cfae5b5d742010bee4bf21848a2a41aa1c3d3d
+
+── 期末之期值（算式）──
+  期末 bytes ＝ 期初 936618 ＋ payload 2062 ＝ **938680**
+
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（938680）
+  ④ 期末 sha256 ＝ 58a4f0b73fa2fbc28d4e4bde51f29fc91eeb5eae2b95a550b1eae23a292265dc
+  CR 全檔 ＝ 0
