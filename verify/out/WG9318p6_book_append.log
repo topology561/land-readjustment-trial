@@ -1,0 +1,19 @@
+受詞 ＝ `docs/reports/W-G.9波_恆常附款登記表.md`
+── 期初（**三值**·`恆常附款 x`）──
+  期初錨之態 `174b0be` 之 blob：存在（33412 B）
+  工作區 bytes ＝ 33412
+  工作區 ＝ 期初錨之 blob：True
+
+── payload ──
+  bytes ＝ 6821（含末換行）／列 ＝ 67／CR ＝ 0
+  sha256 ＝ 9de517735bd8f2935a63de647295632a8f3a728132a7c077a77a4a08b101f6d4
+
+── 期末之期值（算式）──
+  期末 bytes ＝ 期初 33412 ＋ payload 6821 ＝ **40233**
+
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（40233）
+  ④ 期末 sha256 ＝ 59d86cc50d345ce2a5c43e72b7c3e48c87c84b5ee798fb992fc99156b4778600
+  CR 全檔 ＝ 0
