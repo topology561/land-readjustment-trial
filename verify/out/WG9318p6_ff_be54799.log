@@ -1,0 +1,31 @@
+# `W-G.9-318` 工項零′　主線快轉後之五項出艙
+期望之新主線 ＝ `be54799da0529b083cce6c8eb8076fdcf3042c32`
+
+══ ① `ls-remote` 全 `40` 碼 ══
+  `refs/heads/wip/s1-endpart` ＝ `be54799da0529b083cce6c8eb8076fdcf3042c32`
+  ⇒ ＝ 期望值？ **True** 🟢
+  判別力［必非零之對照］：舊值 `4037570` ≠ 期望值 ⇒ True
+
+══ ② `merge-base --is-ancestor` ══
+  `4037570` → 新主線：`rc` ＝ **`0`**（須 `0`）🟢
+  判別力［必為非零］反向（新主線 → `4037570`）：`rc` ＝ **`1`**（須 `≠ 0`）🟢
+
+══ ③ 遠端分支 ══
+  總數 ＝ **`25`**（須 `25`·⛔ 減）🟢
+  `refs/heads/verify/*` ＝ **`20`**（須 `20`）🟢
+  `preserve` **保留** ＝ `be54799da0529b083cce6c8eb8076fdcf3042c32` 🟢
+
+══ ④ 生產碼 `34` 檔（正面列舉·⛔ 空 pathspec） ══
+  新主線 vs `be54799` 之相異 ＝ **`0`**（須 `0`）🟢 []
+  判別力［必非零］：`app.py` 於 `4037570` vs `be54799` ⇒ 相異 ＝ **True**（須 `True`）🟢
+
+══ ⑤ 六筆生產碼 `commit` 之可達性 ══
+  `7f43924`  含 `origin/wip/s1-endpart`？ **True** 🟢
+  `7c346b1`  含 `origin/wip/s1-endpart`？ **True** 🟢
+  `7c07a36`  含 `origin/wip/s1-endpart`？ **True** 🟢
+  `6cc51e6`  含 `origin/wip/s1-endpart`？ **True** 🟢
+  `b1141a3`  含 `origin/wip/s1-endpart`？ **True** 🟢
+  `8e056b4`  含 `origin/wip/s1-endpart`？ **True** 🟢
+  ⇒ `6`／`6` 🟢
+  判別力［必不命中］：`4037570^`（`f181f9cc…`）∈ `4037570..新主線`？ **False**（須 `False`）🟢
+  （其確為既有物件：`git cat-file -t` ⇒ `commit`）
