@@ -1,0 +1,19 @@
+受詞 ＝ `docs/reports/W-G.9-318R7_補令六_款數更正與正典索引之確立及自誤444_執行報告.md`
+── 期初（**三值**·`恆常附款 x`）──
+  期初錨之態 `HEAD` 之 blob：存在（12719 B）
+  工作區 bytes ＝ 12719
+  工作區 ＝ 期初錨之 blob：True
+
+── payload ──
+  bytes ＝ 5317（含末換行）／列 ＝ 92／CR ＝ 0
+  sha256 ＝ aec0dee799363015c462351ce4ae5590e0157888c28863b47fa368ed2edad40c
+
+── 期末之期值（算式）──
+  期末 bytes ＝ 期初 12719 ＋ payload 5317 ＝ **18036**
+
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（18036）
+  ④ 期末 sha256 ＝ 8123f4ddf746573a64e80be36a115cf25e4090c5213992358d5b741b9bee68b9
+  CR 全檔 ＝ 0
