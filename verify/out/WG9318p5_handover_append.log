@@ -1,0 +1,19 @@
+受詞 ＝ `docs/reports/W-G.9-318_CC側換手_一.md`
+── 期初（**三值**·`恆常附款 x`）──
+  期初錨之態 `549121b` 之 blob：存在（22883 B）
+  工作區 bytes ＝ 22883
+  工作區 ＝ 期初錨之 blob：True
+
+── payload ──
+  bytes ＝ 4226（含末換行）／列 ＝ 57／CR ＝ 0
+  sha256 ＝ 77df3cc9e925071cc730c554c9ad8965bb0cbfb2c03bec2d9a89e14edfbf6dbd
+
+── 期末之期值（算式）──
+  期末 bytes ＝ 期初 22883 ＋ payload 4226 ＝ **27109**
+
+── 落檔後之機驗（四造）──
+  ① append-only 嚴格前綴逐位 ：True
+  ② payload 逐位相符        ：True
+  ③ 期末 bytes ＝ 期初 ＋ payload：True（27109）
+  ④ 期末 sha256 ＝ b5cf1255b8b429d0fb7cdf1a12d01da4f5e8f91f3cf0b097c475f99ccf9a6dc8
+  CR 全檔 ＝ 0
