@@ -66,10 +66,12 @@ say()
 
 # ── 項 5　baselines ─────────────────────────────────────────
 say("### 項5 baselines")
-p = subprocess.run(f"git -C {REPO} ls-tree -r HEAD verify/baselines | sha256sum",
-                   shell=True, capture_output=True)
+p = subprocess.run(['git', '-C', REPO, 'ls-tree', '-r', 'HEAD', 'verify/baselines'],
+                   capture_output=True)   # W-G.9-325：⛔ shell 管線（n④）
+if p.returncode != 0 or not p.stdout:
+    print(f"🔴 項5 器紅：git ls-tree rc={p.returncode}·stdout {len(p.stdout)} B（⛔ 靜默回空）"); sys.exit(6)
 bl = git('ls-tree','-r','HEAD','verify/baselines')
-say(f"sha256 = {p.stdout.decode().split()[0]}")
+say(f"sha256 = {hashlib.sha256(p.stdout).hexdigest()}")
 say(f"列數   = {len([x for x in bl.split(chr(10)) if x])}")
 say()
 
@@ -210,11 +212,23 @@ say(f"檔名側 MAX = {maxn}")
 for n in (318, 319, 320, 321, 322, 309):
     fs = occ.get(n, set())
     say(f"  W-G.9-{n}: 檔名側命中檔數={len(fs)}")
-grep = subprocess.run(
-    "git -C %s grep -h -o -E 'W-G\\.9-[0-9]{1,4}' HEAD -- '*.md' | sed 's/.*-//' | sort -n | uniq -c | tail -12" % REPO,
-    shell=True, capture_output=True).stdout.decode()
+def content_tail(repo, pathspec='*.md', k=12):
+    """內文側 W-G.9-N 之高號尾段·純 Python（W-G.9-325：⛔ shell 管線·n④）。
+    格式逐字仿 `uniq -c`（計數右靠 7 格 ＋ 一空白 ＋ 號）。回 (列之串列 | None, 由)。"""
+    r = subprocess.run(['git', '-C', repo, 'grep', '-h', '-o', '-E', r'W-G\.9-[0-9]{1,4}',
+                        'HEAD', '--', pathspec], capture_output=True)
+    if r.returncode not in (0, 1):
+        return None, 'git grep rc=%d' % r.returncode
+    cnt = {}
+    for x in r.stdout.decode('utf-8', 'replace').split('\n'):
+        if x.strip():
+            n = int(x.rsplit('-', 1)[1]); cnt[n] = cnt.get(n, 0) + 1
+    return ['%7d %d' % (cnt[n], n) for n in sorted(cnt)[-k:]], 'git grep rc=%d' % r.returncode
+tail, why = content_tail(REPO)
+if not tail or maxn not in {int(x.split()[1]) for x in tail}:
+    print(f"🔴 項10 器紅：內文側尾段為空或未命中檔名側 MAX {maxn}（{why}）·⛔ 靜默回空"); sys.exit(6)
 say("內文側 W-G.9-N 之高號尾段（count number）：")
-say(grep.rstrip())
+say('\n'.join(tail))
 say()
 
 # ── 項 11　角 ─────────────────────────────────────────────
