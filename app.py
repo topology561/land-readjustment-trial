@@ -14517,6 +14517,9 @@ _WF_NS_NAMES = [
     # §3 街角 forced band：幾何 bisect（band≡range）·side 參數化單一真相源
     #   （app／stepg／wf_f1／wf_f4 四處共用·plan v3 §3·補丁九·#25/#20）；`_strip_s_range` 為其 s 域基元
     "_strip_s_range", "_corner_buffer_S",
+    # 🆕 `W-G.9-309` 補令一：強制帶幾何之單一真相源與強制側之遠側線向——`verify/stepg_pipeline.py`
+    #   經 `ns['_corner_band_geom']`／`ns['_first_corner_alloc_dir']` 消費（強制側有值時）⇒ 漏列即 app 路徑 KeyError。
+    "_corner_band_geom", "_first_corner_alloc_dir",
     # §N3-0 帳對幾何閘（兩級化·補丁三 §二）：閘寬單一真相源（stepg／run_verification／wf_f4 共用）
     "_acct_geom_tol_per_lot", "_acct_geom_tol_block",
     # 🆕 W-8 補漏（reviewer 活抓·**既有缺陷非本波引入**）：引擎實耗但清單漏列者。
