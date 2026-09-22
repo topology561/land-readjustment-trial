@@ -9329,8 +9329,36 @@ def k917_note_drop(blk_label, chain_side, pid, res, tp=None):
     })
 
 
+def _corner_band_geom(block_poly, d_hat, front_p1, allocation_dir, buf, side,
+                      far_line_dir=None, s_lo=None, s_max=None):
+    """強制帶之幾何（`_corner_buffer_S` 之 bisect 所量者·單一真相源）。回傳 `(geom, area)`。
+    左＝s∈[max(s_min,0), buf]／右＝s∈[s_max−buf, s_max]；`far_line_dir` 有值 ⇒ 帶之裡側界 ∥ 該向之切線（雙線）。"""
+    import numpy as np
+    _d = np.asarray(d_hat, dtype=float)
+    if s_lo is None or s_max is None:
+        _dom = _strip_s_range(block_poly, d_hat, front_p1, allocation_dir)
+        if _dom is None:
+            return None, 0.0
+        s_lo, s_max = max(float(_dom[0]), 0.0), float(_dom[1])
+    a, b = (s_lo, float(buf)) if side == 'left' else (s_max - float(buf), s_max)
+    w = b - a
+    if w <= 0:
+        return None, 0.0
+    bp = np.asarray(front_p1, dtype=float) + a * _d
+    if far_line_dir is None:
+        return _block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+    _ad = np.asarray(allocation_dir, dtype=float)
+    _fl = np.asarray(far_line_dir, dtype=float); _fl = _fl / float(np.linalg.norm(_fl))
+    _al = _ad / float(np.linalg.norm(_ad))
+    if side == 'left':
+        return _block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir,
+                            n_hat_far=np.array([-_fl[1], _fl[0]]))
+    return _block_strip(block_poly, d_hat, bp, w, allocation_dir=_fl,
+                        n_hat_far=np.array([-_al[1], _al[0]]))
+
+
 def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, side,
-                     tol=0.01, _label=''):
+                     tol=0.01, _label='', far_line_dir=None):
     """
     §3 街角 forced band（plan v3 §3·補丁九）：**bisect 解 `buf` 使「真實池帶面積 == range_area」**
     （|Δ| ≤ tol）。**全精度回傳**（N0-18a·不 round）。取代舊矩形近似 `range_area ÷ avg_depth`
@@ -9400,13 +9428,9 @@ def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, si
               f"（p1 楔形 {abs(s_min):.4f}m 段待 §4 N0-20 切出·補丁九 裁 2 中間態·非靜默吞差）")
 
     def _band_area(buf):
-        """真實池帶面積（∥ALLOC 斜交·與 `_pool_strips_for_block` 逐字同源之 s 區間→實帶式）。"""
-        a, b = (_lo, float(buf)) if side == 'left' else (s_max - float(buf), s_max)
-        w = b - a
-        if w <= 0:
-            return 0.0
-        bp = np.asarray(front_p1, dtype=float) + a * _d
-        _g, _ar = _block_strip(block_poly, d_hat, bp, w, allocation_dir=allocation_dir)
+        """真實池帶面積（委派 `_corner_band_geom`·與池片之強制帶同源）。"""
+        _g, _ar = _corner_band_geom(block_poly, d_hat, front_p1, allocation_dir, buf, side,
+                                    far_line_dir=far_line_dir, s_lo=_lo, s_max=s_max)
         return float(_ar or 0.0)
 
     # bisect 區間：左＝buf 為絕對 s 上界 [lo, s_max]／右＝buf 為寬 [0, s_max−s_min]
@@ -9436,7 +9460,7 @@ def _corner_buffer_S(block_poly, d_hat, front_p1, allocation_dir, range_area, si
 
 
 def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
-                           biz_polys, _label='', _depth=None, _verbose=True):
+                           biz_polys, _label='', _depth=None, _verbose=True, forced_bands=None):
     """
     §N3-0 T2（主修法）：**池片改用與業主宗完全相同之 `_block_strip` 機制、以同一組切線直接切出。**
 
@@ -9490,6 +9514,12 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
         r = _strip_s_range(p, d_hat, corner_pt, allocation_dir)
         if r is not None:
             biz_iv.append(r)
+    # 🆕 P2：強制帶（雙線）為**固定片**——其 s 範圍視同已占（⛔ 以 ∥ALLOC 單線重切）
+    _fb = [p for p in (forced_bands or []) if p is not None and not p.is_empty]
+    for p in _fb:
+        r = _strip_s_range(p, d_hat, corner_pt, allocation_dir)
+        if r is not None:
+            biz_iv.append(r)
     biz_iv.sort()
 
     # ── 3. 業主宗區間之聯集（第四源致相鄰宗 s 區間可重疊 ≤0.005；union 吸收之）
@@ -9531,6 +9561,10 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
             continue
         pieces.append(g)
         kept_iv.append((a, b))
+    for p in _fb:                                   # 🆕 P2：強制帶原形入池
+        pieces.append(p)
+        _r = _strip_s_range(p, d_hat, corner_pt, allocation_dir)
+        kept_iv.append(_r if _r is not None else (s_min, s_max))
 
     # ── 5b. 🆕 **D-2b-24：幾何餘（`K-9-5-7` 配餘）** ──────────────────────────────
     #   正典逐字（`grep -n "^### 🔒 K-9-5-7" docs/rulings/K-6_街角地分配程序與可分配判準.md`）：
@@ -12468,6 +12502,7 @@ def _lot_gate(res, tp, blk_ctx, is_corner_first=False,
 
     - **街角第 1 宗**：`A` ⇒ `不適用`（`K-9-12-e`／`K-9-5-15 二`）；`B` ⇒ `不適用`。
     - **`B` 之適用** ＝ **有 sideline 之鏈之第 2 宗**（KL 語序·碼側 index `1`）；
+      🆕 `W-G.9-309`：**強制側**之碼側 index 為 `0`（強制抵費地⛔ 在推進鏈內·`K-9-31 ④`／`K-9-32 ②④`·含遞補上來者）；
       末端塊之鏈**無 sideline ⇒ 無藍影之題**（`K-9-23 三` 漏承加註·`v3` ⑪ 逐字）⇒ `不適用`。
     - **`e ＝ 0`** ＝ 該街廓無「最小建築面積」規定 ⇒ `C` `不適用`（`v3` ⑨ 逐字「僅幾何驗，無面積驗」）。
     - 所需輸入**取不到** ⇒ `無從判定`（＝單所稱之「不可判」）並**具名缺者**；
@@ -14482,6 +14517,9 @@ _WF_NS_NAMES = [
     # §3 街角 forced band：幾何 bisect（band≡range）·side 參數化單一真相源
     #   （app／stepg／wf_f1／wf_f4 四處共用·plan v3 §3·補丁九·#25/#20）；`_strip_s_range` 為其 s 域基元
     "_strip_s_range", "_corner_buffer_S",
+    # 🆕 `W-G.9-309` 補令一：強制帶幾何之單一真相源與強制側之遠側線向——`verify/stepg_pipeline.py`
+    #   經 `ns['_corner_band_geom']`／`ns['_first_corner_alloc_dir']` 消費（強制側有值時）⇒ 漏列即 app 路徑 KeyError。
+    "_corner_band_geom", "_first_corner_alloc_dir",
     # §N3-0 帳對幾何閘（兩級化·補丁三 §二）：閘寬單一真相源（stepg／run_verification／wf_f4 共用）
     "_acct_geom_tol_per_lot", "_acct_geom_tol_block",
     # 🆕 W-8 補漏（reviewer 活抓·**既有缺陷非本波引入**）：引擎實耗但清單漏列者。
@@ -21915,6 +21953,13 @@ def main():
                         )
                         _left_buffer_S = 0.0
                         _right_buffer_S = 0.0
+                        # 🆕 `W-G.9-309`（`GB-170` (i)·app 側鏡射 stepg）：強制側之遠側界 ∥SIDELINE（`K-9-32 ①`）
+                        _sl_blk_fo = (st.session_state.get(
+                            'f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+                        _fd_fo_left = (_first_corner_alloc_dir((_sl_blk_fo.get('left') or {}).get('mid'))
+                                       if _fo_left else None)
+                        _fd_fo_right = (_first_corner_alloc_dir((_sl_blk_fo.get('right') or {}).get('mid'))
+                                        if _fo_right else None)
                         if _row_for_buffer and avg_depth_default > 0:
                             # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth`，改 `_corner_buffer_S`
                             #   幾何 bisect（**真實斜交池帶面積 == range**）·side 參數化（#25）。
@@ -21925,7 +21970,8 @@ def main():
                                     if _l_min is not None and _l_min != float('inf'):
                                         _left_buffer_S = _corner_buffer_S(
                                             blk_poly, d_hat, corner_pt, allocation_dir_block,
-                                            float(_l_min), 'left', _label=blk_label)
+                                            float(_l_min), 'left', _label=blk_label,
+                                            far_line_dir=_fd_fo_left)
                                 except (TypeError, ValueError) as _e_cb:
                                     # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
                                     print(f"🔴 街廓 {blk_label} 左街角 range={_l_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
@@ -21936,7 +21982,8 @@ def main():
                                     if _r_min is not None and _r_min != float('inf'):
                                         _right_buffer_S = _corner_buffer_S(
                                             blk_poly, d_hat, corner_pt, allocation_dir_block,
-                                            float(_r_min), 'right', _label=blk_label)
+                                            float(_r_min), 'right', _label=blk_label,
+                                            far_line_dir=_fd_fo_right)
                                 except (TypeError, ValueError) as _e_cb:
                                     # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
                                     print(f"🔴 街廓 {blk_label} 右街角 range={_r_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
@@ -22147,8 +22194,8 @@ def main():
                             #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
                             #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）
                             #   ——界面鏈之存在與該側有無街角無關；有無街角只影響「前一宗用了哪個方向」。
-                            _near_dir_left = None
-                            _near_dir_right = None
+                            _near_dir_left = (_fd_fo_left if _fo_left else None)     # 🆕 `W-G.9-309`（`GB-170` (ii)·`K-9-32 ②`）
+                            _near_dir_right = (_fd_fo_right if _fo_right else None)
                             first_corner_used_left = False
                             _lg_idx_left = 0          # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
                             left_results = []
@@ -22197,7 +22244,7 @@ def main():
                                 res['_lg_cols'] = _lot_gate(
                                     res, tp, _lg_blk_ctx,
                                     is_corner_first=bool(is_first_corner_l),
-                                    is_second_after_corner=(_lg_idx_left == 1),
+                                    is_second_after_corner=((_lg_idx_left == (0 if _fo_left else 1)) and not bool(is_first_corner_l)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`（app 側鏡射）
                                     chain_side='left', _label=blk_label)
                                 # 🆕 `W-G.9-269` `c1` **站 1／4（app 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
                                 #   🔒 `c3`：**無條件執行**（旗標已移除）。
@@ -22336,7 +22383,7 @@ def main():
                                 res['_lg_cols'] = _lot_gate(
                                     res, tp, _lg_blk_ctx,
                                     is_corner_first=bool(is_first_corner_r),
-                                    is_second_after_corner=(_lg_idx_right == 1),
+                                    is_second_after_corner=((_lg_idx_right == (0 if _fo_right else 1)) and not bool(is_first_corner_r)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`（app 側鏡射）
                                     chain_side='right', _label=blk_label)
                                 # 🆕 `W-G.9-269` `c1` **站 2／4（app 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
                                 #   🔒 `c3`：**無條件執行**（旗標已移除）。
@@ -22575,9 +22622,19 @@ def main():
                                 #   單一真相源＝`_pool_strips_for_block`；**與 stepg_pipeline 逐字同構**
                                 #   （N0-16 同源同碼·G.3 三重確立之基礎），四處共用根絕抄寫漂移（#20）。
                                 #   回傳序＝面積遞減（逐字沿用舊慣例）→ g_rows 抵費地序號不因本波改（plan §11）。
+                                _fb_p2 = []                    # 🆕 `W-G.9-309`（`GB-170` (iii)·app 側鏡射 stepg）
+                                for _sd, _bS, _fd in (('left', _left_buffer_S, _fd_fo_left),
+                                                      ('right', _right_buffer_S, _fd_fo_right)):
+                                    if _fd is not None and float(_bS or 0.0) > 0.0:
+                                        _gb, _ = _corner_band_geom(blk_poly, d_hat, corner_pt,
+                                                                   allocation_dir_block, _bS, _sd,
+                                                                   far_line_dir=_fd)
+                                        if _gb is not None and not _gb.is_empty:
+                                            _fb_p2.append(_gb)
                                 offset_geoms = _pool_strips_for_block(
                                     blk_poly, d_hat, corner_pt, allocation_dir_block,
-                                    allocated_polys, _label=blk_label, _depth=avg_depth_default)
+                                    allocated_polys, _label=blk_label, _depth=avg_depth_default,
+                                    forced_bands=_fb_p2)
 
                                 _pool_total_blk = float(sum(_g.area for _g in offset_geoms))  # 🆕 W-D.2 ledger
 
