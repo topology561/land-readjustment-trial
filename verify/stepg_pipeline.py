@@ -651,6 +651,11 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         _row_for_buffer = rows_by_lbl.get(blk_label)
         _left_buffer_S = 0.0
         _right_buffer_S = 0.0
+        _sl_blk_fo = (ss.get('f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+        _fd_fo_left = (ns['_first_corner_alloc_dir']((_sl_blk_fo.get('left') or {}).get('mid'))
+                       if _fo_left else None)
+        _fd_fo_right = (ns['_first_corner_alloc_dir']((_sl_blk_fo.get('right') or {}).get('mid'))
+                        if _fo_right else None)
         if _row_for_buffer and avg_depth_default > 0:
             # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth` → `_corner_buffer_S`
             #   幾何 bisect（真實斜交池帶面積 == range）·side 參數化（#25）·byte 級對映 app（N0-16）。
@@ -660,7 +665,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     if _l_min is not None and _l_min != float('inf'):
                         _left_buffer_S = _corner_buffer_S(
                             blk_poly, d_hat, corner_pt, allocation_dir_block,
-                            float(_l_min), 'left', _label=blk_label)
+                            float(_l_min), 'left', _label=blk_label,
+                            far_line_dir=_fd_fo_left)
                 except (TypeError, ValueError) as _e_cb:
                     # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
                     print(f"🔴 街廓 {blk_label} 左街角 range={_l_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
@@ -671,7 +677,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     if _r_min is not None and _r_min != float('inf'):
                         _right_buffer_S = _corner_buffer_S(
                             blk_poly, d_hat, corner_pt, allocation_dir_block,
-                            float(_r_min), 'right', _label=blk_label)
+                            float(_r_min), 'right', _label=blk_label,
+                            far_line_dir=_fd_fo_right)
                 except (TypeError, ValueError) as _e_cb:
                     # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
                     print(f"🔴 街廓 {blk_label} 右街角 range={_r_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
@@ -790,8 +797,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
             #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）。
             #   ⚠️ app 側鏡射：`grep -n "界面單線鏈" app.py`（#20 四處同改之同源要求）。
-            _near_dir_left = None
-            _near_dir_right = None
+            _near_dir_left = (_fd_fo_left if _fo_left else None)
+            _near_dir_right = (_fd_fo_right if _fo_right else None)
             first_corner_used_left = False
             _lg_idx_left = 0          # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
             left_results = []
@@ -836,7 +843,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 res['_lg_cols'] = ns['_lot_gate'](
                     res, tp, _lg_blk_ctx,
                     is_corner_first=bool(is_first_corner_l),
-                    is_second_after_corner=(_lg_idx_left == 1),
+                    is_second_after_corner=((_lg_idx_left == (0 if _fo_left else 1)) and not bool(is_first_corner_l)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`——強制側之受檢宗 ＝ 緊鄰強制抵費地之宗（碼側 index 0·含遞補上來者）
                     chain_side='left', _label=blk_label)
                 # 🆕 `W-G.9-269` `c1` **站 3／4（harness 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
                 #   🔒 `c3`：**無條件執行**（旗標已移除）。
@@ -957,7 +964,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 res['_lg_cols'] = ns['_lot_gate'](
                     res, tp, _lg_blk_ctx,
                     is_corner_first=bool(is_first_corner_r),
-                    is_second_after_corner=(_lg_idx_right == 1),
+                    is_second_after_corner=((_lg_idx_right == (0 if _fo_right else 1)) and not bool(is_first_corner_r)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`——強制側之受檢宗 ＝ 緊鄰強制抵費地之宗（碼側 index 0·含遞補上來者）
                     chain_side='right', _label=blk_label)
                 # 🆕 `W-G.9-269` `c1` **站 4／4（harness 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
                 #   🔒 `c3`：**無條件執行**（旗標已移除）。
@@ -1172,9 +1179,19 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 #   單一真相源＝app 之 `_pool_strips_for_block`（ns harvest·同 `_block_strip` 先例）
                 #   → stepg／app／wf_f1／wf_f4 四處同源，根絕抄寫複本各自漂移（#20 根因）。
                 #   回傳序＝面積遞減（逐字沿用舊慣例）→ g_rows 抵費地序號不因本波改（plan §11）。
+                _fb_p2 = []
+                for _sd, _bS, _fd in (('left', _left_buffer_S, _fd_fo_left),
+                                      ('right', _right_buffer_S, _fd_fo_right)):
+                    if _fd is not None and float(_bS or 0.0) > 0.0:
+                        _gb, _ = ns['_corner_band_geom'](blk_poly, d_hat, corner_pt,
+                                                         allocation_dir_block, _bS, _sd,
+                                                         far_line_dir=_fd)
+                        if _gb is not None and not _gb.is_empty:
+                            _fb_p2.append(_gb)
                 offset_geoms = _pool_strips_for_block(
                     blk_poly, d_hat, corner_pt, allocation_dir_block,
-                    allocated_polys, _label=blk_label, _depth=avg_depth_default)
+                    allocated_polys, _label=blk_label, _depth=avg_depth_default,
+                    forced_bands=_fb_p2)
                 _pool_total_blk = float(sum(_g.area for _g in offset_geoms))
                 _min_block = min(50.0, blk_area * 0.05)
                 for _i, _g in enumerate(offset_geoms):
