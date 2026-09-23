@@ -853,7 +853,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     entry is not left_group[-1], 'left', blk_label, k)
                 if _k917_drop:
                     # 🛑 受詞與 app 左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
-                    ns['k917_note_drop'](blk_label, 'left', k, res, tp)
+                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重·app 同構）
+                        ns['k917_note_drop'](blk_label, 'left', k, res, tp)
                     continue
                 _lg_idx_left += 1
                 if _has_left_corner:
@@ -973,7 +974,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     entry is not right_group[-1], 'right', blk_label, k)
                 if _k917_drop:
                     # 🛑 受詞與 app 左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
-                    ns['k917_note_drop'](blk_label, 'right', k, res, tp)
+                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重·app 同構）
+                        ns['k917_note_drop'](blk_label, 'right', k, res, tp)
                     continue
                 _lg_idx_right += 1
                 if _has_right_corner:
@@ -1059,12 +1061,34 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _adv_final = _advance_block_with_split(_k_star, True)
         else:
             _adv_base = _advance_block_with_split(_k_naive, False)
+            # 🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：估算寬度改取**各側全鏈**
+            #   （左 ＝ 推進至 k_max、右 ＝ 推進至 k_min 之試推進）之逐宗 `W` 差（單一真相源
+            #   `ns['_slot_side_chain_widths']`）；居中平手仍用基準趟之宗地寬度。app 同構（#20）。
+            _kmin_c = 1 if _has_left_corner else 0
+            _kmax_c = (_N - 1) if _has_right_corner else _N
+            _wL_c = [0.0] * _N; _wR_c = [0.0] * _N
+            _bL_c = _b_L0; _bR_c = _b_R0
+            if _kmin_c <= _kmax_c:
+                for _sd_c, _kk_c, _has_c in (('left', _kmax_c, _has_left_corner),
+                                             ('right', _kmin_c, _has_right_corner)):
+                    if not _has_c:
+                        continue
+                    _adv_c = (_adv_base if _kk_c == _k_naive
+                              else _advance_block_with_split(_kk_c, False))
+                    _w_c, _b_c = ns['_slot_side_chain_widths'](_adv_c, _sd_c, _N)
+                    if _sd_c == 'left':
+                        _wL_c = _w_c
+                        _bL_c = _bL_c if _b_c is None else _b_c
+                    else:
+                        _wR_c = _w_c
+                        _bR_c = _bR_c if _b_c is None else _b_c
             _slot_res = _select_pool_slot(
-                _adv_base['widths'],
+                _wL_c,
                 {'has': _has_left_corner, 'F': _F_left,
-                 'l1': _lside_left, 'b': _b_L0},
+                 'l1': _lside_left, 'b': _bL_c},
                 {'has': _has_right_corner, 'F': _F_right,
-                 'l1': _lside_right, 'b': _b_R0},
+                 'l1': _lside_right, 'b': _bR_c},
+                widths_R=_wR_c, dev_widths=_adv_base['widths'],
             )
             _k_star = int(_slot_res['k'])
             _J_by_k = {t['k']: t['J'] for t in _slot_res['table']}

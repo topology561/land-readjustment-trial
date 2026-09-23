@@ -7884,7 +7884,7 @@ def _proj_pop_assert_subset(tag, actual, base, blk=None):
 
 
 
-def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
+def _select_pool_slot(widths, left_side, right_side, rw_func=None, widths_R=None, dev_widths=None) -> dict:
     """
     🆕 W-D.2 §3：滑池槽選位（W-D_細部plan §3.1 STEP1-4；純函式、無 st/session）。
 
@@ -7899,6 +7899,11 @@ def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
       left_side / right_side：{'has': bool, 'F': float, 'l1': float, 'b': float}
         has＝該端臨側街；F＝該側 SIDE_LINE 長；l1＝側街負擔尺度；b＝forced 起始 W（無則 0）
       rw_func      R(W) 累積函數（%）；預設 rw_from_width
+      widths_R     🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：右側之逐宗估算寬度（原位次對位）。
+                   有值 ⇒ 左側用 `widths`、右側用本參數，各為**該側自其街角一路推進之全鏈**上
+                   逐宗遠側 `W` 之差（`_slot_side_chain_widths`）；None ⇒ 兩側同用 `widths`（舊行為·逐位同）。
+      dev_widths   🆕 同上：居中平手（dev）所用之寬度；None ⇒ 沿用估算寬度（舊行為·逐位同）。
+                   🔒 呼叫端傳**宗地寬度**（基準趟 `widths`）——居中係幾何之居中，⛔ 以負擔寬度代之。
 
     回傳 {'k', 'J_star', 'table': [{'k','J','dev','ΣRw_L','ΣRw_R'}...], 'note'}
     （table＝STEP4 診斷輸出，供 reviewer/KL 逐槽複核。）
@@ -7928,10 +7933,16 @@ def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
         K = list(range(k_min, k_max + 1))
     # STEP 2：逐槽 J(k) 與偏離 dev(k)
     total = sum(w)
+    wR = [float(x or 0.0) for x in widths_R] if widths_R is not None else None
+    dw = [float(x or 0.0) for x in dev_widths] if dev_widths is not None else None
+    if (wR is not None and len(wR) != n) or (dw is not None and len(dw) != n):
+        raise RuntimeError(
+            f"🔴 `_select_pool_slot`：widths_R／dev_widths 之長度與 widths（{n}）不符"
+            f"（{None if wR is None else len(wR)}／{None if dw is None else len(dw)}）⇒ 停")
     table = []
     for k in K:
         sL = sum(w[:k])
-        sR = total - sL
+        sR = sum(wR[k:]) if wR is not None else total - sL
         rw_L = (R(b_L + sL) - R(b_L)) if has_L else 0.0
         rw_R = (R(b_R + sR) - R(b_R)) if has_R else 0.0
         table.append({
@@ -7939,7 +7950,7 @@ def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
             # J 單位＝負擔「面積」㎡（Rw 化比率 ×F(m)×l₁；KL 量級裁示 2026-07-05：
             #   如 R2 全飽和 J≈1.00×44.94×1≈45）。等權 F=l1=1 時 ×100 即手冊 %表述（180/150）。
             'J': (rw_L / 100.0) * F_L * l1_L + (rw_R / 100.0) * F_R * l1_R,
-            'dev': abs(sL - sR),
+            'dev': (abs(sum(dw[:k]) - sum(dw[k:])) if dw is not None else abs(sL - sR)),
             'ΣRw_L': rw_L,
             'ΣRw_R': rw_R,
         })
@@ -7949,6 +7960,42 @@ def _select_pool_slot(widths, left_side, right_side, rw_func=None) -> dict:
     cand = [t for t in table if t['J'] >= J_star - eps]
     pick = min(cand, key=lambda t: (t['dev'], t['k']))
     return {'k': pick['k'], 'J_star': J_star, 'table': table, 'note': note}
+
+
+def _slot_side_chain_widths(adv, side, n):
+    """🆕 `W-G.9-333` `c3`（`GB-168` 之修）：選槽估算所用之**該側全鏈**逐宗寬度（單一真相源）。
+
+    受詞 ＝ 一趟推進之結果 `adv`（`_advance_block_with_split` 之回傳）中 `{side}_results`，
+    其須為**該側自其街角一路推進至最遠之可能槽位**之一趟（左 ＝ `k_max`、右 ＝ `k_min`；呼叫端負責）。
+    回 `(widths, b)`：
+      widths ＝ 長 `n`、以原位次 index（`entry['_ov2_idx']`）對位；第 i 宗 ＝ 其 `W_far_raw` 減
+               鏈上前一宗之 `W_far_raw`（首宗減鏈頭 `W_rw_start_raw`）；不在該側鏈上者為 `0.0`。
+      b      ＝ 鏈頭之 `W_rw_start_raw`；該側鏈為空 ⇒ `None`（呼叫端沿用其既有之 `b`）。
+    🔒 依據 ＝ `K-9-43`（逐宗 `W` 自 `SIDELINE` 中點垂直量至各該宗之遠側境界線·負擔 ＝ `Rw(W_n) − Rw(W_{n−1})`）：
+       側街負擔之累計只取決於該側鏈上各宗之 `W`，故「前 k 宗」之 `W` 即全鏈之前綴。
+       舊法以基準趟（`k_naive`）之宗地寬度充估算——無側街之一側 `W` 恆 `0`、移組之宗其寬度係他側鏈所量
+       ⇒ 估算與實跑脫鉤（`GB-168`·`R4` 右 `87.72` vs `88.40`）。
+    🛑 缺 `W_far_raw`／`W_rw_start_raw` ⇒ raise（⛔ 靜默以 0 代之）。純函式·無 st/session。
+    """
+    w = [0.0] * int(n)
+    b = None
+    prev = None
+    for _e, _r in (adv.get(f'{side}_results') or []):
+        _wf = (_r or {}).get('W_far_raw')
+        if _wf is None:
+            raise RuntimeError(
+                f"🔴 `_slot_side_chain_widths`：{side} 側鏈上 {_e.get('tp', {}).get('暫編地號')!r} "
+                f"缺 `W_far_raw` ⇒ 停（⛔ 靜默以 0 代之）")
+        if prev is None:
+            _ws = (_r or {}).get('W_rw_start_raw')
+            if _ws is None:
+                raise RuntimeError(
+                    f"🔴 `_slot_side_chain_widths`：{side} 側鏈頭缺 `W_rw_start_raw` ⇒ 停")
+            prev = float(_ws)
+            b = prev
+        w[_e['_ov2_idx']] = float(_wf) - prev
+        prev = float(_wf)
+    return w, b
 
 
 def _spatial_order_parcels_v2(parcels_in_block,
@@ -14509,6 +14556,8 @@ _WF_NS_NAMES = [
     "F3_CATEGORY_BURDEN", "calc_B_value", "calc_C_value", "calc_special_burden_total",
     "solve_G_binary", "iterate_G_S", "rw_from_width", "get_min_lot_size",
     "_select_pool_slot", "_projection_order", "_spatial_order_parcels_v2",
+    # 🆕 `W-G.9-333` `c3`（`GB-168` 之修）：選槽估算之全鏈寬度·單一真相源（stepg 經 ns 消費）
+    "_slot_side_chain_widths",
     "alloc_normal_axis", "_block_strip",
     # §N3-0 T2：池片建構單一真相源（stepg／app／wf_f1／wf_f4 四處共用·根絕抄寫複本漂移 #20）
     "_pool_strips_for_block",
@@ -22259,7 +22308,8 @@ def main():
                                     #    🛑 **⛔ 依 `K-9-9 四` 字面之「重劃前投影順序」**
                                     #       （`K-9-17` 晚於 `K-9-9`·以後者為準）。
                                     # 🛑 `_lg_idx_left` **⛔ 推進**：後繼者遞補其**位**。
-                                    k917_note_drop(blk_label, 'left', k, res, tp)
+                                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
+                                        k917_note_drop(blk_label, 'left', k, res, tp)
                                     continue
                                 _lg_idx_left += 1
                                 if _has_left_corner:   # thread 累積 W_前 給下一筆
@@ -22392,7 +22442,8 @@ def main():
                                     entry is not right_group[-1], 'right', blk_label, k)
                                 if _k917_drop:
                                     # 🛑 受詞與左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
-                                    k917_note_drop(blk_label, 'right', k, res, tp)
+                                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
+                                        k917_note_drop(blk_label, 'right', k, res, tp)
                                     continue
                                 _lg_idx_right += 1
                                 if _has_right_corner:   # thread 累積 W_前 給下一筆
@@ -22502,12 +22553,34 @@ def main():
                             #    🔧 **更正（`W-G.9-190R` commit 4·族③ 之切換）**：本行原逐字載
                             #    「Q2：b＝buffer_S×cos_dn 入 W 軸」——該述於本批**已成偽**；
                             #    Q3：F/l1 與推進迴圈同源＝_F_left/_lside_left/_F_right/_lside_right）
+                            # 🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：估算寬度改取**各側全鏈**
+                            #   （左 ＝ 推進至 k_max、右 ＝ 推進至 k_min 之試推進）之逐宗 `W` 差；
+                            #   居中平手仍用基準趟之宗地寬度。與 `verify/stepg_pipeline.py` 同構（#20）。
+                            _kmin_c = 1 if _has_left_corner else 0
+                            _kmax_c = (_N - 1) if _has_right_corner else _N
+                            _wL_c = [0.0] * _N; _wR_c = [0.0] * _N
+                            _bL_c = _b_L0; _bR_c = _b_R0
+                            if _kmin_c <= _kmax_c:
+                                for _sd_c, _kk_c, _has_c in (('left', _kmax_c, _has_left_corner),
+                                                             ('right', _kmin_c, _has_right_corner)):
+                                    if not _has_c:
+                                        continue
+                                    _adv_c = (_adv_base if _kk_c == _k_naive
+                                              else _advance_block_with_split(_kk_c, False))
+                                    _w_c, _b_c = _slot_side_chain_widths(_adv_c, _sd_c, _N)
+                                    if _sd_c == 'left':
+                                        _wL_c = _w_c
+                                        _bL_c = _bL_c if _b_c is None else _b_c
+                                    else:
+                                        _wR_c = _w_c
+                                        _bR_c = _bR_c if _b_c is None else _b_c
                             _slot_res = _select_pool_slot(
-                                _adv_base['widths'],
+                                _wL_c,
                                 {'has': _has_left_corner, 'F': _F_left,
-                                 'l1': _lside_left, 'b': _b_L0},
+                                 'l1': _lside_left, 'b': _bL_c},
                                 {'has': _has_right_corner, 'F': _F_right,
-                                 'l1': _lside_right, 'b': _b_R0},
+                                 'l1': _lside_right, 'b': _bR_c},
+                                widths_R=_wR_c, dev_widths=_adv_base['widths'],
                             )
                             _k_star = int(_slot_res['k'])
                             # 停機②（J 下降）看守：argmax 保證 J(k*)≥J(naive)；破＝實作 bug
