@@ -9650,6 +9650,7 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
             continue
         pieces.append(g)
         kept_iv.append((a, b))
+    _n_strip = len(pieces)                          # 🆕 `GB-182`：步驟 5 所切之池帶數（強制帶與幾何餘不在其內）
     for p in _fb:                                   # 🆕 P2：強制帶原形入池
         pieces.append(p)
         _r = _strip_s_range(p, d_hat, corner_pt, allocation_dir)
@@ -9681,6 +9682,41 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
     #     ⛔ **但不得刪除／停用／標作廢**——退化案例與未來實作仍可能使其非恆真，
     #     且刪閘與「因結果不利而移除偵測器」不可區辨。
     #     ⇒ **承重閘換位為守恆式** `|ΣG − Σ宗幾何|`（`_acct_geom_tol_block` 之原理式）。
+    # 🆕 `GB-182`（`W-G.9-341`）：幾何餘與步驟 5 之某一池帶**以邊相接**者，併入該池帶、⛔ 另成一片。
+    #   正典：`K-9-5-4 ②` 釋示 `1`「一條線、一個方向」、釋示 `2`「一個界面只能有一條線」（KL 裁 `2026-08-09`；
+    #   其受詞為街角第 1、2 宗之界，本修引其理於街角宗與池帶之界）；`K-9-48` 其四之 `2`（配餘地僅可能在街廓
+    #   左右側及中間位置·KL 裁 `2026-09-23`）；KL 放行 ＝ `W-G.9-341 §二`。⇒ 池帶之界改由街角宗之遠側界承擔（該宗之形⛔ 變）。
+    #   🔒 受詞限步驟 5 之池帶（`pieces[:_n_strip]`）：強制帶（`_fb`）之形⛔ 動（`W-G.9-309` 閘 ①）。
+    #   🔒 相接之判：以 `_S_EPS`（T1 退化界 2×1e-4·既有常數）將幾何餘之頂點吸附至該池帶，再判聯集為單一
+    #     Polygon（二者由 boolean 差集與切線各自得來·共界處有浮點級之縫·實測 R1 甲 3.5 m 未吸附時共界長 0）。
+    #     相接者多於一 ⇒ 取共界長最大者；皆⛔ 相接（僅點接或不接）⇒ 沿舊法另成一片。
+    #   🔒 併入者（幾何餘與併後之池帶）刪「零寬折返毛刺」：頂點 b 與前一頂點相距 ≤ `_S_EPS`，或 ab·bc < 0
+    #     （原路折返）且 b 距直線 ac ≤ `_S_EPS`（a、c 相距 ≤ `_S_EPS` 者視同原路折返）⇒ 刪 b，反覆至無
+    #     （實測 R4 甲 3.5 m 之幾何餘沿正面臨路線折返 `36.13 m`；乙 0 m 右側者沿後界與側界各折返
+    #     `14.02`／`29.56 m`·面積皆 ≈ 0）。⛔ 施於未併之片與既有池帶 ⇒ 無幾何餘之街廓輸出逐位不變。
+    #   🔒 ⛔ 新訂常數；side-agnostic（⛔ 依側別／街廓名／宗序號分支）。
+    from shapely.ops import snap as _snap_g182
+    from shapely.geometry import Polygon as _Poly_g182
+
+    def _despike_g182(_pg):
+        if _pg is None or _pg.is_empty or _pg.geom_type != 'Polygon':
+            return _pg
+        _cs = [tuple(_c) for _c in list(_pg.exterior.coords)[:-1]]
+        _chg = True
+        while _chg and len(_cs) > 3:
+            _chg = False
+            for _i in range(len(_cs)):
+                _a, _b, _c = _cs[_i - 1], _cs[_i], _cs[(_i + 1) % len(_cs)]
+                _ab = (_b[0] - _a[0], _b[1] - _a[1]); _bc = (_c[0] - _b[0], _c[1] - _b[1])
+                _ac = (_c[0] - _a[0], _c[1] - _a[1]); _Lac = float(np.hypot(*_ac))
+                if float(np.hypot(*_ab)) <= _S_EPS:
+                    del _cs[_i]; _chg = True; break          # 與前一頂點重合
+                _d = (abs(_ac[0] * _ab[1] - _ac[1] * _ab[0]) / _Lac) if _Lac > _S_EPS else 0.0
+                if (_ab[0] * _bc[0] + _ab[1] * _bc[1]) < 0 and _d <= _S_EPS:
+                    del _cs[_i]; _chg = True; break          # 原路折返之尖
+        _out = _Poly_g182(_cs, [list(_r.coords) for _r in _pg.interiors])
+        return _out if (_out.is_valid and not _out.is_empty) else _pg
+
     _resid_src = _biz + pieces
     if _resid_src:
         _resid = block_poly.difference(unary_union(_resid_src))
@@ -9688,6 +9724,24 @@ def _pool_strips_for_block(block_poly, d_hat, corner_pt, allocation_dir,
             if _rg is None or _rg.is_empty or _rg.buffer(-1e-4).is_empty:
                 continue                      # T1 既有退化判準（⛔ 未新訂常數）
             _riv = _strip_s_range(_rg, d_hat, corner_pt, allocation_dir)
+            _rg_d = _despike_g182(_rg)                # 🆕 `GB-182`
+            _host = None; _host_L = 0.0; _host_rg = None
+            for _j in range(_n_strip):
+                _rg_s = _snap_g182(_rg_d, pieces[_j], _S_EPS)
+                if unary_union([pieces[_j], _rg_s]).geom_type != 'Polygon':
+                    continue
+                _Lj = float(pieces[_j].boundary.intersection(_rg_s.boundary).length)
+                if _Lj > _host_L:
+                    _host, _host_L, _host_rg = _j, _Lj, _rg_s
+            if _host is not None:
+                _a0, _b0 = kept_iv[_host]
+                _ra, _rb = (_riv if _riv is not None else (s_min, s_max))
+                pieces[_host] = _despike_g182(unary_union([pieces[_host], _host_rg]))
+                kept_iv[_host] = (min(_a0, _ra), max(_b0, _rb))
+                if _verbose:
+                    print(f"🟢 [配餘·併] 街廓 {_label}：幾何餘 {float(_rg.area):.4f}㎡ 併入相接之池帶"
+                          f"（共界 {_host_L:.4f} m·`GB-182`）")
+                continue
             pieces.append(_rg)
             kept_iv.append(_riv if _riv is not None else (s_min, s_max))
             if _verbose:
