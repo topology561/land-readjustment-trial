@@ -383,9 +383,10 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     _spatial_order_parcels_v2 = ns["_spatial_order_parcels_v2"]
     _rw_from_width = ns["rw_from_width"]      # 結構閘 telescoping 用
     _pool_strips_for_block = ns["_pool_strips_for_block"]   # §N3-0 T2：池片單一真相源
+    _right_chain_origin_s = ns["_right_chain_origin_s"]   # 右鏈起點之單一真相源（app 經 ns 供）
     _oblique_s_max = ns["_oblique_s_max"]                   # step 0（正交→斜交 s_max）單一真相源·#20
     # 🆕 `W-G.9-268′` `c1`：錨點更正（**expand**·旗標預設 `off`）·**單一真相源在 app**
-    _wg9268p_anchor_advance = ns["_wg9268p_anchor_advance"]
+    _right_origin_is_front_p2 = ns["_right_origin_is_front_p2"]
     _corner_buffer_S = ns["_corner_buffer_S"]               # §3 街角 band 幾何 bisect·side 參數化·單一真相源·#20
     _acct_geom_tol_per_lot = ns["_acct_geom_tol_per_lot"]   # §N3-0 帳對幾何閘：閘寬單一真相源
     _acct_geom_tol_block = ns["_acct_geom_tol_block"]
@@ -555,6 +556,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             or ((blk_area / front_len) if front_len > 0 else 0.0))
 
         d_hat = None; corner_pt = None; S_block_max = front_len or 100.0
+        _front_p2_blk = None   # 右鏈起點（FRONT p2）
         _cad_fl_blk = (ss.get('f3_cad_front_lines', {}) or {}).get(blk_label, {})
         if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get('p2'):
             _p1_fl = _cad_fl_blk['p1']; _p2_fl = _cad_fl_blk['p2']
@@ -564,6 +566,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 d_hat = _np_d.array([_dx_fl / _L_fl, _dy_fl / _L_fl])
                 corner_pt = _np_d.array(_p1_fl, dtype=float)
                 S_block_max = float(_L_fl)
+                _front_p2_blk = _np_d.array(_p2_fl, dtype=float)
         _alloc_dir_cad = (ss.get('f3_cad_alloc_dir', {}) or {}).get(blk_label)
         allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)
 
@@ -871,10 +874,10 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     and _area_actual < _G_target * 0.95):
                     res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
                 left_cum_S += _S_actual
-                # 🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標預設 `off` ⇒ 逐位不變）。
-                #   受詞見 `_wg9268p_anchor_advance` 之 docstring；**累積形**（補令三 `§二`）。
-                left_cum_S = _wg9268p_anchor_advance(
-                    left_cum_S, res.get('cut_coords'), d_hat, corner_pt, allocation_dir_block)
+                # 🔧 次宗起點 ＝ 本宗遠側界 × FRONTLINE（＝ 標稱終點）：本宗遠側界之方向即次宗近側界之方向
+                #   （D-2b-23【甲】·無條件交遞）⇒ 二界同一條線（`K-9-5-4 ②` 釋示 1）。`W-G.9-268′` 之錨點外推
+                #   （取本宗幾何終點）於街角第 1 宗之後夾出全深度長條（`GB-178`）⇒ 停用；次宗遠側界之
+                #   不交叉（`K-9-9 二`／`K-9-14`）由藍影機制驗之（`K-9-32`／`K-9-33 ⑤`）。
                 res['_alloc_cum_S'] = left_cum_S
                 _mark_zaling(res)
                 _widths_local[entry['_ov2_idx']] = float(res.get('_宗地寬度', 0.0) or 0.0)
@@ -893,7 +896,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
                 # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）
-                _smax_a = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block)
+                _smax_a = _right_chain_origin_s(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block,
+                                                front_p2=_front_p2_blk, has_side_right=_has_right_corner,
+                                                forced_right=_fo_right)
                 actual_max_proj = _smax_a if _smax_a is not None else S_block_max
                 end_pt = corner_pt + actual_max_proj * d_hat
                 d_hat_rev = -d_hat
@@ -930,6 +935,11 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 S_remain = max(0.1, actual_max_proj - left_cum_S - right_cum_S)
                 baseline_pt = (end_pt + right_cum_S * d_hat_rev
                                if (d_hat_rev is not None and end_pt is not None) else None)
+                if (_right_origin_is_front_p2(_has_right_corner, _fo_right) and _lg_idx_right == 0
+                        and not is_first_corner_r):
+                    raise RuntimeError(
+                        f"🔴 街廓 {blk_label} 右鏈：起點取 FRONT p2（有側街·非強制），而首宗 {k} 非街角第 1 宗"
+                        "（其近側界 ∥ 分配線 ⇒ p2 外側之楔形無人承受）·停")
                 res, solver_label = _solve_one(
                     a_m2, A_ratio, l_front, l_side_use, F_use,
                     blk_poly, d_hat_rev, baseline_pt, S_remain,
@@ -992,10 +1002,10 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     and _area_actual < _G_target * 0.95):
                     res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
                 right_cum_S += _S_actual
-                # 🆕 `W-G.9-268′` `c1`：起算垂線之**錨點更正**（**expand**·旗標預設 `off` ⇒ 逐位不變）。
-                #   受詞見 `_wg9268p_anchor_advance` 之 docstring；**累積形**（補令三 `§二`）。
-                right_cum_S = _wg9268p_anchor_advance(
-                    right_cum_S, res.get('cut_coords'), d_hat_rev, end_pt, allocation_dir_block)
+                # 🔧 次宗起點 ＝ 本宗遠側界 × FRONTLINE（＝ 標稱終點）：本宗遠側界之方向即次宗近側界之方向
+                #   （D-2b-23【甲】·無條件交遞）⇒ 二界同一條線（`K-9-5-4 ②` 釋示 1）。`W-G.9-268′` 之錨點外推
+                #   （取本宗幾何終點）於街角第 1 宗之後夾出全深度長條（`GB-178`）⇒ 停用；次宗遠側界之
+                #   不交叉（`K-9-9 二`／`K-9-14`）由藍影機制驗之（`K-9-32`／`K-9-33 ⑤`）。
                 res['_alloc_cum_S'] = right_cum_S
                 _mark_zaling(res)
                 _widths_local[entry['_ov2_idx']] = float(res.get('_宗地寬度', 0.0) or 0.0)
@@ -1047,7 +1057,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：與 app／wf_f4 **四處同源** `_oblique_s_max`（#20·`grep -n "_oblique_s_max" verify/stepg_pipeline.py`）。
         _end_pt_o = None; _dhr_o = None
         if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-            _smax_o = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block)
+            _smax_o = _right_chain_origin_s(blk_meta['vertices'], d_hat, corner_pt, allocation_dir_block,
+                                            front_p2=_front_p2_blk, has_side_right=_has_right_corner,
+                                            forced_right=_fo_right)
             if _smax_o is not None:
                 _end_pt_o = corner_pt + _smax_o * _np_d.asarray(d_hat, dtype=float)
                 _dhr_o = -_np_d.asarray(d_hat, dtype=float)
@@ -1124,8 +1136,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         if _stage2_parcels:
             _smax_blk = None
             if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-                _smax_blk = _oblique_s_max(blk_meta['vertices'], d_hat, corner_pt,
-                                           allocation_dir_block)
+                _smax_blk = _right_chain_origin_s(blk_meta['vertices'], d_hat, corner_pt,
+                                                  allocation_dir_block, front_p2=_front_p2_blk,
+                                                  has_side_right=_has_right_corner, forced_right=_fo_right)
             _s2 = ns["_place_pool_parcels"](
                 stage2_parcels=_stage2_parcels,
                 adv_final=_adv_final,
