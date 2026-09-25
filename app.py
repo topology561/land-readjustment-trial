@@ -15575,6 +15575,2180 @@ def _wg_theme_ledger(rows_E, ledger_rows, cb_by, omap, title):
     return _wg_fig_layout(fig, title)
 
 
+def f3_screen_corner_pk_run(st, *,
+        B_value,
+        C_for_calc,
+        _build_blocks,
+        _corner_rows_init,
+        _pd,
+        build_parcels,
+        post_price_by_block,
+        pre_price_by_zone,
+        sb_rows_by_label,
+        temp_parcels):
+    """畫面「🏁 執行第 1 宗街角地優先權選位（左右側獨立）」按鈕區之本體（W-G.9-345 工項三·自 main() 原封抽出·零行為變更）。"""
+    _own_map = st.session_state.get('t8_ownership_map', {}) or {}
+    if not _own_map:
+        st.warning("⚠️ 尚未偵測到 土地歸戶 資料，請先至 土地歸戶 匯入歸戶 Excel。")
+    else:
+        from shapely.geometry import LineString as _SLine
+        _corner_select_results = []
+        _corner_cand_diag = []   # 🆕 W-D.1.2 診斷：逐候選三分項（揭露 §1 指數退化，供 KL 核 D-3）
+        # 🆕 `W-G.9-198R` `R1-6`：段二全域排序之素材（逐側之 PK 結果·唯讀）
+        _k6b_side_results = []
+        # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（`K-9-24 二`·**有土地後果**）
+        _k6b_dual_rows = []
+        # 🆕 `W-G.9-198R` `R3-4`：段一「上鎖」之出艙（`K-6 §二 段一`·**唯讀·零土地後果**）
+        _k6b_lock_rows = []
+        _k6b_locked_by_block = {}
+        # 🆕 Phase A：使用 build_parcels（temp_parcels 子集）取代 f3_G_values
+        # build_parcels 為「可建築土地」之 temp_parcels；此時 G 值尚未計算
+        # 但 PK 所需欄位（暫編地號、原地號、所屬街廓、面積_m2）皆已具備
+        _g_rows = build_parcels
+        by_blk = {}
+        for r in _g_rows:
+            by_blk.setdefault(r['所屬街廓'], []).append(r)
+        _front_line_by_blk = {}
+        for b in _build_blocks:
+            _verts = b.get('vertices') or []
+            if len(_verts) < 3:
+                _front_line_by_blk[b['label']] = None
+                continue
+            try:
+                _longest = None; _ll = 0.0
+                for i in range(len(_verts)):
+                    _p1 = _verts[i]; _p2 = _verts[(i + 1) % len(_verts)]
+                    _L = ((_p2[0] - _p1[0]) ** 2 + (_p2[1] - _p1[1]) ** 2) ** 0.5
+                    if _L > _ll:
+                        _ll = _L
+                        _longest = _SLine([tuple(_p1), tuple(_p2)])
+                _front_line_by_blk[b['label']] = _longest
+            except Exception:
+                _front_line_by_blk[b['label']] = None
+        _side_warnings = []
+        _f3_corner_winners_state = {}
+        for _row in (_corner_rows_init or []):
+            _lbl = _row['街廓']
+            st.session_state['f3_current_pk_block'] = _lbl  # 🚨 W-B §2 bugfix
+            _blk_meta_for_side = next(
+                (b for b in _build_blocks if b.get('label') == _lbl), None
+            )
+            # 🆕 S1 §6 查表化：注入本塊法定最小寬（get_min_lot_size 分區×正面路寬）供 v12 B-4
+            #   前置篩選（單一真相源·app==engine·廢 v12 內硬編 3.5·UC9898 住宅區×8/12m→3.50 byte-identical）。
+            st.session_state['f3_pk_legal_min_width'] = float(
+                get_min_lot_size(
+                    (_blk_meta_for_side.get('category', '') if _blk_meta_for_side else ''),
+                    float(_row.get('正面路寬(m)', 0.0) or 0.0)
+                ).get('min_width', 0.0) or 0.0)
+            # 🆕 K-8 §三：同型注入街廓分配深度（N-19′ 2dp）供街角規定範圍新構造。
+            #   源＝本塊參數列之 `街廓分配深度(m)`（Step-G 之 `_depth_use` 已 2dp）。
+            st.session_state['f3_pk_alloc_depth'] = float(
+                _row.get('街廓分配深度(m)', 0.0) or 0.0)
+            _cad_fl_lstep = (st.session_state.get(
+                'f3_cad_front_lines', {}) or {}).get(_lbl, {})
+            _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
+            _fl_p2_lstep = _cad_fl_lstep.get('p2') if _cad_fl_lstep else None
+            _param_dict_for_pk = (
+                st.session_state.get('f3_g_iter_params', {}) or {}
+            )
+            # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`identity+no_ghost`）
+            _all_in_blk = [tp for tp in by_blk.get(_lbl, [])
+                           if not _proj_pop_ghost3(tp)]
+            # 🚨 Patch D-1（Hotfix Fix A 補套用）：候選池一律全自動 PK
+            # 廢除「使用者人工標記覆寫」之分支，避免候選池被使用者誤勾選縮減而漏挑
+            _user_marked_in_blk = [
+                r for r in _all_in_blk
+                if (_param_dict_for_pk.get(r.get('暫編地號', ''), {})
+                    .get('is_corner', False))
+            ]
+            _candidates_pool = _all_in_blk
+            _has_user_marked = bool(_user_marked_in_blk)
+            _candidate_source = 'auto_pk'
+            # 🆕 W-D.2 v2 轉正（§2 tiebreaker 換源）：正典原位次＝
+            #   _projection_order 投影序 rank（單一真相源；廢距角序暫行近似）
+            # 🆕 W-G.9-161 `L-3′` `POP_SYNC`：實參 ≡ identity(BUILD_LAYER)
+            _proj_pop_assert_seq("app:main/_rank_by_tpid",
+                                 _all_in_blk, by_blk.get(_lbl, []), blk=_lbl)
+            _rank_by_tpid = {
+                tp.get('暫編地號'): _i_rk + 1
+                for _i_rk, tp in enumerate(
+                    _projection_order(_all_in_blk, _fl_p1_lstep, _fl_p2_lstep))
+            }
+            _candidates = []
+            for r in _candidates_pool:
+                _parent = r.get('原地號', '')
+                _gid = _own_map.get(_parent, '')
+                if not _gid:
+                    continue
+                _tp = next((tp for tp in (temp_parcels or [])
+                            if tp.get('暫編地號') == r.get('暫編地號')), None)
+                _cen_x = float(_tp.get('centroid_x', 0)) if _tp else 0.0
+                _cen_y = float(_tp.get('centroid_y', 0)) if _tp else 0.0
+                _G_est = _estimate_G_for_qualification(
+                    float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0)
+                )
+                _cad_fl_priority = (st.session_state.get(
+                    'f3_cad_front_lengths', {}) or {}).get(_lbl, 0.0)
+                _cad_sl_priority = (st.session_state.get(
+                    'f3_cad_side_lengths', {}) or {}).get(_lbl, 0.0)
+                _front_len_priority = (
+                    _cad_fl_priority if _cad_fl_priority > 0
+                    else float(_row.get('正面長度(m)',
+                                         _row.get('正面路寬(m)', 0.0)) or 0.0)
+                )
+                _side_len_priority = (
+                    _cad_sl_priority if _cad_sl_priority > 0
+                    else 0.0  # Phase A：l₁ 為 G 後欄位，前置 PK 階段 fallback 為 0
+                )
+                _candidates.append({
+                    '歸戶群組': _gid,
+                    '歸戶': _gid,
+                    '暫編地號': r.get('暫編地號', ''),
+                    '原地號': _parent,
+                    'centroid': (_cen_x, _cen_y),
+                    'polygon_coords': (_tp.get('polygon_coords') if _tp else None),
+                    'G_estimated': _G_est,
+                    'G_value': _G_est,
+                    'front_length': _front_len_priority,
+                    'side_length': _side_len_priority,
+                    'physical_overlap_area': float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0),
+                    '臨正街長度_m': _front_len_priority,
+                    '臨側街長度_m': _side_len_priority,
+                    '跨占街角面積_m2': float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0),
+                    # 🆕 W-D.2 v2：§2 正典原位次（tiebreaker 單一真相源）
+                    '_pre_position_rank': _rank_by_tpid.get(
+                        r.get('暫編地號', ''), float('inf')),
+                })
+            _bf = max((c['臨正街長度_m'] for c in _candidates), default=1.0) or 1.0
+            _bs = max((c['臨側街長度_m'] for c in _candidates), default=1.0) or 1.0
+            _ba = max((c['跨占街角面積_m2'] for c in _candidates), default=1.0) or 1.0
+            _l_min_val = _row.get('【左】街角最小面積(㎡)')
+            _r_min_val = _row.get('【右】街角最小面積(㎡)')
+            _use_v13 = (_fl_p1_lstep is not None and _fl_p2_lstep is not None)
+            if _use_v13:
+                _min_p1 = (float(_l_min_val) if _l_min_val is not None
+                            else float('inf'))
+                _min_p2 = (float(_r_min_val) if _r_min_val is not None
+                            else float('inf'))
+                # 🐛 Fix：截角欄位無臨路時存字串 '—'，不可 float()
+                def _safe_cutoff(v):
+                    try:
+                        if v is None or v == '' or v == '—':
+                            return 0.0
+                        return float(v)
+                    except (TypeError, ValueError):
+                        return 0.0
+                _cutoff_p1_for_pk = _safe_cutoff(_row.get('【左】截角(㎡)'))
+                _cutoff_p2_for_pk = _safe_cutoff(_row.get('【右】截角(㎡)'))
+                _g_map = {c['暫編地號']: c['G_estimated'] for c in _candidates}
+                # 🆕 P-C（裁定M·Q1）：app 真 G 鏡射（app-live 財務·§7 β混源）——逐候選逐側算
+                #   真 G → _G_true_p1/p2，require_g_map=True 驅動資格閘。與 harness
+                #   run_corner_pk 同一 `_corner_block_true_G`→`_corner_first_lot_G`（Q-M4）。
+                #   ⚠️ app 路徑 run_all 未覆·**KL UI 實跑驗**；組裝失敗 ⇒ **st.error＋st.stop() 硬停**
+                #   （D-1·claude.ai 2026-07-25）——**無 estG 降級路徑**（Q1：取不到真 G ＝loud·禁 fallback）。
+                try:
+                    from shapely.geometry import Polygon as _SP_pc
+                    _sbr_ap = sb_rows_by_label.get(_lbl, {})
+                    _slb_ap = (st.session_state.get('f3_cad_side_lines_by_side', {})
+                               or {}).get(_lbl, {}) or {}
+                    _smL_ap = (_slb_ap.get('left') or {}).get('mid')
+                    _smR_ap = (_slb_ap.get('right') or {}).get('mid')
+                    _alloc_ap = (st.session_state.get('f3_cad_alloc_dir', {})
+                                 or {}).get(_lbl)
+                    _verts_ap = (_blk_meta_for_side or {}).get('vertices')
+                    _p1_ap = np.array(_fl_p1_lstep, float)
+                    _p2_ap = np.array(_fl_p2_lstep, float)
+                    _sL_ap = float(np.linalg.norm(_p2_ap - _p1_ap))
+                    _dh_ap = (_p2_ap - _p1_ap) / (_sL_ap or 1.0)
+                    _bpoly_ap = _SP_pc(_verts_ap)
+                    if not _bpoly_ap.is_valid:
+                        _bpoly_ap = _bpoly_ap.buffer(0)
+                    _ax_ap = alloc_normal_axis(_alloc_ap) if _alloc_ap else None
+                    _sR_ap = (_oblique_s_max(_verts_ap, _dh_ap, _p1_ap, _ax_ap)
+                              or _sL_ap) if _ax_ap is not None else _sL_ap
+                    _depth_ap = float((st.session_state.get(
+                        'f3_alloc_depth_by_label', {}) or {}).get(_lbl, 0) or 0)
+                    _tab6_ap = float(st.session_state.get(
+                        'f3_total_burden_rate_from_finance', 0) or 0)
+                    _a_ap = {}; _zone_ap = {}
+                    for _c_ap in _candidates:
+                        _pid_ap = _c_ap['暫編地號']
+                        _tp_ap = next((tp for tp in (temp_parcels or [])
+                                       if tp.get('暫編地號') == _pid_ap), None)
+                        if _tp_ap is not None:
+                            _a_ap[_pid_ap] = (
+                                round(float(_tp_ap.get('分攤登記面積_m2', 0) or 0)
+                                      + float(_tp_ap.get('面積_m2', 0) or 0), 2)
+                                if '分攤登記面積_m2' in _tp_ap
+                                else round(float(_tp_ap.get('面積_m2', 0) or 0), 2))
+                            _zone_ap[_pid_ap] = _tp_ap.get('重劃前地價區段', '')
+                    _true_map_ap = _corner_block_true_G(
+                        candidates=_candidates, a_by_pid=_a_ap, zone_by_pid=_zone_ap,
+                        blk_poly=_bpoly_ap, corner_pt=_p1_ap, d_hat=_dh_ap,
+                        s_max_left=_sL_ap, s_max_right=_sR_ap, alloc_dir=_ax_ap,
+                        side_mid_left=_smL_ap, side_mid_right=_smR_ap,
+                        l_front=float(_sbr_ap.get('正街尺度', 0) or 0),
+                        l_side_left=float(_sbr_ap.get('左側尺度', 0) or 0),
+                        l_side_right=float(_sbr_ap.get('右側尺度', 0) or 0),
+                        F_left=float(_sbr_ap.get('左側長度(m)', 0) or 0),
+                        F_right=float(_sbr_ap.get('右側長度(m)', 0) or 0),
+                        B=float(B_value or 0), C=float(C_for_calc or 0),
+                        post_price_blk=float(post_price_by_block.get(_lbl, 0) or 0),
+                        pre_price_by_zone=pre_price_by_zone, avg_depth=_depth_ap,
+                        tab6_burden=_tab6_ap, has_left=(_smL_ap is not None),
+                        has_right=(_smR_ap is not None),
+                        # 🔒 K-4 第 5 條前提：**獨立**自 CAD 讀 p2（非由 _sL_ap 反推）
+                        front_p2=_fl_p2_lstep, _blk=_lbl)
+                    for _c_ap in _candidates:
+                        _gp_ap = _true_map_ap.get(_c_ap['暫編地號'], {})
+                        _c_ap['_G_true_p1'] = _gp_ap.get('p1')
+                        _c_ap['_G_true_p2'] = _gp_ap.get('p2')
+                except Exception as _e_true_g:
+                    # 🔴 D-1（claude.ai 2026-07-25）：**硬停·禁退 estG**。
+                    #   Q1 鐵律「取不到真 G ＝ loud·禁 fallback」；前版 st.warning→退 estG
+                    #   係**同一條靜默退路於 app 層復活**（harness 側已 loud raise）。
+                    #   「Q1 中性⇒winner 不變」係 UC9898 個案實測、**非結構性質**
+                    #   （他案 G真−G估 可翻 winner），違泛用四約束；且 warning 為 transient、
+                    #   真G 欄空白、導出檔無痕 ⇒ 降級態不可追。**禁繼續算。**
+                    import traceback as _tb_pc
+                    st.error(
+                        f"🔴 P-C 真 G（街廓 {_lbl}）組裝失敗——**停機**（Q1：取不到真 G "
+                        f"＝loud·禁靜默退 estG）。錯誤：{_e_true_g}\n\n"
+                        f"```\n{_tb_pc.format_exc()[-800:]}\n```\n"
+                        "請修復輸入（SIDE_LINE 中點／ALLOC／街廓分配深度／財務底料）後重跑；"
+                        "**本次 PK 未產出結果、勿據以續算或匯出**。")
+                    st.stop()
+                _v13 = select_corner_lots_both_sides_v12(
+                    candidates=_candidates,
+                    front_line_p1=_fl_p1_lstep,
+                    front_line_p2=_fl_p2_lstep,
+                    cutoff_p1_end=_cutoff_p1_for_pk,
+                    cutoff_p2_end=_cutoff_p2_for_pk,
+                    base_front_len_m=_bf,
+                    base_side_len_m_p1=_bs,
+                    base_side_len_m_p2=_bs,
+                    min_corner_area_p1=_min_p1,
+                    min_corner_area_p2=_min_p2,
+                    g_values_map=_g_map,
+                    # 🆕 P-C：真 G 驅動資格閘。**恆 True**——組裝失敗已於上方 st.stop()
+                    #   硬停（D-1·禁退 estG）⇒ 執行至此必有真 G·無降級路徑。
+                    require_g_map=True,
+                )
+                # 🆕 `W-G.9-198R` `R2-2`〜`R2-6`（`K-9-24 二`·`W-G.9-208 §三` 授權）：
+                #   **歸側四分支**——同時跨占同街廓左右兩街角者，依正典定其側；
+                #   **一經歸定，另一側視為未被其跨占**，扣除之後照常評選其餘跨占者
+                #   （款⑤：若無 winner ⇒ 強制留設抵費地·範圍嚴格等於該街角規定範圍）。
+                #   🔴 **本步有土地後果**——其調整後之 `_v13` 即下游 winner／抵費地之來源。
+                _v13, _k6b_rows_blk = k6b_resolve_dual_crossing_sides(
+                    _v13, _bf, block_label=_lbl)
+                _k6b_dual_rows.extend(_k6b_rows_blk)
+                # 🆕 `W-G.9-198R` `R3-1`〜`R3-6`（`K-6 §二 段一`·`W-G.9-210 §三` 授權）：
+                #   **段一上鎖**——某街角定案（該側有任一筆 `G ≥ 街角規定面積`）
+                #   ⇒ 該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）一律上鎖。
+                #   🔒 **唯讀**（`R3-5`）：其產出⛔ 被任何既有分配邏輯消費——
+                #      受詞係**段三之合併群操作**（`K-9-24 四`），而段三尚未落地（`VR-086`）。
+                #   🛑 置於 `_v13`（**歸側調整後**）之後、⛔ 於步驟 0 之鏈上（`R3-3`）。
+                _k6b_lk_set, _k6b_lk_rows_blk = k6b_stage1_locks(
+                    _v13, block_label=_lbl)
+                _k6b_lock_rows.extend(_k6b_lk_rows_blk)
+                _k6b_locked_by_block[_lbl] = sorted(_k6b_lk_set)
+                _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
+                # 🆕 W-D.1.2 診斷：逐候選三分項攤現況（揭露 §1 指數退化，供 KL 核 D-3）
+                #   端 p1_end→左、p2_end→右（沿用本區 _l/_r 顯示對應）；
+                #   達標 = 通過第一關門檻；分數僅 qualified 有（eliminated 顯示 —）。
+                for _dg_side, _dg_res in (('左', _l_v13), ('右', _r_v13)):
+                    # 🆕 `R1-6`：累積逐側 PK 結果供段二（⛔ 新增側標字面·取迴圈變數）
+                    _k6b_side_results.append((_lbl, _dg_side, _dg_res))
+                    _dg_win = ((_dg_res.get('winner') or {}).get('暫編地號'))
+                    for _dg_pass, _dg_list in (('達標', _dg_res.get('qualified', [])),
+                                               ('未達標', _dg_res.get('eliminated', []))):
+                        for _dc in (_dg_list or []):
+                            _corner_cand_diag.append({
+                                '街廓': _lbl,
+                                '端': _dg_side,
+                                '候選地號': _dc.get('暫編地號', ''),
+                                '原地號': _dc.get('原地號', ''),
+                                '真交集(㎡)': round(float(_dc.get('_corner_intersection_area', 0) or 0), 2),
+                                '整筆幾何(㎡)': round(float(_dc.get('_full_parcel_area',
+                                                                  _dc.get('physical_overlap_area', 0)) or 0), 2),
+                                '範圍面積(㎡)': round(float(_dc.get('_corner_range_area', 0) or 0), 2),
+                                'G估(㎡)': round(float(_dc.get('G_for_threshold', 0) or 0), 2),
+                                # 🆕 P-C（裁定M·Q1）：達標決策所用之側特定真 G（G估欄保 estG）
+                                '真G(㎡)': (round(float(_dc.get('_G_true', 0) or 0), 2)
+                                            if _dc.get('_G_true') is not None else ''),
+                                '門檻(㎡)': round(float(_dc.get('min_area_to_apply', 0) or 0), 2),
+                                # 🆕 W-D.1.3-b 交叉檢查（KL）：範圍面積 應逐塊 == 門檻（項三分母＝G-gate 最小面積＝同顆法定 range 多邊形）
+                                '範圍=門檻?': ('✅' if abs(float(_dc.get('_corner_range_area', 0) or 0)
+                                                          - float(_dc.get('min_area_to_apply', 0) or 0)) < 0.5
+                                              else '🔴異源·停查'),
+                                # 🆕 項三原始比＝真交集/範圍（分子分母同源應 ≤1；若 🔴>1 表 clamp 觸發、多邊形不一致紅旗）
+                                '項三比(≤1)': ('🔴>1' if (float(_dc.get('_corner_intersection_area', 0) or 0)
+                                                          > float(_dc.get('_corner_range_area', 0) or 0) + 0.01
+                                                          and float(_dc.get('_corner_range_area', 0) or 0) > 0)
+                                               else round(float(_dc.get('_corner_intersection_area', 0) or 0)
+                                                          / max(float(_dc.get('_corner_range_area', 0) or 0), 1e-9), 4)),
+                                '達標': _dg_pass,
+                                # 🆕 W-D.1.3-c 逐筆臨長（供項一/項二核；分子⊆分母、Σ臨≤邊）
+                                '截角邊(range)': round(float(_dc.get('_corner_cut_den', 0) or 0), 3),
+                                '臨截角': round(float(_dc.get('_corner_cut_len', 0) or 0), 3),
+                                '側街邊(range)': round(float(_dc.get('_side_line_den', 0) or 0), 3),
+                                '臨側街': round(float(_dc.get('_side_line_len', 0) or 0), 3),
+                                '正街角分(0.4)': (round(float(_dc.get('_score_corner_cut', 0) or 0), 4)
+                                                  if '_score_corner_cut' in _dc else '—'),
+                                '側街分(0.2)': (round(float(_dc.get('_score_side', 0) or 0), 4)
+                                                if '_score_side' in _dc else '—'),
+                                '跨占分(0.4)': (round(float(_dc.get('_score_overlap', 0) or 0), 4)
+                                                if '_score_overlap' in _dc else '—'),
+                                '總分': (round(float(_dc.get('priority_index', 0) or 0), 4)
+                                         if 'priority_index' in _dc else '—'),
+                                # 🆕 `W-G.9-198R` `R1-3`：街角指數名次（該側 group 全體·
+                                #   降冪·1 起算·連續）。位置 ＝ 總分之後、原位次之前；
+                                #   逐列皆整數（⛔ 有 `—`／空白）。源 ＝ `_pk_one_side_v12`。
+                                '指數名次': int(_dc.get('指數名次', 0) or 0),
+                                # 🆕 W-D.2 v2 轉正：原位次＝§2 正典投影序 rank（單一真相源；
+                                #   廢距角序暫行欄——v1 診斷 baseline 該欄豁免記帳見 verify/README）
+                                '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
+                                '選中': ('✅' if (_dg_win and _dc.get('暫編地號') == _dg_win) else ''),
+                            })
+                _l_disp_min = ('無此側' if _min_p1 == float('inf')
+                                else f"{round(_min_p1, 2)}")
+                _r_disp_min = ('無此側' if _min_p2 == float('inf')
+                                else f"{round(_min_p2, 2)}")
+                _l_winner = _l_v13.get('winner')
+                _r_winner = _r_v13.get('winner')
+                _l_disp_winner = (
+                    '無此側' if _l_disp_min == '無此側'
+                    else (f"{_l_winner['歸戶群組']}（{_l_winner.get('原地號','')}）"
+                          f"[{_l_winner.get('暫編地號','')}]"
+                          if _l_winner else '⚠️ 強制抵費地')
+                )
+                _r_disp_winner = (
+                    '無此側' if _r_disp_min == '無此側'
+                    else (f"{_r_winner['歸戶群組']}（{_r_winner.get('原地號','')}）"
+                          f"[{_r_winner.get('暫編地號','')}]"
+                          if _r_winner else '⚠️ 強制抵費地')
+                )
+                _l_disp_score = (
+                    round(float(_l_winner.get('priority_index', 0)), 4)
+                    if (_l_winner and _l_disp_min != '無此側') else '—'
+                )
+                _r_disp_score = (
+                    round(float(_r_winner.get('priority_index', 0)), 4)
+                    if (_r_winner and _r_disp_min != '無此側') else '—'
+                )
+                _l_qcount = (len(_l_v13.get('qualified', []))
+                              if _l_disp_min != '無此側' else '—')
+                _r_qcount = (len(_r_v13.get('qualified', []))
+                              if _r_disp_min != '無此側' else '—')
+                _f3_corner_winners_state[_lbl] = {
+                    'p1_end': (_l_winner.get('暫編地號', '') if _l_winner else None),
+                    'p2_end': (_r_winner.get('暫編地號', '') if _r_winner else None),
+                    'method': 'V13_spatial_binding',
+                }
+            else:
+                # 🆕 W-D.1.3-d（O1 裁定）：缺 FRONT_LINE → 停機警告，不靜默退回 V12 生面積評分。
+                #   _use_v13 由 FRONT_LINE p1/p2 是否存在判定；缺 FRONT 則街角三指數
+                #   （臨截角/臨側街/真交集）皆無幾何依據 → 具名中文警示 + 跳過該塊（不 append 假結果）。
+                st.error(
+                    f"🛑 街廓 {_lbl}：缺 FRONT_LINE 圖層（起點 p1＝左、迄點 p2＝右）→ "
+                    f"無法執行第 1 宗街角地優先權選位（街角三指數需 FRONT/SIDE/ALLOC/BASELINE 圖層齊備）。\n\n"
+                    f"請至 CAD 於 FRONT_LINE 圖層補畫該街廓正面臨路線後，重新匯入 DXF 並重跑此步驟。"
+                )
+                continue
+            _corner_select_results.append({
+                '街廓': _lbl,
+                '演算法': ('V13' if _use_v13 else 'V12'),
+                '候選來源': ('🎯 使用者標記' if _candidate_source == 'user_marked'
+                             else '🤖 自動 PK'),
+                '候選數': len(_candidates),
+                '【左】最小面積(㎡)': _l_disp_min,
+                '【右】最小面積(㎡)': _r_disp_min,
+                '【左】達資格候選': _l_qcount,
+                '【左】第1宗指配': _l_disp_winner,
+                '【左】優先權指數': _l_disp_score,
+                '【右】達資格候選': _r_qcount,
+                '【右】第1宗指配': _r_disp_winner,
+                '【右】優先權指數': _r_disp_score,
+            })
+        if _f3_corner_winners_state:
+            st.session_state['f3_corner_winners'] = _f3_corner_winners_state
+        # 🆕 Phase B-1：寫入 forced_offset 供 Step G 雙端鎖定 + Phase C 抵費地 buffer 邏輯使用
+        _forced_offset_map = {}
+
+        def _fo_min_area(_v):
+            """'無此側'/None → 0.0；數字字串（如 '300.52'）→ float。"""
+            try:
+                return float(_v)
+            except (TypeError, ValueError):
+                return 0.0
+        for _r_pk in (_corner_select_results or []):
+            _lbl_pk = _r_pk.get('街廓', '')
+            _l_forced = ('強制抵費地' in str(_r_pk.get('【左】第1宗指配', '')))
+            _r_forced = ('強制抵費地' in str(_r_pk.get('【右】第1宗指配', '')))
+            _l_has_side = (_r_pk.get('【左】最小面積(㎡)') != '無此側')
+            _r_has_side = (_r_pk.get('【右】最小面積(㎡)') != '無此側')
+            _forced_offset_map[_lbl_pk] = {
+                'left_forced_offset': bool(_l_forced and _l_has_side),
+                'right_forced_offset': bool(_r_forced and _r_has_side),
+                'left_has_side': bool(_l_has_side),
+                'right_has_side': bool(_r_has_side),
+                # 🆕 W-D.2 §3（M3 接線・餵入端）：角落抵費地面積＝該側 range 面積
+                #   （＝【左/右】最小面積同源）。消費端＝_spatial_order_parcels_v2
+                #   回傳 corner_offset_area → Step G 守恆 ledger 拆帳。
+                'left_corner_min_area': (
+                    _fo_min_area(_r_pk.get('【左】最小面積(㎡)'))
+                    if (_l_forced and _l_has_side) else 0.0),
+                'right_corner_min_area': (
+                    _fo_min_area(_r_pk.get('【右】最小面積(㎡)'))
+                    if (_r_forced and _r_has_side) else 0.0),
+            }
+        st.session_state['f3L_forced_offset'] = _forced_offset_map
+        if _corner_select_results:
+            st.markdown("##### 🥇 第 1 宗街角地指配結果（左右側獨立）")
+            if _side_warnings:
+                with st.expander(
+                    f"⚠️ {len(_side_warnings)} 筆「使用者標註側別」與「幾何投影建議」不一致",
+                    expanded=False
+                ):
+                    for _w in _side_warnings:
+                        st.warning(_w)
+                    st.info(
+                        "ℹ️ 說明：上述地號之側別由使用者於步驟 G 圖選器手動標註，"
+                        "但本系統幾何投影演算法（`LineString.project()`）建議的側別不同。"
+                        "已採用使用者標註值；如需修正，請至步驟 G 圖選器重新點選。"
+                    )
+            # 🆕 `W-G.9-248` 工項三：混型欄之**顯示層**修（⛔ 動其計算一字）。
+            #   本表之混型欄 ＝ 四：`達資格候選`（`len(...)`（int）∪ `'—'`）與
+            #   `優先權指數`（`round(float(...), 4)`（float）∪ `'—'`）各左右二欄。
+            #   🔒 `最小面積(㎡)`／`第1宗指配` 之二臂**皆 f-string／字串**
+            #      ⇒ **恆字串**、⛔ 混型 ⇒ **⛔ 列入受詞**。
+            st.dataframe(wg9248_stringify_mixed_cols(
+                _pd.DataFrame(_corner_select_results), [
+                    '【左】達資格候選', '【右】達資格候選',
+                    '【左】優先權指數', '【右】優先權指數',
+                ]),
+                use_container_width=True, hide_index=True)
+            st.session_state['f3L_corner_winners'] = _corner_select_results
+            st.session_state['f3L_corner_side_warnings'] = _side_warnings
+            # 🆕 `W-G.9-198R` `R1-6`／`R1-7`：K-6-B 段二全域排序（**唯讀出艙**）
+            _k6b_stage2 = k6b_stage2_global_order(_k6b_side_results)
+            st.session_state['f3_k6b_stage2_order'] = _k6b_stage2
+            with st.expander(
+                "🔬 K-6-B 段二：全域排序（僅排**待處理街角**之候選）"
+                f"（{len(_k6b_stage2)} 筆 · 鍵序 ① 名次 → ② 街角試算 G → ③ 指數數值 → ④ 地號）",
+                expanded=False
+            ):
+                if _k6b_stage2:
+                    st.dataframe(_pd.DataFrame(_k6b_stage2),
+                                 use_container_width=True, hide_index=True)
+                else:
+                    st.caption("（本案無待處理街角 ⇒ 段二清單為空）")
+                st.caption(
+                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——段三"
+                    "（逐一嘗試／集中規則／跨街廓合併）尚未落地。"
+                )
+            # 🆕 `W-G.9-198R` `R2-6`：K-9-24 二 之歸側四分支（🔴 **有土地後果**）
+            st.session_state['f3_k6b_dual_side_assign'] = _k6b_dual_rows
+            with st.expander(
+                "🔬 K-9-24 二：同時跨占左右兩街角者之**歸側四分支**"
+                f"（{len(_k6b_dual_rows)} 宗 · 款② 兩側皆拿得下／款③ 僅一側／款④ 兩側皆拿不下）",
+                expanded=False
+            ):
+                if _k6b_dual_rows:
+                    st.dataframe(_pd.DataFrame(_k6b_dual_rows),
+                                 use_container_width=True, hide_index=True)
+                else:
+                    st.caption("（本案無同時跨占左右兩街角之宗地）")
+            # 🆕 `W-G.9-198R` `R3-4`：段一上鎖之出艙（🔒 **唯讀·零土地後果**）
+            st.session_state['f3_k6b_stage1_locks'] = _k6b_lock_rows
+            st.session_state['f3_k6b_stage1_locked_by_block'] = _k6b_locked_by_block
+            _lk_n = sum(1 for _r in _k6b_lock_rows if _r.get('上鎖'))
+            _lk_p = len({_r['暫編地號'] for _r in _k6b_lock_rows if _r.get('上鎖')})
+            with st.expander(
+                "🔬 K-6 §二 段一：**上鎖**狀態"
+                f"（{len(_k6b_lock_rows)} 列 · 上鎖 {_lk_n} 列 · 涉 {_lk_p} 宗）",
+                expanded=False
+            ):
+                if _k6b_lock_rows:
+                    st.dataframe(_pd.DataFrame(_k6b_lock_rows),
+                                 use_container_width=True, hide_index=True)
+                else:
+                    st.caption("（本案無任何街角候選）")
+                st.caption(
+                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——上鎖之受詞係"
+                    "**段三之合併群操作**（`K-6 §二 段三 1`「取該合併群中**未上鎖**之其他片」），"
+                    "而段三尚未落地（`VR-086`）。⛔ 作用於**步驟 0**——步驟 0 已回歸無條件"
+                    "（`K-9-24 一`）且完成於段一之前。"
+                )
+                st.caption(
+                    "🔒 **上鎖之判準**：某街角**定案**（該側存在任一筆 `G ≥ 該街角規定面積`）"
+                    "⇒ 該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）一律上鎖；"
+                    "其效力為**既不出也不進**（⛔ 被任何合併群抽走、⛔ 作為合併標的）。"
+                )
+                st.caption(
+                    "🔑 母體取**歸側調整後**之候選集——`K-9-24 二·5` 逐字「一經歸定，"
+                    "另一側**視為未被 `M` 跨占**」⇒ `M` 於另一側已非跨占者、⛔ 因該側定案而上鎖。"
+                )
+                st.caption(
+                    "🛑 **拿得下** ＝ 達標（`G ≥ 該側街角規定面積`）**且**為該側全部達標"
+                    "候選中指數最大者（winner）；**第 1 名而未達標者不算拿得下**。"
+                    "**並列**時取前緣線 `p1` 側（決定性·禁隨機）。"
+                    "一經歸定，**另一側視為未被其跨占**，扣除後若無 winner "
+                    "⇒ **強制留設抵費地**，範圍嚴格等於該街角規定範圍。"
+                )
+            st.caption(
+                "💡 **左右側分類規則**：(1) 使用者標註優先；(2) 未標註者用 `LineString.project()` "
+                "沿正面道路投影距離，前半段=左側、後半段=右側；(3) Phase 4 H-1 — 圖選時即時自動偵測。"
+                "🆕 **最小面積**：左右側使用各自路寬計算 + 各自截角獨立扣除（H-3b）；"
+                "**Tiebreaker**：同分時依跨占面積 → 正街長度 → 歸戶字母序決勝（F-3）。"
+                "🆕 **無此側**：表示該街廓對應側無臨路，無街角地候選資格。"
+                "🆕 **Phase B**：強制抵費地之街角將於 Phase C 自動預留為抵費地，不分配給任何宗地。"
+            )
+            # 🆕 W-D.1.2 診斷：第 1 宗街角地逐候選評點明細（揭露 §1 指數退化，供 KL 核 D-3）
+            if _corner_cand_diag:
+                with st.expander(
+                    "🔬 W-D.1.2 診斷：第 1 宗街角地逐候選評點明細"
+                    f"（{len(_corner_cand_diag)} 筆候選 · 三分項 0.4/0.2/0.4 · 達標/選中）",
+                    expanded=False
+                ):
+                    st.dataframe(_pd.DataFrame(_corner_cand_diag),
+                                 use_container_width=True, hide_index=True)
+                    st.caption(
+                        "💡 **三分項**（手冊街角地優先權指數）：正街角線 0.4 + 側街 0.2 + 跨占面積 0.4 = 總分。"
+                        "**達標**＝過第一關門檻（G估 ≥ 街角地最小分配面積）；未達標不計分（顯示 —）。"
+                        "**選中**＝該端達標候選中總分最高者（位次 1 街角地）。\n\n"
+                        "🔎 **W-D.1.3-b（項三已改真交集）**："
+                        "『跨占分』＝ 0.4×(真交集 / 範圍面積)（值域 0–0.4；已刪 15m 框）；"
+                        "『真交集』＝ parcel ∩ `_build_corner_range_v3`（**已用於評分**）、『範圍面積』＝同 range 多邊形面積（項三分母）；"
+                        "winner＝達標候選中真交集最大者（項一/項二仍常數 0.4/0.2，per-parcel 為 -c）；"
+                        "**交叉檢查（KL）：『範圍=門檻?』應逐塊全 ✅（項三分母＝G-gate 最小面積＝同顆法定 range 多邊形）、『項三比』應全 ≤1（無 clamp）；任一 🔴 → 停查**；"
+                        "『側街分』為 0 或 — 表示 `side_length` 未供（-c 逐筆化）。\n\n"
+                        "🆕 **原位次(投影序)**：tiebreaker 可稽核欄＝§2 正典原位次"
+                        "（`_projection_order` 投影序 rank，單一真相源；W-D.2 v2 轉正時換源、廢距角序暫行）。"
+                    )
+            # 🚨 W-B §6：街角規定範圍面積驗收
+            _cr_areas_ui = st.session_state.get(
+                'f3_corner_range_areas', {}
+            ) or {}
+            if _cr_areas_ui:
+                with st.expander(
+                    "🔍 W-B 驗收：街角規定範圍面積（ALLOC_LINE 五邊形法）",
+                    expanded=False
+                ):
+                    _cr_rows_ui = []
+                    for _b_ui in sorted(_cr_areas_ui.keys()):
+                        _v = _cr_areas_ui[_b_ui]
+                        _cr_rows_ui.append({
+                            '街廓': _b_ui,
+                            '【左】規定範圍(㎡)': (
+                                f"{_v['left']:.2f}"
+                                if _v.get('left') is not None else '—'
+                            ),
+                            '【右】規定範圍(㎡)': (
+                                f"{_v['right']:.2f}"
+                                if _v.get('right') is not None else '—'
+                            ),
+                        })
+                    import pandas as _pd_cr
+                    st.dataframe(
+                        _pd_cr.DataFrame(_cr_rows_ui),
+                        use_container_width=True, hide_index=True
+                    )
+                    st.caption(
+                        "構造：K-8 §三〜§五（最小寬度帶 ＋ ALLOC_LINE 解析定位 "
+                        "＋ 前緣線／截角後側界／ALLOC_LINE／BASELINE 圍成、扣截角）。"
+                        "帶內最小寬恆等於「退縮寬 ＋ 畸零地最小寬」。"
+                        "🗄️ V6.dxf 預埋圖層 `R5左側街角地最小面積`（146.50㎡）"
+                        "係**舊構造**繪製，依 K-8 §五-2 已退場，不再作為驗收基準。"
+                    )
+            # 🆕 W-D.1.3-d（§7.4 圖9）：抵費地情形驗收（additive 診斷、純讀既有指配結果）
+            _offset_diag_rows = []
+            for _r_off in (_corner_select_results or []):
+                for _end_lbl_off, _min_key_off, _win_key_off in (
+                    ('左', '【左】最小面積(㎡)', '【左】第1宗指配'),
+                    ('右', '【右】最小面積(㎡)', '【右】第1宗指配')):
+                    if '強制抵費地' in str(_r_off.get(_win_key_off, '')):
+                        _offset_diag_rows.append({
+                            '街廓': _r_off.get('街廓', ''),
+                            '端': _end_lbl_off,
+                            '抵費地面積＝range(㎡)': _r_off.get(_min_key_off),
+                            '指配': '強制抵費地',
+                        })
+            if _offset_diag_rows:
+                with st.expander(
+                    f"🔍 W-D.1.3-d 驗收：抵費地情形（§7.4 圖9 · {len(_offset_diag_rows)} 端強制抵費地）",
+                    expanded=False
+                ):
+                    st.dataframe(_pd.DataFrame(_offset_diag_rows),
+                                 use_container_width=True, hide_index=True)
+                    st.caption(
+                        "💡 全候選未過 G 門檻 → 第 1 宗街角地留設為**抵費地**（合法輸出、非失敗）；"
+                        "其**面積鎖定＝街角最小分配面積範圍面積**（§1.1 之 T-多邊形，即本表『抵費地面積＝range』）。\n\n"
+                        "🎯 **3.5m 靶**：R5左／R2左／R3右（range 面積 ≈ 300.52／309.05／308.93㎡）。\n\n"
+                        "⚠️ 守恆『ΣG＋角落抵費地＋中央池＝街廓』之『中央池／角落抵費地＝總池重定位』接線屬 **W-D.2 §3 滑池槽**；"
+                        "本表僅驗『抵費地面積＝range 面積』，不接 ΣG＋池（接線＝行為變更、非本波範圍）。"
+                    )
+
+
+def f3_screen_stepg_run(st, *,
+        B_value,
+        C_for_calc,
+        _auto_recalc,
+        _btn_clicked,
+        _new_params,
+        _param_key,
+        _tab6_burden,
+        block_meta_by_label,
+        build_parcels,
+        classified_blocks,
+        post_price_by_block,
+        pre_price_by_zone,
+        sb_rows_by_label):
+    """畫面「🧮 執行 G 值迭代計算」配地區（_btn_clicked or _auto_recalc）之本體（W-G.9-345 工項三·自 main() 原封抽出·零行為變更）。"""
+    if _auto_recalc and not _btn_clicked:
+        st.info("🔄 偵測到街角地變動，自動重算 G 值…")
+    g_rows = []
+    detail_trace = {}
+    # 🆕 K-6-A2 補正 F-2：**進入重算之當下即作廢前一輪成果**（家族修）
+    #   案由：Step G 之兩個產物寫在**最末**（`grep -n "st.session_state\['f3_G_values'\] = " app.py`）
+    #   ⇒ 中途 raise 時二者**不被覆寫、也不被清除**，而成果區與下載鈕
+    #   （`grep -n "if st.session_state.get('f3_G_values'):" app.py`）照樣渲染**舊值**
+    #   ⇒ 可能交付一份**與現行屁股線設定不符**之分配成果表
+    #   ——而這正是 **K-9-4 閘**（`grep -n "k94_assert_baseline_touch(_k94_touch)" app.py`）
+    #   最想防之情境。既有失效路徑 `_f3L_invalidate_g_cache`
+    #   （`grep -n "def _f3L_invalidate_g_cache" app.py`）只綁街角退縮／分配深度
+    #   二 widget 之 `on_change`，**改屁股線指派不會觸發**。
+    #   ⇒ 本處為**家族修**：一次覆蓋 Step G 內**所有**（現有與日後）之 raise。
+    #
+    #   🔒 **只清「產物」二鍵，⛔ 禁照抄 `_f3L_invalidate_g_cache` 之鍵名清單**：
+    #     該函式另 pop `f3_corner_winners`／`f3L_corner_winners`，但**那兩把是
+    #     Step G 之上游輸入、非其產物**（步驟 L 寫於
+    #     `grep -n "st.session_state\['f3_corner_winners'\] = " app.py`，
+    #     Step G 讀於 `grep -n "_step_l_winners = " app.py`）
+    #     ⇒ 在此 pop 之即**當場毀掉 Step G 自己的輸入**。
+    #   🔒 已逐一確認：`f3_G_values`／`f3_G_trace` 於本重算區間內**只被寫、不被讀**。
+    #   ⚠️ `f3_g_needs_rerun`（橫幅旗標）與 `f3_g_needs_recalc`（自動重算觸發·
+    #     已於上方 `pop` 消費）**是兩把不同的鍵**；本處**只碰前者**
+    #     ——碰後者會造成「失敗後自動重跑、再失敗」之迴圈。
+    #   狀態機閉合：成功時末端寫回二產物並清 `f3_g_needs_rerun`。
+    st.session_state.pop('f3_G_values', None)
+    st.session_state.pop('f3_G_trace', None)
+    st.session_state['f3_g_needs_rerun'] = True
+    _params_for_g = dict(st.session_state.get(_param_key, _new_params))
+
+    # 🆕 V13 修正 #2：若 Step L 已執行 → 用其 winner 覆寫 _params_for_g
+    # （Step L 為法定流程，PK 結果優先於使用者個別標記）
+    _step_l_winners = (st.session_state.get('f3_corner_winners', {}) or {})
+    if _step_l_winners:
+        # 收集所有受 Step L 影響之街廓
+        _affected_blocks = set(_step_l_winners.keys())
+        # 先把這些街廓所有暫編地號之 is_corner 設為 False
+        for tp in build_parcels:
+            if tp.get('所屬街廓', '') in _affected_blocks:
+                k_tp = tp.get('暫編地號', '')
+                _existing = dict(_params_for_g.get(k_tp, {}))
+                _existing['is_corner'] = False
+                _existing['side'] = '無'
+                _params_for_g[k_tp] = _existing
+        # 再標記 Step L 之 winner（p1_end → 左側、p2_end → 右側）
+        _override_count = 0
+        for blk_lbl_w, winners in _step_l_winners.items():
+            p1_winner = winners.get('p1_end')
+            p2_winner = winners.get('p2_end')
+            if p1_winner:
+                _existing = dict(_params_for_g.get(p1_winner, {}))
+                _existing['is_corner'] = True
+                _existing['side'] = '左側'
+                _params_for_g[p1_winner] = _existing
+                _override_count += 1
+            if p2_winner:
+                _existing = dict(_params_for_g.get(p2_winner, {}))
+                _existing['is_corner'] = True
+                _existing['side'] = '右側'
+                _params_for_g[p2_winner] = _existing
+                _override_count += 1
+        if _override_count > 0:
+            st.info(f"📍 已採用步驟 L 之街角地 PK 結果（覆寫 {_override_count} 筆暫編地號之街角標記）")
+
+    # 🆕 Phase B：讀取 forced_offset 標記並通知使用者
+    # forced_offset = True 表示該側街角範圍將強制留設為抵費地（Phase C 自動處理面積保留）
+    _f3L_forced_offset = (st.session_state.get('f3L_forced_offset', {}) or {})
+    if _f3L_forced_offset:
+        _forced_blocks = []
+        for _blk_lbl_fo, _fo in _f3L_forced_offset.items():
+            _sides_fo = []
+            if _fo.get('left_forced_offset'):
+                _sides_fo.append('左側')
+            if _fo.get('right_forced_offset'):
+                _sides_fo.append('右側')
+            if _sides_fo:
+                _forced_blocks.append(f"{_blk_lbl_fo}（{', '.join(_sides_fo)}）")
+        if _forced_blocks:
+            st.warning(
+                f"⚠️ **{len(_forced_blocks)} 個街廓有強制抵費地街角**："
+                + "、".join(_forced_blocks)
+                + "\n\n💡 強制抵費地之街角範圍將於 **Phase C（公設地調配 / 抵費地 buffer）"
+                "** 自動預留為抵費地（不分配給任何宗地）。"
+                "目前 G 值迭代仍按原邏輯計算，Phase C 完成前抵費地面積可能偏大。"
+            )
+
+    # 1. 將 build_parcels 依「所屬街廓」分組；每街廓內以「街角地優先 + 輸入順序」排序
+    parcels_by_block = {}
+    for tp in build_parcels:
+        parcels_by_block.setdefault(tp['所屬街廓'], []).append(tp)
+    # （Task D：移除舊 corner-priority 排序；🚨 Patch E-2 後改於各街廓內以 _spatial_order_parcels_v2 處理）
+
+    # 2. 逐街廓處理（雙向夾擠 + 抵費地）— Task D 核心重構
+    import numpy as _np_d
+    from shapely.geometry import Polygon as _SP_d
+    # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
+    #   `_uunion_d(allocated_polys).buffer(0.001)`（病灶·已廢）；留之即 dead import。
+    #   （與 stepg_pipeline 同構拆除·N0-16 同源同碼）
+    import math as _math_d
+
+    def _build_g_row(_k, _tp, _blk_label, _blk_area, _front_len, _avg_depth,
+                     _zone, _A_ratio, _l_front, _l_side, _F, _is_corner_mark,
+                     _is_first_corner, _side, _res, _solver_label, _alloc_side):
+        """組成單筆 g_rows 項目（DRY helper）"""
+        # 🚨 W-A 規格一：a_for_G = 分攤登記面積_m2 + 面積_m2(a' 累加器)
+        if '分攤登記面積_m2' in _tp:
+            _a_m2 = round(float(_tp.get('分攤登記面積_m2', 0) or 0)
+                          + float(_tp.get('面積_m2', 0) or 0), 2)
+        else:
+            _a_m2 = round(float(_tp.get('面積_m2', 0) or 0), 2)
+        return {
+            '暫編地號': _k, '原地號': _tp.get('原地號', ''),
+            '所屬街廓': _blk_label,
+            '重劃前區段': _zone,
+            'a 面積(㎡)': _a_m2,
+            '街廓面積(㎡)': round(_blk_area, 2),
+            '正面長度(m)': round(_front_len, 2),
+            '平均深度(m)': round(_avg_depth, 2),
+            'A 地價比': round(_A_ratio, 4),
+            'l₂ 正面尺度': round(_l_front, 2),
+            'l₁ 側面尺度': round(_l_side, 2),
+            '街角地': '是' if _is_corner_mark else '否',
+            '第1筆街角': '是' if _is_first_corner else '否',
+            '街角側別': _side if _is_corner_mark else '—',
+            'F(m)': round(_F, 2),
+            'W(m)': round(_res.get('W', 0.0), 2),
+            'Rw(%)': round(_res.get('Rw_pct', 0.0), 2),
+            'S(m)': round(_res.get('S', 0.0), 2),
+            '幾何面積(㎡)': round(_res.get('area_geom', 0.0), 2),
+            'G(㎡)': round(_res.get('G', 0.0), 2),
+            '累積S(m)': round(float(_res.get('_alloc_cum_S', 0.0)), 2),
+            '推進側別': _alloc_side,    # 🆕 Task D：'left' / 'right' / '單向' / '抵費地'
+            '解法': _solver_label,
+            '迭代次數': _res.get('iterations', 0),
+            '是否收斂': _res.get('是否收斂_override',
+                                 '✅' if _res.get('converged') else '⚠️'),
+            '負擔比率': round(1 - _res['G']/_a_m2, 4)
+                       if _a_m2 > 0 and _res.get('G') else 0,
+            '宗地寬度(m)': round(_res.get('_宗地寬度', 0.0), 2),   # 🆕 §1 判去留用（單筆）
+            '畸零地旗標': _res.get('_畸零旗標', ''),               # 🆕 §1-4 第1調配順位
+            'cut_coords': _res.get('cut_coords', []) or [],
+        }
+
+    def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
+                   _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
+                   _allocation_dir=None, _side_mid=None, _W_prev=0.0,
+                   _w0_start=None,
+                   _near_dir=None, _is_chain_head=False):
+        """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
+
+                        🆕 W-C §0.5-B/§4：_allocation_dir = rot90(f3_cad_alloc_dir)（臨街向）；
+                        _side_mid = SIDE_LINE 中點；_W_prev = 前一筆累積 W。三者驅動
+                        solve_G_binary 內 W（沿 ALLOC 法向累積）與 Rw 差額（§3）。
+                        """
+        return _solve_G_one(
+            a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F,
+            blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt,
+            S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
+            B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
+            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
+            near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
+            w0_start=_w0_start,   # 🆕 W-G.9-318：K-9-41 ①（薄殼直通·⛔ 在此推導）
+            is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·不推導）
+
+    st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
+    for blk_label, parcels_in_blk in parcels_by_block.items():
+        blk_meta = block_meta_by_label.get(blk_label, {})
+        blk_poly = blk_meta.get('shapely', None)
+        blk_area = float(blk_meta.get('area_m2', 0.0) or 0.0)
+
+        # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流（`stepg_pipeline` §4 P2-a 階段分流家族鏡像·#20 同改·`grep -n "P2-a 兩階段落位" verify/stepg_pipeline.py`）──
+        #   階段1宗＝原地主宗（原生·不帶 `配地階段`）；階段2宗＝池內遞補合成宗
+        #   （wf_f4 `add_syn` 帶 `配地階段='池內'`）→ 不進 ordered_v2，改走
+        #   `_place_pool_parcels` 於池範圍內落位。**資料驅動**（禁名稱前綴判別）。
+        #   ⚠️ app live 路徑之合成宗僅存在於 wf_f4 引擎路徑 → 此處過濾**實為 no-op**；
+        #      但**必須**與 stepg 同構——否則 app 走舊單階段、harness 走新兩階段＝無聲分岔。
+        # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`stage1+no_ghost`）
+        _stage1_parcels = [tp for tp in parcels_in_blk
+                           if '配地階段' not in tp and not _proj_pop_ghost3(tp)]
+        _stage2_parcels = [tp for tp in parcels_in_blk if '配地階段' in tp]
+
+        sb_row = sb_rows_by_label.get(blk_label, {})
+        front_len = float(sb_row.get('正面長度(m)', 0.0) or 0.0)
+        l_front = float(sb_row.get('正街尺度', 0.0) or 0.0)
+        # 🔒 K-8 §二：avg_depth ＝ N-19′ 之 D_avg（含逐街廓覆寫）·**缺值 loud**。
+        #   舊之 `or ((blk_area / front_len) …)` 兜底**已刪**——(1) 它把「深度沒量到」
+        #   換成一個**看起來正常**的數字，MinA／G 全部照吃；(2) harness 之孿生體
+        #   `stepg_pipeline` 係**直讀快照深度、無任何 fallback**
+        #   （`grep -n "f3_alloc_depth_by_label" verify/stepg_pipeline.py`），
+        #   留著即 app 與 harness **無聲分岔**。
+        _depth_map_g = st.session_state.get('f3_alloc_depth_by_label', {}) or {}
+        if float(_depth_map_g.get(blk_label, 0.0) or 0.0) <= 0:
+            st.error(f"街廓 {blk_label}：無街廓分配深度（N-19′ 未量到——"
+                     f"通常因缺 FRONT_LINE／BASELINE，見上方紅字）"
+                     f"→ 本街廓之 G 值計算跳過。請補畫該圖層後重跑。")
+            continue
+        avg_depth_default = float(_depth_map_g[blk_label])
+
+        # 街廓 d_hat / 角點：依首筆街角地的「街角側別」決定
+        first_corner_side = None
+        # P2-a：街廓 d_hat/角點由**階段1宗**定（街角地屬原位次語意）。
+        #   合成宗不帶 is_corner ⇒ 過濾於本案為 no-op，惟語意上不得由遞補宗定街角側。
+        for tp in _stage1_parcels:
+            p = _params_for_g.get(tp['暫編地號'], {})
+            if p.get('is_corner') and p.get('side', '無') in ('左側', '右側'):
+                first_corner_side = p['side']
+                break
+        side_for_block = first_corner_side or '左側'
+
+        d_hat = None; corner_pt = None; S_block_max = front_len or 100.0
+        _front_p2_blk = None   # 右鏈起點（FRONT p2）
+        allocation_dir_block = None   # 🆕 Phase 11 v2
+
+        # ── 🆕 Phase 11 v2：FRONT_LINE 為 d_hat + corner_pt 之主來源 ──
+        # 重劃後分配土地必須臨正面道路 → 推進方向 d_hat 必須沿 FRONT_LINE
+        _cad_fl_blk = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(blk_label, {})
+        if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get('p2'):
+            try:
+                _p1_fl = _cad_fl_blk['p1']; _p2_fl = _cad_fl_blk['p2']
+                _dx_fl = _p2_fl[0] - _p1_fl[0]; _dy_fl = _p2_fl[1] - _p1_fl[1]
+                _L_fl = (_dx_fl ** 2 + _dy_fl ** 2) ** 0.5
+                if _L_fl > 0.1:
+                    d_hat = _np_d.array([_dx_fl / _L_fl, _dy_fl / _L_fl])
+                    corner_pt = _np_d.array(_p1_fl, dtype=float)
+                    S_block_max = float(_L_fl)
+                    _front_p2_blk = _np_d.array(_p2_fl, dtype=float)
+            except Exception:
+                d_hat = None; corner_pt = None
+
+        # ── 🆕 W-C §0.5-B/§0.5-C：allocation_dir = rot90(f3_cad_alloc_dir) ──
+        # f3_cad_alloc_dir[blk] = 地界線/宗地分配線方向 (ux,uy)；rot90 → (-uy,ux)
+        # = 臨街向（= W 量測軸 n_alloc），使 _block_strip 之 n_hat ∥ 地界線。
+        # 廢除舊「BASELINE/MBR 當 allocation_dir」與 V13 強制校正 hack（§0.5-C）。
+        _alloc_dir_cad = (st.session_state.get('f3_cad_alloc_dir', {})
+                          or {}).get(blk_label)
+        allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)
+        if allocation_dir_block is None:
+            st.warning(
+                f"⚠️ 街廓 {blk_label} 缺宗地分配線方向（f3_cad_alloc_dir），"
+                "W／Rw 無法量測（側街負擔以 0 計），請補畫 ALLOC_LINE 後重出 DXF"
+            )
+        # BASELINE 僅保留為 d_hat fallback（FRONT_LINE 缺時的推進方向），不再當 allocation_dir
+        _mbl_block = (st.session_state.get('f3_manual_baseline', {}) or {}).get(blk_label, {})
+        if (d_hat is None and _mbl_block.get('enabled')
+                and _mbl_block.get('point') and blk_poly is not None):
+            try:
+                _ang_bl = _math_d.radians(float(_mbl_block.get('angle_deg', 0.0)))
+                d_hat = _np_d.array([_math_d.cos(_ang_bl), _math_d.sin(_ang_bl)])
+                corner_pt = _np_d.array(_mbl_block['point'], dtype=float)
+                S_block_max = _block_max_S(blk_poly, corner_pt, d_hat)
+            except Exception:
+                pass
+
+        # ── 🆕 §0.5-C/F.2：缺 FRONT_LINE/BASELINE → 不退 MBR（fail-loud）──
+        # d_hat（推進向）唯一來源 = FRONT_LINE（次選 BASELINE）；廢 MBR 自動偵測
+        # （_get_block_d_hat MBR 長邊會讓斜街廓帶鋪歪、端點楔形空白）。
+        if d_hat is None or corner_pt is None:
+            st.warning(
+                f"⚠️ 街廓 {blk_label} 缺 FRONT_LINE（且無 BASELINE）→ 無推進方向 d_hat，"
+                "退化為輸入順序、不做雙向夾擠（**不退 MBR**）。請補畫 FRONT_LINE 後重出 DXF。"
+            )
+
+        # 🆕 W-C §0.5-B 軸向「真檢查」（KL 指正：原檢查是套套邏輯，恆真、抓不到缺 ALLOC）
+        # 真正要驗的：f3_cad_alloc_dir[blk]（ALLOC=地界線/深度向）⊥ 該塊 FRONT_LINE
+        #   → 夾角應 ≈90°（§0.5-E V6.dxf 真值：六塊皆 ⊥）。<80° 即 ALLOC 配錯/缺。
+        try:
+            _diag_dict = st.session_state.setdefault(
+                'f3_g_iter_diagnostics', {})
+            # 取該塊 FRONT_LINE 真方向（非 d_hat，d_hat 可能退 BASELINE）
+            _front_dir = None
+            if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get('p2'):
+                _fp1 = _cad_fl_blk['p1']; _fp2 = _cad_fl_blk['p2']
+                _fdx = _fp2[0] - _fp1[0]; _fdy = _fp2[1] - _fp1[1]
+                _fL = (_fdx ** 2 + _fdy ** 2) ** 0.5
+                if _fL > 1e-6:
+                    _front_dir = (_fdx / _fL, _fdy / _fL)
+            _perp_deg = None; _perp_ok = None
+            if _alloc_dir_cad is not None and _front_dir is not None:
+                _ax, _ay = float(_alloc_dir_cad[0]), float(_alloc_dir_cad[1])
+                _an = (_ax * _ax + _ay * _ay) ** 0.5
+                if _an > 1e-9:
+                    _cosaf = abs((_ax / _an) * _front_dir[0] + (_ay / _an) * _front_dir[1])
+                    _cosaf = max(-1.0, min(1.0, _cosaf))
+                    _perp_deg = round(_math_d.degrees(_math_d.acos(_cosaf)), 1)  # ≈90 為佳
+                    _perp_ok = bool(_perp_deg >= 80.0)
+            if _perp_ok is False:
+                st.error(
+                    f"🔴 街廓 {blk_label}：f3_cad_alloc_dir 與 FRONT_LINE 夾角 {_perp_deg}°"
+                    "（應≈90°）→ ALLOC_LINE 疑配錯/歸錯塊（非 ⊥FRONT），W/Rw/界線方向不可信，"
+                    "請檢查 DXF 該塊 ALLOC_LINE。"
+                )
+            _diag_dict[blk_label] = {
+                'd_hat': (d_hat.tolist() if d_hat is not None else None),
+                'allocation_dir': (allocation_dir_block.tolist()
+                                   if allocation_dir_block is not None else None),
+                'ALLOC⊥FRONT_deg': _perp_deg,
+                'ALLOC⊥FRONT_ok': _perp_ok,
+                'note': ('✅ ALLOC ⊥ FRONT（軸向正確）' if _perp_ok
+                         else ('⚠️ 缺 ALLOC 或 FRONT，無法驗（W/Rw=0）' if _perp_ok is None
+                               else '🔴 ALLOC 非 ⊥FRONT，疑配錯塊')),
+            }
+        except Exception:
+            pass
+
+        # ═══════════════════════════════════════════════════════════
+        # 🚨 Patch E-2 → 🆕 W-D.2 §3：v2 排序 + 滑池槽 k* 切分推進
+        # 廢除：v1 兼容層、winner insert(0)、舊 fallback；
+        #       「KL 規範 N/2 中點規則」（過渡作法，KL 2026-07-05 裁可刪）
+        #       ——池槽唯一來源＝_select_pool_slot（J 最大化，D-1 bootstrap）。
+        # 設計：
+        #   v2.ordered = [位次1=p1端winner, ..., 位次N=p2端winner]
+        #   left_group  = ordered[0:k]                     ← 從 p1 端推
+        #   right_group = reversed(ordered[k:])            ← 從 p2 端推
+        #   池＝雙向中間剩餘；k 由基準趟真寬度餵 _select_pool_slot 決定
+        # ═══════════════════════════════════════════════════════════
+        _v2_res = None
+        _degenerate_order = (d_hat is None or corner_pt is None)
+        # P2-a（stepg 家族鏡像）：退化序無幾何 ⇒ 池範圍不可定義 ⇒ 階段2 落位不可能。
+        #   靜默丟棄＝a′ 帳漏、靜默退舊單序列＝繞過兩階段化，皆違 no-silent-fallback。
+        if _degenerate_order and _stage2_parcels:
+            raise RuntimeError(
+                f"🔴 P2-a：街廓 {blk_label} 退化序（缺 d_hat/corner_pt）卻有階段2宗 "
+                f"{[tp.get('暫編地號') for tp in _stage2_parcels]}——池範圍不可定義、"
+                f"池內落位無法執行（禁靜默丟棄／禁退舊單序列），停")
+        if _degenerate_order:
+            # 沒有幾何資訊 → 退化為輸入順序、不做雙向夾擠（單趟、全左群）
+            ordered_v2 = []
+            for tp in _stage1_parcels:
+                _pm = _params_for_g.get(tp['暫編地號'], {})
+                ordered_v2.append({
+                    'tp': tp,
+                    'pre_position': 0,
+                    'is_corner_winner': bool(_pm.get('is_corner', False)),
+                    'is_first_corner_marker': bool(_pm.get('is_corner', False)),
+                    'side': '中段',
+                })
+            ordered_v2.sort(key=lambda e: (not e['is_corner_winner'],))
+        else:
+            # 從 session 取 PK winner / forced_offset / FRONT_LINE 端點
+            _v2_pk_winners = (
+                st.session_state.get('f3_corner_winners', {}) or {}
+            ).get(blk_label, {}) or {}
+            _v2_forced = (
+                st.session_state.get('f3L_forced_offset', {}) or {}
+            ).get(blk_label, {}) or {}
+            _v2_cad_fl = (
+                st.session_state.get('f3_cad_front_lines', {}) or {}
+            ).get(blk_label, {}) or {}
+            _v2_fl_p1 = _v2_cad_fl.get('p1')
+            _v2_fl_p2 = _v2_cad_fl.get('p2')
+            if not _v2_fl_p1 or not _v2_fl_p2:
+                _v2_fl_p1 = (float(corner_pt[0]), float(corner_pt[1]))
+                _v2_fl_p2 = (
+                    float(corner_pt[0]) + float(d_hat[0]) * float(S_block_max),
+                    float(corner_pt[1]) + float(d_hat[1]) * float(S_block_max),
+                )
+
+            # 呼叫 v2（不再 except fallback；失敗就讓它噴錯）
+            # 🆕 W-G.9-161 `L-3′`：透傳之**呼叫端**宣告（實參 ≡ stage1(BUILD_LAYER)）
+            _proj_pop_assert_seq("app:main/v2_caller",
+                                 _stage1_parcels, parcels_in_blk, blk=blk_label)
+            _v2_res = _spatial_order_parcels_v2(
+                parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗
+                d_hat=d_hat,
+                front_line_p1=_v2_fl_p1,
+                front_line_p2=_v2_fl_p2,
+                pk_winners=_v2_pk_winners,
+                forced_offset=_v2_forced,
+            )
+            ordered_v2 = list(_v2_res.get('ordered', []) or [])
+
+        # 🆕 W-D.2 §3：註記原位次 index（基準趟寬度→_select_pool_slot 映射用）。
+        #   k 切分與 side 標籤依 k 而變 → 移入 _advance_block_with_split（趟內建）。
+        for _i_ov2, _e_ov2 in enumerate(ordered_v2):
+            _e_ov2['_ov2_idx'] = _i_ov2
+
+        # ── 🆕 Phase C：forced_offset 預留（街角強制抵費地 buffer）──
+        # 若 PK 結果為「強制抵費地」→ 該側街角範圍預留為抵費地，
+        #   不參與分配；雙向推進之 cum_S 起始值即等於 buffer 寬度
+        # buffer 寬度 = 街角最小分配面積 ÷ 街廓平均深度
+        _fo_block = (st.session_state.get(
+            'f3L_forced_offset', {}) or {}).get(blk_label, {})
+        _fo_left = bool(_fo_block.get('left_forced_offset', False))
+        _fo_right = bool(_fo_block.get('right_forced_offset', False))
+        # 從 f3L_corner_min_table 讀取最小面積
+        _corner_min_table = st.session_state.get('f3L_corner_min_table', []) or []
+        _row_for_buffer = next(
+            (r for r in _corner_min_table if r.get('街廓') == blk_label), None
+        )
+        _left_buffer_S = 0.0
+        _right_buffer_S = 0.0
+        # 🆕 `W-G.9-309`（`GB-170` (i)·app 側鏡射 stepg）：強制側之遠側界 ∥SIDELINE（`K-9-32 ①`）
+        _sl_blk_fo = (st.session_state.get(
+            'f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+        _fd_fo_left = (_first_corner_alloc_dir((_sl_blk_fo.get('left') or {}).get('mid'))
+                       if _fo_left else None)
+        _fd_fo_right = (_first_corner_alloc_dir((_sl_blk_fo.get('right') or {}).get('mid'))
+                        if _fo_right else None)
+        if _row_for_buffer and avg_depth_default > 0:
+            # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth`，改 `_corner_buffer_S`
+            #   幾何 bisect（**真實斜交池帶面積 == range**）·side 參數化（#25）。
+            #   方位契約：一律傳 FRONT p1(`corner_pt`)＋`+d̂`(`d_hat`)，端由 side 定。
+            if _fo_left:
+                _l_min = _row_for_buffer.get('【左】街角最小面積(㎡)')
+                try:
+                    if _l_min is not None and _l_min != float('inf'):
+                        _left_buffer_S = _corner_buffer_S(
+                            blk_poly, d_hat, corner_pt, allocation_dir_block,
+                            float(_l_min), 'left', _label=blk_label,
+                            far_line_dir=_fd_fo_left)
+                except (TypeError, ValueError) as _e_cb:
+                    # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
+                    print(f"🔴 街廓 {blk_label} 左街角 range={_l_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
+                    _left_buffer_S = 0.0
+            if _fo_right:
+                _r_min = _row_for_buffer.get('【右】街角最小面積(㎡)')
+                try:
+                    if _r_min is not None and _r_min != float('inf'):
+                        _right_buffer_S = _corner_buffer_S(
+                            blk_poly, d_hat, corner_pt, allocation_dir_block,
+                            float(_r_min), 'right', _label=blk_label,
+                            far_line_dir=_fd_fo_right)
+                except (TypeError, ValueError) as _e_cb:
+                    # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
+                    print(f"🔴 街廓 {blk_label} 右街角 range={_r_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
+                    _right_buffer_S = 0.0
+        # 顯示通知
+        if _left_buffer_S > 0 or _right_buffer_S > 0:
+            _msg_buf = []
+            if _left_buffer_S > 0:
+                _msg_buf.append(f"左側 {_left_buffer_S:.2f}m")
+            if _right_buffer_S > 0:
+                _msg_buf.append(f"右側 {_right_buffer_S:.2f}m")
+            st.info(
+                f"🟡 街廓 {blk_label}：強制抵費地 buffer 預留 "
+                f"{', '.join(_msg_buf)}（不參與分配，將自動成為抵費地）"
+            )
+        # 🆕 W-C §0.5-F.3：記錄強制街角抵費地狀態（供診斷；該 buffer 區應 render 成橘色抵費地）
+        st.session_state.setdefault('f3_forced_offset_diag', {})[blk_label] = {
+            'left_forced': _fo_left, 'right_forced': _fo_right,
+            'left_buffer_S': round(_left_buffer_S, 2),
+            'right_buffer_S': round(_right_buffer_S, 2),
+        }
+
+        # ── 🆕 W-C §3：角側區塊常數（F、l_side、SIDE_LINE 中點、n_alloc）──
+        # 側街負擔 Rw·F·l_side 攤到「角側全筆」（非僅第1筆）；F、l_side 為街廓常數。
+        # n_alloc = allocation_dir_block = rot90(f3_cad_alloc_dir) = W 量測軸（§0.5-B）。
+        _side_lines_blk = (st.session_state.get(
+            'f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+        _sl_left = _side_lines_blk.get('left') or {}
+        _sl_right = _side_lines_blk.get('right') or {}
+        _side_mid_left = _sl_left.get('mid')
+        _side_mid_right = _sl_right.get('mid')
+        _has_left_corner = _side_mid_left is not None
+        _has_right_corner = _side_mid_right is not None
+        _F_left = float(sb_row.get('左側長度(m)', 0.0) or 0.0) if _has_left_corner else 0.0
+        _lside_left = float(sb_row.get('左側尺度', 0.0) or 0.0) if _has_left_corner else 0.0
+        _F_right = float(sb_row.get('右側長度(m)', 0.0) or 0.0) if _has_right_corner else 0.0
+        _lside_right = float(sb_row.get('右側尺度', 0.0) or 0.0) if _has_right_corner else 0.0
+        # 🆕 `W-G.9-246′` 工項二：**逐宗驗證站之街廓層 ctx**（每街廓組一次）。
+        #   🛑 本段**只讀不判**；其失敗**不得影響分配** ⇒ 缺者留 `None`，
+        #      由 `_lot_gate` 記為「無從判定」並具名（`I-3`）——⛔ 靜默替代任何值。
+        _lg_fl = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(blk_label) or {}
+        _lg_mb = (st.session_state.get('f3_manual_baseline', {}) or {}).get(blk_label) or {}
+        _lg_crp_raw = (st.session_state.get('f3_corner_range_polys', {}) or {}).get(blk_label) or {}
+        from shapely.geometry import Polygon as _SP_lgc
+        _lg_crp = {}
+        _lg_cra = {}
+        for _lg_wh in ('left', 'right'):
+            _lg_cs = _lg_crp_raw.get(_lg_wh)
+            if _lg_cs and len(_lg_cs) >= 3:
+                _lg_p = _SP_lgc(_lg_cs)
+                _lg_crp[_lg_wh] = _lg_p
+                _lg_cra[_lg_wh] = float(_lg_p.area)
+            else:
+                _lg_crp[_lg_wh] = None
+                _lg_cra[_lg_wh] = None
+        _lg_blk_ctx = {
+            'blk_label': blk_label,
+            'category': blk_meta.get('category', ''),
+            'front_road_width_m': float(sb_row.get('正面路寬(m)', 0.0) or 0.0),
+            'eff_min_build': k91_effective_min_build_area(
+                blk_label, blk_meta.get('category', ''),
+                st.session_state.get(K91_SS_MBA_BY_LABEL, {}) or {},
+                st.session_state.get(K91_SS_MBA_BY_CATEGORY, {}) or {}),
+            'has_side': {'left': _has_left_corner, 'right': _has_right_corner},
+            'corner_range_polys': _lg_crp,
+            'corner_range_areas': _lg_cra,
+            'front_p1': _lg_fl.get('p1'), 'front_p2': _lg_fl.get('p2'),
+            'baseline_pts': _baseline_pts_from_manual(_lg_mb, blk_meta.get('vertices') or []),
+            'side_pts': {'left': ([_sl_left['p1'], _sl_left['p2']]
+                                  if (_sl_left.get('p1') and _sl_left.get('p2')) else None),
+                         'right': ([_sl_right['p1'], _sl_right['p2']]
+                                   if (_sl_right.get('p1') and _sl_right.get('p2')) else None)},
+            'side_mid': {'left': _side_mid_left, 'right': _side_mid_right},
+            'alloc_dir': _alloc_dir_cad,   # 🔴 **CAD 原始 ALLOC 方向**（app.py:9681 逐字）·⛔ `allocation_dir_block`（＝其 rot90）
+            'block_centroid': blk_meta.get('centroid'),
+        }
+        _n_alloc_blk = allocation_dir_block   # rot90(f3_cad_alloc_dir)
+        # 臨街投影係數 _cos_dn：S 增量 → W 增量（W += S·|d_hat·n_alloc|）。
+        # 用於 thread W_前 初值（forced_offset buffer 之臨街寬）與一致性。
+        _cos_dn = 1.0
+        if _n_alloc_blk is not None and d_hat is not None:
+            try:
+                _dh0 = _np_d.asarray(d_hat, dtype=float)
+                _dl0 = float(_np_d.linalg.norm(_dh0))
+                if _dl0 > 1e-9:
+                    _cos_dn = abs(float(_np_d.dot(
+                        _dh0 / _dl0, _np_d.asarray(_n_alloc_blk, dtype=float))))
+            except Exception:
+                _cos_dn = 1.0
+        # 🆕 W-C §1-4：本街廓畸零地最小面寬（判去留用 W=單筆宗地寬度，非 S、非累積）
+        _mw_blk = float((st.session_state.get('f3_min_width_by_label', {})
+                         or {}).get(blk_label, 0.0) or 0.0)
+
+        def _mark_zaling(_res):
+            """單筆宗地寬度 = S·|d_hat·n_alloc|（相鄰兩地界線垂距）；< 最小面寬→第1調配順位旗標。"""
+            _pw = float(_res.get('S', 0.0)) * _cos_dn
+            _res['_宗地寬度'] = round(_pw, 2)
+            _res['_畸零旗標'] = ('⚠️移出/第1調配順位'
+                                 if (_mw_blk > 0 and _pw < _mw_blk) else '')
+            return _res
+
+        # ── 🆕 W-D.2 §3（D-1 bootstrap 載體）：單塊可重入推進 ──
+        def _advance_block_with_split(_k_split, _commit):
+            """依池槽 _k_split 切分後執行雙向推進（Task D-2 左右迴圈整段內移）。
+                            _k_split：左群=ordered_v2[:k]、右群=reversed(ordered_v2[k:])、池插中間；
+                                      _degenerate_order 時＝全左群（沿既有退化語意）。
+                            _commit：False＝基準趟（僅取真寬度 w_i）——不寫 g_rows/detail_trace、
+                                     所有 st.* 訊息靜默（防雙趟重複）；True＝正式趟。
+                            回傳 {'rows','trace','widths'(原位次 左→右),'left_cum_S','right_cum_S',
+                                  'left_results','right_results'}。不改 a、不寫 session_state。"""
+            _N_f = len(ordered_v2)
+            if _N_f == 0:
+                left_group = []; right_group = []
+            elif _degenerate_order or _k_split >= _N_f:
+                left_group = list(ordered_v2); right_group = []
+            elif _k_split <= 0:
+                left_group = []; right_group = list(reversed(ordered_v2))
+            else:
+                left_group = list(ordered_v2[:_k_split])
+                right_group = list(reversed(ordered_v2[_k_split:]))
+            # v1 風格 'side' 標籤（規則同舊；群組依 k 而變故在趟內標）
+            for _idx_l, _e in enumerate(left_group):
+                if _idx_l == 0 and _e.get('is_first_corner_marker', False):
+                    _e['side'] = '左側'
+                else:
+                    _e['side'] = '無'
+            for _idx_r, _e in enumerate(right_group):
+                if _idx_r == 0 and _e.get('is_first_corner_marker', False):
+                    _e['side'] = '右側'
+                else:
+                    _e['side'] = '無'
+
+            _rows_local = []
+            _trace_local = {}
+            _widths_local = [0.0] * _N_f
+
+            # ── Task D-2：左側推進（d_hat 正向）──
+            # 🆕 Phase C：若左側 forced_offset → 從 buffer 寬度起算（跳過街角）
+            left_cum_S = float(_left_buffer_S)
+            right_cum_S = float(_right_buffer_S)   # 同理右側
+            # 🆕 W-C §4：thread 累積 W_前（首筆=0；forced_offset 時=buffer 臨街寬）
+            _W_prev_left = 0.0
+            _W_prev_right = 0.0
+            # ── 🆕 **W-G.9-4（expand）：併行計算 `K-9-5-6` 之正典直量** ──────────
+            #   🔴 **⛔ 本段之值<u>不進生產路徑</u>**；本段只寫診斷欄，
+            #   供 `W-G.9-5`（contract 側）對拍。
+            #   🔧 **更正（`W-G.9-190R` commit 3·族② 之切換）**：本段原逐字載
+            #   「上二行之 `_W_prev_*` **仍取舊式** `buf · _cos_dn`」——該述於本批
+            #   **已成偽**：上二行已切為新式 `0.0`（逐字同
+            #   `verify/stepg_pipeline.py:628-629`）⇒ **contract 側之遷移已完成**。
+            #   ⚠️ 本段之併行診斷**仍保留**（其受詞係 `K-9-5-6` 之直量、⛔ 非初值）。
+            #   ⛔ **不得以任何條件分支讓下列 `_W_new_*` 進入生產消費**（`W-G.9-4` §2-1）。
+            #
+            #   正典（權威序**第 1 級**）`K-9-5-6`：`W_i` ＝ MP → 本宗**遠側**界之垂距
+            #   ⇒ `W = dot(P − mp, â_定向)`；單一產生者見
+            #   `grep -n "def k956_W_from_mp" app.py`。
+            #   已證之解析恆等（`W-G.9-2`）：**舊式 ＝ 新式 − `W_0`**，
+            #   `W_0 = dot(群起點 − mp, â)`（正典 `K-9-5-6`「首宗起點」·**照實可負**）。
+            #
+            #   ⚠️ 本段**只算不判**且**只寫診斷**；其失敗**不得影響分配**
+            #   ——故以 `except` 包覆並 **loud print**（⛔ 非靜默退路：
+            #   無任何值被替代，生產路徑自始未讀本段）。
+            try:
+                _du_diag = None
+                if d_hat is not None:
+                    _dn_diag = float(_np_d.linalg.norm(
+                        _np_d.asarray(d_hat, dtype=float)))
+                    if _dn_diag > 1e-9:
+                        _du_diag = (_np_d.asarray(d_hat, dtype=float)
+                                    / _dn_diag)
+                _W0_l = _W0_r = _Wn_l = _Wn_r = None
+                if _du_diag is not None and corner_pt is not None:
+                    _gs_l = _np_d.asarray(corner_pt, dtype=float)
+                    _W0_l = k956_W_from_mp(_gs_l, _side_mid_left,
+                                           allocation_dir_block, d_hat)
+                    _Wn_l = k956_W_from_mp(_gs_l + float(_left_buffer_S) * _du_diag,
+                                           _side_mid_left,
+                                           allocation_dir_block, d_hat)
+                    _smax_diag = None
+                    if blk_meta.get('vertices'):
+                        _smax_diag = _right_chain_origin_s(
+                            blk_meta['vertices'], d_hat, corner_pt,
+                            allocation_dir_block, front_p2=_front_p2_blk,
+                            has_side_right=_has_right_corner, forced_right=_fo_right)
+                    if _smax_diag is not None:
+                        _gs_r = _gs_l + float(_smax_diag) * _du_diag
+                        _W0_r = k956_W_from_mp(_gs_r, _side_mid_right,
+                                               allocation_dir_block, d_hat)
+                        _Wn_r = k956_W_from_mp(
+                            _gs_r - float(_right_buffer_S) * _du_diag,
+                            _side_mid_right, allocation_dir_block, d_hat)
+                _dg_slot = st.session_state.setdefault(
+                    'f3_forced_offset_diag', {}).setdefault(blk_label, {})
+                _dg_slot.update({
+                    'W-G.9-4_W0_left': _W0_l,
+                    'W-G.9-4_W0_right': _W0_r,
+                    'W-G.9-4_W_new_left': _Wn_l,
+                    'W-G.9-4_W_new_right': _Wn_r,
+                    'W-G.9-4_W_old_left': _W_prev_left,
+                    'W-G.9-4_W_old_right': _W_prev_right,
+                })
+                print(f"🔎 [W-G.9-4·診斷·⛔ 未進生產] 街廓 {blk_label}："
+                      f"左 舊={_W_prev_left!r} 新={_Wn_l!r} W_0={_W0_l!r}／"
+                      f"右 舊={_W_prev_right!r} 新={_Wn_r!r} W_0={_W0_r!r}")
+            except Exception as _e_w94:            # noqa: BLE001
+                print(f"🔴 [W-G.9-4·診斷] 街廓 {blk_label} 併行計算失敗："
+                      f"{_e_w94}（⛔ **生產路徑未受影響**·本段只寫診斷）")
+            # 🆕 D-2b-23【甲】：**界面單線鏈**（與 `_W_prev` 同法 thread·⛔ 兩者不同物）。
+            #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
+            #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）
+            #   ——界面鏈之存在與該側有無街角無關；有無街角只影響「前一宗用了哪個方向」。
+            _near_dir_left = (_fd_fo_left if _fo_left else None)     # 🆕 `W-G.9-309`（`GB-170` (ii)·`K-9-32 ②`）
+            _near_dir_right = (_fd_fo_right if _fo_right else None)
+            first_corner_used_left = False
+            _lg_idx_left = 0          # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
+            left_results = []
+            for entry in left_group:
+                tp = entry['tp']
+                k = tp['暫編地號']
+                # 🚨 W-A 規格一：a_for_G = 分攤登記面積_m2 + 面積_m2(a' 累加器)
+                if '分攤登記面積_m2' in tp:
+                    a_m2 = round(float(tp.get('分攤登記面積_m2', 0) or 0)
+                                 + float(tp.get('面積_m2', 0) or 0), 2)
+                else:
+                    a_m2 = round(float(tp.get('面積_m2', 0) or 0), 2)
+                side = entry.get('side', '無')
+                # 🚨 Patch E-2.3：用 v2 entry 的 is_first_corner_marker 旗標
+                # 不再依賴 side 字串比對，因為 left_group 第 1 筆若是 winner 就是 first_corner
+                is_corner_marked = bool(entry.get('is_corner_winner', False))
+                is_first_corner_l = (
+                    bool(entry.get('is_first_corner_marker', False))
+                    and not first_corner_used_left
+                )
+                # 🆕 W-C §3：左側角側全筆皆套街廓常數 F/l_side（非僅第1筆）
+                if _has_left_corner:
+                    l_side_use = _lside_left; F_use = _F_left
+                else:
+                    l_side_use = 0.0; F_use = 0.0
+                zone = tp.get('重劃前地價區段', '')
+                post_p = post_price_by_block.get(blk_label, 0.0)
+                pre_p = pre_price_by_zone.get(zone, 0.0)
+                A_ratio = (post_p / pre_p) if (pre_p > 0 and post_p > 0) else 1.0
+                S_remain = max(0.1, S_block_max - left_cum_S - right_cum_S)
+                baseline_pt = (corner_pt + left_cum_S * d_hat
+                               if (d_hat is not None and corner_pt is not None) else None)
+                res, solver_label = _solve_one(
+                    a_m2, A_ratio, l_front, l_side_use, F_use,
+                    blk_poly, d_hat, baseline_pt, S_remain,
+                    is_first_corner_l, side, avg_depth_default,
+                    _allocation_dir=allocation_dir_block,
+                    _side_mid=(_side_mid_left if _has_left_corner else None),
+                    _W_prev=_W_prev_left,
+                    _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
+                    _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
+                    _w0_start=(0.0 if not _fo_left else None),   # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                )
+                # 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
+                #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
+                res['_lg_cols'] = _lot_gate(
+                    res, tp, _lg_blk_ctx,
+                    is_corner_first=bool(is_first_corner_l),
+                    is_second_after_corner=((_lg_idx_left == (0 if _fo_left else 1)) and not bool(is_first_corner_l)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`（app 側鏡射）
+                    chain_side='left', _label=blk_label)
+                # 🆕 `W-G.9-269` `c1` **站 1／4（app 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
+                #   🔒 `c3`：**無條件執行**（旗標已移除）。
+                _k917_drop, _k917_v = k917_should_drop(
+                    res, bool(is_first_corner_l),
+                    entry is not left_group[-1], 'left', blk_label, k)
+                if _k917_drop:
+                    # 🛑 `K-9-11 三`：不配地 ＋ 其地入調配池（幾何餘·構造必然）＋ ⛔ 超配。
+                    # 🛑 `K-9-17 二·四·五`：空位由**重排後序列之下一位**遞補
+                    #    ——本迴圈之下一 `entry` 即之；`left_cum_S` **⛔ 推進**
+                    #    ⇒ 其後各宗整體前移、`G` 隨之**全部重算**（款 `五`）。
+                    #    🛑 **⛔ 依 `K-9-9 四` 字面之「重劃前投影順序」**
+                    #       （`K-9-17` 晚於 `K-9-9`·以後者為準）。
+                    # 🛑 `_lg_idx_left` **⛔ 推進**：後繼者遞補其**位**。
+                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
+                        k917_note_drop(blk_label, 'left', k, res, tp)
+                    continue
+                _lg_idx_left += 1
+                if _has_left_corner:   # thread 累積 W_前 給下一筆
+                    _W_prev_left = float(res.get('W_far', _W_prev_left))
+                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
+                _near_dir_left = res.get('_alloc_dir_used')
+                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
+                # 極端防呆 3：S_remain 觸頂
+                _G_target = float(res.get('G', 0.0))
+                _area_actual = float(res.get('area_geom', 0.0))
+                if (abs(_S_actual - S_remain) < 0.05 and _G_target > 0
+                    and _area_actual < _G_target * 0.95):
+                    res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
+                left_cum_S += _S_actual
+                # 🔧 次宗起點 ＝ 本宗遠側界 × FRONTLINE（＝ 標稱終點）：本宗遠側界之方向即次宗近側界之方向
+                #   （D-2b-23【甲】·無條件交遞）⇒ 二界同一條線（`K-9-5-4 ②` 釋示 1）。`W-G.9-268′` 之錨點外推
+                #   （取本宗幾何終點）於街角第 1 宗之後夾出全深度長條（`GB-178`）⇒ 停用；次宗遠側界之
+                #   不交叉（`K-9-9 二`／`K-9-14`）由藍影機制驗之（`K-9-32`／`K-9-33 ⑤`）。
+                res['_alloc_cum_S'] = left_cum_S
+                _mark_zaling(res)   # 🆕 §1-4 判去留旗標
+                _widths_local[entry['_ov2_idx']] = float(
+                    res.get('_宗地寬度', 0.0) or 0.0)   # 🆕 W-D.2 真寬度（D-1）
+                if is_first_corner_l:
+                    first_corner_used_left = True
+                _lg_row = _build_g_row(
+                    k, tp, blk_label, blk_area, front_len, avg_depth_default,
+                    zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
+                    is_first_corner_l, side, res, solver_label, 'left',
+                )
+                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
+                _lg_row.update(res.get('_lg_cols') or {})
+                _rows_local.append(_lg_row)
+                _trace_local[k] = res.get('trace', [])
+                left_results.append((entry, res))
+
+            # ── Task D-2：右側推進（d_hat 反向）──
+            # 補充 1（最後一哩路）：以街廓所有頂點在 d_hat 方向最大投影值精準定 end_pt，
+            # 杜絕菱形/三角形/狹長傾斜街廓的懸空問題（無需試探）
+            if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+                # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）。
+                #   退化幾何（切線∥推進）→ `_strip_axis` raise（**loud·同 stepg/wf_f4**·
+                #   no-silent-fallback）——**不 try/except 吞掉**（KL 複驗指正·四處退化處置一致）。
+                _smax_g = _right_chain_origin_s(blk_meta['vertices'], d_hat,
+                                         corner_pt, allocation_dir_block,
+                                         front_p2=_front_p2_blk,
+                                         has_side_right=_has_right_corner,
+                                         forced_right=_fo_right)
+                actual_max_proj = _smax_g if _smax_g is not None else S_block_max
+                end_pt = corner_pt + actual_max_proj * d_hat
+                d_hat_rev = -d_hat
+            else:
+                actual_max_proj = S_block_max
+                end_pt = None
+                d_hat_rev = None
+
+            first_corner_used_right = False
+            _lg_idx_right = 0         # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
+            right_results = []
+            for entry in right_group:
+                tp = entry['tp']
+                k = tp['暫編地號']
+                # 🚨 W-A 規格一：a_for_G = 分攤登記面積_m2 + 面積_m2(a' 累加器)
+                if '分攤登記面積_m2' in tp:
+                    a_m2 = round(float(tp.get('分攤登記面積_m2', 0) or 0)
+                                 + float(tp.get('面積_m2', 0) or 0), 2)
+                else:
+                    a_m2 = round(float(tp.get('面積_m2', 0) or 0), 2)
+                side = entry.get('side', '無')
+                # 🚨 Patch E-2.4：與 E-2.3 對稱
+                is_corner_marked = bool(entry.get('is_corner_winner', False))
+                is_first_corner_r = (
+                    bool(entry.get('is_first_corner_marker', False))
+                    and not first_corner_used_right
+                )
+                # 🆕 W-C §3：右側角側全筆皆套街廓常數 F/l_side（非僅第1筆）
+                if _has_right_corner:
+                    l_side_use = _lside_right; F_use = _F_right
+                else:
+                    l_side_use = 0.0; F_use = 0.0
+                zone = tp.get('重劃前地價區段', '')
+                post_p = post_price_by_block.get(blk_label, 0.0)
+                pre_p = pre_price_by_zone.get(zone, 0.0)
+                A_ratio = (post_p / pre_p) if (pre_p > 0 and post_p > 0) else 1.0
+                S_remain = max(0.1, actual_max_proj - left_cum_S - right_cum_S)
+                baseline_pt = (end_pt + right_cum_S * d_hat_rev
+                               if (d_hat_rev is not None and end_pt is not None) else None)
+                if (_right_origin_is_front_p2(_has_right_corner, _fo_right) and _lg_idx_right == 0
+                        and not is_first_corner_r):
+                    raise RuntimeError(
+                        f"🔴 街廓 {blk_label} 右鏈：起點取 FRONT p2（有側街·非強制），而首宗 {k} 非街角第 1 宗"
+                        "（其近側界 ∥ 分配線 ⇒ p2 外側之楔形無人承受）·停")
+                res, solver_label = _solve_one(
+                    a_m2, A_ratio, l_front, l_side_use, F_use,
+                    blk_poly, d_hat_rev, baseline_pt, S_remain,
+                    is_first_corner_r, side, avg_depth_default,
+                    _allocation_dir=allocation_dir_block,
+                    _side_mid=(_side_mid_right if _has_right_corner else None),
+                    _W_prev=_W_prev_right,
+                    _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
+                    _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
+                    _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                )
+                # 極端防呆 2 後援：右側起點數值微修
+                if (float(res.get('area_geom', 0)) < 0.5
+                    and d_hat_rev is not None and baseline_pt is not None):
+                    for _adj in (0.1, 0.3, 0.5):
+                        _try_pt = baseline_pt + _adj * d_hat_rev
+                        _try_S = max(0.1, S_remain - _adj)
+                        _r2, _sl2 = _solve_one(
+                            a_m2, A_ratio, l_front, l_side_use, F_use,
+                            blk_poly, d_hat_rev, _try_pt, _try_S,
+                            is_first_corner_r, side, avg_depth_default,
+                            _allocation_dir=allocation_dir_block,
+                            _side_mid=(_side_mid_right if _has_right_corner else None),
+                            _W_prev=_W_prev_right,
+                            _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
+                            _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
+                            _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                        )
+                        if float(_r2.get('area_geom', 0)) >= 0.5:
+                            res, solver_label = _r2, _sl2
+                            if _commit:   # 🆕 W-D.2 reviewer WARNING：深巢 st.info 顯式 gate
+                                st.info(
+                                    f"ℹ️ 街廓 {blk_label} 右側起點數值微修 {_adj}m 後成功切出土地"
+                                )
+                            break
+                # 🆕 `W-G.9-246′` 工項二 **站 2／4（app 右鏈）**：掛於**定案之 `res`** 後
+                #   （右鏈有二次 solve ⇒ ⛔ 各 solve 後各掛·`I-4`）。
+                res['_lg_cols'] = _lot_gate(
+                    res, tp, _lg_blk_ctx,
+                    is_corner_first=bool(is_first_corner_r),
+                    is_second_after_corner=((_lg_idx_right == (0 if _fo_right else 1)) and not bool(is_first_corner_r)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`（app 側鏡射）
+                    chain_side='right', _label=blk_label)
+                # 🆕 `W-G.9-269` `c1` **站 2／4（app 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
+                #   🔒 `c3`：**無條件執行**（旗標已移除）。
+                _k917_drop, _k917_v = k917_should_drop(
+                    res, bool(is_first_corner_r),
+                    entry is not right_group[-1], 'right', blk_label, k)
+                if _k917_drop:
+                    # 🛑 受詞與左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
+                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
+                        k917_note_drop(blk_label, 'right', k, res, tp)
+                    continue
+                _lg_idx_right += 1
+                if _has_right_corner:   # thread 累積 W_前 給下一筆
+                    _W_prev_right = float(res.get('W_far', _W_prev_right))
+                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
+                _near_dir_right = res.get('_alloc_dir_used')
+                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
+                # 極端防呆 3：S_remain 觸頂
+                _G_target = float(res.get('G', 0.0))
+                _area_actual = float(res.get('area_geom', 0.0))
+                if (abs(_S_actual - S_remain) < 0.05 and _G_target > 0
+                    and _area_actual < _G_target * 0.95):
+                    res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
+                right_cum_S += _S_actual
+                # 🔧 次宗起點 ＝ 本宗遠側界 × FRONTLINE（＝ 標稱終點）：本宗遠側界之方向即次宗近側界之方向
+                #   （D-2b-23【甲】·無條件交遞）⇒ 二界同一條線（`K-9-5-4 ②` 釋示 1）。`W-G.9-268′` 之錨點外推
+                #   （取本宗幾何終點）於街角第 1 宗之後夾出全深度長條（`GB-178`）⇒ 停用；次宗遠側界之
+                #   不交叉（`K-9-9 二`／`K-9-14`）由藍影機制驗之（`K-9-32`／`K-9-33 ⑤`）。
+                res['_alloc_cum_S'] = right_cum_S
+                _mark_zaling(res)   # 🆕 §1-4 判去留旗標
+                _widths_local[entry['_ov2_idx']] = float(
+                    res.get('_宗地寬度', 0.0) or 0.0)   # 🆕 W-D.2 真寬度（D-1）
+                if is_first_corner_r:
+                    first_corner_used_right = True
+                _lg_row = _build_g_row(
+                    k, tp, blk_label, blk_area, front_len, avg_depth_default,
+                    zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
+                    is_first_corner_r, side, res, solver_label, 'right',
+                )
+                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
+                _lg_row.update(res.get('_lg_cols') or {})
+                _rows_local.append(_lg_row)
+                _trace_local[k] = res.get('trace', [])
+                right_results.append((entry, res))
+
+            return {
+                'rows': _rows_local, 'trace': _trace_local,
+                'widths': _widths_local,
+                'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
+                'left_results': left_results, 'right_results': right_results,
+            }
+
+        # ── 🆕 W-D.2 J-fix：warn-on-zero-weight（no-silent-fallback）──
+        #   有 SIDE_LINE 之側其 J 權重 F×l₁ 必 >0；零＝上游參數層靜默缺
+        #   （Step E 該街廓側街「新闢」未勾/路寬未設 → 尺度 0 → J 死值、
+        #    G 公式側街負擔項**同源**歸零）。具名警示、不得靜默吞 0。
+        for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (
+                ('左', _has_left_corner, _F_left, _lside_left),
+                ('右', _has_right_corner, _F_right, _lside_right)):
+            if _has_w2 and (_F_w2 * _l1_w2) <= 0.0:
+                st.warning(
+                    f"⚠️ 街廓 {blk_label} {_side_nm_w2}側：有 SIDE_LINE 但滑池槽權重 "
+                    f"F×l₁ = {_F_w2:.2f}×{_l1_w2:.2f} = 0 → J 退化為 0"
+                    "（選槽將僅剩 min-dev 居中），且 G 公式側街負擔項同源歸零。"
+                    "請檢查**步驟 E** 該街廓側街「路寬／新闢道路」設定"
+                    "（尺度=0 多因未勾新闢；參數正典見 verify/case_params 快照）後重跑。"
+                )
+
+        # ── 🆕 W-D.2 §3 選槽 orchestration（D-1：基準趟→k*→正式趟）──
+        _N = len(ordered_v2)
+        _k_naive = (_N + 1) // 2 if _N % 2 == 1 else _N // 2   # 僅作基準趟切點
+        _slot_res = None
+        # 🆕 W 正典 W₀（補丁八 §一·脫鉤 S）：選槽理論之 forced 起始 W 改＝**首宗近側 KL W**
+        #   ＝(群起點 + buffer·d̂ − mp)·â_定向·取代舊 `buffer·cos_dn`（群起點 telescoping 約定·已作廢）。
+        #   使 _select_pool_slot 之理論 ΣRw 與實跑（solve_G_binary KL W）同源（理論＝實跑閘·禁 #20 脫鉤）。
+        # 🔧 **族③ 之切換（`W-G.9-190R` commit 4·`W-G.9-5` contract 側）**：本段係**逐字複刻**
+        #   `verify/stepg_pipeline.py:812-844`（該檔本批⛔ 不改——本批係令 app 對齊 harness）。
+        #   🛑 ⛔ **未於 `app.py` 另寫第二份 `W` 定義**（`GB-48` 族·`app.py` 之 `k956_W_from_mp`
+        #      docstring 明令）——下列 `_mp_base_W0` 係**純委派**至該單一產生者。
+        def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
+            # 🔒 **純委派**至 `k956_W_from_mp`（`grep -n "def k956_W_from_mp" app.py`）：
+            #   本處僅把「群起點沿 d̂ 推進 `_buf`」算成點，再交由單一產生者量
+            #   `W = dot(P − mp, â_定向)`。⛔ **語意不變、簽章不變**。
+            #   ⚠️ `_du` 於此仍需自算（因 `P` 之構成需要它）；其式**逐字同 stepg**，
+            #      ⛔ 不得改為先正規化再傳（會改變 `_dn ≤ 1e-9` 之退化行為）。
+            if _gs is None or _mp is None or _adir is None or _dv is None:
+                return 0.0
+            _dv2 = _np_d.asarray(_dv, dtype=float)
+            _dn = float(_np_d.linalg.norm(_dv2))
+            _du = _dv2 / _dn if _dn > 1e-9 else _dv2
+            _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
+            return float(k956_W_from_mp(_bp0, _mp, _adir, _dv))
+        # 右組群起點 end_pt 於此重算（`_advance_block_with_split` 內 end_pt 為其局部·此處不可見）。
+        #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：四處同源 `_oblique_s_max`（#20）。
+        _end_pt_o = None; _dhr_o = None
+        if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
+            _smax_o = _right_chain_origin_s(blk_meta['vertices'], d_hat, corner_pt,
+                                     allocation_dir_block,
+                                     front_p2=_front_p2_blk,
+                                     has_side_right=_has_right_corner,
+                                     forced_right=_fo_right)
+            if _smax_o is not None:
+                _end_pt_o = corner_pt + _smax_o * _np_d.asarray(d_hat, dtype=float)
+                _dhr_o = -_np_d.asarray(d_hat, dtype=float)
+        # 🔒 K-9-5-12（五）-1「首宗起點一律為 0」＋ K-9-5-13 裁定二「起算一律用真正的地界」
+        #    ⇒ 非 forced 之選槽起算點校回 0（施工單 W-G.9-27·影響估算見 W-G.9-23）。
+        #    ⛔ forced 側維持原式——其目標為抵費地遠側界，卡「保留區之表示法」（W-G.9-19 D3）。
+        _b_L0 = (_mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left,
+                             allocation_dir_block) if _fo_left else 0.0)
+        _b_R0 = (_mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right,
+                             allocation_dir_block) if _fo_right else 0.0)
+        if _degenerate_order or _N <= 1:
+            # 無選槽自由度 → 單趟正式（退化語意不變）
+            _k_star = _N
+            _adv_final = _advance_block_with_split(_k_star, True)
+        else:
+            # ① 基準趟（k=naive、不落 rows）取真寬度 w_i（⊥ALLOC；D-1 Option A）
+            _adv_base = _advance_block_with_split(_k_naive, False)
+            # ② 真寬度餵 _select_pool_slot（Q2：b＝**W 正典 W₀**（見下 `_b_L0`／`_b_R0`）；
+            #    🔧 **更正（`W-G.9-190R` commit 4·族③ 之切換）**：本行原逐字載
+            #    「Q2：b＝buffer_S×cos_dn 入 W 軸」——該述於本批**已成偽**；
+            #    Q3：F/l1 與推進迴圈同源＝_F_left/_lside_left/_F_right/_lside_right）
+            # 🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：估算寬度改取**各側全鏈**
+            #   （左 ＝ 推進至 k_max、右 ＝ 推進至 k_min 之試推進）之逐宗 `W` 差；
+            #   居中平手仍用基準趟之宗地寬度。與 `verify/stepg_pipeline.py` 同構（#20）。
+            _kmin_c = 1 if _has_left_corner else 0
+            _kmax_c = (_N - 1) if _has_right_corner else _N
+            _wL_c = [0.0] * _N; _wR_c = [0.0] * _N
+            _bL_c = _b_L0; _bR_c = _b_R0
+            if _kmin_c <= _kmax_c:
+                for _sd_c, _kk_c, _has_c in (('left', _kmax_c, _has_left_corner),
+                                             ('right', _kmin_c, _has_right_corner)):
+                    if not _has_c:
+                        continue
+                    _adv_c = (_adv_base if _kk_c == _k_naive
+                              else _advance_block_with_split(_kk_c, False))
+                    _w_c, _b_c = _slot_side_chain_widths(_adv_c, _sd_c, _N)
+                    if _sd_c == 'left':
+                        _wL_c = _w_c
+                        _bL_c = _bL_c if _b_c is None else _b_c
+                    else:
+                        _wR_c = _w_c
+                        _bR_c = _bR_c if _b_c is None else _b_c
+            _slot_res = _select_pool_slot(
+                _wL_c,
+                {'has': _has_left_corner, 'F': _F_left,
+                 'l1': _lside_left, 'b': _bL_c},
+                {'has': _has_right_corner, 'F': _F_right,
+                 'l1': _lside_right, 'b': _bR_c},
+                widths_R=_wR_c, dev_widths=_adv_base['widths'],
+            )
+            _k_star = int(_slot_res['k'])
+            # 停機②（J 下降）看守：argmax 保證 J(k*)≥J(naive)；破＝實作 bug
+            _J_by_k = {t['k']: t['J'] for t in _slot_res['table']}
+            if (_k_naive in _J_by_k
+                    and _J_by_k.get(_k_star, 0.0) < _J_by_k[_k_naive] - 1e-9):
+                st.error(
+                    f"🔴 停機②（J 下降）街廓 {blk_label}：J(k*={_k_star})="
+                    f"{_J_by_k.get(_k_star, 0.0):.4f} < J(naive={_k_naive})="
+                    f"{_J_by_k[_k_naive]:.4f} — 滑池槽最佳化反變糟，停、上呈 KL＋claude.ai。"
+                )
+            # ③ 正式趟（k*）才落 rows
+            _adv_final = _advance_block_with_split(_k_star, True)
+
+        # ── 🆕 §4 P2-e 階段2 落位接線（B-1·stepg 家族鏡像·#20 四處同改）──
+        #   ⚠️ **W-10**：置於 if/else **匯流之後**——`_adv_final` 有**兩個**產生點
+        #     （:16095 degenerate／N≤1 與 :16119 正常；中間 `_adv_base` 非 final）。
+        #   ⚠️ **B-1**：必須**就地擴充 `_adv_final`**（rows／left_results／
+        #     right_results／Wf_*／cum_S），不可只 append 進 `g_rows`——後者僅輸出
+        #     容器；只進 g_rows ⇒ 池帶仍覆蓋階段2宗、抵費地列重算一次 ⇒
+        #     **守恆實破而閘全綠**。擴充後池片結算（:16169）自動落在階段2 之後。
+        #   ⚠️ **本鏡像不可省**：只改 stepg 而 app 不動 ⇒ app 走舊單階段、harness
+        #     走新兩階段＝兩路徑**無聲分岔**（且 KL 之 UI 錨在 app 側）。
+        if _stage2_parcels:
+            _smax_blk = None
+            if (d_hat is not None and corner_pt is not None
+                    and blk_meta.get('vertices')):
+                _smax_blk = _right_chain_origin_s(
+                    blk_meta['vertices'], d_hat, corner_pt,
+                    allocation_dir_block, front_p2=_front_p2_blk,
+                    has_side_right=_has_right_corner, forced_right=_fo_right)
+            _s2 = _place_pool_parcels(
+                stage2_parcels=_stage2_parcels,
+                adv_final=_adv_final,
+                blk_poly=blk_poly, blk_area=blk_area, blk_label=blk_label,
+                blk_vertices=blk_meta.get('vertices'),
+                blk_centroid=blk_meta.get('centroid'),
+                d_hat=d_hat, corner_pt=corner_pt, s_max_blk=_smax_blk,
+                allocation_dir=allocation_dir_block,
+                alloc_dir_cad=_alloc_dir_cad,   # CAD 原始 ALLOC 方向·非其 rot90
+                front_len=front_len, l_front=l_front,
+                avg_depth=avg_depth_default,
+                side_mid_left=_side_mid_left, side_mid_right=_side_mid_right,
+                l_side_left=_lside_left, F_left=_F_left,
+                l_side_right=_lside_right, F_right=_F_right,
+                post_price=post_price_by_block.get(blk_label, 0.0),
+                pre_price_by_zone=pre_price_by_zone,
+                solve_one=_solve_one, build_g_row=_build_g_row,
+                mark_zaling=_mark_zaling,
+                # 🆕 P2-f 末端保留（裁定C·stepg 家族鏡像·#20 同改）
+                has_side_left=bool(_fo_block.get('left_has_side', True)),
+                has_side_right=bool(_fo_block.get('right_has_side', True)),
+                min_width=_mw_blk, s_front_p2=S_block_max,
+            )
+            _adv_final['rows'] = (list(_adv_final['rows'])
+                                  + list(_s2['rows']))
+            _adv_final['left_results'] = (list(_adv_final['left_results'])
+                                          + list(_s2['left_results']))
+            _adv_final['right_results'] = (list(_adv_final['right_results'])
+                                           + list(_s2['right_results']))
+            _adv_final['Wf_left'] = _s2['Wf_left']       # W-3(b)
+            _adv_final['Wf_right'] = _s2['Wf_right']
+            _adv_final['left_cum_S'] = _s2['left_cum_S']
+            _adv_final['right_cum_S'] = _s2['right_cum_S']
+            st.session_state.setdefault('f3_stage2_placed', {})[blk_label] = (
+                _s2['placed_area'])                      # W-4 回饋通道
+        g_rows.extend(_adv_final['rows'])
+        detail_trace.update(_adv_final['trace'])
+        left_cum_S = _adv_final['left_cum_S']
+        right_cum_S = _adv_final['right_cum_S']
+        left_results = _adv_final['left_results']
+        right_results = _adv_final['right_results']
+
+        # ── 雙向重疊警告 ──
+        if left_cum_S + right_cum_S > S_block_max + 0.5:
+            st.warning(
+                f"⚠️ 街廓 {blk_label}：左 ({left_cum_S:.2f}m) + "
+                f"右 ({right_cum_S:.2f}m) = {left_cum_S + right_cum_S:.2f}m "
+                f"已超過街廓深度 {S_block_max:.2f}m，可能有重疊區"
+            )
+
+        # ── Task D-3：抵費地（Offset Land）幾何自動生成 ──
+        _pool_total_blk = None   # 🆕 W-D.2 ledger：幾何剩餘總量（None＝無幾何/失敗）
+        if blk_poly is not None:
+            try:
+                allocated_polys = []
+                _missing_owner = []   # 停機③ 修（KL 2026-07-20）：ΣG 成員但無可扣幾何→池雙計·no-silent
+                for _entry, _res in (left_results + right_results):
+                    _coords = _res.get('cut_coords') or []
+                    _p = None
+                    if len(_coords) >= 3:
+                        try:
+                            _p = _SP_d(_coords)
+                            if not _p.is_valid:
+                                _p = _p.buffer(0)
+                        except Exception:
+                            _p = None
+                    # 停機③ 修（KL 2026-07-20·約束1「判準對齊 ΣG 成員」）：凡算進 ΣG 之
+                    #   owner 宗皆須自池扣其幾何——**廢 area≥0.5 sliver 濾**（1b290e4 遷移遺留·
+                    #   無職·退化守衛係 len≥3/is_valid/is_empty·非此常數·#26a 已核）。舊 area≥0.5
+                    #   剔除合法小宗（如 R2 628-43(1) 0.27㎡）致池雙計 → 停機③ |Σ(G−幾何)|=0.28
+                    #   （=0.0124 owner 殘差＋0.2681 雙計宗·逐位）。
+                    if _p is not None and not _p.is_empty:
+                        allocated_polys.append(_p)
+                    else:
+                        _missing_owner.append(((_entry or {}).get('tp') or {}).get('暫編地號', '?'))
+                if _missing_owner:
+                    print(f"🔴 停機③-家族：街廓 {blk_label} ΣG 成員無可扣幾何 {_missing_owner}"
+                          f"（實切退化/失敗→池將雙計其面積·no-silent-fallback）·入報告")
+                # ── §N3-0 T2（主修法）：池片改用與業主宗**同機制·同切線**直接切出 ──
+                #   廢：`_uunion_d(allocated_polys).buffer(0.001)` → `difference` → `area >= 1.0`
+                #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
+                #   單一真相源＝`_pool_strips_for_block`；**與 stepg_pipeline 逐字同構**
+                #   （N0-16 同源同碼·G.3 三重確立之基礎），四處共用根絕抄寫漂移（#20）。
+                #   回傳序＝面積遞減（逐字沿用舊慣例）→ g_rows 抵費地序號不因本波改（plan §11）。
+                _fb_p2 = []                    # 🆕 `W-G.9-309`（`GB-170` (iii)·app 側鏡射 stepg）
+                for _sd, _bS, _fd in (('left', _left_buffer_S, _fd_fo_left),
+                                      ('right', _right_buffer_S, _fd_fo_right)):
+                    if _fd is not None and float(_bS or 0.0) > 0.0:
+                        _gb, _ = _corner_band_geom(blk_poly, d_hat, corner_pt,
+                                                   allocation_dir_block, _bS, _sd,
+                                                   far_line_dir=_fd)
+                        if _gb is not None and not _gb.is_empty:
+                            _fb_p2.append(_gb)
+                offset_geoms = _pool_strips_for_block(
+                    blk_poly, d_hat, corner_pt, allocation_dir_block,
+                    allocated_polys, _label=blk_label, _depth=avg_depth_default,
+                    forced_bands=_fb_p2)
+
+                _pool_total_blk = float(sum(_g.area for _g in offset_geoms))  # 🆕 W-D.2 ledger
+
+                # 池片數 >1 之提示（語意已隨 T2 改變：不再是「夾擠 bug」，
+                #   而係 forced 帶／末筆楔形／中央池等**正常之多 s-帶**（N0-19））
+                if len(offset_geoms) > 1:
+                    _total_a = sum(g.area for g in offset_geoms)
+                    st.info(
+                        f"ℹ️ 街廓 {blk_label} 之抵費地為 {len(offset_geoms)} 個池片"
+                        f"（總面積 {_total_a:.2f} ㎡）——依 N0-19，池片＝相鄰池 s-帶之極大聯集；"
+                        f"多片屬正常（如 forced 帶＋中央池＋末筆楔形）。"
+                    )
+
+                # 寫入 g_rows 作為「抵費地」項目
+                _min_block = min(50.0, blk_area * 0.05)   # 抵費地最小門檻：街廓 5% 或 50㎡
+                for _i, _g in enumerate(offset_geoms):
+                    _suffix = '' if len(offset_geoms) == 1 else f'-{_i+1}'
+                    _conv_flag = ('🟡' if _g.area >= _min_block
+                                  else '⚠️ < 最小分配')
+                    try:
+                        _coords_list = [[float(c[0]), float(c[1])]
+                                        for c in list(_g.exterior.coords)]
+                    except Exception:
+                        _coords_list = []
+                    g_rows.append({
+                        '暫編地號': f'{blk_label}-抵費地{_suffix}',
+                        '原地號': '—',
+                        '所屬街廓': blk_label,
+                        '重劃前區段': '—',
+                        'a 面積(㎡)': 0.0,
+                        '街廓面積(㎡)': round(blk_area, 2),
+                        '正面長度(m)': round(front_len, 2),
+                        '平均深度(m)': round(avg_depth_default, 2),
+                        'A 地價比': 0.0,
+                        'l₂ 正面尺度': 0.0,
+                        'l₁ 側面尺度': 0.0,
+                        '街角地': '—',
+                        '第1筆街角': '—',
+                        '街角側別': '—',
+                        'F(m)': 0.0,
+                        'W(m)': 0.0,
+                        'Rw(%)': 0.0,
+                        'S(m)': 0.0,
+                        '幾何面積(㎡)': round(_g.area, 2),
+                        'G(㎡)': 0.0,
+                        '累積S(m)': 0.0,
+                        '推進側別': '抵費地',
+                        '解法': '幾何剩餘',
+                        '迭代次數': 0,
+                        '是否收斂': _conv_flag,
+                        '負擔比率': 0.0,
+                        'cut_coords': _coords_list,
+                    })
+            except Exception as _eOff:
+                st.warning(f"⚠️ 街廓 {blk_label} 抵費地計算失敗：{_eOff}")
+
+        # ── 🆕 W-D.2 §3：守恆 ledger（M3 接線・消費端）──
+        # 角落抵費地／中央池＝幾何剩餘之「拆帳呈示」（池重定位、非新增面積）。
+        # 守恆：ΣG（配地）＋池總（幾何剩餘）＝街廓 DXF 面積。
+        #   閘寬＝§N3-0 帳對幾何閘（兩級化·補丁三 §二）；⚠️ 舊「殘差 <1㎡」已廢（殘餘定閘）。
+        _sum_G_blk = sum(float(r.get('G(㎡)', 0) or 0) for r in _adv_final['rows'])
+        _sum_geom_blk = sum(float(r.get('幾何面積(㎡)', 0) or 0)
+                            for r in _adv_final['rows'])
+
+        # ── §N3-0 逐宗主閘（緊閘·與 stepg 逐字同構·N0-16 同源同碼）──
+        _tol_lot = _acct_geom_tol_per_lot(avg_depth_default)
+        for _r_lot in _adv_final['rows']:
+            _dev = abs(float(_r_lot.get('G(㎡)', 0) or 0)
+                       - float(_r_lot.get('幾何面積(㎡)', 0) or 0))
+            if _dev > _tol_lot:
+                st.error(
+                    f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 "
+                    f"{_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > "
+                    f"上界 {_tol_lot:.4f}（0.005×深度{avg_depth_default:.2f}"
+                    f" ＋ tol 0.01 ＋ 0.005）——超出捨入量子可解釋範圍＝另有病，停機上呈")
+                st.stop()
+        _corner_off_L = (float(_v2_res.get('left_corner_offset_area', 0.0) or 0.0)
+                         if _v2_res else 0.0)
+        _corner_off_R = (float(_v2_res.get('right_corner_offset_area', 0.0) or 0.0)
+                         if _v2_res else 0.0)
+
+        def _rw_real_wd2(_side_tag):
+            return round(sum(float(r.get('Rw(%)', 0) or 0)
+                             for r in _adv_final['rows']
+                             if r.get('推進側別') == _side_tag
+                             and float(r.get('F(m)', 0) or 0) > 0), 2)
+        _tbl_wd2 = (_slot_res or {}).get('table') or []
+        _row_at = {t['k']: t for t in _tbl_wd2}
+        _t_star = _row_at.get(_k_star, {})
+        _t_naive = _row_at.get(_k_naive, {})
+        if _pool_total_blk is not None:
+            # §N3-0 守恆-帳幾何級（逐街廓 Σ 閘·與 stepg 逐字同構）
+            _resid_wd2 = round(_sum_G_blk + _pool_total_blk - blk_area, 2)
+            _tol_blk = _acct_geom_tol_block(len(_adv_final['rows']),
+                                            avg_depth_default)
+            _verdict_wd2 = ('✅' if abs(_resid_wd2) <= _tol_blk else '🔴 守恆破')
+        else:
+            _resid_wd2 = None
+            _verdict_wd2 = '—（無街廓幾何）'
+        st.session_state['f3_wd2_pool_diag'][blk_label] = {
+            'n': _N, 'k_naive': _k_naive, 'k*': _k_star,
+            'J(naive)': round(float(_t_naive.get('J', 0.0)), 4),
+            'J(k*)': round(float(_t_star.get('J', 0.0)), 4),
+            'ΣRw_L理論@k*(%)': round(float(_t_star.get('ΣRw_L', 0.0)), 2),
+            'ΣRw_R理論@k*(%)': round(float(_t_star.get('ΣRw_R', 0.0)), 2),
+            'ΣRw_L實跑(%)': _rw_real_wd2('left'),
+            'ΣRw_R實跑(%)': _rw_real_wd2('right'),
+            'ΣG(㎡)': round(_sum_G_blk, 2),
+            'Σ配地幾何(㎡)': round(_sum_geom_blk, 2),
+            '池總=幾何剩餘(㎡)': (round(_pool_total_blk, 2)
+                                  if _pool_total_blk is not None else None),
+            '角落抵費地L(㎡)': round(_corner_off_L, 2),
+            '角落抵費地R(㎡)': round(_corner_off_R, 2),
+            '中央池(㎡)': (round(_pool_total_blk - _corner_off_L - _corner_off_R, 2)
+                           if _pool_total_blk is not None else None),
+            '守恆殘差(㎡)': _resid_wd2,
+            '判定': _verdict_wd2,
+            # 🆕 KL 條件④（2026-07-05）：ledger vs 幾何片對照——ledger 角落＝
+            #   range 規劃值拆帳、幾何片＝實際切片；兩算總量逐塊相等（池總），
+            #   位移非漏帳。此欄防未來誤判。
+            '幾何片明細(㎡)': (str([round(float(_g.area), 2) for _g in offset_geoms])
+                               if _pool_total_blk is not None else ''),
+            '片數': (len(offset_geoms) if _pool_total_blk is not None else 0),
+            'note': ((_slot_res or {}).get('note', '') or
+                     ('degenerate/N≤1 單趟' if (_degenerate_order or _N <= 1) else ''))
+                    + ('；naive 切點不在合法域(pin)，停機②看守略過比較'
+                       if (_slot_res and _k_naive not in _row_at) else ''),
+            'slot_table': [dict(t) for t in _tbl_wd2],
+        }
+        if _verdict_wd2 == '🔴 守恆破':
+            st.error(
+                f"🔴 停機③（守恆-帳幾何級破）街廓 {blk_label}：ΣG {_sum_G_blk:.2f}＋池 "
+                f"{_pool_total_blk:.2f} vs 街廓 {blk_area:.2f}"
+                f"（|Σ(G−幾何)| {_resid_wd2:+.2f}㎡ > 上界 {_tol_blk:.4f}"
+                f"＝宗數{len(_adv_final['rows'])}×(0.005×深度{avg_depth_default:.2f}"
+                f" ＋ tol 0.01 ＋ 0.005)）— 停、上呈 KL＋claude.ai。"
+            )
+
+    # 🆕 V12 模組 1 補強 B：孤立公設地虛擬 G 值結算
+    # 微調防護 1：B/C 優先，total_burden_ratio fallback
+    _orphans_for_g = st.session_state.get('f3_orphan_parcels', []) or []
+    _n_orphan_added = 0
+    if _orphans_for_g:
+        if (B_value is not None and C_for_calc is not None
+            and B_value > 0 and C_for_calc > 0):
+            _burden_for_orphan = float(B_value) + float(C_for_calc)
+        else:
+            _burden_for_orphan = float(st.session_state.get(
+                'f3_total_burden_rate_from_finance', 0.40) or 0.40)
+        _burden_for_orphan = max(0.0, min(0.95, _burden_for_orphan))
+        for _orph in _orphans_for_g:
+            # 🚨 W-A：孤立公設地虛擬 G 用登記軌（分攤登記，幾何 fallback）
+            _a_o = float(_orph.get('分攤登記面積_m2',
+                                   _orph.get('幾何面積_m2',
+                                             _orph.get('面積_m2', 0))) or 0)
+            if _a_o <= 0:
+                continue
+            _G_virtual = _a_o * (1.0 - _burden_for_orphan)
+            g_rows.append({
+                '暫編地號': _orph.get('暫編地號', ''),
+                '原地號': _orph.get('原地號', ''),
+                '所屬街廓': _orph.get('所屬街廓', ''),
+                '重劃前區段': _orph.get('重劃前地價區段', ''),
+                'a 面積(㎡)': round(_a_o, 2),
+                '街廓面積(㎡)': 0.0,
+                '正面長度(m)': 0.0,
+                '平均深度(m)': 0.0,
+                'A 地價比': 1.0,
+                'l₂ 正面尺度': 0.0,
+                'l₁ 側面尺度': 0.0,
+                '街角地': '—',
+                '第1筆街角': '—',
+                '街角側別': '—',
+                'F(m)': 0.0,
+                'W(m)': 0.0,
+                'Rw(%)': 0.0,
+                'S(m)': 0.0,
+                '幾何面積(㎡)': 0.0,
+                'G(㎡)': round(_G_virtual, 2),
+                '累積S(m)': 0.0,
+                '推進側別': '🟠 孤立公設地',
+                # 🚨 Phase 9.10 法定敘明文字（精確不可變動）
+                '解法': '無法調配至其他街廓，建議領錢及申請合併分配。',
+                '迭代次數': 0,
+                '是否收斂': '—',
+                '負擔比率': round(_burden_for_orphan, 4),
+                'cut_coords': None,
+            })
+            _n_orphan_added += 1
+
+    # 🚨 Phase 9.9：cash compensation list 同樣寫入 g_rows
+    # （這些是因擠壓上限被退回的公設地，與 orphan 同等待遇）
+    _cash_comp = st.session_state.get('f3_cash_compensation_list', []) or []
+    _n_cash_added = 0
+    if _cash_comp:
+        for _cc in _cash_comp:
+            _a_cc = float(_cc.get('面積(㎡)', 0) or 0)
+            if _a_cc <= 0:
+                continue
+            # 同樣依 burden 算虛擬 G
+            _G_v_cc = _a_cc * (1.0 - _burden_for_orphan)
+            g_rows.append({
+                '暫編地號': _cc.get('暫編地號', ''),
+                '原地號': _cc.get('原地號', ''),
+                '所屬街廓': _cc.get('公設街廓', ''),
+                '重劃前區段': '',
+                'a 面積(㎡)': round(_a_cc, 2),
+                '街廓面積(㎡)': 0.0,
+                '正面長度(m)': 0.0, '平均深度(m)': 0.0,
+                'A 地價比': 1.0,
+                'l₂ 正面尺度': 0.0, 'l₁ 側面尺度': 0.0,
+                '街角地': '—', '第1筆街角': '—', '街角側別': '—',
+                'F(m)': 0.0, 'W(m)': 0.0, 'Rw(%)': 0.0,
+                'S(m)': 0.0, '幾何面積(㎡)': 0.0,
+                'G(㎡)': round(_G_v_cc, 2),
+                '累積S(m)': 0.0,
+                '推進側別': '💰 現金補償',
+                # 🚨 Phase 9.10 法定敘明文字（精確不可變動）
+                '解法': '無法調配至其他街廓，建議領錢及申請合併分配。',
+                '迭代次數': 0, '是否收斂': '—',
+                '負擔比率': round(_burden_for_orphan, 4),
+                'cut_coords': None,
+            })
+            _n_cash_added += 1
+
+    # 🆕 Phase 8 Issue 5：抵費地 < 5㎡ 碎片自動合併
+    # （含防護二：buffer(0.001).buffer(-0.001) 消縫隙）
+    try:
+        from shapely.geometry import Polygon as _SP_off_m
+        from shapely.ops import unary_union as _uu_off
+        # 依街廓分組
+        _offsets_by_blk = {}
+        for _r in g_rows:
+            if _r.get('推進側別') == '抵費地':
+                _bl = _r.get('所屬街廓', '')
+                _offsets_by_blk.setdefault(_bl, []).append(_r)
+        _merged_fragments_count = 0
+        for _bl, _offs in _offsets_by_blk.items():
+            if len(_offs) < 2:
+                continue
+            # 找最大 + 找小碎片（< 5㎡）
+            _largest = max(_offs,
+                            key=lambda r: float(r.get('幾何面積(㎡)', 0) or 0))
+            _smalls = [r for r in _offs
+                        if r is not _largest
+                        and float(r.get('幾何面積(㎡)', 0) or 0) < 5.0]
+            if not _smalls:
+                continue
+            for _s in _smalls:
+                _largest['幾何面積(㎡)'] = round(
+                    float(_largest.get('幾何面積(㎡)', 0) or 0)
+                    + float(_s.get('幾何面積(㎡)', 0) or 0), 2
+                )
+                # 合併 cut_coords
+                #   **補償-3 已拆（§N3-0 T2·plan §4.3·reviewer 定案「最小案」）**：
+                #   舊 `.buffer(0.001).buffer(-0.001)` 之「防護二·雙向 buffer 消縫隙」
+                #   與 wf_f1:_fuse／wf_f4:_fuse **同族**——皆為對 stepg 1mm 侵蝕縫之補償。
+                #   T2 精確鋪滿後**無縫可消** → 同成過度校正，連根拆。
+                try:
+                    _l_coords = _largest.get('cut_coords') or []
+                    _s_coords = _s.get('cut_coords') or []
+                    if (len(_l_coords) >= 3 and len(_s_coords) >= 3):
+                        _poly_l = _SP_off_m(_l_coords)
+                        _poly_s = _SP_off_m(_s_coords)
+                        if not _poly_l.is_valid:
+                            _poly_l = _poly_l.buffer(0)
+                        if not _poly_s.is_valid:
+                            _poly_s = _poly_s.buffer(0)
+                        _merged = _uu_off([_poly_l, _poly_s])
+                        if (_merged.geom_type == 'Polygon'
+                            and not _merged.is_empty):
+                            _largest['cut_coords'] = list(
+                                _merged.exterior.coords
+                            )
+                        elif _merged.geom_type == 'MultiPolygon':
+                            # ⚠️ T2 後池片為精確 s-帶：同塊之兩池片（如 forced 帶＋中央帶）
+                            #   **s-不相鄰** → union 成 MultiPolygon → 此路徑「取最大 geom」
+                            #   **丟小片幾何、保其面積入帳**＝帳/幾何分岔（正是 T2 欲消者）。
+                            #   依 plan §4.3：**不靜默** take-largest，loud warn＋由 §閘③
+                            #   （池帳−池幾何）把關；若因此紅即為真訊號、上呈（§N5 重審）。
+                            st.warning(
+                                f"⚠️ Phase 8 抵費地碎片合併產生 MultiPolygon"
+                                f"（{len(_merged.geoms)} 片·街廓 {blk_label}）→ 現碼取最大片、"
+                                f"小片幾何丟失而面積留帳＝帳/幾何分岔。**§N5 重審標的**"
+                                f"（`<5㎡` 亦為殘餘定閘候選·甲-2 #10）。"
+                            )
+                            _largest_geom = max(
+                                _merged.geoms, key=lambda g: g.area
+                            )
+                            _largest['cut_coords'] = list(
+                                _largest_geom.exterior.coords
+                            )
+                except Exception:
+                    pass
+                # 從 g_rows 移除小碎片
+                try:
+                    g_rows.remove(_s)
+                    _merged_fragments_count += 1
+                except ValueError:
+                    pass
+        if _merged_fragments_count > 0:
+            st.session_state['f3_offset_fragments_merged'] = _merged_fragments_count
+    except Exception:
+        pass
+
+
+    # 🆕 K-9-4 BASELINE 臨接閘（KL 裁 2026-08-03·**K-6-A2 段二-1(c)**·**停機閘**）
+    #   正典：`grep -n "^| \*\*K-9-4\*\*" docs/rulings/K-6_街角地分配程序與可分配判準.md`
+    #   量測源＝`k94_baseline_touch_by_parcel`（只量不判·段二-1(a) 落地·本批未改其一字）
+    #   上閘＝`k94_assert_baseline_touch`（雙向咬：未配到／跨過·`grep -n "def k94_assert_baseline_touch" app.py`）
+    #
+    #   🔴 **落點與施工單所載不同·以倉內實況為準（施工單 §六-5）**：
+    #   施工單 §二 令「比照段一 K-9-2 之呼叫點附近；**開始配地之前**」，
+    #   但 K-9-4 之主詞是**分配宗地**——`cut_coords` 最早產生於本 Step G
+    #   （`grep -n "'cut_coords': _res.get('cut_coords'" app.py`），
+    #   於 K-9-2 落點（`grep -n "_k92_rows = k92_block_depth_check" app.py`）**尚無任何宗地**
+    #   ⇒ 該處無從評估。故置於**配地成果落定之當下**（`f3_G_values` 寫入前），
+    #   ＝ K-9-4 **可被評估之最早時點**。
+    #   ✅ 仍守段二-0 一-8 之戒：本處**不在任何 `st.expander` 之內**（已以 `ast` 確證）。
+    _k94_land_rows, _k94_no_land = k94_partition_land_rows(g_rows)
+    # 🔄 **改走單一構造點**（K-6-A2 段五(c)-2·`grep -n "def bl_pts_by_label" app.py`）
+    #   ——本處與 N-14 消費點分屬 `main()` 內之**不同分支**（`ast` 證明見
+    #   `verify/out/K6A2_seg5c2_bindproof.txt`）⇒ ⛔ 不得由消費點取用本地變數。
+    _k94_bl_by = bl_pts_by_label(
+        classified_blocks, st.session_state.get('f3_manual_baseline', {}))
+    _k94_touch = k94_baseline_touch_by_parcel(
+        [{'label': str(_r.get('所屬街廓', '')),
+          'pid': str(_r.get('暫編地號', '')),
+          'coords': _r.get('cut_coords') or []}
+         for _r in _k94_land_rows],
+        _k94_bl_by)
+    st.session_state['f3_k94_baseline_touch'] = _k94_touch
+    # ⛔ 停機閘：違反即 raise（未配到／跨過各自具名）。**不 try、不吞。**
+    k94_assert_baseline_touch(_k94_touch)
+
+    st.session_state['f3_G_values'] = g_rows
+    st.session_state['f3_G_trace'] = detail_trace
+    # 🚨 Phase 9.12 Issue 4：清除 rerun flag（G 值已重新計算完成）
+    st.session_state.pop('f3_g_needs_rerun', None)
+    _n_offset = sum(1 for r in g_rows if r.get('推進側別') == '抵費地')
+    _n_orphan_in = sum(1 for r in g_rows if r.get('推進側別') == '🟠 孤立公設地')
+    # 🚨 Phase 9.10：計算現金補償筆數
+    _n_cash_in = sum(1 for r in g_rows if r.get('推進側別') == '💰 現金補償')
+    _n_alloc = len(g_rows) - _n_offset - _n_orphan_in - _n_cash_in
+    _msg = f"✅ 已完成 {_n_alloc} 筆宗地之 G 值計算（雙向夾擠）"
+    if _n_offset > 0:
+        _msg += f"，並產生 {_n_offset} 筆抵費地"
+    if _n_orphan_in > 0:
+        _msg += f"；🟠 並結算 {_n_orphan_in} 筆孤立公設地之虛擬 G 值"
+    if _n_cash_in > 0:
+        _msg += f"；💰 並標記 {_n_cash_in} 筆建議現金補償地"
+    st.success(_msg)
+
+
+    # 🚨 Phase 9.10：💰 建議領取現金補償 / 申請合併分配清單
+    _cash_list_show = st.session_state.get('f3_cash_compensation_list', []) or []
+    with st.expander(
+        "💰 建議領取現金補償 / 申請合併分配清單（未調配公設地）"
+        + (f"（{len(_cash_list_show)} 筆）" if _cash_list_show else ""),
+        expanded=bool(_cash_list_show)
+    ):
+        if _cash_list_show:
+            st.error(
+                f"⚠️ 偵測到 **{len(_cash_list_show)} 筆**公設地"
+                "無法在『不擠壓原位次地主』前提下調配（街廓上限 85%）"
+            )
+            try:
+                import pandas as _pd_cc
+                # 將「嘗試街廓清單」list 轉為字串供 dataframe 顯示
+                _cc_display = []
+                for _c in _cash_list_show:
+                    _row_d = dict(_c)
+                    _tried = _c.get('嘗試街廓清單', [])
+                    if isinstance(_tried, list):
+                        _row_d['嘗試街廓清單'] = '；'.join(str(t) for t in _tried)
+                    _cc_display.append(_row_d)
+                st.dataframe(_pd_cc.DataFrame(_cc_display),
+                              use_container_width=True, hide_index=True)
+            except Exception as _eCC:
+                st.json(_cash_list_show)
+            st.info(
+                "📜 **法定處理**：依市地重劃實施辦法 §31，"
+                "上列公設地之地主應**領取現金補償**或**申請合併分配**。\n\n"
+                "📊 g_rows 報表中此類地塊標記為「💰 現金補償」"
+                "；解法欄位記載「無法調配至其他街廓，建議領錢及申請合併分配。」"
+            )
+        else:
+            st.success("✅ 所有公設地皆成功併入鄰近建地或結算為孤立公設地，無需現金補償")
+
+    # 🆕 Phase 9 Task 2：抵費地比例的法定觀念說明（依重劃實務修正）
+    # ⚠️ 法規重點（依市地重劃實施辦法 §29 附件二 + 重劃實務）：
+    #
+    # B 值（一般負擔係數）公式為：
+    #   一般負擔總面積 × 重劃前平均地價 / [重劃後平均地價 × (重劃區總面積 - 抵充地)]
+    #   其中：一般負擔總面積 = 公設用地負擔總面積 - 抵充地 - 臨街地特別負擔總面積
+    #
+    # 因此 B 值 **已扣除「臨街地特別負擔」**，
+    # 性質上不等於「公共設施用地平均負擔比率」。
+    #
+    # 正確之分項：
+    #   * 公共設施用地平均負擔比率
+    #     = (共同負擔公設面積 - 政府已取得公設 - 抵充地)
+    #       / (重劃區總面積 - 政府已取得公設 - 抵充地)
+    #   * 費用負擔比率
+    #     = (工程 + 重劃 + 利息)
+    #       / [重劃後平均地價 × (重劃區總面積 - 政府已取得公設 - 抵充地)]
+    #     ※ 注意：此分母與 C 值公式分母（用「總面積 - 公設總面積」）不同
+    #
+    # 全區地主實際負擔比率 ≈ 公設用地平均負擔比率 + 費用負擔比率
+    # 抵費地（R 街廓內）大致對應「費用負擔比率」一項（實務通常 10-15%）
+    st.info(
+        "💡 **抵費地比例之法定觀念（重要）**：\n\n"
+        "**抵費地** 為 R 可建築街廓內，「抵付工程 / 重劃 / 利息費用」之保留地，"
+        "其比例**約等於「費用負擔比率」**（市地重劃實務通常 10-15%）。\n\n"
+        "* **B 值（一般負擔係數）**：依附件二公式已扣除臨街地特別負擔，"
+        "**不等於「公共設施用地平均負擔比率」**\n"
+        "* **C 值（費用負擔係數）** 之分母用「總面積 − 公設總面積」，"
+        "**亦不等於「費用負擔比率」**（後者分母為「總面積 − 政府公設 − 抵充地」）\n"
+        "* 故 **抵費地比 ≠ B + C，亦 ≠ C 值本身**；正確需另計\n\n"
+        "若實際抵費比顯著高於 10-15%（典型值），通常代表：\n"
+        "1. 重劃前地籍圖被「街廓線」切碎 → 4-Tier 公設整併失效（請檢查圖層）\n"
+        "2. 部分公設地仍為**真孤立**狀態（無同地號可合併）→ 待跨街廓調配（§31 機制）"
+    )
+    if _n_orphan_in > 0:
+        st.info(
+            "💡 **孤立公設地註**：目前抵費地面積尚包含「尚未跨街廓調配之孤立公設地保留額度」。"
+            f"目前有 **{_n_orphan_in}** 筆真孤立公設地以「虛擬 G 值」結算"
+            "（市地重劃實施辦法 §31 之跨街廓調配機制）。"
+            "實際抵費地面積將於**跨街廓指配 / 現金補償**（§31 機制）完成後縮減至最終法定值。"
+        )
+    st.rerun()
+
+
 # ============ 主程式 ============
 def main():
     st.title("🏗️ 市地重劃地價估算系統")
@@ -21153,607 +23327,18 @@ def main():
                 # 優先權指數選位（按下執行才跑）
                 if st.button("🏁 執行第 1 宗街角地優先權選位（左右側獨立）",
                               use_container_width=True, key='btn_f3L_corner_priority'):
-                    _own_map = st.session_state.get('t8_ownership_map', {}) or {}
-                    if not _own_map:
-                        st.warning("⚠️ 尚未偵測到 土地歸戶 資料，請先至 土地歸戶 匯入歸戶 Excel。")
-                    else:
-                        from shapely.geometry import LineString as _SLine
-                        _corner_select_results = []
-                        _corner_cand_diag = []   # 🆕 W-D.1.2 診斷：逐候選三分項（揭露 §1 指數退化，供 KL 核 D-3）
-                        # 🆕 `W-G.9-198R` `R1-6`：段二全域排序之素材（逐側之 PK 結果·唯讀）
-                        _k6b_side_results = []
-                        # 🆕 `W-G.9-198R` `R2-6`：歸側四分支之出艙（`K-9-24 二`·**有土地後果**）
-                        _k6b_dual_rows = []
-                        # 🆕 `W-G.9-198R` `R3-4`：段一「上鎖」之出艙（`K-6 §二 段一`·**唯讀·零土地後果**）
-                        _k6b_lock_rows = []
-                        _k6b_locked_by_block = {}
-                        # 🆕 Phase A：使用 build_parcels（temp_parcels 子集）取代 f3_G_values
-                        # build_parcels 為「可建築土地」之 temp_parcels；此時 G 值尚未計算
-                        # 但 PK 所需欄位（暫編地號、原地號、所屬街廓、面積_m2）皆已具備
-                        _g_rows = build_parcels
-                        by_blk = {}
-                        for r in _g_rows:
-                            by_blk.setdefault(r['所屬街廓'], []).append(r)
-                        _front_line_by_blk = {}
-                        for b in _build_blocks:
-                            _verts = b.get('vertices') or []
-                            if len(_verts) < 3:
-                                _front_line_by_blk[b['label']] = None
-                                continue
-                            try:
-                                _longest = None; _ll = 0.0
-                                for i in range(len(_verts)):
-                                    _p1 = _verts[i]; _p2 = _verts[(i + 1) % len(_verts)]
-                                    _L = ((_p2[0] - _p1[0]) ** 2 + (_p2[1] - _p1[1]) ** 2) ** 0.5
-                                    if _L > _ll:
-                                        _ll = _L
-                                        _longest = _SLine([tuple(_p1), tuple(_p2)])
-                                _front_line_by_blk[b['label']] = _longest
-                            except Exception:
-                                _front_line_by_blk[b['label']] = None
-                        _side_warnings = []
-                        _f3_corner_winners_state = {}
-                        for _row in (_corner_rows_init or []):
-                            _lbl = _row['街廓']
-                            st.session_state['f3_current_pk_block'] = _lbl  # 🚨 W-B §2 bugfix
-                            _blk_meta_for_side = next(
-                                (b for b in _build_blocks if b.get('label') == _lbl), None
-                            )
-                            # 🆕 S1 §6 查表化：注入本塊法定最小寬（get_min_lot_size 分區×正面路寬）供 v12 B-4
-                            #   前置篩選（單一真相源·app==engine·廢 v12 內硬編 3.5·UC9898 住宅區×8/12m→3.50 byte-identical）。
-                            st.session_state['f3_pk_legal_min_width'] = float(
-                                get_min_lot_size(
-                                    (_blk_meta_for_side.get('category', '') if _blk_meta_for_side else ''),
-                                    float(_row.get('正面路寬(m)', 0.0) or 0.0)
-                                ).get('min_width', 0.0) or 0.0)
-                            # 🆕 K-8 §三：同型注入街廓分配深度（N-19′ 2dp）供街角規定範圍新構造。
-                            #   源＝本塊參數列之 `街廓分配深度(m)`（Step-G 之 `_depth_use` 已 2dp）。
-                            st.session_state['f3_pk_alloc_depth'] = float(
-                                _row.get('街廓分配深度(m)', 0.0) or 0.0)
-                            _cad_fl_lstep = (st.session_state.get(
-                                'f3_cad_front_lines', {}) or {}).get(_lbl, {})
-                            _fl_p1_lstep = _cad_fl_lstep.get('p1') if _cad_fl_lstep else None
-                            _fl_p2_lstep = _cad_fl_lstep.get('p2') if _cad_fl_lstep else None
-                            _param_dict_for_pk = (
-                                st.session_state.get('f3_g_iter_params', {}) or {}
-                            )
-                            # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`identity+no_ghost`）
-                            _all_in_blk = [tp for tp in by_blk.get(_lbl, [])
-                                           if not _proj_pop_ghost3(tp)]
-                            # 🚨 Patch D-1（Hotfix Fix A 補套用）：候選池一律全自動 PK
-                            # 廢除「使用者人工標記覆寫」之分支，避免候選池被使用者誤勾選縮減而漏挑
-                            _user_marked_in_blk = [
-                                r for r in _all_in_blk
-                                if (_param_dict_for_pk.get(r.get('暫編地號', ''), {})
-                                    .get('is_corner', False))
-                            ]
-                            _candidates_pool = _all_in_blk
-                            _has_user_marked = bool(_user_marked_in_blk)
-                            _candidate_source = 'auto_pk'
-                            # 🆕 W-D.2 v2 轉正（§2 tiebreaker 換源）：正典原位次＝
-                            #   _projection_order 投影序 rank（單一真相源；廢距角序暫行近似）
-                            # 🆕 W-G.9-161 `L-3′` `POP_SYNC`：實參 ≡ identity(BUILD_LAYER)
-                            _proj_pop_assert_seq("app:main/_rank_by_tpid",
-                                                 _all_in_blk, by_blk.get(_lbl, []), blk=_lbl)
-                            _rank_by_tpid = {
-                                tp.get('暫編地號'): _i_rk + 1
-                                for _i_rk, tp in enumerate(
-                                    _projection_order(_all_in_blk, _fl_p1_lstep, _fl_p2_lstep))
-                            }
-                            _candidates = []
-                            for r in _candidates_pool:
-                                _parent = r.get('原地號', '')
-                                _gid = _own_map.get(_parent, '')
-                                if not _gid:
-                                    continue
-                                _tp = next((tp for tp in (temp_parcels or [])
-                                            if tp.get('暫編地號') == r.get('暫編地號')), None)
-                                _cen_x = float(_tp.get('centroid_x', 0)) if _tp else 0.0
-                                _cen_y = float(_tp.get('centroid_y', 0)) if _tp else 0.0
-                                _G_est = _estimate_G_for_qualification(
-                                    float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0)
-                                )
-                                _cad_fl_priority = (st.session_state.get(
-                                    'f3_cad_front_lengths', {}) or {}).get(_lbl, 0.0)
-                                _cad_sl_priority = (st.session_state.get(
-                                    'f3_cad_side_lengths', {}) or {}).get(_lbl, 0.0)
-                                _front_len_priority = (
-                                    _cad_fl_priority if _cad_fl_priority > 0
-                                    else float(_row.get('正面長度(m)',
-                                                         _row.get('正面路寬(m)', 0.0)) or 0.0)
-                                )
-                                _side_len_priority = (
-                                    _cad_sl_priority if _cad_sl_priority > 0
-                                    else 0.0  # Phase A：l₁ 為 G 後欄位，前置 PK 階段 fallback 為 0
-                                )
-                                _candidates.append({
-                                    '歸戶群組': _gid,
-                                    '歸戶': _gid,
-                                    '暫編地號': r.get('暫編地號', ''),
-                                    '原地號': _parent,
-                                    'centroid': (_cen_x, _cen_y),
-                                    'polygon_coords': (_tp.get('polygon_coords') if _tp else None),
-                                    'G_estimated': _G_est,
-                                    'G_value': _G_est,
-                                    'front_length': _front_len_priority,
-                                    'side_length': _side_len_priority,
-                                    'physical_overlap_area': float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0),
-                                    '臨正街長度_m': _front_len_priority,
-                                    '臨側街長度_m': _side_len_priority,
-                                    '跨占街角面積_m2': float(r.get('幾何面積_m2', r.get('面積_m2', 0.0)) or 0.0),
-                                    # 🆕 W-D.2 v2：§2 正典原位次（tiebreaker 單一真相源）
-                                    '_pre_position_rank': _rank_by_tpid.get(
-                                        r.get('暫編地號', ''), float('inf')),
-                                })
-                            _bf = max((c['臨正街長度_m'] for c in _candidates), default=1.0) or 1.0
-                            _bs = max((c['臨側街長度_m'] for c in _candidates), default=1.0) or 1.0
-                            _ba = max((c['跨占街角面積_m2'] for c in _candidates), default=1.0) or 1.0
-                            _l_min_val = _row.get('【左】街角最小面積(㎡)')
-                            _r_min_val = _row.get('【右】街角最小面積(㎡)')
-                            _use_v13 = (_fl_p1_lstep is not None and _fl_p2_lstep is not None)
-                            if _use_v13:
-                                _min_p1 = (float(_l_min_val) if _l_min_val is not None
-                                            else float('inf'))
-                                _min_p2 = (float(_r_min_val) if _r_min_val is not None
-                                            else float('inf'))
-                                # 🐛 Fix：截角欄位無臨路時存字串 '—'，不可 float()
-                                def _safe_cutoff(v):
-                                    try:
-                                        if v is None or v == '' or v == '—':
-                                            return 0.0
-                                        return float(v)
-                                    except (TypeError, ValueError):
-                                        return 0.0
-                                _cutoff_p1_for_pk = _safe_cutoff(_row.get('【左】截角(㎡)'))
-                                _cutoff_p2_for_pk = _safe_cutoff(_row.get('【右】截角(㎡)'))
-                                _g_map = {c['暫編地號']: c['G_estimated'] for c in _candidates}
-                                # 🆕 P-C（裁定M·Q1）：app 真 G 鏡射（app-live 財務·§7 β混源）——逐候選逐側算
-                                #   真 G → _G_true_p1/p2，require_g_map=True 驅動資格閘。與 harness
-                                #   run_corner_pk 同一 `_corner_block_true_G`→`_corner_first_lot_G`（Q-M4）。
-                                #   ⚠️ app 路徑 run_all 未覆·**KL UI 實跑驗**；組裝失敗 ⇒ **st.error＋st.stop() 硬停**
-                                #   （D-1·claude.ai 2026-07-25）——**無 estG 降級路徑**（Q1：取不到真 G ＝loud·禁 fallback）。
-                                try:
-                                    from shapely.geometry import Polygon as _SP_pc
-                                    _sbr_ap = sb_rows_by_label.get(_lbl, {})
-                                    _slb_ap = (st.session_state.get('f3_cad_side_lines_by_side', {})
-                                               or {}).get(_lbl, {}) or {}
-                                    _smL_ap = (_slb_ap.get('left') or {}).get('mid')
-                                    _smR_ap = (_slb_ap.get('right') or {}).get('mid')
-                                    _alloc_ap = (st.session_state.get('f3_cad_alloc_dir', {})
-                                                 or {}).get(_lbl)
-                                    _verts_ap = (_blk_meta_for_side or {}).get('vertices')
-                                    _p1_ap = np.array(_fl_p1_lstep, float)
-                                    _p2_ap = np.array(_fl_p2_lstep, float)
-                                    _sL_ap = float(np.linalg.norm(_p2_ap - _p1_ap))
-                                    _dh_ap = (_p2_ap - _p1_ap) / (_sL_ap or 1.0)
-                                    _bpoly_ap = _SP_pc(_verts_ap)
-                                    if not _bpoly_ap.is_valid:
-                                        _bpoly_ap = _bpoly_ap.buffer(0)
-                                    _ax_ap = alloc_normal_axis(_alloc_ap) if _alloc_ap else None
-                                    _sR_ap = (_oblique_s_max(_verts_ap, _dh_ap, _p1_ap, _ax_ap)
-                                              or _sL_ap) if _ax_ap is not None else _sL_ap
-                                    _depth_ap = float((st.session_state.get(
-                                        'f3_alloc_depth_by_label', {}) or {}).get(_lbl, 0) or 0)
-                                    _tab6_ap = float(st.session_state.get(
-                                        'f3_total_burden_rate_from_finance', 0) or 0)
-                                    _a_ap = {}; _zone_ap = {}
-                                    for _c_ap in _candidates:
-                                        _pid_ap = _c_ap['暫編地號']
-                                        _tp_ap = next((tp for tp in (temp_parcels or [])
-                                                       if tp.get('暫編地號') == _pid_ap), None)
-                                        if _tp_ap is not None:
-                                            _a_ap[_pid_ap] = (
-                                                round(float(_tp_ap.get('分攤登記面積_m2', 0) or 0)
-                                                      + float(_tp_ap.get('面積_m2', 0) or 0), 2)
-                                                if '分攤登記面積_m2' in _tp_ap
-                                                else round(float(_tp_ap.get('面積_m2', 0) or 0), 2))
-                                            _zone_ap[_pid_ap] = _tp_ap.get('重劃前地價區段', '')
-                                    _true_map_ap = _corner_block_true_G(
-                                        candidates=_candidates, a_by_pid=_a_ap, zone_by_pid=_zone_ap,
-                                        blk_poly=_bpoly_ap, corner_pt=_p1_ap, d_hat=_dh_ap,
-                                        s_max_left=_sL_ap, s_max_right=_sR_ap, alloc_dir=_ax_ap,
-                                        side_mid_left=_smL_ap, side_mid_right=_smR_ap,
-                                        l_front=float(_sbr_ap.get('正街尺度', 0) or 0),
-                                        l_side_left=float(_sbr_ap.get('左側尺度', 0) or 0),
-                                        l_side_right=float(_sbr_ap.get('右側尺度', 0) or 0),
-                                        F_left=float(_sbr_ap.get('左側長度(m)', 0) or 0),
-                                        F_right=float(_sbr_ap.get('右側長度(m)', 0) or 0),
-                                        B=float(B_value or 0), C=float(C_for_calc or 0),
-                                        post_price_blk=float(post_price_by_block.get(_lbl, 0) or 0),
-                                        pre_price_by_zone=pre_price_by_zone, avg_depth=_depth_ap,
-                                        tab6_burden=_tab6_ap, has_left=(_smL_ap is not None),
-                                        has_right=(_smR_ap is not None),
-                                        # 🔒 K-4 第 5 條前提：**獨立**自 CAD 讀 p2（非由 _sL_ap 反推）
-                                        front_p2=_fl_p2_lstep, _blk=_lbl)
-                                    for _c_ap in _candidates:
-                                        _gp_ap = _true_map_ap.get(_c_ap['暫編地號'], {})
-                                        _c_ap['_G_true_p1'] = _gp_ap.get('p1')
-                                        _c_ap['_G_true_p2'] = _gp_ap.get('p2')
-                                except Exception as _e_true_g:
-                                    # 🔴 D-1（claude.ai 2026-07-25）：**硬停·禁退 estG**。
-                                    #   Q1 鐵律「取不到真 G ＝ loud·禁 fallback」；前版 st.warning→退 estG
-                                    #   係**同一條靜默退路於 app 層復活**（harness 側已 loud raise）。
-                                    #   「Q1 中性⇒winner 不變」係 UC9898 個案實測、**非結構性質**
-                                    #   （他案 G真−G估 可翻 winner），違泛用四約束；且 warning 為 transient、
-                                    #   真G 欄空白、導出檔無痕 ⇒ 降級態不可追。**禁繼續算。**
-                                    import traceback as _tb_pc
-                                    st.error(
-                                        f"🔴 P-C 真 G（街廓 {_lbl}）組裝失敗——**停機**（Q1：取不到真 G "
-                                        f"＝loud·禁靜默退 estG）。錯誤：{_e_true_g}\n\n"
-                                        f"```\n{_tb_pc.format_exc()[-800:]}\n```\n"
-                                        "請修復輸入（SIDE_LINE 中點／ALLOC／街廓分配深度／財務底料）後重跑；"
-                                        "**本次 PK 未產出結果、勿據以續算或匯出**。")
-                                    st.stop()
-                                _v13 = select_corner_lots_both_sides_v12(
-                                    candidates=_candidates,
-                                    front_line_p1=_fl_p1_lstep,
-                                    front_line_p2=_fl_p2_lstep,
-                                    cutoff_p1_end=_cutoff_p1_for_pk,
-                                    cutoff_p2_end=_cutoff_p2_for_pk,
-                                    base_front_len_m=_bf,
-                                    base_side_len_m_p1=_bs,
-                                    base_side_len_m_p2=_bs,
-                                    min_corner_area_p1=_min_p1,
-                                    min_corner_area_p2=_min_p2,
-                                    g_values_map=_g_map,
-                                    # 🆕 P-C：真 G 驅動資格閘。**恆 True**——組裝失敗已於上方 st.stop()
-                                    #   硬停（D-1·禁退 estG）⇒ 執行至此必有真 G·無降級路徑。
-                                    require_g_map=True,
-                                )
-                                # 🆕 `W-G.9-198R` `R2-2`〜`R2-6`（`K-9-24 二`·`W-G.9-208 §三` 授權）：
-                                #   **歸側四分支**——同時跨占同街廓左右兩街角者，依正典定其側；
-                                #   **一經歸定，另一側視為未被其跨占**，扣除之後照常評選其餘跨占者
-                                #   （款⑤：若無 winner ⇒ 強制留設抵費地·範圍嚴格等於該街角規定範圍）。
-                                #   🔴 **本步有土地後果**——其調整後之 `_v13` 即下游 winner／抵費地之來源。
-                                _v13, _k6b_rows_blk = k6b_resolve_dual_crossing_sides(
-                                    _v13, _bf, block_label=_lbl)
-                                _k6b_dual_rows.extend(_k6b_rows_blk)
-                                # 🆕 `W-G.9-198R` `R3-1`〜`R3-6`（`K-6 §二 段一`·`W-G.9-210 §三` 授權）：
-                                #   **段一上鎖**——某街角定案（該側有任一筆 `G ≥ 街角規定面積`）
-                                #   ⇒ 該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）一律上鎖。
-                                #   🔒 **唯讀**（`R3-5`）：其產出⛔ 被任何既有分配邏輯消費——
-                                #      受詞係**段三之合併群操作**（`K-9-24 四`），而段三尚未落地（`VR-086`）。
-                                #   🛑 置於 `_v13`（**歸側調整後**）之後、⛔ 於步驟 0 之鏈上（`R3-3`）。
-                                _k6b_lk_set, _k6b_lk_rows_blk = k6b_stage1_locks(
-                                    _v13, block_label=_lbl)
-                                _k6b_lock_rows.extend(_k6b_lk_rows_blk)
-                                _k6b_locked_by_block[_lbl] = sorted(_k6b_lk_set)
-                                _l_v13 = _v13['p1_end']; _r_v13 = _v13['p2_end']
-                                # 🆕 W-D.1.2 診斷：逐候選三分項攤現況（揭露 §1 指數退化，供 KL 核 D-3）
-                                #   端 p1_end→左、p2_end→右（沿用本區 _l/_r 顯示對應）；
-                                #   達標 = 通過第一關門檻；分數僅 qualified 有（eliminated 顯示 —）。
-                                for _dg_side, _dg_res in (('左', _l_v13), ('右', _r_v13)):
-                                    # 🆕 `R1-6`：累積逐側 PK 結果供段二（⛔ 新增側標字面·取迴圈變數）
-                                    _k6b_side_results.append((_lbl, _dg_side, _dg_res))
-                                    _dg_win = ((_dg_res.get('winner') or {}).get('暫編地號'))
-                                    for _dg_pass, _dg_list in (('達標', _dg_res.get('qualified', [])),
-                                                               ('未達標', _dg_res.get('eliminated', []))):
-                                        for _dc in (_dg_list or []):
-                                            _corner_cand_diag.append({
-                                                '街廓': _lbl,
-                                                '端': _dg_side,
-                                                '候選地號': _dc.get('暫編地號', ''),
-                                                '原地號': _dc.get('原地號', ''),
-                                                '真交集(㎡)': round(float(_dc.get('_corner_intersection_area', 0) or 0), 2),
-                                                '整筆幾何(㎡)': round(float(_dc.get('_full_parcel_area',
-                                                                                  _dc.get('physical_overlap_area', 0)) or 0), 2),
-                                                '範圍面積(㎡)': round(float(_dc.get('_corner_range_area', 0) or 0), 2),
-                                                'G估(㎡)': round(float(_dc.get('G_for_threshold', 0) or 0), 2),
-                                                # 🆕 P-C（裁定M·Q1）：達標決策所用之側特定真 G（G估欄保 estG）
-                                                '真G(㎡)': (round(float(_dc.get('_G_true', 0) or 0), 2)
-                                                            if _dc.get('_G_true') is not None else ''),
-                                                '門檻(㎡)': round(float(_dc.get('min_area_to_apply', 0) or 0), 2),
-                                                # 🆕 W-D.1.3-b 交叉檢查（KL）：範圍面積 應逐塊 == 門檻（項三分母＝G-gate 最小面積＝同顆法定 range 多邊形）
-                                                '範圍=門檻?': ('✅' if abs(float(_dc.get('_corner_range_area', 0) or 0)
-                                                                          - float(_dc.get('min_area_to_apply', 0) or 0)) < 0.5
-                                                              else '🔴異源·停查'),
-                                                # 🆕 項三原始比＝真交集/範圍（分子分母同源應 ≤1；若 🔴>1 表 clamp 觸發、多邊形不一致紅旗）
-                                                '項三比(≤1)': ('🔴>1' if (float(_dc.get('_corner_intersection_area', 0) or 0)
-                                                                          > float(_dc.get('_corner_range_area', 0) or 0) + 0.01
-                                                                          and float(_dc.get('_corner_range_area', 0) or 0) > 0)
-                                                               else round(float(_dc.get('_corner_intersection_area', 0) or 0)
-                                                                          / max(float(_dc.get('_corner_range_area', 0) or 0), 1e-9), 4)),
-                                                '達標': _dg_pass,
-                                                # 🆕 W-D.1.3-c 逐筆臨長（供項一/項二核；分子⊆分母、Σ臨≤邊）
-                                                '截角邊(range)': round(float(_dc.get('_corner_cut_den', 0) or 0), 3),
-                                                '臨截角': round(float(_dc.get('_corner_cut_len', 0) or 0), 3),
-                                                '側街邊(range)': round(float(_dc.get('_side_line_den', 0) or 0), 3),
-                                                '臨側街': round(float(_dc.get('_side_line_len', 0) or 0), 3),
-                                                '正街角分(0.4)': (round(float(_dc.get('_score_corner_cut', 0) or 0), 4)
-                                                                  if '_score_corner_cut' in _dc else '—'),
-                                                '側街分(0.2)': (round(float(_dc.get('_score_side', 0) or 0), 4)
-                                                                if '_score_side' in _dc else '—'),
-                                                '跨占分(0.4)': (round(float(_dc.get('_score_overlap', 0) or 0), 4)
-                                                                if '_score_overlap' in _dc else '—'),
-                                                '總分': (round(float(_dc.get('priority_index', 0) or 0), 4)
-                                                         if 'priority_index' in _dc else '—'),
-                                                # 🆕 `W-G.9-198R` `R1-3`：街角指數名次（該側 group 全體·
-                                                #   降冪·1 起算·連續）。位置 ＝ 總分之後、原位次之前；
-                                                #   逐列皆整數（⛔ 有 `—`／空白）。源 ＝ `_pk_one_side_v12`。
-                                                '指數名次': int(_dc.get('指數名次', 0) or 0),
-                                                # 🆕 W-D.2 v2 轉正：原位次＝§2 正典投影序 rank（單一真相源；
-                                                #   廢距角序暫行欄——v1 診斷 baseline 該欄豁免記帳見 verify/README）
-                                                '原位次(投影序)': int(_dc.get('_pre_position_rank', 0) or 0),
-                                                '選中': ('✅' if (_dg_win and _dc.get('暫編地號') == _dg_win) else ''),
-                                            })
-                                _l_disp_min = ('無此側' if _min_p1 == float('inf')
-                                                else f"{round(_min_p1, 2)}")
-                                _r_disp_min = ('無此側' if _min_p2 == float('inf')
-                                                else f"{round(_min_p2, 2)}")
-                                _l_winner = _l_v13.get('winner')
-                                _r_winner = _r_v13.get('winner')
-                                _l_disp_winner = (
-                                    '無此側' if _l_disp_min == '無此側'
-                                    else (f"{_l_winner['歸戶群組']}（{_l_winner.get('原地號','')}）"
-                                          f"[{_l_winner.get('暫編地號','')}]"
-                                          if _l_winner else '⚠️ 強制抵費地')
-                                )
-                                _r_disp_winner = (
-                                    '無此側' if _r_disp_min == '無此側'
-                                    else (f"{_r_winner['歸戶群組']}（{_r_winner.get('原地號','')}）"
-                                          f"[{_r_winner.get('暫編地號','')}]"
-                                          if _r_winner else '⚠️ 強制抵費地')
-                                )
-                                _l_disp_score = (
-                                    round(float(_l_winner.get('priority_index', 0)), 4)
-                                    if (_l_winner and _l_disp_min != '無此側') else '—'
-                                )
-                                _r_disp_score = (
-                                    round(float(_r_winner.get('priority_index', 0)), 4)
-                                    if (_r_winner and _r_disp_min != '無此側') else '—'
-                                )
-                                _l_qcount = (len(_l_v13.get('qualified', []))
-                                              if _l_disp_min != '無此側' else '—')
-                                _r_qcount = (len(_r_v13.get('qualified', []))
-                                              if _r_disp_min != '無此側' else '—')
-                                _f3_corner_winners_state[_lbl] = {
-                                    'p1_end': (_l_winner.get('暫編地號', '') if _l_winner else None),
-                                    'p2_end': (_r_winner.get('暫編地號', '') if _r_winner else None),
-                                    'method': 'V13_spatial_binding',
-                                }
-                            else:
-                                # 🆕 W-D.1.3-d（O1 裁定）：缺 FRONT_LINE → 停機警告，不靜默退回 V12 生面積評分。
-                                #   _use_v13 由 FRONT_LINE p1/p2 是否存在判定；缺 FRONT 則街角三指數
-                                #   （臨截角/臨側街/真交集）皆無幾何依據 → 具名中文警示 + 跳過該塊（不 append 假結果）。
-                                st.error(
-                                    f"🛑 街廓 {_lbl}：缺 FRONT_LINE 圖層（起點 p1＝左、迄點 p2＝右）→ "
-                                    f"無法執行第 1 宗街角地優先權選位（街角三指數需 FRONT/SIDE/ALLOC/BASELINE 圖層齊備）。\n\n"
-                                    f"請至 CAD 於 FRONT_LINE 圖層補畫該街廓正面臨路線後，重新匯入 DXF 並重跑此步驟。"
-                                )
-                                continue
-                            _corner_select_results.append({
-                                '街廓': _lbl,
-                                '演算法': ('V13' if _use_v13 else 'V12'),
-                                '候選來源': ('🎯 使用者標記' if _candidate_source == 'user_marked'
-                                             else '🤖 自動 PK'),
-                                '候選數': len(_candidates),
-                                '【左】最小面積(㎡)': _l_disp_min,
-                                '【右】最小面積(㎡)': _r_disp_min,
-                                '【左】達資格候選': _l_qcount,
-                                '【左】第1宗指配': _l_disp_winner,
-                                '【左】優先權指數': _l_disp_score,
-                                '【右】達資格候選': _r_qcount,
-                                '【右】第1宗指配': _r_disp_winner,
-                                '【右】優先權指數': _r_disp_score,
-                            })
-                        if _f3_corner_winners_state:
-                            st.session_state['f3_corner_winners'] = _f3_corner_winners_state
-                        # 🆕 Phase B-1：寫入 forced_offset 供 Step G 雙端鎖定 + Phase C 抵費地 buffer 邏輯使用
-                        _forced_offset_map = {}
-
-                        def _fo_min_area(_v):
-                            """'無此側'/None → 0.0；數字字串（如 '300.52'）→ float。"""
-                            try:
-                                return float(_v)
-                            except (TypeError, ValueError):
-                                return 0.0
-                        for _r_pk in (_corner_select_results or []):
-                            _lbl_pk = _r_pk.get('街廓', '')
-                            _l_forced = ('強制抵費地' in str(_r_pk.get('【左】第1宗指配', '')))
-                            _r_forced = ('強制抵費地' in str(_r_pk.get('【右】第1宗指配', '')))
-                            _l_has_side = (_r_pk.get('【左】最小面積(㎡)') != '無此側')
-                            _r_has_side = (_r_pk.get('【右】最小面積(㎡)') != '無此側')
-                            _forced_offset_map[_lbl_pk] = {
-                                'left_forced_offset': bool(_l_forced and _l_has_side),
-                                'right_forced_offset': bool(_r_forced and _r_has_side),
-                                'left_has_side': bool(_l_has_side),
-                                'right_has_side': bool(_r_has_side),
-                                # 🆕 W-D.2 §3（M3 接線・餵入端）：角落抵費地面積＝該側 range 面積
-                                #   （＝【左/右】最小面積同源）。消費端＝_spatial_order_parcels_v2
-                                #   回傳 corner_offset_area → Step G 守恆 ledger 拆帳。
-                                'left_corner_min_area': (
-                                    _fo_min_area(_r_pk.get('【左】最小面積(㎡)'))
-                                    if (_l_forced and _l_has_side) else 0.0),
-                                'right_corner_min_area': (
-                                    _fo_min_area(_r_pk.get('【右】最小面積(㎡)'))
-                                    if (_r_forced and _r_has_side) else 0.0),
-                            }
-                        st.session_state['f3L_forced_offset'] = _forced_offset_map
-                        if _corner_select_results:
-                            st.markdown("##### 🥇 第 1 宗街角地指配結果（左右側獨立）")
-                            if _side_warnings:
-                                with st.expander(
-                                    f"⚠️ {len(_side_warnings)} 筆「使用者標註側別」與「幾何投影建議」不一致",
-                                    expanded=False
-                                ):
-                                    for _w in _side_warnings:
-                                        st.warning(_w)
-                                    st.info(
-                                        "ℹ️ 說明：上述地號之側別由使用者於步驟 G 圖選器手動標註，"
-                                        "但本系統幾何投影演算法（`LineString.project()`）建議的側別不同。"
-                                        "已採用使用者標註值；如需修正，請至步驟 G 圖選器重新點選。"
-                                    )
-                            # 🆕 `W-G.9-248` 工項三：混型欄之**顯示層**修（⛔ 動其計算一字）。
-                            #   本表之混型欄 ＝ 四：`達資格候選`（`len(...)`（int）∪ `'—'`）與
-                            #   `優先權指數`（`round(float(...), 4)`（float）∪ `'—'`）各左右二欄。
-                            #   🔒 `最小面積(㎡)`／`第1宗指配` 之二臂**皆 f-string／字串**
-                            #      ⇒ **恆字串**、⛔ 混型 ⇒ **⛔ 列入受詞**。
-                            st.dataframe(wg9248_stringify_mixed_cols(
-                                _pd.DataFrame(_corner_select_results), [
-                                    '【左】達資格候選', '【右】達資格候選',
-                                    '【左】優先權指數', '【右】優先權指數',
-                                ]),
-                                use_container_width=True, hide_index=True)
-                            st.session_state['f3L_corner_winners'] = _corner_select_results
-                            st.session_state['f3L_corner_side_warnings'] = _side_warnings
-                            # 🆕 `W-G.9-198R` `R1-6`／`R1-7`：K-6-B 段二全域排序（**唯讀出艙**）
-                            _k6b_stage2 = k6b_stage2_global_order(_k6b_side_results)
-                            st.session_state['f3_k6b_stage2_order'] = _k6b_stage2
-                            with st.expander(
-                                "🔬 K-6-B 段二：全域排序（僅排**待處理街角**之候選）"
-                                f"（{len(_k6b_stage2)} 筆 · 鍵序 ① 名次 → ② 街角試算 G → ③ 指數數值 → ④ 地號）",
-                                expanded=False
-                            ):
-                                if _k6b_stage2:
-                                    st.dataframe(_pd.DataFrame(_k6b_stage2),
-                                                 use_container_width=True, hide_index=True)
-                                else:
-                                    st.caption("（本案無待處理街角 ⇒ 段二清單為空）")
-                                st.caption(
-                                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——段三"
-                                    "（逐一嘗試／集中規則／跨街廓合併）尚未落地。"
-                                )
-                            # 🆕 `W-G.9-198R` `R2-6`：K-9-24 二 之歸側四分支（🔴 **有土地後果**）
-                            st.session_state['f3_k6b_dual_side_assign'] = _k6b_dual_rows
-                            with st.expander(
-                                "🔬 K-9-24 二：同時跨占左右兩街角者之**歸側四分支**"
-                                f"（{len(_k6b_dual_rows)} 宗 · 款② 兩側皆拿得下／款③ 僅一側／款④ 兩側皆拿不下）",
-                                expanded=False
-                            ):
-                                if _k6b_dual_rows:
-                                    st.dataframe(_pd.DataFrame(_k6b_dual_rows),
-                                                 use_container_width=True, hide_index=True)
-                                else:
-                                    st.caption("（本案無同時跨占左右兩街角之宗地）")
-                            # 🆕 `W-G.9-198R` `R3-4`：段一上鎖之出艙（🔒 **唯讀·零土地後果**）
-                            st.session_state['f3_k6b_stage1_locks'] = _k6b_lock_rows
-                            st.session_state['f3_k6b_stage1_locked_by_block'] = _k6b_locked_by_block
-                            _lk_n = sum(1 for _r in _k6b_lock_rows if _r.get('上鎖'))
-                            _lk_p = len({_r['暫編地號'] for _r in _k6b_lock_rows if _r.get('上鎖')})
-                            with st.expander(
-                                "🔬 K-6 §二 段一：**上鎖**狀態"
-                                f"（{len(_k6b_lock_rows)} 列 · 上鎖 {_lk_n} 列 · 涉 {_lk_p} 宗）",
-                                expanded=False
-                            ):
-                                if _k6b_lock_rows:
-                                    st.dataframe(_pd.DataFrame(_k6b_lock_rows),
-                                                 use_container_width=True, hide_index=True)
-                                else:
-                                    st.caption("（本案無任何街角候選）")
-                                st.caption(
-                                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——上鎖之受詞係"
-                                    "**段三之合併群操作**（`K-6 §二 段三 1`「取該合併群中**未上鎖**之其他片」），"
-                                    "而段三尚未落地（`VR-086`）。⛔ 作用於**步驟 0**——步驟 0 已回歸無條件"
-                                    "（`K-9-24 一`）且完成於段一之前。"
-                                )
-                                st.caption(
-                                    "🔒 **上鎖之判準**：某街角**定案**（該側存在任一筆 `G ≥ 該街角規定面積`）"
-                                    "⇒ 該街廓內**所有**跨占該街角規定範圍之土地（**含落選者**）一律上鎖；"
-                                    "其效力為**既不出也不進**（⛔ 被任何合併群抽走、⛔ 作為合併標的）。"
-                                )
-                                st.caption(
-                                    "🔑 母體取**歸側調整後**之候選集——`K-9-24 二·5` 逐字「一經歸定，"
-                                    "另一側**視為未被 `M` 跨占**」⇒ `M` 於另一側已非跨占者、⛔ 因該側定案而上鎖。"
-                                )
-                                st.caption(
-                                    "🛑 **拿得下** ＝ 達標（`G ≥ 該側街角規定面積`）**且**為該側全部達標"
-                                    "候選中指數最大者（winner）；**第 1 名而未達標者不算拿得下**。"
-                                    "**並列**時取前緣線 `p1` 側（決定性·禁隨機）。"
-                                    "一經歸定，**另一側視為未被其跨占**，扣除後若無 winner "
-                                    "⇒ **強制留設抵費地**，範圍嚴格等於該街角規定範圍。"
-                                )
-                            st.caption(
-                                "💡 **左右側分類規則**：(1) 使用者標註優先；(2) 未標註者用 `LineString.project()` "
-                                "沿正面道路投影距離，前半段=左側、後半段=右側；(3) Phase 4 H-1 — 圖選時即時自動偵測。"
-                                "🆕 **最小面積**：左右側使用各自路寬計算 + 各自截角獨立扣除（H-3b）；"
-                                "**Tiebreaker**：同分時依跨占面積 → 正街長度 → 歸戶字母序決勝（F-3）。"
-                                "🆕 **無此側**：表示該街廓對應側無臨路，無街角地候選資格。"
-                                "🆕 **Phase B**：強制抵費地之街角將於 Phase C 自動預留為抵費地，不分配給任何宗地。"
-                            )
-                            # 🆕 W-D.1.2 診斷：第 1 宗街角地逐候選評點明細（揭露 §1 指數退化，供 KL 核 D-3）
-                            if _corner_cand_diag:
-                                with st.expander(
-                                    "🔬 W-D.1.2 診斷：第 1 宗街角地逐候選評點明細"
-                                    f"（{len(_corner_cand_diag)} 筆候選 · 三分項 0.4/0.2/0.4 · 達標/選中）",
-                                    expanded=False
-                                ):
-                                    st.dataframe(_pd.DataFrame(_corner_cand_diag),
-                                                 use_container_width=True, hide_index=True)
-                                    st.caption(
-                                        "💡 **三分項**（手冊街角地優先權指數）：正街角線 0.4 + 側街 0.2 + 跨占面積 0.4 = 總分。"
-                                        "**達標**＝過第一關門檻（G估 ≥ 街角地最小分配面積）；未達標不計分（顯示 —）。"
-                                        "**選中**＝該端達標候選中總分最高者（位次 1 街角地）。\n\n"
-                                        "🔎 **W-D.1.3-b（項三已改真交集）**："
-                                        "『跨占分』＝ 0.4×(真交集 / 範圍面積)（值域 0–0.4；已刪 15m 框）；"
-                                        "『真交集』＝ parcel ∩ `_build_corner_range_v3`（**已用於評分**）、『範圍面積』＝同 range 多邊形面積（項三分母）；"
-                                        "winner＝達標候選中真交集最大者（項一/項二仍常數 0.4/0.2，per-parcel 為 -c）；"
-                                        "**交叉檢查（KL）：『範圍=門檻?』應逐塊全 ✅（項三分母＝G-gate 最小面積＝同顆法定 range 多邊形）、『項三比』應全 ≤1（無 clamp）；任一 🔴 → 停查**；"
-                                        "『側街分』為 0 或 — 表示 `side_length` 未供（-c 逐筆化）。\n\n"
-                                        "🆕 **原位次(投影序)**：tiebreaker 可稽核欄＝§2 正典原位次"
-                                        "（`_projection_order` 投影序 rank，單一真相源；W-D.2 v2 轉正時換源、廢距角序暫行）。"
-                                    )
-                            # 🚨 W-B §6：街角規定範圍面積驗收
-                            _cr_areas_ui = st.session_state.get(
-                                'f3_corner_range_areas', {}
-                            ) or {}
-                            if _cr_areas_ui:
-                                with st.expander(
-                                    "🔍 W-B 驗收：街角規定範圍面積（ALLOC_LINE 五邊形法）",
-                                    expanded=False
-                                ):
-                                    _cr_rows_ui = []
-                                    for _b_ui in sorted(_cr_areas_ui.keys()):
-                                        _v = _cr_areas_ui[_b_ui]
-                                        _cr_rows_ui.append({
-                                            '街廓': _b_ui,
-                                            '【左】規定範圍(㎡)': (
-                                                f"{_v['left']:.2f}"
-                                                if _v.get('left') is not None else '—'
-                                            ),
-                                            '【右】規定範圍(㎡)': (
-                                                f"{_v['right']:.2f}"
-                                                if _v.get('right') is not None else '—'
-                                            ),
-                                        })
-                                    import pandas as _pd_cr
-                                    st.dataframe(
-                                        _pd_cr.DataFrame(_cr_rows_ui),
-                                        use_container_width=True, hide_index=True
-                                    )
-                                    st.caption(
-                                        "構造：K-8 §三〜§五（最小寬度帶 ＋ ALLOC_LINE 解析定位 "
-                                        "＋ 前緣線／截角後側界／ALLOC_LINE／BASELINE 圍成、扣截角）。"
-                                        "帶內最小寬恆等於「退縮寬 ＋ 畸零地最小寬」。"
-                                        "🗄️ V6.dxf 預埋圖層 `R5左側街角地最小面積`（146.50㎡）"
-                                        "係**舊構造**繪製，依 K-8 §五-2 已退場，不再作為驗收基準。"
-                                    )
-                            # 🆕 W-D.1.3-d（§7.4 圖9）：抵費地情形驗收（additive 診斷、純讀既有指配結果）
-                            _offset_diag_rows = []
-                            for _r_off in (_corner_select_results or []):
-                                for _end_lbl_off, _min_key_off, _win_key_off in (
-                                    ('左', '【左】最小面積(㎡)', '【左】第1宗指配'),
-                                    ('右', '【右】最小面積(㎡)', '【右】第1宗指配')):
-                                    if '強制抵費地' in str(_r_off.get(_win_key_off, '')):
-                                        _offset_diag_rows.append({
-                                            '街廓': _r_off.get('街廓', ''),
-                                            '端': _end_lbl_off,
-                                            '抵費地面積＝range(㎡)': _r_off.get(_min_key_off),
-                                            '指配': '強制抵費地',
-                                        })
-                            if _offset_diag_rows:
-                                with st.expander(
-                                    f"🔍 W-D.1.3-d 驗收：抵費地情形（§7.4 圖9 · {len(_offset_diag_rows)} 端強制抵費地）",
-                                    expanded=False
-                                ):
-                                    st.dataframe(_pd.DataFrame(_offset_diag_rows),
-                                                 use_container_width=True, hide_index=True)
-                                    st.caption(
-                                        "💡 全候選未過 G 門檻 → 第 1 宗街角地留設為**抵費地**（合法輸出、非失敗）；"
-                                        "其**面積鎖定＝街角最小分配面積範圍面積**（§1.1 之 T-多邊形，即本表『抵費地面積＝range』）。\n\n"
-                                        "🎯 **3.5m 靶**：R5左／R2左／R3右（range 面積 ≈ 300.52／309.05／308.93㎡）。\n\n"
-                                        "⚠️ 守恆『ΣG＋角落抵費地＋中央池＝街廓』之『中央池／角落抵費地＝總池重定位』接線屬 **W-D.2 §3 滑池槽**；"
-                                        "本表僅驗『抵費地面積＝range 面積』，不接 ΣG＋池（接線＝行為變更、非本波範圍）。"
-                                    )
+                    f3_screen_corner_pk_run(
+                        st,
+                        B_value=B_value,
+                        C_for_calc=C_for_calc,
+                        _build_blocks=_build_blocks,
+                        _corner_rows_init=_corner_rows_init,
+                        _pd=_pd,
+                        build_parcels=build_parcels,
+                        post_price_by_block=post_price_by_block,
+                        pre_price_by_zone=pre_price_by_zone,
+                        sb_rows_by_label=sb_rows_by_label,
+                        temp_parcels=temp_parcels)
 
                 # ---- (已停用舊 Step G 圖選器 fragment，僅保留程式碼供參考) ----
                 if False:
@@ -22108,1548 +23693,21 @@ def main():
                                           use_container_width=True,
                                           key='btn_run_g_iter', type='primary')
                 if _btn_clicked or _auto_recalc:
-                    if _auto_recalc and not _btn_clicked:
-                        st.info("🔄 偵測到街角地變動，自動重算 G 值…")
-                    g_rows = []
-                    detail_trace = {}
-                    # 🆕 K-6-A2 補正 F-2：**進入重算之當下即作廢前一輪成果**（家族修）
-                    #   案由：Step G 之兩個產物寫在**最末**（`grep -n "st.session_state\['f3_G_values'\] = " app.py`）
-                    #   ⇒ 中途 raise 時二者**不被覆寫、也不被清除**，而成果區與下載鈕
-                    #   （`grep -n "if st.session_state.get('f3_G_values'):" app.py`）照樣渲染**舊值**
-                    #   ⇒ 可能交付一份**與現行屁股線設定不符**之分配成果表
-                    #   ——而這正是 **K-9-4 閘**（`grep -n "k94_assert_baseline_touch(_k94_touch)" app.py`）
-                    #   最想防之情境。既有失效路徑 `_f3L_invalidate_g_cache`
-                    #   （`grep -n "def _f3L_invalidate_g_cache" app.py`）只綁街角退縮／分配深度
-                    #   二 widget 之 `on_change`，**改屁股線指派不會觸發**。
-                    #   ⇒ 本處為**家族修**：一次覆蓋 Step G 內**所有**（現有與日後）之 raise。
-                    #
-                    #   🔒 **只清「產物」二鍵，⛔ 禁照抄 `_f3L_invalidate_g_cache` 之鍵名清單**：
-                    #     該函式另 pop `f3_corner_winners`／`f3L_corner_winners`，但**那兩把是
-                    #     Step G 之上游輸入、非其產物**（步驟 L 寫於
-                    #     `grep -n "st.session_state\['f3_corner_winners'\] = " app.py`，
-                    #     Step G 讀於 `grep -n "_step_l_winners = " app.py`）
-                    #     ⇒ 在此 pop 之即**當場毀掉 Step G 自己的輸入**。
-                    #   🔒 已逐一確認：`f3_G_values`／`f3_G_trace` 於本重算區間內**只被寫、不被讀**。
-                    #   ⚠️ `f3_g_needs_rerun`（橫幅旗標）與 `f3_g_needs_recalc`（自動重算觸發·
-                    #     已於上方 `pop` 消費）**是兩把不同的鍵**；本處**只碰前者**
-                    #     ——碰後者會造成「失敗後自動重跑、再失敗」之迴圈。
-                    #   狀態機閉合：成功時末端寫回二產物並清 `f3_g_needs_rerun`。
-                    st.session_state.pop('f3_G_values', None)
-                    st.session_state.pop('f3_G_trace', None)
-                    st.session_state['f3_g_needs_rerun'] = True
-                    _params_for_g = dict(st.session_state.get(_param_key, _new_params))
-
-                    # 🆕 V13 修正 #2：若 Step L 已執行 → 用其 winner 覆寫 _params_for_g
-                    # （Step L 為法定流程，PK 結果優先於使用者個別標記）
-                    _step_l_winners = (st.session_state.get('f3_corner_winners', {}) or {})
-                    if _step_l_winners:
-                        # 收集所有受 Step L 影響之街廓
-                        _affected_blocks = set(_step_l_winners.keys())
-                        # 先把這些街廓所有暫編地號之 is_corner 設為 False
-                        for tp in build_parcels:
-                            if tp.get('所屬街廓', '') in _affected_blocks:
-                                k_tp = tp.get('暫編地號', '')
-                                _existing = dict(_params_for_g.get(k_tp, {}))
-                                _existing['is_corner'] = False
-                                _existing['side'] = '無'
-                                _params_for_g[k_tp] = _existing
-                        # 再標記 Step L 之 winner（p1_end → 左側、p2_end → 右側）
-                        _override_count = 0
-                        for blk_lbl_w, winners in _step_l_winners.items():
-                            p1_winner = winners.get('p1_end')
-                            p2_winner = winners.get('p2_end')
-                            if p1_winner:
-                                _existing = dict(_params_for_g.get(p1_winner, {}))
-                                _existing['is_corner'] = True
-                                _existing['side'] = '左側'
-                                _params_for_g[p1_winner] = _existing
-                                _override_count += 1
-                            if p2_winner:
-                                _existing = dict(_params_for_g.get(p2_winner, {}))
-                                _existing['is_corner'] = True
-                                _existing['side'] = '右側'
-                                _params_for_g[p2_winner] = _existing
-                                _override_count += 1
-                        if _override_count > 0:
-                            st.info(f"📍 已採用步驟 L 之街角地 PK 結果（覆寫 {_override_count} 筆暫編地號之街角標記）")
-
-                    # 🆕 Phase B：讀取 forced_offset 標記並通知使用者
-                    # forced_offset = True 表示該側街角範圍將強制留設為抵費地（Phase C 自動處理面積保留）
-                    _f3L_forced_offset = (st.session_state.get('f3L_forced_offset', {}) or {})
-                    if _f3L_forced_offset:
-                        _forced_blocks = []
-                        for _blk_lbl_fo, _fo in _f3L_forced_offset.items():
-                            _sides_fo = []
-                            if _fo.get('left_forced_offset'):
-                                _sides_fo.append('左側')
-                            if _fo.get('right_forced_offset'):
-                                _sides_fo.append('右側')
-                            if _sides_fo:
-                                _forced_blocks.append(f"{_blk_lbl_fo}（{', '.join(_sides_fo)}）")
-                        if _forced_blocks:
-                            st.warning(
-                                f"⚠️ **{len(_forced_blocks)} 個街廓有強制抵費地街角**："
-                                + "、".join(_forced_blocks)
-                                + "\n\n💡 強制抵費地之街角範圍將於 **Phase C（公設地調配 / 抵費地 buffer）"
-                                "** 自動預留為抵費地（不分配給任何宗地）。"
-                                "目前 G 值迭代仍按原邏輯計算，Phase C 完成前抵費地面積可能偏大。"
-                            )
-
-                    # 1. 將 build_parcels 依「所屬街廓」分組；每街廓內以「街角地優先 + 輸入順序」排序
-                    parcels_by_block = {}
-                    for tp in build_parcels:
-                        parcels_by_block.setdefault(tp['所屬街廓'], []).append(tp)
-                    # （Task D：移除舊 corner-priority 排序；🚨 Patch E-2 後改於各街廓內以 _spatial_order_parcels_v2 處理）
-
-                    # 2. 逐街廓處理（雙向夾擠 + 抵費地）— Task D 核心重構
-                    import numpy as _np_d
-                    from shapely.geometry import Polygon as _SP_d
-                    # §N3-0 T2：`unary_union as _uunion_d` 已拆——其唯一用途為舊池片式
-                    #   `_uunion_d(allocated_polys).buffer(0.001)`（病灶·已廢）；留之即 dead import。
-                    #   （與 stepg_pipeline 同構拆除·N0-16 同源同碼）
-                    import math as _math_d
-
-                    def _build_g_row(_k, _tp, _blk_label, _blk_area, _front_len, _avg_depth,
-                                     _zone, _A_ratio, _l_front, _l_side, _F, _is_corner_mark,
-                                     _is_first_corner, _side, _res, _solver_label, _alloc_side):
-                        """組成單筆 g_rows 項目（DRY helper）"""
-                        # 🚨 W-A 規格一：a_for_G = 分攤登記面積_m2 + 面積_m2(a' 累加器)
-                        if '分攤登記面積_m2' in _tp:
-                            _a_m2 = round(float(_tp.get('分攤登記面積_m2', 0) or 0)
-                                          + float(_tp.get('面積_m2', 0) or 0), 2)
-                        else:
-                            _a_m2 = round(float(_tp.get('面積_m2', 0) or 0), 2)
-                        return {
-                            '暫編地號': _k, '原地號': _tp.get('原地號', ''),
-                            '所屬街廓': _blk_label,
-                            '重劃前區段': _zone,
-                            'a 面積(㎡)': _a_m2,
-                            '街廓面積(㎡)': round(_blk_area, 2),
-                            '正面長度(m)': round(_front_len, 2),
-                            '平均深度(m)': round(_avg_depth, 2),
-                            'A 地價比': round(_A_ratio, 4),
-                            'l₂ 正面尺度': round(_l_front, 2),
-                            'l₁ 側面尺度': round(_l_side, 2),
-                            '街角地': '是' if _is_corner_mark else '否',
-                            '第1筆街角': '是' if _is_first_corner else '否',
-                            '街角側別': _side if _is_corner_mark else '—',
-                            'F(m)': round(_F, 2),
-                            'W(m)': round(_res.get('W', 0.0), 2),
-                            'Rw(%)': round(_res.get('Rw_pct', 0.0), 2),
-                            'S(m)': round(_res.get('S', 0.0), 2),
-                            '幾何面積(㎡)': round(_res.get('area_geom', 0.0), 2),
-                            'G(㎡)': round(_res.get('G', 0.0), 2),
-                            '累積S(m)': round(float(_res.get('_alloc_cum_S', 0.0)), 2),
-                            '推進側別': _alloc_side,    # 🆕 Task D：'left' / 'right' / '單向' / '抵費地'
-                            '解法': _solver_label,
-                            '迭代次數': _res.get('iterations', 0),
-                            '是否收斂': _res.get('是否收斂_override',
-                                                 '✅' if _res.get('converged') else '⚠️'),
-                            '負擔比率': round(1 - _res['G']/_a_m2, 4)
-                                       if _a_m2 > 0 and _res.get('G') else 0,
-                            '宗地寬度(m)': round(_res.get('_宗地寬度', 0.0), 2),   # 🆕 §1 判去留用（單筆）
-                            '畸零地旗標': _res.get('_畸零旗標', ''),               # 🆕 §1-4 第1調配順位
-                            'cut_coords': _res.get('cut_coords', []) or [],
-                        }
-
-                    def _solve_one(_a_m2, _A, _l_front, _l_side, _F, _blk_poly, _d_hat,
-                                   _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
-                                   _allocation_dir=None, _side_mid=None, _W_prev=0.0,
-                                   _w0_start=None,
-                                   _near_dir=None, _is_chain_head=False):
-                        """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
-
-                        🆕 W-C §0.5-B/§4：_allocation_dir = rot90(f3_cad_alloc_dir)（臨街向）；
-                        _side_mid = SIDE_LINE 中點；_W_prev = 前一筆累積 W。三者驅動
-                        solve_G_binary 內 W（沿 ALLOC 法向累積）與 Rw 差額（§3）。
-                        """
-                        return _solve_G_one(
-                            a_m2=_a_m2, A=_A, l_front=_l_front, l_side=_l_side, F=_F,
-                            blk_poly=_blk_poly, d_hat=_d_hat, baseline_pt=_baseline_pt,
-                            S_max=_S_max, is_corner=_is_corner, side=_side, avg_depth=_avg_depth,
-                            B=B_value, C=C_for_calc, tab6_burden=_tab6_burden,
-                            allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
-                            near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
-                            w0_start=_w0_start,   # 🆕 W-G.9-318：K-9-41 ①（薄殼直通·⛔ 在此推導）
-                            is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·不推導）
-
-                    st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
-                    for blk_label, parcels_in_blk in parcels_by_block.items():
-                        blk_meta = block_meta_by_label.get(blk_label, {})
-                        blk_poly = blk_meta.get('shapely', None)
-                        blk_area = float(blk_meta.get('area_m2', 0.0) or 0.0)
-
-                        # ── 🆕 §4 P2-a 兩階段落位（裁定B）：階段分流（`stepg_pipeline` §4 P2-a 階段分流家族鏡像·#20 同改·`grep -n "P2-a 兩階段落位" verify/stepg_pipeline.py`）──
-                        #   階段1宗＝原地主宗（原生·不帶 `配地階段`）；階段2宗＝池內遞補合成宗
-                        #   （wf_f4 `add_syn` 帶 `配地階段='池內'`）→ 不進 ordered_v2，改走
-                        #   `_place_pool_parcels` 於池範圍內落位。**資料驅動**（禁名稱前綴判別）。
-                        #   ⚠️ app live 路徑之合成宗僅存在於 wf_f4 引擎路徑 → 此處過濾**實為 no-op**；
-                        #      但**必須**與 stepg 同構——否則 app 走舊單階段、harness 走新兩階段＝無聲分岔。
-                        # 🆕 W-G.9-169 `L-4`：實參與宣告同步（`stage1+no_ghost`）
-                        _stage1_parcels = [tp for tp in parcels_in_blk
-                                           if '配地階段' not in tp and not _proj_pop_ghost3(tp)]
-                        _stage2_parcels = [tp for tp in parcels_in_blk if '配地階段' in tp]
-
-                        sb_row = sb_rows_by_label.get(blk_label, {})
-                        front_len = float(sb_row.get('正面長度(m)', 0.0) or 0.0)
-                        l_front = float(sb_row.get('正街尺度', 0.0) or 0.0)
-                        # 🔒 K-8 §二：avg_depth ＝ N-19′ 之 D_avg（含逐街廓覆寫）·**缺值 loud**。
-                        #   舊之 `or ((blk_area / front_len) …)` 兜底**已刪**——(1) 它把「深度沒量到」
-                        #   換成一個**看起來正常**的數字，MinA／G 全部照吃；(2) harness 之孿生體
-                        #   `stepg_pipeline` 係**直讀快照深度、無任何 fallback**
-                        #   （`grep -n "f3_alloc_depth_by_label" verify/stepg_pipeline.py`），
-                        #   留著即 app 與 harness **無聲分岔**。
-                        _depth_map_g = st.session_state.get('f3_alloc_depth_by_label', {}) or {}
-                        if float(_depth_map_g.get(blk_label, 0.0) or 0.0) <= 0:
-                            st.error(f"街廓 {blk_label}：無街廓分配深度（N-19′ 未量到——"
-                                     f"通常因缺 FRONT_LINE／BASELINE，見上方紅字）"
-                                     f"→ 本街廓之 G 值計算跳過。請補畫該圖層後重跑。")
-                            continue
-                        avg_depth_default = float(_depth_map_g[blk_label])
-
-                        # 街廓 d_hat / 角點：依首筆街角地的「街角側別」決定
-                        first_corner_side = None
-                        # P2-a：街廓 d_hat/角點由**階段1宗**定（街角地屬原位次語意）。
-                        #   合成宗不帶 is_corner ⇒ 過濾於本案為 no-op，惟語意上不得由遞補宗定街角側。
-                        for tp in _stage1_parcels:
-                            p = _params_for_g.get(tp['暫編地號'], {})
-                            if p.get('is_corner') and p.get('side', '無') in ('左側', '右側'):
-                                first_corner_side = p['side']
-                                break
-                        side_for_block = first_corner_side or '左側'
-
-                        d_hat = None; corner_pt = None; S_block_max = front_len or 100.0
-                        _front_p2_blk = None   # 右鏈起點（FRONT p2）
-                        allocation_dir_block = None   # 🆕 Phase 11 v2
-
-                        # ── 🆕 Phase 11 v2：FRONT_LINE 為 d_hat + corner_pt 之主來源 ──
-                        # 重劃後分配土地必須臨正面道路 → 推進方向 d_hat 必須沿 FRONT_LINE
-                        _cad_fl_blk = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(blk_label, {})
-                        if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get('p2'):
-                            try:
-                                _p1_fl = _cad_fl_blk['p1']; _p2_fl = _cad_fl_blk['p2']
-                                _dx_fl = _p2_fl[0] - _p1_fl[0]; _dy_fl = _p2_fl[1] - _p1_fl[1]
-                                _L_fl = (_dx_fl ** 2 + _dy_fl ** 2) ** 0.5
-                                if _L_fl > 0.1:
-                                    d_hat = _np_d.array([_dx_fl / _L_fl, _dy_fl / _L_fl])
-                                    corner_pt = _np_d.array(_p1_fl, dtype=float)
-                                    S_block_max = float(_L_fl)
-                                    _front_p2_blk = _np_d.array(_p2_fl, dtype=float)
-                            except Exception:
-                                d_hat = None; corner_pt = None
-
-                        # ── 🆕 W-C §0.5-B/§0.5-C：allocation_dir = rot90(f3_cad_alloc_dir) ──
-                        # f3_cad_alloc_dir[blk] = 地界線/宗地分配線方向 (ux,uy)；rot90 → (-uy,ux)
-                        # = 臨街向（= W 量測軸 n_alloc），使 _block_strip 之 n_hat ∥ 地界線。
-                        # 廢除舊「BASELINE/MBR 當 allocation_dir」與 V13 強制校正 hack（§0.5-C）。
-                        _alloc_dir_cad = (st.session_state.get('f3_cad_alloc_dir', {})
-                                          or {}).get(blk_label)
-                        allocation_dir_block = alloc_normal_axis(_alloc_dir_cad)
-                        if allocation_dir_block is None:
-                            st.warning(
-                                f"⚠️ 街廓 {blk_label} 缺宗地分配線方向（f3_cad_alloc_dir），"
-                                "W／Rw 無法量測（側街負擔以 0 計），請補畫 ALLOC_LINE 後重出 DXF"
-                            )
-                        # BASELINE 僅保留為 d_hat fallback（FRONT_LINE 缺時的推進方向），不再當 allocation_dir
-                        _mbl_block = (st.session_state.get('f3_manual_baseline', {}) or {}).get(blk_label, {})
-                        if (d_hat is None and _mbl_block.get('enabled')
-                                and _mbl_block.get('point') and blk_poly is not None):
-                            try:
-                                _ang_bl = _math_d.radians(float(_mbl_block.get('angle_deg', 0.0)))
-                                d_hat = _np_d.array([_math_d.cos(_ang_bl), _math_d.sin(_ang_bl)])
-                                corner_pt = _np_d.array(_mbl_block['point'], dtype=float)
-                                S_block_max = _block_max_S(blk_poly, corner_pt, d_hat)
-                            except Exception:
-                                pass
-
-                        # ── 🆕 §0.5-C/F.2：缺 FRONT_LINE/BASELINE → 不退 MBR（fail-loud）──
-                        # d_hat（推進向）唯一來源 = FRONT_LINE（次選 BASELINE）；廢 MBR 自動偵測
-                        # （_get_block_d_hat MBR 長邊會讓斜街廓帶鋪歪、端點楔形空白）。
-                        if d_hat is None or corner_pt is None:
-                            st.warning(
-                                f"⚠️ 街廓 {blk_label} 缺 FRONT_LINE（且無 BASELINE）→ 無推進方向 d_hat，"
-                                "退化為輸入順序、不做雙向夾擠（**不退 MBR**）。請補畫 FRONT_LINE 後重出 DXF。"
-                            )
-
-                        # 🆕 W-C §0.5-B 軸向「真檢查」（KL 指正：原檢查是套套邏輯，恆真、抓不到缺 ALLOC）
-                        # 真正要驗的：f3_cad_alloc_dir[blk]（ALLOC=地界線/深度向）⊥ 該塊 FRONT_LINE
-                        #   → 夾角應 ≈90°（§0.5-E V6.dxf 真值：六塊皆 ⊥）。<80° 即 ALLOC 配錯/缺。
-                        try:
-                            _diag_dict = st.session_state.setdefault(
-                                'f3_g_iter_diagnostics', {})
-                            # 取該塊 FRONT_LINE 真方向（非 d_hat，d_hat 可能退 BASELINE）
-                            _front_dir = None
-                            if _cad_fl_blk and _cad_fl_blk.get('p1') and _cad_fl_blk.get('p2'):
-                                _fp1 = _cad_fl_blk['p1']; _fp2 = _cad_fl_blk['p2']
-                                _fdx = _fp2[0] - _fp1[0]; _fdy = _fp2[1] - _fp1[1]
-                                _fL = (_fdx ** 2 + _fdy ** 2) ** 0.5
-                                if _fL > 1e-6:
-                                    _front_dir = (_fdx / _fL, _fdy / _fL)
-                            _perp_deg = None; _perp_ok = None
-                            if _alloc_dir_cad is not None and _front_dir is not None:
-                                _ax, _ay = float(_alloc_dir_cad[0]), float(_alloc_dir_cad[1])
-                                _an = (_ax * _ax + _ay * _ay) ** 0.5
-                                if _an > 1e-9:
-                                    _cosaf = abs((_ax / _an) * _front_dir[0] + (_ay / _an) * _front_dir[1])
-                                    _cosaf = max(-1.0, min(1.0, _cosaf))
-                                    _perp_deg = round(_math_d.degrees(_math_d.acos(_cosaf)), 1)  # ≈90 為佳
-                                    _perp_ok = bool(_perp_deg >= 80.0)
-                            if _perp_ok is False:
-                                st.error(
-                                    f"🔴 街廓 {blk_label}：f3_cad_alloc_dir 與 FRONT_LINE 夾角 {_perp_deg}°"
-                                    "（應≈90°）→ ALLOC_LINE 疑配錯/歸錯塊（非 ⊥FRONT），W/Rw/界線方向不可信，"
-                                    "請檢查 DXF 該塊 ALLOC_LINE。"
-                                )
-                            _diag_dict[blk_label] = {
-                                'd_hat': (d_hat.tolist() if d_hat is not None else None),
-                                'allocation_dir': (allocation_dir_block.tolist()
-                                                   if allocation_dir_block is not None else None),
-                                'ALLOC⊥FRONT_deg': _perp_deg,
-                                'ALLOC⊥FRONT_ok': _perp_ok,
-                                'note': ('✅ ALLOC ⊥ FRONT（軸向正確）' if _perp_ok
-                                         else ('⚠️ 缺 ALLOC 或 FRONT，無法驗（W/Rw=0）' if _perp_ok is None
-                                               else '🔴 ALLOC 非 ⊥FRONT，疑配錯塊')),
-                            }
-                        except Exception:
-                            pass
-
-                        # ═══════════════════════════════════════════════════════════
-                        # 🚨 Patch E-2 → 🆕 W-D.2 §3：v2 排序 + 滑池槽 k* 切分推進
-                        # 廢除：v1 兼容層、winner insert(0)、舊 fallback；
-                        #       「KL 規範 N/2 中點規則」（過渡作法，KL 2026-07-05 裁可刪）
-                        #       ——池槽唯一來源＝_select_pool_slot（J 最大化，D-1 bootstrap）。
-                        # 設計：
-                        #   v2.ordered = [位次1=p1端winner, ..., 位次N=p2端winner]
-                        #   left_group  = ordered[0:k]                     ← 從 p1 端推
-                        #   right_group = reversed(ordered[k:])            ← 從 p2 端推
-                        #   池＝雙向中間剩餘；k 由基準趟真寬度餵 _select_pool_slot 決定
-                        # ═══════════════════════════════════════════════════════════
-                        _v2_res = None
-                        _degenerate_order = (d_hat is None or corner_pt is None)
-                        # P2-a（stepg 家族鏡像）：退化序無幾何 ⇒ 池範圍不可定義 ⇒ 階段2 落位不可能。
-                        #   靜默丟棄＝a′ 帳漏、靜默退舊單序列＝繞過兩階段化，皆違 no-silent-fallback。
-                        if _degenerate_order and _stage2_parcels:
-                            raise RuntimeError(
-                                f"🔴 P2-a：街廓 {blk_label} 退化序（缺 d_hat/corner_pt）卻有階段2宗 "
-                                f"{[tp.get('暫編地號') for tp in _stage2_parcels]}——池範圍不可定義、"
-                                f"池內落位無法執行（禁靜默丟棄／禁退舊單序列），停")
-                        if _degenerate_order:
-                            # 沒有幾何資訊 → 退化為輸入順序、不做雙向夾擠（單趟、全左群）
-                            ordered_v2 = []
-                            for tp in _stage1_parcels:
-                                _pm = _params_for_g.get(tp['暫編地號'], {})
-                                ordered_v2.append({
-                                    'tp': tp,
-                                    'pre_position': 0,
-                                    'is_corner_winner': bool(_pm.get('is_corner', False)),
-                                    'is_first_corner_marker': bool(_pm.get('is_corner', False)),
-                                    'side': '中段',
-                                })
-                            ordered_v2.sort(key=lambda e: (not e['is_corner_winner'],))
-                        else:
-                            # 從 session 取 PK winner / forced_offset / FRONT_LINE 端點
-                            _v2_pk_winners = (
-                                st.session_state.get('f3_corner_winners', {}) or {}
-                            ).get(blk_label, {}) or {}
-                            _v2_forced = (
-                                st.session_state.get('f3L_forced_offset', {}) or {}
-                            ).get(blk_label, {}) or {}
-                            _v2_cad_fl = (
-                                st.session_state.get('f3_cad_front_lines', {}) or {}
-                            ).get(blk_label, {}) or {}
-                            _v2_fl_p1 = _v2_cad_fl.get('p1')
-                            _v2_fl_p2 = _v2_cad_fl.get('p2')
-                            if not _v2_fl_p1 or not _v2_fl_p2:
-                                _v2_fl_p1 = (float(corner_pt[0]), float(corner_pt[1]))
-                                _v2_fl_p2 = (
-                                    float(corner_pt[0]) + float(d_hat[0]) * float(S_block_max),
-                                    float(corner_pt[1]) + float(d_hat[1]) * float(S_block_max),
-                                )
-
-                            # 呼叫 v2（不再 except fallback；失敗就讓它噴錯）
-                            # 🆕 W-G.9-161 `L-3′`：透傳之**呼叫端**宣告（實參 ≡ stage1(BUILD_LAYER)）
-                            _proj_pop_assert_seq("app:main/v2_caller",
-                                                 _stage1_parcels, parcels_in_blk, blk=blk_label)
-                            _v2_res = _spatial_order_parcels_v2(
-                                parcels_in_block=_stage1_parcels,   # P2-a：僅階段1宗
-                                d_hat=d_hat,
-                                front_line_p1=_v2_fl_p1,
-                                front_line_p2=_v2_fl_p2,
-                                pk_winners=_v2_pk_winners,
-                                forced_offset=_v2_forced,
-                            )
-                            ordered_v2 = list(_v2_res.get('ordered', []) or [])
-
-                        # 🆕 W-D.2 §3：註記原位次 index（基準趟寬度→_select_pool_slot 映射用）。
-                        #   k 切分與 side 標籤依 k 而變 → 移入 _advance_block_with_split（趟內建）。
-                        for _i_ov2, _e_ov2 in enumerate(ordered_v2):
-                            _e_ov2['_ov2_idx'] = _i_ov2
-
-                        # ── 🆕 Phase C：forced_offset 預留（街角強制抵費地 buffer）──
-                        # 若 PK 結果為「強制抵費地」→ 該側街角範圍預留為抵費地，
-                        #   不參與分配；雙向推進之 cum_S 起始值即等於 buffer 寬度
-                        # buffer 寬度 = 街角最小分配面積 ÷ 街廓平均深度
-                        _fo_block = (st.session_state.get(
-                            'f3L_forced_offset', {}) or {}).get(blk_label, {})
-                        _fo_left = bool(_fo_block.get('left_forced_offset', False))
-                        _fo_right = bool(_fo_block.get('right_forced_offset', False))
-                        # 從 f3L_corner_min_table 讀取最小面積
-                        _corner_min_table = st.session_state.get('f3L_corner_min_table', []) or []
-                        _row_for_buffer = next(
-                            (r for r in _corner_min_table if r.get('街廓') == blk_label), None
-                        )
-                        _left_buffer_S = 0.0
-                        _right_buffer_S = 0.0
-                        # 🆕 `W-G.9-309`（`GB-170` (i)·app 側鏡射 stepg）：強制側之遠側界 ∥SIDELINE（`K-9-32 ①`）
-                        _sl_blk_fo = (st.session_state.get(
-                            'f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
-                        _fd_fo_left = (_first_corner_alloc_dir((_sl_blk_fo.get('left') or {}).get('mid'))
-                                       if _fo_left else None)
-                        _fd_fo_right = (_first_corner_alloc_dir((_sl_blk_fo.get('right') or {}).get('mid'))
-                                        if _fo_right else None)
-                        if _row_for_buffer and avg_depth_default > 0:
-                            # 🆕 §3（plan v3 §3·補丁九）：廢矩形近似 `range ÷ avg_depth`，改 `_corner_buffer_S`
-                            #   幾何 bisect（**真實斜交池帶面積 == range**）·side 參數化（#25）。
-                            #   方位契約：一律傳 FRONT p1(`corner_pt`)＋`+d̂`(`d_hat`)，端由 side 定。
-                            if _fo_left:
-                                _l_min = _row_for_buffer.get('【左】街角最小面積(㎡)')
-                                try:
-                                    if _l_min is not None and _l_min != float('inf'):
-                                        _left_buffer_S = _corner_buffer_S(
-                                            blk_poly, d_hat, corner_pt, allocation_dir_block,
-                                            float(_l_min), 'left', _label=blk_label,
-                                            far_line_dir=_fd_fo_left)
-                                except (TypeError, ValueError) as _e_cb:
-                                    # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
-                                    print(f"🔴 街廓 {blk_label} 左街角 range={_l_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
-                                    _left_buffer_S = 0.0
-                            if _fo_right:
-                                _r_min = _row_for_buffer.get('【右】街角最小面積(㎡)')
-                                try:
-                                    if _r_min is not None and _r_min != float('inf'):
-                                        _right_buffer_S = _corner_buffer_S(
-                                            blk_poly, d_hat, corner_pt, allocation_dir_block,
-                                            float(_r_min), 'right', _label=blk_label,
-                                            far_line_dir=_fd_fo_right)
-                                except (TypeError, ValueError) as _e_cb:
-                                    # KL WATCH 2026-07-20（no-silent-fallback）：range 型別壞→靜默 0 改 loud（上游 is not None/!=inf 已擋·罕觸）
-                                    print(f"🔴 街廓 {blk_label} 右街角 range={_r_min!r} 型別異常（{_e_cb}）·buffer 退 0·入報告")
-                                    _right_buffer_S = 0.0
-                        # 顯示通知
-                        if _left_buffer_S > 0 or _right_buffer_S > 0:
-                            _msg_buf = []
-                            if _left_buffer_S > 0:
-                                _msg_buf.append(f"左側 {_left_buffer_S:.2f}m")
-                            if _right_buffer_S > 0:
-                                _msg_buf.append(f"右側 {_right_buffer_S:.2f}m")
-                            st.info(
-                                f"🟡 街廓 {blk_label}：強制抵費地 buffer 預留 "
-                                f"{', '.join(_msg_buf)}（不參與分配，將自動成為抵費地）"
-                            )
-                        # 🆕 W-C §0.5-F.3：記錄強制街角抵費地狀態（供診斷；該 buffer 區應 render 成橘色抵費地）
-                        st.session_state.setdefault('f3_forced_offset_diag', {})[blk_label] = {
-                            'left_forced': _fo_left, 'right_forced': _fo_right,
-                            'left_buffer_S': round(_left_buffer_S, 2),
-                            'right_buffer_S': round(_right_buffer_S, 2),
-                        }
-
-                        # ── 🆕 W-C §3：角側區塊常數（F、l_side、SIDE_LINE 中點、n_alloc）──
-                        # 側街負擔 Rw·F·l_side 攤到「角側全筆」（非僅第1筆）；F、l_side 為街廓常數。
-                        # n_alloc = allocation_dir_block = rot90(f3_cad_alloc_dir) = W 量測軸（§0.5-B）。
-                        _side_lines_blk = (st.session_state.get(
-                            'f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
-                        _sl_left = _side_lines_blk.get('left') or {}
-                        _sl_right = _side_lines_blk.get('right') or {}
-                        _side_mid_left = _sl_left.get('mid')
-                        _side_mid_right = _sl_right.get('mid')
-                        _has_left_corner = _side_mid_left is not None
-                        _has_right_corner = _side_mid_right is not None
-                        _F_left = float(sb_row.get('左側長度(m)', 0.0) or 0.0) if _has_left_corner else 0.0
-                        _lside_left = float(sb_row.get('左側尺度', 0.0) or 0.0) if _has_left_corner else 0.0
-                        _F_right = float(sb_row.get('右側長度(m)', 0.0) or 0.0) if _has_right_corner else 0.0
-                        _lside_right = float(sb_row.get('右側尺度', 0.0) or 0.0) if _has_right_corner else 0.0
-                        # 🆕 `W-G.9-246′` 工項二：**逐宗驗證站之街廓層 ctx**（每街廓組一次）。
-                        #   🛑 本段**只讀不判**；其失敗**不得影響分配** ⇒ 缺者留 `None`，
-                        #      由 `_lot_gate` 記為「無從判定」並具名（`I-3`）——⛔ 靜默替代任何值。
-                        _lg_fl = (st.session_state.get('f3_cad_front_lines', {}) or {}).get(blk_label) or {}
-                        _lg_mb = (st.session_state.get('f3_manual_baseline', {}) or {}).get(blk_label) or {}
-                        _lg_crp_raw = (st.session_state.get('f3_corner_range_polys', {}) or {}).get(blk_label) or {}
-                        from shapely.geometry import Polygon as _SP_lgc
-                        _lg_crp = {}
-                        _lg_cra = {}
-                        for _lg_wh in ('left', 'right'):
-                            _lg_cs = _lg_crp_raw.get(_lg_wh)
-                            if _lg_cs and len(_lg_cs) >= 3:
-                                _lg_p = _SP_lgc(_lg_cs)
-                                _lg_crp[_lg_wh] = _lg_p
-                                _lg_cra[_lg_wh] = float(_lg_p.area)
-                            else:
-                                _lg_crp[_lg_wh] = None
-                                _lg_cra[_lg_wh] = None
-                        _lg_blk_ctx = {
-                            'blk_label': blk_label,
-                            'category': blk_meta.get('category', ''),
-                            'front_road_width_m': float(sb_row.get('正面路寬(m)', 0.0) or 0.0),
-                            'eff_min_build': k91_effective_min_build_area(
-                                blk_label, blk_meta.get('category', ''),
-                                st.session_state.get(K91_SS_MBA_BY_LABEL, {}) or {},
-                                st.session_state.get(K91_SS_MBA_BY_CATEGORY, {}) or {}),
-                            'has_side': {'left': _has_left_corner, 'right': _has_right_corner},
-                            'corner_range_polys': _lg_crp,
-                            'corner_range_areas': _lg_cra,
-                            'front_p1': _lg_fl.get('p1'), 'front_p2': _lg_fl.get('p2'),
-                            'baseline_pts': _baseline_pts_from_manual(_lg_mb, blk_meta.get('vertices') or []),
-                            'side_pts': {'left': ([_sl_left['p1'], _sl_left['p2']]
-                                                  if (_sl_left.get('p1') and _sl_left.get('p2')) else None),
-                                         'right': ([_sl_right['p1'], _sl_right['p2']]
-                                                   if (_sl_right.get('p1') and _sl_right.get('p2')) else None)},
-                            'side_mid': {'left': _side_mid_left, 'right': _side_mid_right},
-                            'alloc_dir': _alloc_dir_cad,   # 🔴 **CAD 原始 ALLOC 方向**（app.py:9681 逐字）·⛔ `allocation_dir_block`（＝其 rot90）
-                            'block_centroid': blk_meta.get('centroid'),
-                        }
-                        _n_alloc_blk = allocation_dir_block   # rot90(f3_cad_alloc_dir)
-                        # 臨街投影係數 _cos_dn：S 增量 → W 增量（W += S·|d_hat·n_alloc|）。
-                        # 用於 thread W_前 初值（forced_offset buffer 之臨街寬）與一致性。
-                        _cos_dn = 1.0
-                        if _n_alloc_blk is not None and d_hat is not None:
-                            try:
-                                _dh0 = _np_d.asarray(d_hat, dtype=float)
-                                _dl0 = float(_np_d.linalg.norm(_dh0))
-                                if _dl0 > 1e-9:
-                                    _cos_dn = abs(float(_np_d.dot(
-                                        _dh0 / _dl0, _np_d.asarray(_n_alloc_blk, dtype=float))))
-                            except Exception:
-                                _cos_dn = 1.0
-                        # 🆕 W-C §1-4：本街廓畸零地最小面寬（判去留用 W=單筆宗地寬度，非 S、非累積）
-                        _mw_blk = float((st.session_state.get('f3_min_width_by_label', {})
-                                         or {}).get(blk_label, 0.0) or 0.0)
-
-                        def _mark_zaling(_res):
-                            """單筆宗地寬度 = S·|d_hat·n_alloc|（相鄰兩地界線垂距）；< 最小面寬→第1調配順位旗標。"""
-                            _pw = float(_res.get('S', 0.0)) * _cos_dn
-                            _res['_宗地寬度'] = round(_pw, 2)
-                            _res['_畸零旗標'] = ('⚠️移出/第1調配順位'
-                                                 if (_mw_blk > 0 and _pw < _mw_blk) else '')
-                            return _res
-
-                        # ── 🆕 W-D.2 §3（D-1 bootstrap 載體）：單塊可重入推進 ──
-                        def _advance_block_with_split(_k_split, _commit):
-                            """依池槽 _k_split 切分後執行雙向推進（Task D-2 左右迴圈整段內移）。
-                            _k_split：左群=ordered_v2[:k]、右群=reversed(ordered_v2[k:])、池插中間；
-                                      _degenerate_order 時＝全左群（沿既有退化語意）。
-                            _commit：False＝基準趟（僅取真寬度 w_i）——不寫 g_rows/detail_trace、
-                                     所有 st.* 訊息靜默（防雙趟重複）；True＝正式趟。
-                            回傳 {'rows','trace','widths'(原位次 左→右),'left_cum_S','right_cum_S',
-                                  'left_results','right_results'}。不改 a、不寫 session_state。"""
-                            _N_f = len(ordered_v2)
-                            if _N_f == 0:
-                                left_group = []; right_group = []
-                            elif _degenerate_order or _k_split >= _N_f:
-                                left_group = list(ordered_v2); right_group = []
-                            elif _k_split <= 0:
-                                left_group = []; right_group = list(reversed(ordered_v2))
-                            else:
-                                left_group = list(ordered_v2[:_k_split])
-                                right_group = list(reversed(ordered_v2[_k_split:]))
-                            # v1 風格 'side' 標籤（規則同舊；群組依 k 而變故在趟內標）
-                            for _idx_l, _e in enumerate(left_group):
-                                if _idx_l == 0 and _e.get('is_first_corner_marker', False):
-                                    _e['side'] = '左側'
-                                else:
-                                    _e['side'] = '無'
-                            for _idx_r, _e in enumerate(right_group):
-                                if _idx_r == 0 and _e.get('is_first_corner_marker', False):
-                                    _e['side'] = '右側'
-                                else:
-                                    _e['side'] = '無'
-
-                            _rows_local = []
-                            _trace_local = {}
-                            _widths_local = [0.0] * _N_f
-
-                            # ── Task D-2：左側推進（d_hat 正向）──
-                            # 🆕 Phase C：若左側 forced_offset → 從 buffer 寬度起算（跳過街角）
-                            left_cum_S = float(_left_buffer_S)
-                            right_cum_S = float(_right_buffer_S)   # 同理右側
-                            # 🆕 W-C §4：thread 累積 W_前（首筆=0；forced_offset 時=buffer 臨街寬）
-                            _W_prev_left = 0.0
-                            _W_prev_right = 0.0
-                            # ── 🆕 **W-G.9-4（expand）：併行計算 `K-9-5-6` 之正典直量** ──────────
-                            #   🔴 **⛔ 本段之值<u>不進生產路徑</u>**；本段只寫診斷欄，
-                            #   供 `W-G.9-5`（contract 側）對拍。
-                            #   🔧 **更正（`W-G.9-190R` commit 3·族② 之切換）**：本段原逐字載
-                            #   「上二行之 `_W_prev_*` **仍取舊式** `buf · _cos_dn`」——該述於本批
-                            #   **已成偽**：上二行已切為新式 `0.0`（逐字同
-                            #   `verify/stepg_pipeline.py:628-629`）⇒ **contract 側之遷移已完成**。
-                            #   ⚠️ 本段之併行診斷**仍保留**（其受詞係 `K-9-5-6` 之直量、⛔ 非初值）。
-                            #   ⛔ **不得以任何條件分支讓下列 `_W_new_*` 進入生產消費**（`W-G.9-4` §2-1）。
-                            #
-                            #   正典（權威序**第 1 級**）`K-9-5-6`：`W_i` ＝ MP → 本宗**遠側**界之垂距
-                            #   ⇒ `W = dot(P − mp, â_定向)`；單一產生者見
-                            #   `grep -n "def k956_W_from_mp" app.py`。
-                            #   已證之解析恆等（`W-G.9-2`）：**舊式 ＝ 新式 − `W_0`**，
-                            #   `W_0 = dot(群起點 − mp, â)`（正典 `K-9-5-6`「首宗起點」·**照實可負**）。
-                            #
-                            #   ⚠️ 本段**只算不判**且**只寫診斷**；其失敗**不得影響分配**
-                            #   ——故以 `except` 包覆並 **loud print**（⛔ 非靜默退路：
-                            #   無任何值被替代，生產路徑自始未讀本段）。
-                            try:
-                                _du_diag = None
-                                if d_hat is not None:
-                                    _dn_diag = float(_np_d.linalg.norm(
-                                        _np_d.asarray(d_hat, dtype=float)))
-                                    if _dn_diag > 1e-9:
-                                        _du_diag = (_np_d.asarray(d_hat, dtype=float)
-                                                    / _dn_diag)
-                                _W0_l = _W0_r = _Wn_l = _Wn_r = None
-                                if _du_diag is not None and corner_pt is not None:
-                                    _gs_l = _np_d.asarray(corner_pt, dtype=float)
-                                    _W0_l = k956_W_from_mp(_gs_l, _side_mid_left,
-                                                           allocation_dir_block, d_hat)
-                                    _Wn_l = k956_W_from_mp(_gs_l + float(_left_buffer_S) * _du_diag,
-                                                           _side_mid_left,
-                                                           allocation_dir_block, d_hat)
-                                    _smax_diag = None
-                                    if blk_meta.get('vertices'):
-                                        _smax_diag = _right_chain_origin_s(
-                                            blk_meta['vertices'], d_hat, corner_pt,
-                                            allocation_dir_block, front_p2=_front_p2_blk,
-                                            has_side_right=_has_right_corner, forced_right=_fo_right)
-                                    if _smax_diag is not None:
-                                        _gs_r = _gs_l + float(_smax_diag) * _du_diag
-                                        _W0_r = k956_W_from_mp(_gs_r, _side_mid_right,
-                                                               allocation_dir_block, d_hat)
-                                        _Wn_r = k956_W_from_mp(
-                                            _gs_r - float(_right_buffer_S) * _du_diag,
-                                            _side_mid_right, allocation_dir_block, d_hat)
-                                _dg_slot = st.session_state.setdefault(
-                                    'f3_forced_offset_diag', {}).setdefault(blk_label, {})
-                                _dg_slot.update({
-                                    'W-G.9-4_W0_left': _W0_l,
-                                    'W-G.9-4_W0_right': _W0_r,
-                                    'W-G.9-4_W_new_left': _Wn_l,
-                                    'W-G.9-4_W_new_right': _Wn_r,
-                                    'W-G.9-4_W_old_left': _W_prev_left,
-                                    'W-G.9-4_W_old_right': _W_prev_right,
-                                })
-                                print(f"🔎 [W-G.9-4·診斷·⛔ 未進生產] 街廓 {blk_label}："
-                                      f"左 舊={_W_prev_left!r} 新={_Wn_l!r} W_0={_W0_l!r}／"
-                                      f"右 舊={_W_prev_right!r} 新={_Wn_r!r} W_0={_W0_r!r}")
-                            except Exception as _e_w94:            # noqa: BLE001
-                                print(f"🔴 [W-G.9-4·診斷] 街廓 {blk_label} 併行計算失敗："
-                                      f"{_e_w94}（⛔ **生產路徑未受影響**·本段只寫診斷）")
-                            # 🆕 D-2b-23【甲】：**界面單線鏈**（與 `_W_prev` 同法 thread·⛔ 兩者不同物）。
-                            #   值 ＝ **前一宗**之 `res['_alloc_dir_used']`（＝其遠側界方向源）；
-                            #   首宗 None ⇒ 單線·逐位不變。⛔ **無條件 thread**（不看 `_has_*_corner`）
-                            #   ——界面鏈之存在與該側有無街角無關；有無街角只影響「前一宗用了哪個方向」。
-                            _near_dir_left = (_fd_fo_left if _fo_left else None)     # 🆕 `W-G.9-309`（`GB-170` (ii)·`K-9-32 ②`）
-                            _near_dir_right = (_fd_fo_right if _fo_right else None)
-                            first_corner_used_left = False
-                            _lg_idx_left = 0          # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
-                            left_results = []
-                            for entry in left_group:
-                                tp = entry['tp']
-                                k = tp['暫編地號']
-                                # 🚨 W-A 規格一：a_for_G = 分攤登記面積_m2 + 面積_m2(a' 累加器)
-                                if '分攤登記面積_m2' in tp:
-                                    a_m2 = round(float(tp.get('分攤登記面積_m2', 0) or 0)
-                                                 + float(tp.get('面積_m2', 0) or 0), 2)
-                                else:
-                                    a_m2 = round(float(tp.get('面積_m2', 0) or 0), 2)
-                                side = entry.get('side', '無')
-                                # 🚨 Patch E-2.3：用 v2 entry 的 is_first_corner_marker 旗標
-                                # 不再依賴 side 字串比對，因為 left_group 第 1 筆若是 winner 就是 first_corner
-                                is_corner_marked = bool(entry.get('is_corner_winner', False))
-                                is_first_corner_l = (
-                                    bool(entry.get('is_first_corner_marker', False))
-                                    and not first_corner_used_left
-                                )
-                                # 🆕 W-C §3：左側角側全筆皆套街廓常數 F/l_side（非僅第1筆）
-                                if _has_left_corner:
-                                    l_side_use = _lside_left; F_use = _F_left
-                                else:
-                                    l_side_use = 0.0; F_use = 0.0
-                                zone = tp.get('重劃前地價區段', '')
-                                post_p = post_price_by_block.get(blk_label, 0.0)
-                                pre_p = pre_price_by_zone.get(zone, 0.0)
-                                A_ratio = (post_p / pre_p) if (pre_p > 0 and post_p > 0) else 1.0
-                                S_remain = max(0.1, S_block_max - left_cum_S - right_cum_S)
-                                baseline_pt = (corner_pt + left_cum_S * d_hat
-                                               if (d_hat is not None and corner_pt is not None) else None)
-                                res, solver_label = _solve_one(
-                                    a_m2, A_ratio, l_front, l_side_use, F_use,
-                                    blk_poly, d_hat, baseline_pt, S_remain,
-                                    is_first_corner_l, side, avg_depth_default,
-                                    _allocation_dir=allocation_dir_block,
-                                    _side_mid=(_side_mid_left if _has_left_corner else None),
-                                    _W_prev=_W_prev_left,
-                                    _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
-                                    _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
-                                    _w0_start=(0.0 if not _fo_left else None),   # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
-                                )
-                                # 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
-                                #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
-                                res['_lg_cols'] = _lot_gate(
-                                    res, tp, _lg_blk_ctx,
-                                    is_corner_first=bool(is_first_corner_l),
-                                    is_second_after_corner=((_lg_idx_left == (0 if _fo_left else 1)) and not bool(is_first_corner_l)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`（app 側鏡射）
-                                    chain_side='left', _label=blk_label)
-                                # 🆕 `W-G.9-269` `c1` **站 1／4（app 左鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
-                                #   🔒 `c3`：**無條件執行**（旗標已移除）。
-                                _k917_drop, _k917_v = k917_should_drop(
-                                    res, bool(is_first_corner_l),
-                                    entry is not left_group[-1], 'left', blk_label, k)
-                                if _k917_drop:
-                                    # 🛑 `K-9-11 三`：不配地 ＋ 其地入調配池（幾何餘·構造必然）＋ ⛔ 超配。
-                                    # 🛑 `K-9-17 二·四·五`：空位由**重排後序列之下一位**遞補
-                                    #    ——本迴圈之下一 `entry` 即之；`left_cum_S` **⛔ 推進**
-                                    #    ⇒ 其後各宗整體前移、`G` 隨之**全部重算**（款 `五`）。
-                                    #    🛑 **⛔ 依 `K-9-9 四` 字面之「重劃前投影順序」**
-                                    #       （`K-9-17` 晚於 `K-9-9`·以後者為準）。
-                                    # 🛑 `_lg_idx_left` **⛔ 推進**：後繼者遞補其**位**。
-                                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
-                                        k917_note_drop(blk_label, 'left', k, res, tp)
-                                    continue
-                                _lg_idx_left += 1
-                                if _has_left_corner:   # thread 累積 W_前 給下一筆
-                                    _W_prev_left = float(res.get('W_far', _W_prev_left))
-                                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
-                                _near_dir_left = res.get('_alloc_dir_used')
-                                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
-                                # 極端防呆 3：S_remain 觸頂
-                                _G_target = float(res.get('G', 0.0))
-                                _area_actual = float(res.get('area_geom', 0.0))
-                                if (abs(_S_actual - S_remain) < 0.05 and _G_target > 0
-                                    and _area_actual < _G_target * 0.95):
-                                    res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
-                                left_cum_S += _S_actual
-                                # 🔧 次宗起點 ＝ 本宗遠側界 × FRONTLINE（＝ 標稱終點）：本宗遠側界之方向即次宗近側界之方向
-                                #   （D-2b-23【甲】·無條件交遞）⇒ 二界同一條線（`K-9-5-4 ②` 釋示 1）。`W-G.9-268′` 之錨點外推
-                                #   （取本宗幾何終點）於街角第 1 宗之後夾出全深度長條（`GB-178`）⇒ 停用；次宗遠側界之
-                                #   不交叉（`K-9-9 二`／`K-9-14`）由藍影機制驗之（`K-9-32`／`K-9-33 ⑤`）。
-                                res['_alloc_cum_S'] = left_cum_S
-                                _mark_zaling(res)   # 🆕 §1-4 判去留旗標
-                                _widths_local[entry['_ov2_idx']] = float(
-                                    res.get('_宗地寬度', 0.0) or 0.0)   # 🆕 W-D.2 真寬度（D-1）
-                                if is_first_corner_l:
-                                    first_corner_used_left = True
-                                _lg_row = _build_g_row(
-                                    k, tp, blk_label, blk_area, front_len, avg_depth_default,
-                                    zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
-                                    is_first_corner_l, side, res, solver_label, 'left',
-                                )
-                                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
-                                _lg_row.update(res.get('_lg_cols') or {})
-                                _rows_local.append(_lg_row)
-                                _trace_local[k] = res.get('trace', [])
-                                left_results.append((entry, res))
-
-                            # ── Task D-2：右側推進（d_hat 反向）──
-                            # 補充 1（最後一哩路）：以街廓所有頂點在 d_hat 方向最大投影值精準定 end_pt，
-                            # 杜絕菱形/三角形/狹長傾斜街廓的懸空問題（無需試探）
-                            if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-                                # 🆕 step 0（正交→斜交 s_max·plan v3 §2·#20 四處同源 _oblique_s_max）。
-                                #   退化幾何（切線∥推進）→ `_strip_axis` raise（**loud·同 stepg/wf_f4**·
-                                #   no-silent-fallback）——**不 try/except 吞掉**（KL 複驗指正·四處退化處置一致）。
-                                _smax_g = _right_chain_origin_s(blk_meta['vertices'], d_hat,
-                                                         corner_pt, allocation_dir_block,
-                                                         front_p2=_front_p2_blk,
-                                                         has_side_right=_has_right_corner,
-                                                         forced_right=_fo_right)
-                                actual_max_proj = _smax_g if _smax_g is not None else S_block_max
-                                end_pt = corner_pt + actual_max_proj * d_hat
-                                d_hat_rev = -d_hat
-                            else:
-                                actual_max_proj = S_block_max
-                                end_pt = None
-                                d_hat_rev = None
-
-                            first_corner_used_right = False
-                            _lg_idx_right = 0         # 🆕 `W-G.9-246′`：本鏈之宗序（碼側·自 0）
-                            right_results = []
-                            for entry in right_group:
-                                tp = entry['tp']
-                                k = tp['暫編地號']
-                                # 🚨 W-A 規格一：a_for_G = 分攤登記面積_m2 + 面積_m2(a' 累加器)
-                                if '分攤登記面積_m2' in tp:
-                                    a_m2 = round(float(tp.get('分攤登記面積_m2', 0) or 0)
-                                                 + float(tp.get('面積_m2', 0) or 0), 2)
-                                else:
-                                    a_m2 = round(float(tp.get('面積_m2', 0) or 0), 2)
-                                side = entry.get('side', '無')
-                                # 🚨 Patch E-2.4：與 E-2.3 對稱
-                                is_corner_marked = bool(entry.get('is_corner_winner', False))
-                                is_first_corner_r = (
-                                    bool(entry.get('is_first_corner_marker', False))
-                                    and not first_corner_used_right
-                                )
-                                # 🆕 W-C §3：右側角側全筆皆套街廓常數 F/l_side（非僅第1筆）
-                                if _has_right_corner:
-                                    l_side_use = _lside_right; F_use = _F_right
-                                else:
-                                    l_side_use = 0.0; F_use = 0.0
-                                zone = tp.get('重劃前地價區段', '')
-                                post_p = post_price_by_block.get(blk_label, 0.0)
-                                pre_p = pre_price_by_zone.get(zone, 0.0)
-                                A_ratio = (post_p / pre_p) if (pre_p > 0 and post_p > 0) else 1.0
-                                S_remain = max(0.1, actual_max_proj - left_cum_S - right_cum_S)
-                                baseline_pt = (end_pt + right_cum_S * d_hat_rev
-                                               if (d_hat_rev is not None and end_pt is not None) else None)
-                                if (_right_origin_is_front_p2(_has_right_corner, _fo_right) and _lg_idx_right == 0
-                                        and not is_first_corner_r):
-                                    raise RuntimeError(
-                                        f"🔴 街廓 {blk_label} 右鏈：起點取 FRONT p2（有側街·非強制），而首宗 {k} 非街角第 1 宗"
-                                        "（其近側界 ∥ 分配線 ⇒ p2 外側之楔形無人承受）·停")
-                                res, solver_label = _solve_one(
-                                    a_m2, A_ratio, l_front, l_side_use, F_use,
-                                    blk_poly, d_hat_rev, baseline_pt, S_remain,
-                                    is_first_corner_r, side, avg_depth_default,
-                                    _allocation_dir=allocation_dir_block,
-                                    _side_mid=(_side_mid_right if _has_right_corner else None),
-                                    _W_prev=_W_prev_right,
-                                    _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
-                                    _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
-                                    _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
-                                )
-                                # 極端防呆 2 後援：右側起點數值微修
-                                if (float(res.get('area_geom', 0)) < 0.5
-                                    and d_hat_rev is not None and baseline_pt is not None):
-                                    for _adj in (0.1, 0.3, 0.5):
-                                        _try_pt = baseline_pt + _adj * d_hat_rev
-                                        _try_S = max(0.1, S_remain - _adj)
-                                        _r2, _sl2 = _solve_one(
-                                            a_m2, A_ratio, l_front, l_side_use, F_use,
-                                            blk_poly, d_hat_rev, _try_pt, _try_S,
-                                            is_first_corner_r, side, avg_depth_default,
-                                            _allocation_dir=allocation_dir_block,
-                                            _side_mid=(_side_mid_right if _has_right_corner else None),
-                                            _W_prev=_W_prev_right,
-                                            _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
-                                            _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
-                                            _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
-                                        )
-                                        if float(_r2.get('area_geom', 0)) >= 0.5:
-                                            res, solver_label = _r2, _sl2
-                                            if _commit:   # 🆕 W-D.2 reviewer WARNING：深巢 st.info 顯式 gate
-                                                st.info(
-                                                    f"ℹ️ 街廓 {blk_label} 右側起點數值微修 {_adj}m 後成功切出土地"
-                                                )
-                                            break
-                                # 🆕 `W-G.9-246′` 工項二 **站 2／4（app 右鏈）**：掛於**定案之 `res`** 後
-                                #   （右鏈有二次 solve ⇒ ⛔ 各 solve 後各掛·`I-4`）。
-                                res['_lg_cols'] = _lot_gate(
-                                    res, tp, _lg_blk_ctx,
-                                    is_corner_first=bool(is_first_corner_r),
-                                    is_second_after_corner=((_lg_idx_right == (0 if _fo_right else 1)) and not bool(is_first_corner_r)),   # 🆕 P3：`K-9-31 ④`／`K-9-32 ②④`（app 側鏡射）
-                                    chain_side='right', _label=blk_label)
-                                # 🆕 `W-G.9-269` `c1` **站 2／4（app 右鏈）**：閘一之消費 ＋ `K-9-17` 遞補。
-                                #   🔒 `c3`：**無條件執行**（旗標已移除）。
-                                _k917_drop, _k917_v = k917_should_drop(
-                                    res, bool(is_first_corner_r),
-                                    entry is not right_group[-1], 'right', blk_label, k)
-                                if _k917_drop:
-                                    # 🛑 受詞與左鏈同（`K-9-11 三`／`K-9-17 二·四·五`）。
-                                    if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
-                                        k917_note_drop(blk_label, 'right', k, res, tp)
-                                    continue
-                                _lg_idx_right += 1
-                                if _has_right_corner:   # thread 累積 W_前 給下一筆
-                                    _W_prev_right = float(res.get('W_far', _W_prev_right))
-                                # 🆕 D-2b-23【甲】：本宗之遠側界 ⇒ 下一宗之近側界（⛔ 無條件）
-                                _near_dir_right = res.get('_alloc_dir_used')
-                                _S_actual = float(res.get('S_raw', res.get('S', 0.0)))   # S0d：推進吃全精度 S_raw（補丁四 §二·#20 四處同改·app 左/右＋stepg 左/右）
-                                # 極端防呆 3：S_remain 觸頂
-                                _G_target = float(res.get('G', 0.0))
-                                _area_actual = float(res.get('area_geom', 0.0))
-                                if (abs(_S_actual - S_remain) < 0.05 and _G_target > 0
-                                    and _area_actual < _G_target * 0.95):
-                                    res['是否收斂_override'] = '⚠️ 空間不足(夾擠限制)'
-                                right_cum_S += _S_actual
-                                # 🔧 次宗起點 ＝ 本宗遠側界 × FRONTLINE（＝ 標稱終點）：本宗遠側界之方向即次宗近側界之方向
-                                #   （D-2b-23【甲】·無條件交遞）⇒ 二界同一條線（`K-9-5-4 ②` 釋示 1）。`W-G.9-268′` 之錨點外推
-                                #   （取本宗幾何終點）於街角第 1 宗之後夾出全深度長條（`GB-178`）⇒ 停用；次宗遠側界之
-                                #   不交叉（`K-9-9 二`／`K-9-14`）由藍影機制驗之（`K-9-32`／`K-9-33 ⑤`）。
-                                res['_alloc_cum_S'] = right_cum_S
-                                _mark_zaling(res)   # 🆕 §1-4 判去留旗標
-                                _widths_local[entry['_ov2_idx']] = float(
-                                    res.get('_宗地寬度', 0.0) or 0.0)   # 🆕 W-D.2 真寬度（D-1）
-                                if is_first_corner_r:
-                                    first_corner_used_right = True
-                                _lg_row = _build_g_row(
-                                    k, tp, blk_label, blk_area, front_len, avg_depth_default,
-                                    zone, A_ratio, l_front, l_side_use, F_use, is_corner_marked,
-                                    is_first_corner_r, side, res, solver_label, 'right',
-                                )
-                                # 🆕 `W-G.9-246′` `I-5`／`I-6`：寫欄（`驗_` 前綴）·⛔ 改既有欄一字
-                                _lg_row.update(res.get('_lg_cols') or {})
-                                _rows_local.append(_lg_row)
-                                _trace_local[k] = res.get('trace', [])
-                                right_results.append((entry, res))
-
-                            return {
-                                'rows': _rows_local, 'trace': _trace_local,
-                                'widths': _widths_local,
-                                'left_cum_S': left_cum_S, 'right_cum_S': right_cum_S,
-                                'left_results': left_results, 'right_results': right_results,
-                            }
-
-                        # ── 🆕 W-D.2 J-fix：warn-on-zero-weight（no-silent-fallback）──
-                        #   有 SIDE_LINE 之側其 J 權重 F×l₁ 必 >0；零＝上游參數層靜默缺
-                        #   （Step E 該街廓側街「新闢」未勾/路寬未設 → 尺度 0 → J 死值、
-                        #    G 公式側街負擔項**同源**歸零）。具名警示、不得靜默吞 0。
-                        for _side_nm_w2, _has_w2, _F_w2, _l1_w2 in (
-                                ('左', _has_left_corner, _F_left, _lside_left),
-                                ('右', _has_right_corner, _F_right, _lside_right)):
-                            if _has_w2 and (_F_w2 * _l1_w2) <= 0.0:
-                                st.warning(
-                                    f"⚠️ 街廓 {blk_label} {_side_nm_w2}側：有 SIDE_LINE 但滑池槽權重 "
-                                    f"F×l₁ = {_F_w2:.2f}×{_l1_w2:.2f} = 0 → J 退化為 0"
-                                    "（選槽將僅剩 min-dev 居中），且 G 公式側街負擔項同源歸零。"
-                                    "請檢查**步驟 E** 該街廓側街「路寬／新闢道路」設定"
-                                    "（尺度=0 多因未勾新闢；參數正典見 verify/case_params 快照）後重跑。"
-                                )
-
-                        # ── 🆕 W-D.2 §3 選槽 orchestration（D-1：基準趟→k*→正式趟）──
-                        _N = len(ordered_v2)
-                        _k_naive = (_N + 1) // 2 if _N % 2 == 1 else _N // 2   # 僅作基準趟切點
-                        _slot_res = None
-                        # 🆕 W 正典 W₀（補丁八 §一·脫鉤 S）：選槽理論之 forced 起始 W 改＝**首宗近側 KL W**
-                        #   ＝(群起點 + buffer·d̂ − mp)·â_定向·取代舊 `buffer·cos_dn`（群起點 telescoping 約定·已作廢）。
-                        #   使 _select_pool_slot 之理論 ΣRw 與實跑（solve_G_binary KL W）同源（理論＝實跑閘·禁 #20 脫鉤）。
-                        # 🔧 **族③ 之切換（`W-G.9-190R` commit 4·`W-G.9-5` contract 側）**：本段係**逐字複刻**
-                        #   `verify/stepg_pipeline.py:812-844`（該檔本批⛔ 不改——本批係令 app 對齊 harness）。
-                        #   🛑 ⛔ **未於 `app.py` 另寫第二份 `W` 定義**（`GB-48` 族·`app.py` 之 `k956_W_from_mp`
-                        #      docstring 明令）——下列 `_mp_base_W0` 係**純委派**至該單一產生者。
-                        def _mp_base_W0(_gs, _buf, _dv, _mp, _adir):
-                            # 🔒 **純委派**至 `k956_W_from_mp`（`grep -n "def k956_W_from_mp" app.py`）：
-                            #   本處僅把「群起點沿 d̂ 推進 `_buf`」算成點，再交由單一產生者量
-                            #   `W = dot(P − mp, â_定向)`。⛔ **語意不變、簽章不變**。
-                            #   ⚠️ `_du` 於此仍需自算（因 `P` 之構成需要它）；其式**逐字同 stepg**，
-                            #      ⛔ 不得改為先正規化再傳（會改變 `_dn ≤ 1e-9` 之退化行為）。
-                            if _gs is None or _mp is None or _adir is None or _dv is None:
-                                return 0.0
-                            _dv2 = _np_d.asarray(_dv, dtype=float)
-                            _dn = float(_np_d.linalg.norm(_dv2))
-                            _du = _dv2 / _dn if _dn > 1e-9 else _dv2
-                            _bp0 = _np_d.asarray(_gs, dtype=float) + float(_buf) * _du
-                            return float(k956_W_from_mp(_bp0, _mp, _adir, _dv))
-                        # 右組群起點 end_pt 於此重算（`_advance_block_with_split` 內 end_pt 為其局部·此處不可見）。
-                        #   🆕 step 0（正交→斜交 s_max·plan v3 §2）：四處同源 `_oblique_s_max`（#20）。
-                        _end_pt_o = None; _dhr_o = None
-                        if d_hat is not None and corner_pt is not None and blk_meta.get('vertices'):
-                            _smax_o = _right_chain_origin_s(blk_meta['vertices'], d_hat, corner_pt,
-                                                     allocation_dir_block,
-                                                     front_p2=_front_p2_blk,
-                                                     has_side_right=_has_right_corner,
-                                                     forced_right=_fo_right)
-                            if _smax_o is not None:
-                                _end_pt_o = corner_pt + _smax_o * _np_d.asarray(d_hat, dtype=float)
-                                _dhr_o = -_np_d.asarray(d_hat, dtype=float)
-                        # 🔒 K-9-5-12（五）-1「首宗起點一律為 0」＋ K-9-5-13 裁定二「起算一律用真正的地界」
-                        #    ⇒ 非 forced 之選槽起算點校回 0（施工單 W-G.9-27·影響估算見 W-G.9-23）。
-                        #    ⛔ forced 側維持原式——其目標為抵費地遠側界，卡「保留區之表示法」（W-G.9-19 D3）。
-                        _b_L0 = (_mp_base_W0(corner_pt, _left_buffer_S, d_hat, _side_mid_left,
-                                             allocation_dir_block) if _fo_left else 0.0)
-                        _b_R0 = (_mp_base_W0(_end_pt_o, _right_buffer_S, _dhr_o, _side_mid_right,
-                                             allocation_dir_block) if _fo_right else 0.0)
-                        if _degenerate_order or _N <= 1:
-                            # 無選槽自由度 → 單趟正式（退化語意不變）
-                            _k_star = _N
-                            _adv_final = _advance_block_with_split(_k_star, True)
-                        else:
-                            # ① 基準趟（k=naive、不落 rows）取真寬度 w_i（⊥ALLOC；D-1 Option A）
-                            _adv_base = _advance_block_with_split(_k_naive, False)
-                            # ② 真寬度餵 _select_pool_slot（Q2：b＝**W 正典 W₀**（見下 `_b_L0`／`_b_R0`）；
-                            #    🔧 **更正（`W-G.9-190R` commit 4·族③ 之切換）**：本行原逐字載
-                            #    「Q2：b＝buffer_S×cos_dn 入 W 軸」——該述於本批**已成偽**；
-                            #    Q3：F/l1 與推進迴圈同源＝_F_left/_lside_left/_F_right/_lside_right）
-                            # 🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：估算寬度改取**各側全鏈**
-                            #   （左 ＝ 推進至 k_max、右 ＝ 推進至 k_min 之試推進）之逐宗 `W` 差；
-                            #   居中平手仍用基準趟之宗地寬度。與 `verify/stepg_pipeline.py` 同構（#20）。
-                            _kmin_c = 1 if _has_left_corner else 0
-                            _kmax_c = (_N - 1) if _has_right_corner else _N
-                            _wL_c = [0.0] * _N; _wR_c = [0.0] * _N
-                            _bL_c = _b_L0; _bR_c = _b_R0
-                            if _kmin_c <= _kmax_c:
-                                for _sd_c, _kk_c, _has_c in (('left', _kmax_c, _has_left_corner),
-                                                             ('right', _kmin_c, _has_right_corner)):
-                                    if not _has_c:
-                                        continue
-                                    _adv_c = (_adv_base if _kk_c == _k_naive
-                                              else _advance_block_with_split(_kk_c, False))
-                                    _w_c, _b_c = _slot_side_chain_widths(_adv_c, _sd_c, _N)
-                                    if _sd_c == 'left':
-                                        _wL_c = _w_c
-                                        _bL_c = _bL_c if _b_c is None else _b_c
-                                    else:
-                                        _wR_c = _w_c
-                                        _bR_c = _bR_c if _b_c is None else _b_c
-                            _slot_res = _select_pool_slot(
-                                _wL_c,
-                                {'has': _has_left_corner, 'F': _F_left,
-                                 'l1': _lside_left, 'b': _bL_c},
-                                {'has': _has_right_corner, 'F': _F_right,
-                                 'l1': _lside_right, 'b': _bR_c},
-                                widths_R=_wR_c, dev_widths=_adv_base['widths'],
-                            )
-                            _k_star = int(_slot_res['k'])
-                            # 停機②（J 下降）看守：argmax 保證 J(k*)≥J(naive)；破＝實作 bug
-                            _J_by_k = {t['k']: t['J'] for t in _slot_res['table']}
-                            if (_k_naive in _J_by_k
-                                    and _J_by_k.get(_k_star, 0.0) < _J_by_k[_k_naive] - 1e-9):
-                                st.error(
-                                    f"🔴 停機②（J 下降）街廓 {blk_label}：J(k*={_k_star})="
-                                    f"{_J_by_k.get(_k_star, 0.0):.4f} < J(naive={_k_naive})="
-                                    f"{_J_by_k[_k_naive]:.4f} — 滑池槽最佳化反變糟，停、上呈 KL＋claude.ai。"
-                                )
-                            # ③ 正式趟（k*）才落 rows
-                            _adv_final = _advance_block_with_split(_k_star, True)
-
-                        # ── 🆕 §4 P2-e 階段2 落位接線（B-1·stepg 家族鏡像·#20 四處同改）──
-                        #   ⚠️ **W-10**：置於 if/else **匯流之後**——`_adv_final` 有**兩個**產生點
-                        #     （:16095 degenerate／N≤1 與 :16119 正常；中間 `_adv_base` 非 final）。
-                        #   ⚠️ **B-1**：必須**就地擴充 `_adv_final`**（rows／left_results／
-                        #     right_results／Wf_*／cum_S），不可只 append 進 `g_rows`——後者僅輸出
-                        #     容器；只進 g_rows ⇒ 池帶仍覆蓋階段2宗、抵費地列重算一次 ⇒
-                        #     **守恆實破而閘全綠**。擴充後池片結算（:16169）自動落在階段2 之後。
-                        #   ⚠️ **本鏡像不可省**：只改 stepg 而 app 不動 ⇒ app 走舊單階段、harness
-                        #     走新兩階段＝兩路徑**無聲分岔**（且 KL 之 UI 錨在 app 側）。
-                        if _stage2_parcels:
-                            _smax_blk = None
-                            if (d_hat is not None and corner_pt is not None
-                                    and blk_meta.get('vertices')):
-                                _smax_blk = _right_chain_origin_s(
-                                    blk_meta['vertices'], d_hat, corner_pt,
-                                    allocation_dir_block, front_p2=_front_p2_blk,
-                                    has_side_right=_has_right_corner, forced_right=_fo_right)
-                            _s2 = _place_pool_parcels(
-                                stage2_parcels=_stage2_parcels,
-                                adv_final=_adv_final,
-                                blk_poly=blk_poly, blk_area=blk_area, blk_label=blk_label,
-                                blk_vertices=blk_meta.get('vertices'),
-                                blk_centroid=blk_meta.get('centroid'),
-                                d_hat=d_hat, corner_pt=corner_pt, s_max_blk=_smax_blk,
-                                allocation_dir=allocation_dir_block,
-                                alloc_dir_cad=_alloc_dir_cad,   # CAD 原始 ALLOC 方向·非其 rot90
-                                front_len=front_len, l_front=l_front,
-                                avg_depth=avg_depth_default,
-                                side_mid_left=_side_mid_left, side_mid_right=_side_mid_right,
-                                l_side_left=_lside_left, F_left=_F_left,
-                                l_side_right=_lside_right, F_right=_F_right,
-                                post_price=post_price_by_block.get(blk_label, 0.0),
-                                pre_price_by_zone=pre_price_by_zone,
-                                solve_one=_solve_one, build_g_row=_build_g_row,
-                                mark_zaling=_mark_zaling,
-                                # 🆕 P2-f 末端保留（裁定C·stepg 家族鏡像·#20 同改）
-                                has_side_left=bool(_fo_block.get('left_has_side', True)),
-                                has_side_right=bool(_fo_block.get('right_has_side', True)),
-                                min_width=_mw_blk, s_front_p2=S_block_max,
-                            )
-                            _adv_final['rows'] = (list(_adv_final['rows'])
-                                                  + list(_s2['rows']))
-                            _adv_final['left_results'] = (list(_adv_final['left_results'])
-                                                          + list(_s2['left_results']))
-                            _adv_final['right_results'] = (list(_adv_final['right_results'])
-                                                           + list(_s2['right_results']))
-                            _adv_final['Wf_left'] = _s2['Wf_left']       # W-3(b)
-                            _adv_final['Wf_right'] = _s2['Wf_right']
-                            _adv_final['left_cum_S'] = _s2['left_cum_S']
-                            _adv_final['right_cum_S'] = _s2['right_cum_S']
-                            st.session_state.setdefault('f3_stage2_placed', {})[blk_label] = (
-                                _s2['placed_area'])                      # W-4 回饋通道
-                        g_rows.extend(_adv_final['rows'])
-                        detail_trace.update(_adv_final['trace'])
-                        left_cum_S = _adv_final['left_cum_S']
-                        right_cum_S = _adv_final['right_cum_S']
-                        left_results = _adv_final['left_results']
-                        right_results = _adv_final['right_results']
-
-                        # ── 雙向重疊警告 ──
-                        if left_cum_S + right_cum_S > S_block_max + 0.5:
-                            st.warning(
-                                f"⚠️ 街廓 {blk_label}：左 ({left_cum_S:.2f}m) + "
-                                f"右 ({right_cum_S:.2f}m) = {left_cum_S + right_cum_S:.2f}m "
-                                f"已超過街廓深度 {S_block_max:.2f}m，可能有重疊區"
-                            )
-
-                        # ── Task D-3：抵費地（Offset Land）幾何自動生成 ──
-                        _pool_total_blk = None   # 🆕 W-D.2 ledger：幾何剩餘總量（None＝無幾何/失敗）
-                        if blk_poly is not None:
-                            try:
-                                allocated_polys = []
-                                _missing_owner = []   # 停機③ 修（KL 2026-07-20）：ΣG 成員但無可扣幾何→池雙計·no-silent
-                                for _entry, _res in (left_results + right_results):
-                                    _coords = _res.get('cut_coords') or []
-                                    _p = None
-                                    if len(_coords) >= 3:
-                                        try:
-                                            _p = _SP_d(_coords)
-                                            if not _p.is_valid:
-                                                _p = _p.buffer(0)
-                                        except Exception:
-                                            _p = None
-                                    # 停機③ 修（KL 2026-07-20·約束1「判準對齊 ΣG 成員」）：凡算進 ΣG 之
-                                    #   owner 宗皆須自池扣其幾何——**廢 area≥0.5 sliver 濾**（1b290e4 遷移遺留·
-                                    #   無職·退化守衛係 len≥3/is_valid/is_empty·非此常數·#26a 已核）。舊 area≥0.5
-                                    #   剔除合法小宗（如 R2 628-43(1) 0.27㎡）致池雙計 → 停機③ |Σ(G−幾何)|=0.28
-                                    #   （=0.0124 owner 殘差＋0.2681 雙計宗·逐位）。
-                                    if _p is not None and not _p.is_empty:
-                                        allocated_polys.append(_p)
-                                    else:
-                                        _missing_owner.append(((_entry or {}).get('tp') or {}).get('暫編地號', '?'))
-                                if _missing_owner:
-                                    print(f"🔴 停機③-家族：街廓 {blk_label} ΣG 成員無可扣幾何 {_missing_owner}"
-                                          f"（實切退化/失敗→池將雙計其面積·no-silent-fallback）·入報告")
-                                # ── §N3-0 T2（主修法）：池片改用與業主宗**同機制·同切線**直接切出 ──
-                                #   廢：`_uunion_d(allocated_polys).buffer(0.001)` → `difference` → `area >= 1.0`
-                                #       （buf_leak／gap_union／sliver 三漏之源＋T1 面積判準之誤殺/放行）
-                                #   單一真相源＝`_pool_strips_for_block`；**與 stepg_pipeline 逐字同構**
-                                #   （N0-16 同源同碼·G.3 三重確立之基礎），四處共用根絕抄寫漂移（#20）。
-                                #   回傳序＝面積遞減（逐字沿用舊慣例）→ g_rows 抵費地序號不因本波改（plan §11）。
-                                _fb_p2 = []                    # 🆕 `W-G.9-309`（`GB-170` (iii)·app 側鏡射 stepg）
-                                for _sd, _bS, _fd in (('left', _left_buffer_S, _fd_fo_left),
-                                                      ('right', _right_buffer_S, _fd_fo_right)):
-                                    if _fd is not None and float(_bS or 0.0) > 0.0:
-                                        _gb, _ = _corner_band_geom(blk_poly, d_hat, corner_pt,
-                                                                   allocation_dir_block, _bS, _sd,
-                                                                   far_line_dir=_fd)
-                                        if _gb is not None and not _gb.is_empty:
-                                            _fb_p2.append(_gb)
-                                offset_geoms = _pool_strips_for_block(
-                                    blk_poly, d_hat, corner_pt, allocation_dir_block,
-                                    allocated_polys, _label=blk_label, _depth=avg_depth_default,
-                                    forced_bands=_fb_p2)
-
-                                _pool_total_blk = float(sum(_g.area for _g in offset_geoms))  # 🆕 W-D.2 ledger
-
-                                # 池片數 >1 之提示（語意已隨 T2 改變：不再是「夾擠 bug」，
-                                #   而係 forced 帶／末筆楔形／中央池等**正常之多 s-帶**（N0-19））
-                                if len(offset_geoms) > 1:
-                                    _total_a = sum(g.area for g in offset_geoms)
-                                    st.info(
-                                        f"ℹ️ 街廓 {blk_label} 之抵費地為 {len(offset_geoms)} 個池片"
-                                        f"（總面積 {_total_a:.2f} ㎡）——依 N0-19，池片＝相鄰池 s-帶之極大聯集；"
-                                        f"多片屬正常（如 forced 帶＋中央池＋末筆楔形）。"
-                                    )
-
-                                # 寫入 g_rows 作為「抵費地」項目
-                                _min_block = min(50.0, blk_area * 0.05)   # 抵費地最小門檻：街廓 5% 或 50㎡
-                                for _i, _g in enumerate(offset_geoms):
-                                    _suffix = '' if len(offset_geoms) == 1 else f'-{_i+1}'
-                                    _conv_flag = ('🟡' if _g.area >= _min_block
-                                                  else '⚠️ < 最小分配')
-                                    try:
-                                        _coords_list = [[float(c[0]), float(c[1])]
-                                                        for c in list(_g.exterior.coords)]
-                                    except Exception:
-                                        _coords_list = []
-                                    g_rows.append({
-                                        '暫編地號': f'{blk_label}-抵費地{_suffix}',
-                                        '原地號': '—',
-                                        '所屬街廓': blk_label,
-                                        '重劃前區段': '—',
-                                        'a 面積(㎡)': 0.0,
-                                        '街廓面積(㎡)': round(blk_area, 2),
-                                        '正面長度(m)': round(front_len, 2),
-                                        '平均深度(m)': round(avg_depth_default, 2),
-                                        'A 地價比': 0.0,
-                                        'l₂ 正面尺度': 0.0,
-                                        'l₁ 側面尺度': 0.0,
-                                        '街角地': '—',
-                                        '第1筆街角': '—',
-                                        '街角側別': '—',
-                                        'F(m)': 0.0,
-                                        'W(m)': 0.0,
-                                        'Rw(%)': 0.0,
-                                        'S(m)': 0.0,
-                                        '幾何面積(㎡)': round(_g.area, 2),
-                                        'G(㎡)': 0.0,
-                                        '累積S(m)': 0.0,
-                                        '推進側別': '抵費地',
-                                        '解法': '幾何剩餘',
-                                        '迭代次數': 0,
-                                        '是否收斂': _conv_flag,
-                                        '負擔比率': 0.0,
-                                        'cut_coords': _coords_list,
-                                    })
-                            except Exception as _eOff:
-                                st.warning(f"⚠️ 街廓 {blk_label} 抵費地計算失敗：{_eOff}")
-
-                        # ── 🆕 W-D.2 §3：守恆 ledger（M3 接線・消費端）──
-                        # 角落抵費地／中央池＝幾何剩餘之「拆帳呈示」（池重定位、非新增面積）。
-                        # 守恆：ΣG（配地）＋池總（幾何剩餘）＝街廓 DXF 面積。
-                        #   閘寬＝§N3-0 帳對幾何閘（兩級化·補丁三 §二）；⚠️ 舊「殘差 <1㎡」已廢（殘餘定閘）。
-                        _sum_G_blk = sum(float(r.get('G(㎡)', 0) or 0) for r in _adv_final['rows'])
-                        _sum_geom_blk = sum(float(r.get('幾何面積(㎡)', 0) or 0)
-                                            for r in _adv_final['rows'])
-
-                        # ── §N3-0 逐宗主閘（緊閘·與 stepg 逐字同構·N0-16 同源同碼）──
-                        _tol_lot = _acct_geom_tol_per_lot(avg_depth_default)
-                        for _r_lot in _adv_final['rows']:
-                            _dev = abs(float(_r_lot.get('G(㎡)', 0) or 0)
-                                       - float(_r_lot.get('幾何面積(㎡)', 0) or 0))
-                            if _dev > _tol_lot:
-                                st.error(
-                                    f"🔴 §N3-0 逐宗主閘破：街廓 {blk_label} 宗 "
-                                    f"{_r_lot.get('暫編地號', '?')}：|G − 幾何| = {_dev:.4f} > "
-                                    f"上界 {_tol_lot:.4f}（0.005×深度{avg_depth_default:.2f}"
-                                    f" ＋ tol 0.01 ＋ 0.005）——超出捨入量子可解釋範圍＝另有病，停機上呈")
-                                st.stop()
-                        _corner_off_L = (float(_v2_res.get('left_corner_offset_area', 0.0) or 0.0)
-                                         if _v2_res else 0.0)
-                        _corner_off_R = (float(_v2_res.get('right_corner_offset_area', 0.0) or 0.0)
-                                         if _v2_res else 0.0)
-
-                        def _rw_real_wd2(_side_tag):
-                            return round(sum(float(r.get('Rw(%)', 0) or 0)
-                                             for r in _adv_final['rows']
-                                             if r.get('推進側別') == _side_tag
-                                             and float(r.get('F(m)', 0) or 0) > 0), 2)
-                        _tbl_wd2 = (_slot_res or {}).get('table') or []
-                        _row_at = {t['k']: t for t in _tbl_wd2}
-                        _t_star = _row_at.get(_k_star, {})
-                        _t_naive = _row_at.get(_k_naive, {})
-                        if _pool_total_blk is not None:
-                            # §N3-0 守恆-帳幾何級（逐街廓 Σ 閘·與 stepg 逐字同構）
-                            _resid_wd2 = round(_sum_G_blk + _pool_total_blk - blk_area, 2)
-                            _tol_blk = _acct_geom_tol_block(len(_adv_final['rows']),
-                                                            avg_depth_default)
-                            _verdict_wd2 = ('✅' if abs(_resid_wd2) <= _tol_blk else '🔴 守恆破')
-                        else:
-                            _resid_wd2 = None
-                            _verdict_wd2 = '—（無街廓幾何）'
-                        st.session_state['f3_wd2_pool_diag'][blk_label] = {
-                            'n': _N, 'k_naive': _k_naive, 'k*': _k_star,
-                            'J(naive)': round(float(_t_naive.get('J', 0.0)), 4),
-                            'J(k*)': round(float(_t_star.get('J', 0.0)), 4),
-                            'ΣRw_L理論@k*(%)': round(float(_t_star.get('ΣRw_L', 0.0)), 2),
-                            'ΣRw_R理論@k*(%)': round(float(_t_star.get('ΣRw_R', 0.0)), 2),
-                            'ΣRw_L實跑(%)': _rw_real_wd2('left'),
-                            'ΣRw_R實跑(%)': _rw_real_wd2('right'),
-                            'ΣG(㎡)': round(_sum_G_blk, 2),
-                            'Σ配地幾何(㎡)': round(_sum_geom_blk, 2),
-                            '池總=幾何剩餘(㎡)': (round(_pool_total_blk, 2)
-                                                  if _pool_total_blk is not None else None),
-                            '角落抵費地L(㎡)': round(_corner_off_L, 2),
-                            '角落抵費地R(㎡)': round(_corner_off_R, 2),
-                            '中央池(㎡)': (round(_pool_total_blk - _corner_off_L - _corner_off_R, 2)
-                                           if _pool_total_blk is not None else None),
-                            '守恆殘差(㎡)': _resid_wd2,
-                            '判定': _verdict_wd2,
-                            # 🆕 KL 條件④（2026-07-05）：ledger vs 幾何片對照——ledger 角落＝
-                            #   range 規劃值拆帳、幾何片＝實際切片；兩算總量逐塊相等（池總），
-                            #   位移非漏帳。此欄防未來誤判。
-                            '幾何片明細(㎡)': (str([round(float(_g.area), 2) for _g in offset_geoms])
-                                               if _pool_total_blk is not None else ''),
-                            '片數': (len(offset_geoms) if _pool_total_blk is not None else 0),
-                            'note': ((_slot_res or {}).get('note', '') or
-                                     ('degenerate/N≤1 單趟' if (_degenerate_order or _N <= 1) else ''))
-                                    + ('；naive 切點不在合法域(pin)，停機②看守略過比較'
-                                       if (_slot_res and _k_naive not in _row_at) else ''),
-                            'slot_table': [dict(t) for t in _tbl_wd2],
-                        }
-                        if _verdict_wd2 == '🔴 守恆破':
-                            st.error(
-                                f"🔴 停機③（守恆-帳幾何級破）街廓 {blk_label}：ΣG {_sum_G_blk:.2f}＋池 "
-                                f"{_pool_total_blk:.2f} vs 街廓 {blk_area:.2f}"
-                                f"（|Σ(G−幾何)| {_resid_wd2:+.2f}㎡ > 上界 {_tol_blk:.4f}"
-                                f"＝宗數{len(_adv_final['rows'])}×(0.005×深度{avg_depth_default:.2f}"
-                                f" ＋ tol 0.01 ＋ 0.005)）— 停、上呈 KL＋claude.ai。"
-                            )
-
-                    # 🆕 V12 模組 1 補強 B：孤立公設地虛擬 G 值結算
-                    # 微調防護 1：B/C 優先，total_burden_ratio fallback
-                    _orphans_for_g = st.session_state.get('f3_orphan_parcels', []) or []
-                    _n_orphan_added = 0
-                    if _orphans_for_g:
-                        if (B_value is not None and C_for_calc is not None
-                            and B_value > 0 and C_for_calc > 0):
-                            _burden_for_orphan = float(B_value) + float(C_for_calc)
-                        else:
-                            _burden_for_orphan = float(st.session_state.get(
-                                'f3_total_burden_rate_from_finance', 0.40) or 0.40)
-                        _burden_for_orphan = max(0.0, min(0.95, _burden_for_orphan))
-                        for _orph in _orphans_for_g:
-                            # 🚨 W-A：孤立公設地虛擬 G 用登記軌（分攤登記，幾何 fallback）
-                            _a_o = float(_orph.get('分攤登記面積_m2',
-                                                   _orph.get('幾何面積_m2',
-                                                             _orph.get('面積_m2', 0))) or 0)
-                            if _a_o <= 0:
-                                continue
-                            _G_virtual = _a_o * (1.0 - _burden_for_orphan)
-                            g_rows.append({
-                                '暫編地號': _orph.get('暫編地號', ''),
-                                '原地號': _orph.get('原地號', ''),
-                                '所屬街廓': _orph.get('所屬街廓', ''),
-                                '重劃前區段': _orph.get('重劃前地價區段', ''),
-                                'a 面積(㎡)': round(_a_o, 2),
-                                '街廓面積(㎡)': 0.0,
-                                '正面長度(m)': 0.0,
-                                '平均深度(m)': 0.0,
-                                'A 地價比': 1.0,
-                                'l₂ 正面尺度': 0.0,
-                                'l₁ 側面尺度': 0.0,
-                                '街角地': '—',
-                                '第1筆街角': '—',
-                                '街角側別': '—',
-                                'F(m)': 0.0,
-                                'W(m)': 0.0,
-                                'Rw(%)': 0.0,
-                                'S(m)': 0.0,
-                                '幾何面積(㎡)': 0.0,
-                                'G(㎡)': round(_G_virtual, 2),
-                                '累積S(m)': 0.0,
-                                '推進側別': '🟠 孤立公設地',
-                                # 🚨 Phase 9.10 法定敘明文字（精確不可變動）
-                                '解法': '無法調配至其他街廓，建議領錢及申請合併分配。',
-                                '迭代次數': 0,
-                                '是否收斂': '—',
-                                '負擔比率': round(_burden_for_orphan, 4),
-                                'cut_coords': None,
-                            })
-                            _n_orphan_added += 1
-
-                    # 🚨 Phase 9.9：cash compensation list 同樣寫入 g_rows
-                    # （這些是因擠壓上限被退回的公設地，與 orphan 同等待遇）
-                    _cash_comp = st.session_state.get('f3_cash_compensation_list', []) or []
-                    _n_cash_added = 0
-                    if _cash_comp:
-                        for _cc in _cash_comp:
-                            _a_cc = float(_cc.get('面積(㎡)', 0) or 0)
-                            if _a_cc <= 0:
-                                continue
-                            # 同樣依 burden 算虛擬 G
-                            _G_v_cc = _a_cc * (1.0 - _burden_for_orphan)
-                            g_rows.append({
-                                '暫編地號': _cc.get('暫編地號', ''),
-                                '原地號': _cc.get('原地號', ''),
-                                '所屬街廓': _cc.get('公設街廓', ''),
-                                '重劃前區段': '',
-                                'a 面積(㎡)': round(_a_cc, 2),
-                                '街廓面積(㎡)': 0.0,
-                                '正面長度(m)': 0.0, '平均深度(m)': 0.0,
-                                'A 地價比': 1.0,
-                                'l₂ 正面尺度': 0.0, 'l₁ 側面尺度': 0.0,
-                                '街角地': '—', '第1筆街角': '—', '街角側別': '—',
-                                'F(m)': 0.0, 'W(m)': 0.0, 'Rw(%)': 0.0,
-                                'S(m)': 0.0, '幾何面積(㎡)': 0.0,
-                                'G(㎡)': round(_G_v_cc, 2),
-                                '累積S(m)': 0.0,
-                                '推進側別': '💰 現金補償',
-                                # 🚨 Phase 9.10 法定敘明文字（精確不可變動）
-                                '解法': '無法調配至其他街廓，建議領錢及申請合併分配。',
-                                '迭代次數': 0, '是否收斂': '—',
-                                '負擔比率': round(_burden_for_orphan, 4),
-                                'cut_coords': None,
-                            })
-                            _n_cash_added += 1
-
-                    # 🆕 Phase 8 Issue 5：抵費地 < 5㎡ 碎片自動合併
-                    # （含防護二：buffer(0.001).buffer(-0.001) 消縫隙）
-                    try:
-                        from shapely.geometry import Polygon as _SP_off_m
-                        from shapely.ops import unary_union as _uu_off
-                        # 依街廓分組
-                        _offsets_by_blk = {}
-                        for _r in g_rows:
-                            if _r.get('推進側別') == '抵費地':
-                                _bl = _r.get('所屬街廓', '')
-                                _offsets_by_blk.setdefault(_bl, []).append(_r)
-                        _merged_fragments_count = 0
-                        for _bl, _offs in _offsets_by_blk.items():
-                            if len(_offs) < 2:
-                                continue
-                            # 找最大 + 找小碎片（< 5㎡）
-                            _largest = max(_offs,
-                                            key=lambda r: float(r.get('幾何面積(㎡)', 0) or 0))
-                            _smalls = [r for r in _offs
-                                        if r is not _largest
-                                        and float(r.get('幾何面積(㎡)', 0) or 0) < 5.0]
-                            if not _smalls:
-                                continue
-                            for _s in _smalls:
-                                _largest['幾何面積(㎡)'] = round(
-                                    float(_largest.get('幾何面積(㎡)', 0) or 0)
-                                    + float(_s.get('幾何面積(㎡)', 0) or 0), 2
-                                )
-                                # 合併 cut_coords
-                                #   **補償-3 已拆（§N3-0 T2·plan §4.3·reviewer 定案「最小案」）**：
-                                #   舊 `.buffer(0.001).buffer(-0.001)` 之「防護二·雙向 buffer 消縫隙」
-                                #   與 wf_f1:_fuse／wf_f4:_fuse **同族**——皆為對 stepg 1mm 侵蝕縫之補償。
-                                #   T2 精確鋪滿後**無縫可消** → 同成過度校正，連根拆。
-                                try:
-                                    _l_coords = _largest.get('cut_coords') or []
-                                    _s_coords = _s.get('cut_coords') or []
-                                    if (len(_l_coords) >= 3 and len(_s_coords) >= 3):
-                                        _poly_l = _SP_off_m(_l_coords)
-                                        _poly_s = _SP_off_m(_s_coords)
-                                        if not _poly_l.is_valid:
-                                            _poly_l = _poly_l.buffer(0)
-                                        if not _poly_s.is_valid:
-                                            _poly_s = _poly_s.buffer(0)
-                                        _merged = _uu_off([_poly_l, _poly_s])
-                                        if (_merged.geom_type == 'Polygon'
-                                            and not _merged.is_empty):
-                                            _largest['cut_coords'] = list(
-                                                _merged.exterior.coords
-                                            )
-                                        elif _merged.geom_type == 'MultiPolygon':
-                                            # ⚠️ T2 後池片為精確 s-帶：同塊之兩池片（如 forced 帶＋中央帶）
-                                            #   **s-不相鄰** → union 成 MultiPolygon → 此路徑「取最大 geom」
-                                            #   **丟小片幾何、保其面積入帳**＝帳/幾何分岔（正是 T2 欲消者）。
-                                            #   依 plan §4.3：**不靜默** take-largest，loud warn＋由 §閘③
-                                            #   （池帳−池幾何）把關；若因此紅即為真訊號、上呈（§N5 重審）。
-                                            st.warning(
-                                                f"⚠️ Phase 8 抵費地碎片合併產生 MultiPolygon"
-                                                f"（{len(_merged.geoms)} 片·街廓 {blk_label}）→ 現碼取最大片、"
-                                                f"小片幾何丟失而面積留帳＝帳/幾何分岔。**§N5 重審標的**"
-                                                f"（`<5㎡` 亦為殘餘定閘候選·甲-2 #10）。"
-                                            )
-                                            _largest_geom = max(
-                                                _merged.geoms, key=lambda g: g.area
-                                            )
-                                            _largest['cut_coords'] = list(
-                                                _largest_geom.exterior.coords
-                                            )
-                                except Exception:
-                                    pass
-                                # 從 g_rows 移除小碎片
-                                try:
-                                    g_rows.remove(_s)
-                                    _merged_fragments_count += 1
-                                except ValueError:
-                                    pass
-                        if _merged_fragments_count > 0:
-                            st.session_state['f3_offset_fragments_merged'] = _merged_fragments_count
-                    except Exception:
-                        pass
-
-
-                    # 🆕 K-9-4 BASELINE 臨接閘（KL 裁 2026-08-03·**K-6-A2 段二-1(c)**·**停機閘**）
-                    #   正典：`grep -n "^| \*\*K-9-4\*\*" docs/rulings/K-6_街角地分配程序與可分配判準.md`
-                    #   量測源＝`k94_baseline_touch_by_parcel`（只量不判·段二-1(a) 落地·本批未改其一字）
-                    #   上閘＝`k94_assert_baseline_touch`（雙向咬：未配到／跨過·`grep -n "def k94_assert_baseline_touch" app.py`）
-                    #
-                    #   🔴 **落點與施工單所載不同·以倉內實況為準（施工單 §六-5）**：
-                    #   施工單 §二 令「比照段一 K-9-2 之呼叫點附近；**開始配地之前**」，
-                    #   但 K-9-4 之主詞是**分配宗地**——`cut_coords` 最早產生於本 Step G
-                    #   （`grep -n "'cut_coords': _res.get('cut_coords'" app.py`），
-                    #   於 K-9-2 落點（`grep -n "_k92_rows = k92_block_depth_check" app.py`）**尚無任何宗地**
-                    #   ⇒ 該處無從評估。故置於**配地成果落定之當下**（`f3_G_values` 寫入前），
-                    #   ＝ K-9-4 **可被評估之最早時點**。
-                    #   ✅ 仍守段二-0 一-8 之戒：本處**不在任何 `st.expander` 之內**（已以 `ast` 確證）。
-                    _k94_land_rows, _k94_no_land = k94_partition_land_rows(g_rows)
-                    # 🔄 **改走單一構造點**（K-6-A2 段五(c)-2·`grep -n "def bl_pts_by_label" app.py`）
-                    #   ——本處與 N-14 消費點分屬 `main()` 內之**不同分支**（`ast` 證明見
-                    #   `verify/out/K6A2_seg5c2_bindproof.txt`）⇒ ⛔ 不得由消費點取用本地變數。
-                    _k94_bl_by = bl_pts_by_label(
-                        classified_blocks, st.session_state.get('f3_manual_baseline', {}))
-                    _k94_touch = k94_baseline_touch_by_parcel(
-                        [{'label': str(_r.get('所屬街廓', '')),
-                          'pid': str(_r.get('暫編地號', '')),
-                          'coords': _r.get('cut_coords') or []}
-                         for _r in _k94_land_rows],
-                        _k94_bl_by)
-                    st.session_state['f3_k94_baseline_touch'] = _k94_touch
-                    # ⛔ 停機閘：違反即 raise（未配到／跨過各自具名）。**不 try、不吞。**
-                    k94_assert_baseline_touch(_k94_touch)
-
-                    st.session_state['f3_G_values'] = g_rows
-                    st.session_state['f3_G_trace'] = detail_trace
-                    # 🚨 Phase 9.12 Issue 4：清除 rerun flag（G 值已重新計算完成）
-                    st.session_state.pop('f3_g_needs_rerun', None)
-                    _n_offset = sum(1 for r in g_rows if r.get('推進側別') == '抵費地')
-                    _n_orphan_in = sum(1 for r in g_rows if r.get('推進側別') == '🟠 孤立公設地')
-                    # 🚨 Phase 9.10：計算現金補償筆數
-                    _n_cash_in = sum(1 for r in g_rows if r.get('推進側別') == '💰 現金補償')
-                    _n_alloc = len(g_rows) - _n_offset - _n_orphan_in - _n_cash_in
-                    _msg = f"✅ 已完成 {_n_alloc} 筆宗地之 G 值計算（雙向夾擠）"
-                    if _n_offset > 0:
-                        _msg += f"，並產生 {_n_offset} 筆抵費地"
-                    if _n_orphan_in > 0:
-                        _msg += f"；🟠 並結算 {_n_orphan_in} 筆孤立公設地之虛擬 G 值"
-                    if _n_cash_in > 0:
-                        _msg += f"；💰 並標記 {_n_cash_in} 筆建議現金補償地"
-                    st.success(_msg)
-
-
-                    # 🚨 Phase 9.10：💰 建議領取現金補償 / 申請合併分配清單
-                    _cash_list_show = st.session_state.get('f3_cash_compensation_list', []) or []
-                    with st.expander(
-                        "💰 建議領取現金補償 / 申請合併分配清單（未調配公設地）"
-                        + (f"（{len(_cash_list_show)} 筆）" if _cash_list_show else ""),
-                        expanded=bool(_cash_list_show)
-                    ):
-                        if _cash_list_show:
-                            st.error(
-                                f"⚠️ 偵測到 **{len(_cash_list_show)} 筆**公設地"
-                                "無法在『不擠壓原位次地主』前提下調配（街廓上限 85%）"
-                            )
-                            try:
-                                import pandas as _pd_cc
-                                # 將「嘗試街廓清單」list 轉為字串供 dataframe 顯示
-                                _cc_display = []
-                                for _c in _cash_list_show:
-                                    _row_d = dict(_c)
-                                    _tried = _c.get('嘗試街廓清單', [])
-                                    if isinstance(_tried, list):
-                                        _row_d['嘗試街廓清單'] = '；'.join(str(t) for t in _tried)
-                                    _cc_display.append(_row_d)
-                                st.dataframe(_pd_cc.DataFrame(_cc_display),
-                                              use_container_width=True, hide_index=True)
-                            except Exception as _eCC:
-                                st.json(_cash_list_show)
-                            st.info(
-                                "📜 **法定處理**：依市地重劃實施辦法 §31，"
-                                "上列公設地之地主應**領取現金補償**或**申請合併分配**。\n\n"
-                                "📊 g_rows 報表中此類地塊標記為「💰 現金補償」"
-                                "；解法欄位記載「無法調配至其他街廓，建議領錢及申請合併分配。」"
-                            )
-                        else:
-                            st.success("✅ 所有公設地皆成功併入鄰近建地或結算為孤立公設地，無需現金補償")
-
-                    # 🆕 Phase 9 Task 2：抵費地比例的法定觀念說明（依重劃實務修正）
-                    # ⚠️ 法規重點（依市地重劃實施辦法 §29 附件二 + 重劃實務）：
-                    #
-                    # B 值（一般負擔係數）公式為：
-                    #   一般負擔總面積 × 重劃前平均地價 / [重劃後平均地價 × (重劃區總面積 - 抵充地)]
-                    #   其中：一般負擔總面積 = 公設用地負擔總面積 - 抵充地 - 臨街地特別負擔總面積
-                    #
-                    # 因此 B 值 **已扣除「臨街地特別負擔」**，
-                    # 性質上不等於「公共設施用地平均負擔比率」。
-                    #
-                    # 正確之分項：
-                    #   * 公共設施用地平均負擔比率
-                    #     = (共同負擔公設面積 - 政府已取得公設 - 抵充地)
-                    #       / (重劃區總面積 - 政府已取得公設 - 抵充地)
-                    #   * 費用負擔比率
-                    #     = (工程 + 重劃 + 利息)
-                    #       / [重劃後平均地價 × (重劃區總面積 - 政府已取得公設 - 抵充地)]
-                    #     ※ 注意：此分母與 C 值公式分母（用「總面積 - 公設總面積」）不同
-                    #
-                    # 全區地主實際負擔比率 ≈ 公設用地平均負擔比率 + 費用負擔比率
-                    # 抵費地（R 街廓內）大致對應「費用負擔比率」一項（實務通常 10-15%）
-                    st.info(
-                        "💡 **抵費地比例之法定觀念（重要）**：\n\n"
-                        "**抵費地** 為 R 可建築街廓內，「抵付工程 / 重劃 / 利息費用」之保留地，"
-                        "其比例**約等於「費用負擔比率」**（市地重劃實務通常 10-15%）。\n\n"
-                        "* **B 值（一般負擔係數）**：依附件二公式已扣除臨街地特別負擔，"
-                        "**不等於「公共設施用地平均負擔比率」**\n"
-                        "* **C 值（費用負擔係數）** 之分母用「總面積 − 公設總面積」，"
-                        "**亦不等於「費用負擔比率」**（後者分母為「總面積 − 政府公設 − 抵充地」）\n"
-                        "* 故 **抵費地比 ≠ B + C，亦 ≠ C 值本身**；正確需另計\n\n"
-                        "若實際抵費比顯著高於 10-15%（典型值），通常代表：\n"
-                        "1. 重劃前地籍圖被「街廓線」切碎 → 4-Tier 公設整併失效（請檢查圖層）\n"
-                        "2. 部分公設地仍為**真孤立**狀態（無同地號可合併）→ 待跨街廓調配（§31 機制）"
-                    )
-                    if _n_orphan_in > 0:
-                        st.info(
-                            "💡 **孤立公設地註**：目前抵費地面積尚包含「尚未跨街廓調配之孤立公設地保留額度」。"
-                            f"目前有 **{_n_orphan_in}** 筆真孤立公設地以「虛擬 G 值」結算"
-                            "（市地重劃實施辦法 §31 之跨街廓調配機制）。"
-                            "實際抵費地面積將於**跨街廓指配 / 現金補償**（§31 機制）完成後縮減至最終法定值。"
-                        )
-                    st.rerun()
+                    f3_screen_stepg_run(
+                        st,
+                        B_value=B_value,
+                        C_for_calc=C_for_calc,
+                        _auto_recalc=_auto_recalc,
+                        _btn_clicked=_btn_clicked,
+                        _new_params=_new_params,
+                        _param_key=_param_key,
+                        _tab6_burden=_tab6_burden,
+                        block_meta_by_label=block_meta_by_label,
+                        build_parcels=build_parcels,
+                        classified_blocks=classified_blocks,
+                        post_price_by_block=post_price_by_block,
+                        pre_price_by_zone=pre_price_by_zone,
+                        sb_rows_by_label=sb_rows_by_label)
 
                 # 🆕 W-C §0.5-B：顯示軸向診斷（含地界線 ∥ f3_cad_alloc_dir 之 90° 誤接檢查）
                 _diag = st.session_state.get('f3_g_iter_diagnostics', {}) or {}
