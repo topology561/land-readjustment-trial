@@ -11928,8 +11928,11 @@ K6_STEP0_ENV = "WV_K6_STEP0"
 
 def k6_step0_enabled():
     # 🔒 可停用之出口。預設 `on`；設為 `off` ⇒ 逐位回到未落地前之行為（供零行為變更對照）。
+    # 🔧 `K-9-29 二`（KL 裁 `2026-09-08`）廢止步驟 0 ⇒ 預設改為 `off`（`W-G.9-343`·KL 放行 `2026-09-25`）；
+    #    上一列之「預設 `on`」自此失效。`on` 僅供對照（逐位復現廢止前之行為），⛔ 為生產態；
+    #    `k6_step0_merge` 本體一字不刪（死碼化·`k6_step0_block_locked` 之既例）。
     import os as _os_k6
-    return str(_os_k6.environ.get(K6_STEP0_ENV, "on")).strip().lower() \
+    return str(_os_k6.environ.get(K6_STEP0_ENV, "off")).strip().lower() \
         not in ("0", "off", "false", "no")
 
 
