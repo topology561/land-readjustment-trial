@@ -9,6 +9,9 @@
 #   乙　`main()` 內接線之 AST 實查（與 `verify/stepg_pipeline.py` 之同構）：呼叫點數、引數形、綁定之位與其文、
 #       錨點外推之呼叫點數、首宗斷言之同文。
 #   丙　判別力：對 `app.py` 之原文施四種單點突變，乙部須逐一轉紅（⛔ 器恆綠）。
+# 🔧 `W-G.9-345`（發單側窗四十一改·⛔ 上列一字不刪）：`W-G.9-345` 工項三將 `main()` 內配地按鈕區之本體原封抽為模組層
+#    `f3_screen_stepg_run` ⇒ 乙、丙二部之「app 側宿主」＝ 模組層有 `f3_screen_stepg_run` 者取之，否則取 `main()`
+#    （抽出前後皆適用）；丙部之突變錨改為縮排無關（抽出使本體左移 16 格）。受詞與判準一字未改。
 # 用法：python probe_WG9340_main_synth.py <repo>
 # rc ＝ 紅項數（甲＋乙）；丙部任一突變未轉紅 ⇒ 另加 100（器紅）。
 import ast, io, os, sys, contextlib, math, re
@@ -75,6 +78,9 @@ def calls_in(node, name):
 def fn_of(tree, name):
     fs = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name]
     return fs[0] if len(fs) == 1 else None
+def host_of(tree):
+    """`W-G.9-345`：app 側宿主 ＝ 模組層之 `f3_screen_stepg_run`（抽出後）或 `main()`（抽出前）。"""
+    return fn_of(tree, "f3_screen_stepg_run") or fn_of(tree, "main")
 def loop_body_of(fn):
     """最外層之「街廓迴圈」：其 target 含 `blk_label` 之 For（app：`main()` 內；stepg：`_run_step_g_impl` 內）。"""
     fs = [n for n in ast.walk(fn) if isinstance(n, ast.For) and "blk_label" in ast.unparse(n.target)]
@@ -103,7 +109,8 @@ def wiring(app_src, stepg_src):
         log.append(("✅" if ok else "🔴") + f" {tag} 得 {got} 期 {exp}")
         if not ok: red.append(tag)
     A = ast.parse(app_src); S = ast.parse(stepg_src)
-    mainf = fn_of(A, "main"); implf = fn_of(S, "_run_step_g_impl")
+    mainf = host_of(A); implf = fn_of(S, "_run_step_g_impl")
+    log.append(f"ℹ️ app 側宿主 ＝ {getattr(mainf, 'name', None)}（`W-G.9-345`）")
     c("乙0 main()／_run_step_g_impl 各恰一", mainf is not None and implf is not None, [mainf is not None, implf is not None], [True, True])
     if mainf is None or implf is None: return red, log
     LA = loop_body_of(mainf); LS = loop_body_of(implf)
@@ -166,23 +173,23 @@ for l in lg: print(l)
 RED += r
 
 # ───────────── 丙　判別力（四種單點突變·乙部須轉紅） ─────────────
-MUT = [
-    ("丙1 main() 一處 forced_right=_fo_right → _fo_left", "forced_right=_fo_right)", "forced_right=_fo_left)"),
-    ("丙2 main() 一處 _right_chain_origin_s → _oblique_s_max（退回舊式）", "_smax_o = _right_chain_origin_s(", "_smax_o = _oblique_s_max("),
-    ("丙3 main() 刪去 _front_p2_blk 取 p2 之一行", "                                    _front_p2_blk = _np_d.array(_p2_fl, dtype=float)\n", ""),
-    ("丙4 main() 首宗斷言去 `and not is_first_corner_r`", "and _lg_idx_right == 0\n                                        and not is_first_corner_r):", "and _lg_idx_right == 0):"),
+MUT = [   # `W-G.9-345`：錨為 regex（縮排無關）；替換皆只施於宿主區間之首一處
+    ("丙1 宿主一處 forced_right=_fo_right → _fo_left", r"forced_right=_fo_right\)", "forced_right=_fo_left)"),
+    ("丙2 宿主一處 _right_chain_origin_s → _oblique_s_max（退回舊式）", r"_smax_o = _right_chain_origin_s\(", "_smax_o = _oblique_s_max("),
+    ("丙3 宿主刪去 _front_p2_blk 取 p2 之一行", r"(?m)^[ \t]*_front_p2_blk = _np_d\.array\(_p2_fl, dtype=float\)\n", ""),
+    ("丙4 宿主首宗斷言去 `and not is_first_corner_r`", r"and _lg_idx_right == 0\n[ \t]*and not is_first_corner_r\):", "and _lg_idx_right == 0):"),
 ]
 IR = 0
 if not r:
     for tag, old, new in MUT:
-        # 只突變 main() 之區間（⛔ 碰 stepg／模組層）
-        A = ast.parse(app_src); mf = fn_of(A, "main")
+        # 只突變宿主之區間（⛔ 碰 stepg／模組層其餘）
+        A = ast.parse(app_src); mf = host_of(A)
         lines = app_src.splitlines(keepends=True)
         head = "".join(lines[:mf.lineno - 1]); body = "".join(lines[mf.lineno - 1:mf.end_lineno]); tail = "".join(lines[mf.end_lineno:])
-        n = body.count(old)
+        n = len(re.findall(old, body))
         if n < 1:
-            print("🔴 器紅", tag, "突變錨未命中（main() 內 0 處）"); IR += 1; continue
-        mutated = head + body.replace(old, new, 1) + tail
+            print("🔴 器紅", tag, f"突變錨未命中（{mf.name} 內 0 處）"); IR += 1; continue
+        mutated = head + re.sub(old, lambda _m: new, body, count=1) + tail
         rr, _ = wiring(mutated, stepg_src)
         ok = len(rr) > 0
         print(("✅" if ok else "🔴 器紅"), tag, "⇒ 乙部紅項", rr)

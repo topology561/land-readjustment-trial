@@ -3124,3 +3124,19 @@ for lbl in _blks:
 🔒 **依賴序**：段三 harness 路徑（`W-G.9-344`·側支）→ 段三畫面路徑（次單·同側支）→ `K-9-29 二` ＋ 段三同批入主線（另候 KL 放行）→ `K-9-29 六` 入池閘 → 五級。
 🔒 **段三前置待查之結案**（`K-9-48`「本案之量」之 🔴·街角試算 `633.33` 對配地實跑 `627.57`）：差出在 `W-G.9-338` 工項四（`5689a53`·右端起點）之前之右鏈起點；`5689a53` 起二者皆 `633.33`（發單側窗三十九於 `181b5e8`／`5689a53`／`11c94c5`／`03f22d5` 四態實跑；出處 ＝ `docs/orders/W-G.9-344_重量單.md` 之 `§一` 項 `6`）。
 🔒 **量測器**：`verify/probes/probe_WG9344_k6s3.py`（`run`／`oracle`／`cmp`／`noaff`／`table`／`selftest`）——`oracle` 係本案之受測例（KL 放行之改後配地·⛔ 呼叫段三碼），⛔ 移作生產碼之依據。
+
+---
+
+## 🔧 待落地清單之更新：段三之畫面路徑（方案乙·通用化）；畫面二段之抽出；F.4 模式二 `p_avg` 之母體（`W-G.9-345`·⛔ 上文一字不刪·純末端追加）
+
+🔒 **態** ＝ `3914b6e76c45bfb0d9b6eff8a28af6020124e461`（本批開工態·側支 `verify/W-G.9-343-k929b` 之端）。狀態用三態（✅ 已落地／🔶 部分落地／⬜ 未落地）。
+
+| 序 | 裁／項 | 要旨 | 態 | 出處 |
+|---|---|---|---|---|
+| `1` | 段三·畫面路徑（KL `2026-09-26` 採方案乙） | 畫面之街角選位與配地二段原封抽為模組層（`f3_screen_corner_pk_run`／`f3_screen_stepg_run`）；段三之畫面入口 `f3_screen_k6b_stage3` 以之試算（真 session·試算後復原）；配地、七級調配、步驟 M 依段三後之宗地（指紋不符 ⇒ loud） | ⬜（本批落側支後 🔶；入主線另候 KL 放行） | `docs/orders/W-G.9-345_重量單.md` |
+| `2` | F.4 模式二 `p_avg` 之母體 | `wf_f4.compute` 之五呼叫點以 `k6b_f4_ctx` 送入段三前之 build（`W-G.9-344` 原單 `§三-4` 之未落實者） | ⬜（同上） | 同上 |
+| `3` | 畫面路徑之活體對拍 | `verify/probes/probe_WG9345_screen.py parity`：畫面二函式（harvest）對 harness 之 `run_corner_pk`／`run_step_g` 逐鍵；既有之同構差 ＝ harness 多一「幾何面積 `0`」之池列（二退縮皆 `R1-抵費地-2`）——待登記 | ⬜（待登記） | 同上 `§五-2` |
+| `4` | harness 之逐行複刻 | 畫面二段既已成函式，`verify/stepg_pipeline.py`／`verify/selection_pipeline.py` 之複刻與之之單一真相源化，列泛化波之議 | ⬜ | — |
+
+🔒 **依賴序**：段三 harness 路徑（`W-G.9-344`·側支）→ 段三畫面路徑（本批·同側支）→ `K-9-29 二` ＋ 段三同批入主線（另候 KL 放行）→ `K-9-29 六` 入池閘 → 五級。
+🔒 **量測器**：`verify/probes/probe_WG9345_screen.py`（`census`／`ast`／`parity`／`wiring`／`f4ctx`／`wfctx`／`selftest`）；`verify/probes/probe_WG9340_main_synth.py` 之「app 側宿主」自本批起為 `f3_screen_stepg_run`（抽出前為 `main()`）。
