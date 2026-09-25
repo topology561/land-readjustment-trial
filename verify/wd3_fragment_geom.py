@@ -34,7 +34,7 @@ import json
 from shapely.geometry import Polygon, LineString, Point
 from app_harvest import harvest
 import run_verification as rv
-from selection_pipeline import build_ownership, build_build_parcels, run_corner_pk
+from selection_pipeline import build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b
 from stepg_pipeline import run_step_g
 
 OUT_GEOM = os.path.join(HERE, "out", "wd3_fragment_geom.csv")
@@ -90,11 +90,12 @@ def compute():
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
         param_by_lbl = {r["街廓"]: r for r in params}
-        _pk = run_corner_pk(ns, fake_st, list(cb_by.values()), cad,
-                            params, temp, build, setback, snapshot=snapshot)
+        # 🆕 `W-G.9-344`：段三入口；其後之配地吃段三後之 build（`_pk[6]`）
+        _pk = run_corner_pk_k6b(ns, fake_st, list(cb_by.values()), cad,
+                                params, temp, build, setback, snapshot=snapshot)
         winners, forced = _pk[3], _pk[4]
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
-                        params, build, winners, forced, setback)
+                        params, _pk[6], winners, forced, setback)
         for r in sg["g_rows"]:
             if r.get("推進側別") != "抵費地":
                 continue

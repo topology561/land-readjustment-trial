@@ -252,7 +252,7 @@ def layer_dynamic():
     print("─" * 92)
     from app_harvest import harvest
     import run_verification as rv
-    from selection_pipeline import build_ownership, build_build_parcels, run_corner_pk
+    from selection_pipeline import build_ownership, build_build_parcels, run_corner_pk_k6b
 
     unpack = _stepg_unpack_lines()
     uncond = [(ln, n) for ln, n, u in unpack if u]
@@ -279,7 +279,8 @@ def layer_dynamic():
         v6 = f.read()
     temp, build, _sw = build_build_parcels(
         ns_full, fake_st, v6, list(cb_by.values()), snapshot)
-    _d, _s, _o, winners, forced = run_corner_pk(
+    # 🆕 `W-G.9-344`：段三入口；其後之 `run_step_g` 吃段三後之 build
+    _d, _s, _o, winners, forced, temp, build = run_corner_pk_k6b(
         ns_full, fake_st, list(cb_by.values()), cad, params, temp, build,
         setback, snapshot=snapshot)
     args = (fake_st, list(cb_by.values()), cad, snapshot, params, build,

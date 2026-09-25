@@ -11935,6 +11935,401 @@ def k6_step0_enabled():
     return str(_os_k6.environ.get(K6_STEP0_ENV, "off")).strip().lower() \
         not in ("0", "off", "false", "no")
 
+# 🆕 `W-G.9-344`（`K-6 §二 段三` ＋ `K-9-48`·KL 放行 `2026-09-25`）：段三之旗標與純函式。
+#   🔒 模組層·⛔ 讀 `st`／session；一切外部量由參數注入（harness 入口 ＝ `verify/selection_pipeline.py`
+#      之 `run_corner_pk_k6b`；畫面路徑之接線屬次單）。
+#   🔒 「片與街廓相鄰」＝ 地籍片共邊（`W-G.9-344` 補令一 裁一·⛔ 以街廓多邊形判）。
+K6B_STAGE3_ENV = "WV_K6B_STAGE3"
+
+
+def k6b_stage3_enabled():
+    """段三之旗標：未設或空 ⇒ `True`（預設 `on`）；`on` ⇒ `True`；`off` ⇒ `False`；
+    其他值 ⇒ `RuntimeError`（⛔ 靜默退回）。`off` ⇒ 段三⛔ 執行（供對照）。"""
+    import os as _os_k6b3
+    _v = _os_k6b3.environ.get(K6B_STAGE3_ENV)
+    _s = '' if _v is None else str(_v).strip().lower()
+    if _s in ('', 'on'):
+        return True
+    if _s == 'off':
+        return False
+    raise RuntimeError(
+        f"🔴 [K-6-B 段三] 環境變數 {K6B_STAGE3_ENV} ＝ {_v!r}：只接受 on／off（或未設）"
+        "——⛔ 靜默退回預設")
+
+
+def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, centerlines,
+                   a_prime, trial_winner, alloc_state, *, log_print=print):
+    """`K-6 §二 段三`（逐一嘗試）＋ `K-9-48`（街角合併重試·後處理）——`W-G.9-344`。
+
+    參數
+      order          段二序（`k6b_stage2_global_order` 之回傳列·依 `最終序位` 處理）。
+      locked         段一上鎖集（`set`·各街廓上鎖暫編地號之聯集）。
+      own_map        `{原地號: gid}`（`t8_ownership_map`）。
+      temp_parcels   段三之輸入宗地全體（含道路片／公設片）·⛔ 改寫。
+      build_parcels  可建築宗地（`temp_parcels` 之子集·同物件）·⛔ 改寫。
+      blocks         `{街廓標籤: {"category": str}}`。
+      centerlines    `{道路街廓標籤: [(x, y), …]}`（`cad["centerlines"]`）。
+      a_prime        `a_prime(src, dst) -> float`：`src`／`dst` 為宗地 dict；
+                     回 `a(src) × (p(src) ÷ p(dst))`；任一環取不到 ⇒ `raise`。
+      trial_winner   `trial_winner(temp, build, 街廓, 端, 候選) -> (winner, 試算G, 門檻)`：
+                     以所給之宗地重跑街角選位；`端` ∈ {`左`, `右`}。
+      alloc_state    `alloc_state(temp, build) -> {"kept": {街廓: set}, "bad_pools": {街廓: int}, "err": str|None}`：
+                     以所給之宗地重跑街角選位與配地。
+      log_print      未處置之 `🔴` 出艙所用之印出函式。
+    回傳 `(temp_out, build_out, log)`
+      `order` 為空 ⇒ `(temp_parcels, build_parcels, [])`（同一物件·逐位同輸入）；
+      否則 `temp_out` 為深拷貝，被段三「成」所消耗之片加鍵 `段三併出`（受併宗之相異字典序列表·補令一 裁三）；
+      `build_out` ⊂ `temp_out`（同物件），整筆併出之建築片自其中移除；`log` 為逐列 `dict`。
+    停機（`RuntimeError`）：步驟 9 之配地中止（無從判定）、後處理之未定情形（原單停機款 `9`）。
+    """
+    import copy as _cp
+    from shapely.geometry import Polygon as _Pg, LineString as _Ls
+    from shapely.ops import split as _split
+    if not order:
+        return temp_parcels, build_parcels, []
+
+    _SIDE = {'左': 'p1_end', '右': 'p2_end'}
+    _temp0 = _cp.deepcopy(temp_parcels)
+
+    def _mk_state(temp_list, build_ids):
+        _by = {t['暫編地號']: t for t in temp_list}
+        return {"temp": temp_list, "by": _by, "build": [_by[i] for i in build_ids]}
+
+    def _clone(st):
+        _t = _cp.deepcopy(st["temp"])
+        return _mk_state(_t, [b['暫編地號'] for b in st["build"]])
+
+    _bids0 = []
+    _by0 = {t['暫編地號']: t for t in _temp0}
+    for _b in (build_parcels or []):
+        if _b.get('暫編地號') not in _by0:
+            raise RuntimeError(f"🔴 [K-6-B 段三] build 片 {_b.get('暫編地號')!r} 不在 temp_parcels")
+        _bids0.append(_b['暫編地號'])
+    state = _mk_state(_temp0, _bids0)
+
+    # 幾何（僅供判定·⛔ 改宗地之幾何）：合併群與共邊判用原多邊形；切分與面積比用 buffer(0)
+    _raw, _geo, _blk_of = {}, {}, {}
+    for _t in _temp0:
+        _pid = _t['暫編地號']
+        _cs = _t.get('polygon_coords') or []
+        _raw[_pid] = _Pg(_cs) if len(_cs) >= 3 else None
+        _geo[_pid] = _raw[_pid].buffer(0) if _raw[_pid] is not None else None
+        _blk_of[_pid] = str(_t.get('所屬街廓', '') or '')
+
+    def _kind(pid):
+        _cat = str(_by0[pid].get('街廓分類', '') or '')
+        _bd = F3_CATEGORY_BURDEN.get(_cat, '')
+        if _cat == '道路':
+            return 'road'
+        if _bd == '共同負擔':
+            return 'pub'
+        if _bd == '可建築土地':
+            return 'bld'
+        return 'other'
+
+    def _blk_is_pub(b):
+        _cat = str((blocks.get(b) or {}).get('category', '') or '')
+        return F3_CATEGORY_BURDEN.get(_cat, '') == '共同負擔' and _cat != '道路'
+
+    _adj_cache = {}
+
+    def _adj(pa, pb):
+        _k = (pa, pb) if pa <= pb else (pb, pa)
+        if _k not in _adj_cache:
+            _adj_cache[_k] = bool(k6_shares_segment(_raw.get(pa), _raw.get(pb))[0])
+        return _adj_cache[_k]
+
+    def _nbr_blocks(geom, own_blk):
+        # 補令一 裁一：與街廓 b 相鄰 ⟺ 與 b 內任一地籍片共邊（⛔ 以街廓多邊形判）
+        _out = {}
+        for _y in sorted(_raw):
+            if _blk_of[_y] == own_blk or _raw[_y] is None:
+                continue
+            _ok, _L = k6_shares_segment(geom, _raw[_y])
+            if _ok:
+                _out.setdefault(_blk_of[_y], []).append([_y, round(float(_L), 4)])
+        return _out
+
+    def _is_crossing(pid):
+        if _kind(pid) != 'road' or _raw[pid] is None:
+            return False
+        _nb = _nbr_blocks(_raw[pid], _blk_of[pid])
+        return len(_nb) >= 3 and any(_blk_is_pub(b) for b in _nb)
+
+    # 合併群（K-6 §一·跨街廓·⛔ 濾分區）
+    _pk = [{'原地號': t.get('原地號', ''), 'polygon': _raw[t['暫編地號']]} for t in _temp0]
+    _group_of = {}
+    _groups = []
+    for _gi, _g in enumerate(k6_merge_groups(_pk, own_map)):
+        _ids = [_temp0[i]['暫編地號'] for i in _g]
+        _groups.append(_ids)
+        for _i in _ids:
+            _group_of[_i] = _gi
+
+    L = set(locked or ())
+    merged_out = set()
+    marks = {}
+    won = set()
+    successes = []          # (群索引, 受併宗, 街廓)
+    log = []
+
+    def _apply(st, recv, items):
+        # items: [(src_pid, qty, whole)]；qty ＝ 已折算之 a′
+        for _src, _q, _whole in items:
+            _r = st["by"][recv]
+            _r['面積_m2'] = float(_r.get('面積_m2', 0) or 0) + float(_q)
+            if _whole:
+                st["build"] = [b for b in st["build"] if b['暫編地號'] != _src]
+
+    def _aprime(st, src, dst):
+        return float(a_prime(st["by"][src], st["by"][dst]))
+
+    def _noaff(before, after, blks, removed):
+        _sb = alloc_state(before["temp"], before["build"])
+        _sa = alloc_state(after["temp"], after["build"])
+        if _sb.get("err") or _sa.get("err"):
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三] 「不影響原位次」無從判定（配地中止）：併入前 {_sb.get('err')!r}｜"
+                f"併入後 {_sa.get('err')!r}（停機款 9·⛔ 判為不過）")
+        _ok = True
+        for _b in sorted(blks):
+            _lost = (set(_sb["kept"].get(_b, set())) - set(removed)) - set(_sa["kept"].get(_b, set()))
+            if _lost or int(_sa["bad_pools"].get(_b, 0)) > int(_sb["bad_pools"].get(_b, 0)):
+                _ok = False
+        return _ok
+
+    def _row(**kw):
+        _r = {'序': '—', '街廓': '—', '端': '—', '候選': '—', '層級': '—', '結果': '—',
+              '整筆併入': [], '切分併入': {}, '併入量': {}, '受併宗': '—', '試算G': '—',
+              '門檻': '—', '檢核': '—'}
+        _r.update(kw)
+        log.append(_r)
+        return _r
+
+    # ── 步驟 1〜8 ──
+    for _r in sorted(order, key=lambda r: r['最終序位']):
+        _blk, _end, c = _r['街廓'], _r['端'], _r['暫編地號']
+        _base = dict(序=_r['最終序位'], 街廓=_blk, 端=_end, 候選=c)
+        if (_blk, _end) in won:
+            _row(**_base, 結果='略·已定案')
+            continue
+        if c in merged_out:
+            _row(**_base, 結果='略·已併出')
+            continue
+        _gi = _group_of.get(c)
+        M = (set(_groups[_gi]) if _gi is not None else set()) - {c} - L - merged_out
+        S, _stk = set(), [c]
+        while _stk:
+            _u = _stk.pop()
+            for _v in sorted(M - S):
+                if _blk_of[_v] == _blk_of[c] and _adj(_u, _v):
+                    S.add(_v)
+                    _stk.append(_v)
+        _RP = {m for m in M if _kind(m) in ('road', 'pub')}
+        U, _stk = set(), list(sorted({c} | S))
+        while _stk:
+            _u = _stk.pop()
+            for _v in sorted(_RP - U):
+                if _adj(_u, _v):
+                    U.add(_v)
+                    _stk.append(_v)
+        _done = False
+        _last = None
+        for _lvl, _mset in (('①', S), ('②', S | U)):
+            if _lvl == '①' and not S:
+                continue
+            if _lvl == '②' and not U:
+                continue
+            _t = _clone(state)
+            _items = [(x, _aprime(_t, x, c), True) for x in sorted(_mset)]
+            _apply(_t, c, _items)
+            _w, _G, _thr = trial_winner(_t["temp"], _t["build"], _blk, _end, c)
+            _chk = '—'
+            _ok = (_w == c)
+            if _ok and _lvl == '①':
+                _chk = '免'
+            elif _ok and _lvl == '②':
+                _ok = _noaff(state, _t, {_blk}, set(_mset))
+                _chk = '通過' if _ok else '不過'
+            _last = dict(層級=_lvl, 整筆併入=sorted(_mset), 試算G=_G, 門檻=_thr, 檢核=_chk)
+            if _ok:
+                state = _t
+                won.add((_blk, _end))
+                merged_out |= set(_mset)
+                for x in _mset:
+                    marks.setdefault(x, set()).add(c)
+                successes.append((_gi, c, _blk))
+                _row(**_base, 結果='成', 受併宗=c,
+                     併入量={c: round(sum(q for _, q, _w2 in _items), 4)}, **_last)
+                _done = True
+                break
+        if not _done:
+            _row(**_base, 結果='未成', **(_last or {}))
+
+    # ── 步驟 10：後處理 ──
+    _seen_g = []
+    for _gi, _c, _b in successes:
+        if _gi not in _seen_g:
+            _seen_g.append(_gi)
+    for _gi in _seen_g:
+        _mem = set(_groups[_gi])
+        _recv_by_blk = {}
+        for _g2, _c2, _b2 in successes:
+            if _g2 == _gi:
+                if _b2 in _recv_by_blk and _recv_by_blk[_b2] != _c2:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 於街廓 {_b2} 有二受併宗"
+                        f"（{_recv_by_blk[_b2]}／{_c2}）⇒ 停機款 9")
+                _recv_by_blk[_b2] = _c2
+        R = _mem - merged_out - set(_recv_by_blk.values()) - L
+        if not R:
+            continue
+        _cur = alloc_state(state["temp"], state["build"])
+        if _cur.get("err"):
+            raise RuntimeError(f"🔴 [K-6-B 段三 後處理] 現態配地中止：{_cur['err']!r}（停機款 9）")
+        B = sorted({_blk_of[m] for m in _mem
+                    if _kind(m) == 'bld' and m in _cur["kept"].get(_blk_of[m], set())})
+        for b in B:
+            if b not in _recv_by_blk:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段三 後處理] 街廓 {b} 有群 {sorted(_mem)} 之保留宗而無本段之受併宗"
+                    "（停機款 9）")
+        # 🔧 補令二 裁五 2：B 為空、或某受併宗之街廓 ∉ B ⇒ 停機款 9（⛔ 靜默略過·⛔ 除以 0）
+        if not B:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之 B 為空（現態無保留之建築成員）"
+                f"而待處置者 {sorted(R)} 非空（停機款 9）")
+        _recv_out = sorted(b for b in _recv_by_blk if b not in B)
+        if _recv_out:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之受併宗所在街廓 {_recv_out} ∉ B {B}"
+                "（受併宗於現態未保留·停機款 9）")
+        _plan = []      # (類, x, [(recv, qty)], whole, 鄰接, 鄰接半片)
+        _ga = lambda x: (-float(_by0[x].get('幾何面積_m2', 0) or 0), x)
+        _cls = {'a': [], 'b': [], 'c': []}
+        for x in sorted(R):
+            _k = _kind(x)
+            if _k == 'bld':
+                _kept_x = x in _cur["kept"].get(_blk_of[x], set())
+                if _blk_of[x] in B and _kept_x:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）為 B 內之保留建築片而非受併宗"
+                        "——§三-2 未定（停機款 9）")
+                _tb = sorted({b for b in B for m in _mem
+                              if _blk_of[m] == b and m != x and _adj(x, m)})
+                if len(_tb) != 1:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 後處理 (a)] {x} 所鄰之 B 內街廓 ＝ {_tb}（期恰 1）（停機款 9）")
+                _cls['a'].append((x, _tb[0]))
+            elif _k == 'road' and not _is_crossing(x):
+                _cls['b'].append(x)
+            elif _k in ('road', 'pub'):
+                _cls['c'].append(x)
+            else:
+                raise RuntimeError(f"🔴 [K-6-B 段三 後處理] {x} 之類別無從歸入 (a)(b)(c)（停機款 9）")
+        for x, b in sorted(_cls['a'], key=lambda p: _ga(p[0])):
+            _plan.append(('a', x, [(_recv_by_blk[b], _aprime(state, x, _recv_by_blk[b]))], True,
+                          _nbr_blocks(_raw[x], _blk_of[x]), None))
+        for x in sorted(_cls['b'], key=_ga):
+            _rb = _blk_of[x]
+            _cl = (centerlines or {}).get(_rb) or []
+            if len(_cl) != 2:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段三 後處理 (b)] {x} 所屬道路 {_rb} 之中心線頂點數 {len(_cl)}（期 2）（停機款 9）")
+            (x1, y1), (x2, y2) = _cl[0], _cl[-1]
+            _dx, _dy = x2 - x1, y2 - y1
+            _L = (_dx * _dx + _dy * _dy) ** 0.5
+            _ux, _uy = _dx / _L, _dy / _L
+            _line = _Ls([(x1 - _ux * 500, y1 - _uy * 500), (x2 + _ux * 500, y2 + _uy * 500)])
+            _parts = list(_split(_geo[x], _line).geoms)
+            if len(_parts) != 2:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段三 後處理 (b)] {x} 經中心線切分得 {len(_parts)} 片（期 2）（停機款 9）")
+            _halves = []
+            for _q in _parts:
+                _nb = _nbr_blocks(_q, _rb)
+                _inB = sorted(set(_nb) & set(B))
+                if len(_inB) >= 2:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 後處理 (b)] {x} 之半片（{_q.area:.4f}）鄰 B 內街廓 {_inB}（停機款 9）")
+                _halves.append((_q, _inB, _nb))
+            _ones = [h for h in _halves if len(h[1]) == 1]
+            _half_log = [{'幾何': round(h[0].area, 4), '鄰接街廓': h[2]} for h in _halves]
+            if not _ones:
+                _plan.append(('b', x, [], False, _nbr_blocks(_raw[x], _rb), _half_log))
+            elif len(_ones) == 1:
+                _recv = _recv_by_blk[_ones[0][1][0]]
+                _plan.append(('b', x, [(_recv, _aprime(state, x, _recv))], False,
+                              _nbr_blocks(_raw[x], _rb), _half_log))
+            else:
+                _qs = [(_recv_by_blk[h[1][0]],
+                        _aprime(state, x, _recv_by_blk[h[1][0]]) * (h[0].area / _geo[x].area))
+                       for h in _halves]
+                _plan.append(('b', x, _qs, False, _nbr_blocks(_raw[x], _rb), _half_log))
+        for x in sorted(_cls['c'], key=_ga):
+            _recvs = [_recv_by_blk[b] for b in B]
+            _plan.append(('c', x, [(r, _aprime(state, x, r) / len(B)) for r in _recvs], False,
+                          _nbr_blocks(_raw[x], _blk_of[x]), None))
+
+        def _apply_plan(st, items):
+            for _cl2, x, _qs, _whole, _nb, _hl in items:
+                for _recv, _q in _qs:
+                    _apply(st, _recv, [(x, _q, _whole)])
+
+        _doable = [p for p in _plan if p[2]]
+        _chk_blks = {_blk_of[r] for p in _doable for r, _ in p[2]} | \
+                    {_blk_of[p[1]] for p in _doable if p[3]}
+        _removed = {p[1] for p in _doable if p[3]}
+        _batch_ok = False
+        if _doable:
+            _t = _clone(state)
+            _apply_plan(_t, _doable)
+            _batch_ok = _noaff(state, _t, _chk_blks, _removed)
+            if _batch_ok:
+                state = _t
+        _lvl_name = {'a': '後處理(a)', 'b': '後處理(b)', 'c': '後處理(c)'}
+        for p in _plan:
+            _cl2, x, _qs, _whole, _nb, _hl = p
+            _extra = {'鄰接街廓': _nb}
+            if _hl is not None:
+                _extra['鄰接街廓_半片'] = _hl
+            _qty = {}
+            for _recv, _q in _qs:
+                _qty[_recv] = round(_qty.get(_recv, 0.0) + _q, 4)
+            _base = dict(序='後處理', 街廓=_blk_of[x], 候選=x, 層級=_lvl_name[_cl2],
+                         整筆併入=([x] if _whole else []), 切分併入=({} if _whole else dict(_qty)),
+                         併入量=dict(_qty), 受併宗=(sorted(_qty) if len(_qty) != 1 else next(iter(_qty))),
+                         **_extra)
+            if not _qs:
+                # 🔧 補令二 裁五 1：`_base` 已含 `受併宗` ⇒ 覆寫之（⛔ 重複傳入而拋 TypeError）
+                _row(**{**_base, '受併宗': '—'}, 結果='未處置', 檢核='—')
+                log_print(f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）未處置：二半片皆不鄰 B 內街廓")
+                continue
+            if _batch_ok:
+                _ok = True
+            else:
+                _t = _clone(state)
+                _apply_plan(_t, [p])
+                _ok = _noaff(state, _t, {_blk_of[r] for r, _ in _qs} | ({_blk_of[x]} if _whole else set()),
+                             {x} if _whole else set())
+                if _ok:
+                    state = _t
+            if _ok:
+                _row(**_base, 結果='成', 檢核='通過')
+                if _whole:
+                    merged_out.add(x)
+                for _recv in _qty:
+                    marks.setdefault(x, set()).add(_recv)
+            elif _whole:
+                _row(**_base, 結果='未成', 檢核='不過')
+            else:
+                _row(**_base, 結果='未處置', 檢核='不過')
+                log_print(f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）未處置：「不影響原位次」不過")
+
+    for _pid, _rs in marks.items():
+        state["by"][_pid]['段三併出'] = sorted(_rs)
+    return state["temp"], state["build"], log
+
 
 def k6_step0_block_locked(side_lines_by_side, label):
     # 🛑🛑 **經 `K-9-24 一` 取代·⛔ 再被呼叫**——**死碼**（`W-G.9-198R` `R2-1`·`W-G.9-208 §三` 授權）。

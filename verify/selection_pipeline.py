@@ -626,3 +626,136 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
 
     return (_corner_cand_diag, _corner_select_results, _offset_diag_rows,
             _winners_state, _forced_offset_map)
+
+
+# ═══════════════ 4. 段三（K-6 §二 段三 ＋ K-9-48·W-G.9-344）之 harness 入口 ═══════════════
+
+def k6b_stage3_pool_temp(temp_parcels):
+    """`W-G.9-344` 補令一 裁三：交予公設地調配（F.3／F.4）之 temp——去除段三所併出之片
+    （帶鍵 `段三併出` 者）。回傳**新 list**；⛔ 改其元素。段三不動（無標記）⇒ 元素全同。"""
+    return [tp for tp in (temp_parcels or []) if "段三併出" not in tp]
+
+
+def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                      *, snapshot):
+    """`W-G.9-344`：段三之 harness 入口。回傳七元組
+    `(診斷rows, 指配rows, 抵費地rows, winners, forced, temp_parcels_out, build_parcels_out)`。
+
+    1. 先跑 `run_corner_pk`（同參數）。
+    2. `k6b_stage3_enabled()` 為偽、或段二序（`ss['f3_k6b_stage2_order']`）為空 ⇒ 逕回其五值 ＋
+       原 `temp_parcels`／`build_parcels`（**同一物件**），`ss['f3_k6b_stage3_log'] ＝ []`。
+    3. 否則注入 `a_prime`／`trial_winner`／`alloc_state`（皆於深拷貝上試算）呼叫 `ns["k6b_stage3_run"]`，
+       其後以回傳之宗地再跑一次 `run_corner_pk`，回傳其五值 ＋ 段三後之宗地。
+    4. `ss['f3_k6b_stage3_log']` ＝ 紀錄；`ss['f3_k6b_stage3_order_used']` ＝ 所用之段二序。
+    5. 試算之副作用隔離：試算前深拷貝 `session_state` 與 `ns["K917_DROPPED"]`，段三畢（含例外）
+       於 `finally` 原地回復；最終重跑之 `run_corner_pk` 覆蓋 PK 諸鍵。
+       ⚠️ `stepg_pipeline._V3_FINANCE`（模組全域）亦被試算之 `run_step_g` 改寫——其值只依
+       `snapshot`／`cb`／`cad`（⛔ 依宗地），與最終之 `run_step_g` 所寫者同值 ⇒ ⛔ 回復（具名）。
+    """
+    import copy as _cp
+    import contextlib as _cl
+    import io as _io
+    ss = fake_st.session_state
+    res = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                        snapshot=snapshot)
+    order = list(ss.get('f3_k6b_stage2_order') or [])
+    if (not ns["k6b_stage3_enabled"]()) or not order:
+        ss['f3_k6b_stage3_log'] = []
+        ss['f3_k6b_stage3_order_used'] = order
+        return (*res, temp_parcels, build_parcels)
+
+    from stepg_pipeline import run_step_g
+    from shapely.geometry import Polygon as _Pg
+    _fv3 = snapshot["財務接線_v3"]
+    _zone_of, _price_of = _fv3["原地號_區段"], _fv3["重劃前區段_面積單價"]
+
+    def _p_of(tp):
+        _lot = tp.get("原地號", "")
+        if _lot not in _zone_of:
+            raise RuntimeError(f"🔴 [段三 a′] {tp.get('暫編地號')!r} 之原地號 {_lot!r} 不在 原地號_區段"
+                               "⇒ 停機；⛔ 退 a′ ＝ a")
+        _z = _zone_of[_lot]
+        if _z not in _price_of:
+            raise RuntimeError(f"🔴 [段三 a′] 區段 {_z!r}（{tp.get('暫編地號')!r}）不在 重劃前區段_面積單價"
+                               "⇒ 停機；⛔ 退 a′ ＝ a")
+        _p = float(_price_of[_z].get("單價_元每m2", 0) or 0)
+        if _p <= 0:
+            raise RuntimeError(f"🔴 [段三 a′] 區段 {_z!r} 之單價 {_p!r} ≤ 0 ⇒ 停機")
+        return _p
+
+    def a_prime(src, dst):
+        """`K-9-29 三`：a′ ＝ a(src) × ( p(src) ÷ p(dst) )（先除後乘·同 `wf_f0._transform`）。"""
+        _a = float(src.get("分攤登記面積_m2", 0) or 0) + float(src.get("面積_m2", 0) or 0)
+        return _a * (_p_of(src) / _p_of(dst))
+
+    def _copy_pair(temp, build):
+        _t = _cp.deepcopy(temp)
+        _by = {x["暫編地號"]: x for x in _t}
+        return _t, [_by[b["暫編地號"]] for b in build]
+
+    def trial_winner(temp, build, blk, end, cand):
+        _t, _b = _copy_pair(temp, build)
+        with _cl.redirect_stdout(_io.StringIO()):
+            _d, _s, _o, _w, _f = run_corner_pk(ns, fake_st, cb, cad, param_rows, _t, _b, setback,
+                                               snapshot=snapshot)
+        _key = {'左': 'p1_end', '右': 'p2_end'}[end]
+        _win = (_w.get(blk) or {}).get(_key)
+        _row = next((r for r in _d if r["街廓"] == blk and r["端"] == end and r["候選地號"] == cand), None)
+        _G = _row.get("真G(㎡)") if _row else None
+        _thr = _row.get("門檻(㎡)") if _row else None
+        return _win, _G, _thr
+
+    _cat_of = {b["label"]: b.get("category", "") for b in cb}
+    _prow = {r["街廓"]: r for r in param_rows}
+
+    def alloc_state(temp, build):
+        _t, _b = _copy_pair(temp, build)
+        ns["K917_DROPPED"].clear()
+        _err = None
+        with _cl.redirect_stdout(_io.StringIO()):
+            _d, _s, _o, _w, _f = run_corner_pk(ns, fake_st, cb, cad, param_rows, _t, _b, setback,
+                                               snapshot=snapshot)
+            try:
+                _sg = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _b, _w, _f, setback,
+                                 eff_min_build_by_blk={})
+                _rows = _sg["g_rows"]
+            except RuntimeError as _e:
+                _err = str(_e).split("\n")[0][:300]
+                _rows = (getattr(_e, "partial", None) or {}).get("g_rows") or []
+        _kept, _bad = {}, {}
+        for _r in _rows:
+            _blk = _r.get("所屬街廓")
+            _pid = str(_r.get("暫編地號"))
+            if "抵費地" in _pid:
+                _cc = _r.get("cut_coords")
+                if _cc and not isinstance(_cc, str):
+                    _P = _Pg(_cc).buffer(0)
+                    if _P.area > 0:
+                        _ms = ns["get_min_lot_size"](_cat_of.get(_blk, ""),
+                                                     float(_prow[_blk].get("正面路寬(m)", 0) or 0))
+                        if not bool(ns["_rect_fits_free_pose"](_P, float(_ms["min_width"]),
+                                                               float(_ms["min_depth"]))):
+                            _bad[_blk] = _bad.get(_blk, 0) + 1
+            elif _r.get("驗_總判") == "保留":
+                _kept.setdefault(_blk, set()).add(_pid)
+        return {"kept": _kept, "bad_pools": _bad, "err": _err}
+
+    _locked = set()
+    for _v in (ss.get('f3_k6b_stage1_locked_by_block') or {}).values():
+        _locked |= set(_v or [])
+    _blocks = {b["label"]: {"category": b.get("category", "")} for b in cb}
+    _ss_saved = _cp.deepcopy(dict(ss))
+    _k917_saved = _cp.deepcopy(ns["K917_DROPPED"])
+    try:
+        temp2, build2, log = ns["k6b_stage3_run"](
+            order, _locked, ss.get("t8_ownership_map", {}) or {}, temp_parcels, build_parcels,
+            _blocks, cad.get("centerlines", {}) or {}, a_prime, trial_winner, alloc_state)
+    finally:
+        ss.clear()
+        ss.update(_ss_saved)
+        ns["K917_DROPPED"].clear()
+        ns["K917_DROPPED"].update(_k917_saved)
+    res2 = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp2, build2, setback, snapshot=snapshot)
+    ss['f3_k6b_stage3_log'] = log
+    ss['f3_k6b_stage3_order_used'] = order
+    return (*res2, temp2, build2)

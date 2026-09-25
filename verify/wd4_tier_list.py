@@ -45,7 +45,7 @@ sys.path.insert(0, HERE)
 from app_harvest import harvest                       # noqa: E402
 import run_verification as rv                         # noqa: E402
 from selection_pipeline import (                      # noqa: E402
-    build_ownership, build_build_parcels, run_corner_pk)
+    build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b)
 from stepg_pipeline import run_step_g                 # noqa: E402
 import wd3_fragment_geom as wd3                        # noqa: E402（碎片三分類單一真相源）
 
@@ -222,10 +222,12 @@ def compute(fixture=False):
     out = {}
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
         params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
-        _pk = run_corner_pk(ns, fake_st, list(cb_by.values()), cad,
-                            params, temp, build, setback, snapshot=snapshot)
+        # 🆕 `W-G.9-344`：段三入口；其後之配地吃段三後之 build（`_pk[6]`）。
+        #   上方 `pub_cnt`／`pub_area` 係重劃前母數 ⇒ 照舊原始 temp。
+        _pk = run_corner_pk_k6b(ns, fake_st, list(cb_by.values()), cad,
+                                params, temp, build, setback, snapshot=snapshot)
         sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
-                        params, build, _pk[3], _pk[4], setback)
+                        params, _pk[6], _pk[3], _pk[4], setback)
         g_rows = [r for r in sg["g_rows"] if r.get("推進側別") != "抵費地"]
         # 原地號 → [暫編 g_row]
         by_parent = {}

@@ -27,7 +27,8 @@ REPO = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from app_harvest import harvest  # noqa: E402
 from selection_pipeline import (  # noqa: E402
-    build_ownership, build_build_parcels, run_corner_pk)
+    build_ownership, build_build_parcels, run_corner_pk,
+    run_corner_pk_k6b, k6b_stage3_pool_temp)
 from stepg_pipeline import (  # noqa: E402
     run_step_g, build_step_g_tables, compute_total_burden_rate)
 
@@ -589,10 +590,15 @@ def main():
                     f"= {_d_pub + _d_bld:.2f} ＝ ghost 真面積 {_ghost_true:.2f}）", _ok_1573,
                     [] if _ok_1573 else [f"公設Δ={_d_pub:.4f} 可建築Δ={_d_bld:.4f} ghost={_ghost_true:.4f}"]))
 
+    # 🆕 `W-G.9-344`：段三（K-6 §二 段三 ＋ K-9-48）後之宗地（逐情境）。吃配地結果之下游
+    #   （`run_step_g`／`stepg_ctx`／reverse-test／F.0 ctx 之 `"build"`）一律改用本表；
+    #   F.3／F.4 之 temp 母體改用 `k6b_stage3_pool_temp`（補令一 裁三）；以重劃前母數為受詞者照舊原始。
+    s3_by_tag = {}
     for setback, tag in ((0.0, "0m"), (3.5, "3.5m")):
-        diag, sel, off, winners_state, forced_map = run_corner_pk(
+        diag, sel, off, winners_state, forced_map, _tp_s3, _bp_s3 = run_corner_pk_k6b(
             ns, fake_st, list(cb_by.values()), cad,
             param_by_tag[tag], temp_parcels, build_parcels, setback, snapshot=snapshot)
+        s3_by_tag[tag] = {"temp": _tp_s3, "build": _bp_s3}
         # ── 🗄️ **M-5 街角救援整段已封存**（K-6 §四·KL 裁 2026-07-30 作廢）────────────
         #   K-4-3／M-5 之 ①②③、來源母體 (a)(b)(c)、`ConsumedRegistry` U₀ 硬閘
         #   由 **K-6 段三**取代：跨街廓同歸戶「小往較大集中」一律歸七級調配（F.0／F.2），
@@ -671,7 +677,7 @@ def main():
             #   ⇒ 「加鍵」結構上不可能（且加欄必破 `參數{tag}` 之 baseline diff）。
             #   依 `常規二` 取保守項：改以**顯式具名引數**於呼叫端傳入（效果同「二情境皆空」）。
             _sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
-                             param_by_tag[tag], build_parcels,
+                             param_by_tag[tag], s3_by_tag[tag]["build"],
                              winners_state, forced_map, setback,
                              eff_min_build_by_blk={})
             g_tab, diag_tab, slot_tab = build_step_g_tables(_sg)
@@ -788,7 +794,7 @@ def main():
             _s2 = _cp3.deepcopy(snapshot)
             _mut(_s2["財務接線_v3"])
             run_step_g(ns, fake_st, list(cb_by.values()), cad, _s2,
-                       _ctx["params"], build_parcels, _ctx["win"], _ctx["forced"], _ctx["sb"])
+                       _ctx["params"], s3_by_tag["0m"]["build"], _ctx["win"], _ctx["forced"], _ctx["sb"])
             return dict(_sgp._V3_FINANCE)
 
         # W-G Y 波比率更新（2026-07-14）：擾動幅度 3600→3550 減半，避免 R2（新單價 68621.38·比舊降 4.4%）
@@ -994,10 +1000,11 @@ def main():
                 raise RuntimeError(f"stepg_ctx[{tag}] 缺（trunk A 未成功？）")
             _ctx[tag] = {
                 "ns": ns, "fake_st": fake_st, "cb_by": cb_by, "cad": cad,
-                "snap": snapshot, "omap": _omap, "build": build_parcels,
+                "snap": snapshot, "omap": _omap, "build": s3_by_tag[tag]["build"],
                 "params": _c["params"], "winners": _c["win"], "forced": _c["forced"],
                 "setback": _c["sb"], "gA": _c["sg"]["g_rows"], "poolA": _c["poolA"],
-                "temp": temp_parcels,   # F.3 消費（全 temp_parcels，含公設，供 poly/分攤登記）
+                # F.3／F.4 消費（段三後 temp 去段三併出者·補令一 裁三；含公設，供 poly/分攤登記）
+                "temp": k6b_stage3_pool_temp(s3_by_tag[tag]["temp"]),
             }
         _f0 = wf_f0.compute(_ctx)
         for tag in ("0m", "3.5m"):

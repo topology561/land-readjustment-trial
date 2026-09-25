@@ -12,7 +12,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from app_harvest import harvest                                   # noqa: E402
 import run_verification as rv                                     # noqa: E402
-from selection_pipeline import build_ownership, build_build_parcels, run_corner_pk  # noqa: E402
+from selection_pipeline import (  # noqa: E402
+    build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b, k6b_stage3_pool_temp)
 from stepg_pipeline import run_step_g                             # noqa: E402
 import wf_f0, wf_f1, wf_f2, wf_f3, wf_f4                          # noqa: E402
 
@@ -53,7 +54,8 @@ def main():
     with open(rv.V6DXF, "rb") as f:
         v6 = f.read()
     temp, build, _sw = build_build_parcels(ns, fake_st, v6, list(cb_by.values()), snapshot)
-    _diag, _sel, _off, winners_state, forced_map = run_corner_pk(
+    # 🆕 `W-G.9-344`：段三入口；其後以段三後之宗地續行（F.3 之 temp 去段三併出者·補令一 裁三）
+    _diag, _sel, _off, winners_state, forced_map, temp, build = run_corner_pk_k6b(
         ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
                     params, build, winners_state, forced_map, setback)
@@ -64,7 +66,7 @@ def main():
     seed.update({
         "f3_G_values": sg["g_rows"],
         "f3_classified_blocks": list(cb_by.values()),
-        "f3_temp_parcels": temp,
+        "f3_temp_parcels": k6b_stage3_pool_temp(temp),
         "f3_build_parcels": build,
         "f3_wd2_pool_diag": sg["pool_diag"],
         "f3L_setback_default": setback,
