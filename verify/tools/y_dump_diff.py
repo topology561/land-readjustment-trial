@@ -40,7 +40,7 @@ sys.path.insert(0, VERIFY)
 from app_harvest import harvest                                  # noqa: E402
 import run_verification as rv                                    # noqa: E402
 from selection_pipeline import (                                 # noqa: E402
-    build_ownership, build_build_parcels, run_corner_pk)
+    build_ownership, build_build_parcels, run_corner_pk_k6b)
 from stepg_pipeline import run_step_g, compute_total_burden_rate  # noqa: E402
 
 Y_OUT = os.path.join(VERIFY, "out", "y_dump")
@@ -56,7 +56,8 @@ def _load_live(tag):
 def _run_harness(tag, setback, snap, ns, fake_st, cb_by, cad, temp, build):
     """跑 harness native step G · 產 g_rows（依 run_verification 之流程）。"""
     params = rv.build_param_table(ns, fake_st, cb_by, cad, snap, setback)
-    _dv, _sv, _od, winners, forced = run_corner_pk(
+    # 🆕 `W-G.9-345`（`W-G.9-344` 補令二 裁四）：走段三入口；其後之 run_step_g 吃段三後之 build
+    _dv, _sv, _od, winners, forced, _temp_s3, build = run_corner_pk_k6b(
         ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snap)
     # 補鋪 f3_total_burden_rate_from_finance（stepg L169-176 loud gate）
     _rate, _ = compute_total_burden_rate(ns, list(cb_by.values()), snap)

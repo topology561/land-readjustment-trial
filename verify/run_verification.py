@@ -28,7 +28,7 @@ sys.path.insert(0, HERE)
 from app_harvest import harvest  # noqa: E402
 from selection_pipeline import (  # noqa: E402
     build_ownership, build_build_parcels, run_corner_pk,
-    run_corner_pk_k6b, k6b_stage3_pool_temp)
+    run_corner_pk_k6b, k6b_stage3_pool_temp, k6b_f4_ctx)
 from stepg_pipeline import (  # noqa: E402
     run_step_g, build_step_g_tables, compute_total_burden_rate)
 
@@ -1267,7 +1267,8 @@ def main():
                   "_allocate_tier2_tier3_geometric", "_inflate_a_for_orphan") if f"{n}(" in _wf4_src]
         results.append(("F.4 靜態閘（wf_f4 不呼叫 calc_a_prime／三廢）", not _f4hit, _f4hit))
 
-        _f4 = wf_f4.compute(_ctx, _f0, _f2, _f3)
+        # 🆕 `W-G.9-345`：F.4 模式二 p_avg 之母體 ＝ 段三前之 build（原始 build_parcels）
+        _f4 = wf_f4.compute(k6b_f4_ctx(_ctx, {_t: build_parcels for _t in _ctx}), _f0, _f2, _f3)
         _mina4 = wf_f0._mina_by_block(ns, snapshot, cb_by)   # 區塊 MinA（池三則/Q3 斷言）
         _F4TAB = [("公設調配", "conv_rows", ["情境", "段", "目標宗"]),
                   ("七五雙出口", "exit_rows", ["情境", "歸戶"]),

@@ -13,7 +13,7 @@ sys.path.insert(0, HERE)
 from app_harvest import harvest                                   # noqa: E402
 import run_verification as rv                                     # noqa: E402
 from selection_pipeline import (  # noqa: E402
-    build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b, k6b_stage3_pool_temp)
+    build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b, k6b_f4_ctx)
 from stepg_pipeline import run_step_g                             # noqa: E402
 import wf_f0, wf_f1, wf_f2, wf_f3, wf_f4                          # noqa: E402
 
@@ -55,10 +55,10 @@ def main():
         v6 = f.read()
     temp, build, _sw = build_build_parcels(ns, fake_st, v6, list(cb_by.values()), snapshot)
     # 🆕 `W-G.9-344`：段三入口；其後以段三後之宗地續行（F.3 之 temp 去段三併出者·補令一 裁三）
-    _diag, _sel, _off, winners_state, forced_map, temp, build = run_corner_pk_k6b(
+    _diag, _sel, _off, winners_state, forced_map, temp2, build2 = run_corner_pk_k6b(
         ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
-                    params, build, winners_state, forced_map, setback)
+                    params, build2, winners_state, forced_map, setback)
 
     ss = fake_st.session_state       # 含 run_step_g 寫入之 f3_corner_winners/f3L_corner_min_table/… ＋ build_ownership 之 t8_*
     seed = dict(ss)
@@ -66,8 +66,11 @@ def main():
     seed.update({
         "f3_G_values": sg["g_rows"],
         "f3_classified_blocks": list(cb_by.values()),
-        "f3_temp_parcels": k6b_stage3_pool_temp(temp),
+        # 🆕 `W-G.9-345`：與畫面同形——f3_* ＝ 段三前；段三後者存 f3_k6b_stage3_*（其指紋綁段三前之 build）
+        "f3_temp_parcels": temp,
         "f3_build_parcels": build,
+        "f3_k6b_stage3_temp": temp2, "f3_k6b_stage3_build": build2,
+        "f3_k6b_stage3_fp": ns["k6b_stage3_fingerprint"](build, setback),
         "f3_wd2_pool_diag": sg["pool_diag"],
         "f3L_setback_default": setback,
         "f3_sb_rows": _reconstruct_sb_rows(ns, cad, snapshot),
@@ -90,7 +93,7 @@ def main():
     wf_f1.compute(cbt, f0)
     f2 = wf_f2.compute(cbt, f0)
     f3 = wf_f3.compute(cbt, f2)
-    f4 = wf_f4.compute(cbt, f0, f2, f3)
+    f4 = wf_f4.compute(k6b_f4_ctx(cbt, {tag: build}), f0, f2, f3)
     o = f4[tag]
     print(f"✅ SMOKE PASS：app `_build_wf_ctx` → wf_f0→f4 全鏈跑通（{tag}，無崩）")
     print(f"   7-4三級調配 conv={len(o['conv_rows'])}｜7-5雙出口 exit={len(o['exit_rows'])}｜"

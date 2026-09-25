@@ -636,6 +636,13 @@ def k6b_stage3_pool_temp(temp_parcels):
     return [tp for tp in (temp_parcels or []) if "段三併出" not in tp]
 
 
+def k6b_f4_ctx(ctx_by_tag, build_pre_by_tag):
+    """`W-G.9-345`：`wf_f4.compute` 之 ctx——各情境之 `"build"` 換為**段三前**之 build（餘鍵同物件）。
+    由：`wf_f4` 讀 `"build"` 者唯模式二分母 `p_avg`（`wf_f2._block_pre_avg`），其母體 ＝ 重劃前全集
+    （`wf_f4` 之註逐字「模式二分母 p_avg：重劃前全集＝原始 build_parcels」）。回傳新 dict；⛔ 改輸入。"""
+    return {t: dict(c, build=build_pre_by_tag[t]) for t, c in ctx_by_tag.items()}
+
+
 def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
                       *, snapshot):
     """`W-G.9-344`：段三之 harness 入口。回傳七元組

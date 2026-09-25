@@ -19,7 +19,7 @@ sys.path.insert(0, HERE)
 from app_harvest import harvest                                   # noqa: E402
 import run_verification as rv                                     # noqa: E402
 from selection_pipeline import (  # noqa: E402
-    build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b, k6b_stage3_pool_temp)
+    build_ownership, build_build_parcels, run_corner_pk, run_corner_pk_k6b, k6b_f4_ctx)
 from stepg_pipeline import run_step_g                             # noqa: E402
 import wf_f0, wf_f1, wf_f2, wf_f3, wf_f4                          # noqa: E402
 from wg_g1_smoke import _reconstruct_sb_rows                      # noqa: E402（負擔尺度 C-無關·忠實複現 app live sb）
@@ -80,17 +80,20 @@ def _seed_ctx(ns, fake_st, cb_by, cad, snapshot, temp, build, tag, setback):
     """組真 app session_state → harvested `_build_wf_ctx`（複現 live 缺率鍵→證主動鋪底）。"""
     params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, setback)
     # 🆕 `W-G.9-344`：段三入口；其後以段三後之宗地續行（F.3 之 temp 去段三併出者·補令一 裁三）
-    _d, _s, _o, winners, forced, temp, build = run_corner_pk_k6b(
+    _d, _s, _o, winners, forced, temp2, build2 = run_corner_pk_k6b(
         ns, fake_st, list(cb_by.values()), cad, params, temp, build, setback, snapshot=snapshot)
     sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot,
-                    params, build, winners, forced, setback)
+                    params, build2, winners, forced, setback)
     seed = dict(fake_st.session_state)
     seed.pop("f3_total_burden_rate_from_finance", None)      # 複現 live 缺鍵（G.1 補丁：ctx-builder 主動鋪底）
     seed.update({
         "f3_G_values": sg["g_rows"],
         "f3_classified_blocks": list(cb_by.values()),
-        "f3_temp_parcels": k6b_stage3_pool_temp(temp),
+        # 🆕 `W-G.9-345`：與畫面同形——f3_* ＝ 段三前；段三後者存 f3_k6b_stage3_*（其指紋綁段三前之 build）
+        "f3_temp_parcels": temp,
         "f3_build_parcels": build,
+        "f3_k6b_stage3_temp": temp2, "f3_k6b_stage3_build": build2,
+        "f3_k6b_stage3_fp": ns["k6b_stage3_fingerprint"](build, setback),
         "f3_wd2_pool_diag": sg["pool_diag"],
         "f3L_setback_default": setback,
         "f3_sb_rows": _reconstruct_sb_rows(ns, cad, snapshot),
@@ -125,7 +128,7 @@ def main():
         f1 = wf_f1.compute(cbt, f0)
         f2 = wf_f2.compute(cbt, f0)
         f3 = wf_f3.compute(cbt, f2)
-        f4 = wf_f4.compute(cbt, f0, f2, f3)
+        f4 = wf_f4.compute(k6b_f4_ctx(cbt, {tag: build}), f0, f2, f3)
         gens = {"f0": f0, "f1": f1, "f2": f2, "f3": f3, "f4": f4}
         for gkey, bdir, prefix, tabs in GEN_TABLES:
             d = gens[gkey][tag]

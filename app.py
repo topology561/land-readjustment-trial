@@ -15233,6 +15233,10 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
     from stepg_pipeline import compute_total_burden_rate as _ctbr
     _rate, _ = _ctbr(_ns, list(cb_by.values()), snap_full)
     _fake_st.session_state["f3_total_burden_rate_from_finance"] = float(_rate)
+    # 🆕 `W-G.9-345`：段三（街角合併重試）後之宗地——有其結果 ⇒ build ＝ 段三後、temp ＝ 去段三併出者；
+    #   指紋不符／前次停機 ⇒ `k6b_stage3_selected` raise（loud·⛔ 攔）。
+    from selection_pipeline import k6b_stage3_pool_temp as _k6b_pool_temp
+    _s3 = k6b_stage3_selected(ss, _need("f3_build_parcels"), _need("f3L_setback_default"))
 
     return {
         "ns": _ns,
@@ -15241,8 +15245,8 @@ def _build_wf_ctx(ss, tag, app_file=__file__):
         "cad": cad,
         "snap": snap,
         "omap": _need("t8_ownership_map"),
-        "build": _need("f3_build_parcels"),
-        "temp": _need("f3_temp_parcels"),
+        "build": _need("f3_build_parcels") if _s3 is None else _s3[1],
+        "temp": _need("f3_temp_parcels") if _s3 is None else _k6b_pool_temp(_s3[0]),
         "params": _need("f3L_corner_min_table"),
         "winners": _need("f3_corner_winners"),
         "forced": _need("f3L_forced_offset"),
@@ -16029,6 +16033,7 @@ def f3_screen_corner_pk_run(st, *,
                 ]),
                 use_container_width=True, hide_index=True)
             st.session_state['f3L_corner_winners'] = _corner_select_results
+            st.session_state['f3_corner_cand_diag'] = _corner_cand_diag
             st.session_state['f3L_corner_side_warnings'] = _side_warnings
             # 🆕 `W-G.9-198R` `R1-6`／`R1-7`：K-6-B 段二全域排序（**唯讀出艙**）
             _k6b_stage2 = k6b_stage2_global_order(_k6b_side_results)
@@ -16044,8 +16049,7 @@ def f3_screen_corner_pk_run(st, *,
                 else:
                     st.caption("（本案無待處理街角 ⇒ 段二清單為空）")
                 st.caption(
-                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——段三"
-                    "（逐一嘗試／集中規則／跨街廓合併）尚未落地。"
+                    "🔗 本表為「街角合併重試」（段三·`K-6 §二 段三`／`K-9-48`）之處理順序：依序逐一試算，成者定案；某街角全部候選未成 ⇒ 留設強制抵費地（範圍＝街角規定範圍）。"
                 )
             # 🆕 `W-G.9-198R` `R2-6`：K-9-24 二 之歸側四分支（🔴 **有土地後果**）
             st.session_state['f3_k6b_dual_side_assign'] = _k6b_dual_rows
@@ -16075,10 +16079,7 @@ def f3_screen_corner_pk_run(st, *,
                 else:
                     st.caption("（本案無任何街角候選）")
                 st.caption(
-                    "🛑 **唯讀**：本表僅供檢視，**不被任何分配邏輯消費**——上鎖之受詞係"
-                    "**段三之合併群操作**（`K-6 §二 段三 1`「取該合併群中**未上鎖**之其他片」），"
-                    "而段三尚未落地（`VR-086`）。⛔ 作用於**步驟 0**——步驟 0 已回歸無條件"
-                    "（`K-9-24 一`）且完成於段一之前。"
+                    "🔒 上鎖者於「街角合併重試」（段三）既不被併出、亦不作為合併標的（`K-6 §二 段三 1`「取該合併群中**未上鎖**之其他片」）。"
                 )
                 st.caption(
                     "🔒 **上鎖之判準**：某街角**定案**（該側存在任一筆 `G ≥ 該街角規定面積`）"
@@ -17747,6 +17748,285 @@ def f3_screen_stepg_run(st, *,
             "實際抵費地面積將於**跨街廓指配 / 現金補償**（§31 機制）完成後縮減至最終法定值。"
         )
     st.rerun()
+
+
+# 🆕 `W-G.9-345`（KL `2026-09-26` 採方案乙·通用化）：段三（`K-6 §二 段三` ＋ `K-9-48`）之**畫面入口**。
+#   試算一律以畫面自身之二段（`f3_screen_corner_pk_run`／`f3_screen_stepg_run`）為之，吃畫面即時之地價；
+#   ⛔ 借用 harness 之 `run_corner_pk`／`run_step_g`（其讀本案凍結快照）。
+#   🔒 試算之 st 代理之 `session_state` ＝ 真 session 之**同一物件**（`select_corner_lots_both_sides_v12` 等
+#      經 streamlit 模組讀 session）；隔離以「試算前存、試算後復」為之（`K6B_SCREEN_TRIAL_KEYS`）。
+K6B_SCREEN_TRIAL_KEYS = (
+    # 街角選位本體所寫（11）
+    'f3L_corner_side_warnings', 'f3L_corner_winners', 'f3L_forced_offset', 'f3_corner_winners',
+    'f3_current_pk_block', 'f3_k6b_dual_side_assign', 'f3_k6b_stage1_locked_by_block',
+    'f3_k6b_stage1_locks', 'f3_k6b_stage2_order', 'f3_pk_alloc_depth', 'f3_pk_legal_min_width',
+    # 街角選位可達之模組層函式所寫（2·`select_corner_lots_both_sides_v12`）
+    'f3_corner_range_areas', 'f3_corner_range_polys',
+    # 配地本體所寫（9）
+    'f3_G_trace', 'f3_G_values', 'f3_forced_offset_diag', 'f3_g_iter_diagnostics', 'f3_g_needs_rerun',
+    'f3_k94_baseline_touch', 'f3_offset_fragments_merged', 'f3_stage2_placed', 'f3_wd2_pool_diag',
+    # 本批所增（1）
+    'f3_corner_cand_diag',
+)
+K6B_SCREEN_STAGE3_KEYS = ('f3_k6b_stage3_temp', 'f3_k6b_stage3_build', 'f3_k6b_stage3_fp')
+
+
+class _K6BTrialStop(Exception):
+    """試算中止（試算中之 `st.stop()`）。"""
+
+
+class _K6BTrialDone(Exception):
+    """配地完成（配地本體之末句 `st.rerun()`）。"""
+
+
+class _K6BNullCM:
+    """試算用之無作用物：可作 context manager、可呼叫、任意屬性皆回無作用物。"""
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def __call__(self, *a, **k):
+        return _K6BNullCM()
+
+    def __getattr__(self, name):
+        return _K6BNullCM()
+
+    def __iter__(self):
+        return iter(())
+
+
+class _K6BTrialSt:
+    """段三試算之 st 代理：`session_state` ＝ 所包之真 st 之 `session_state`（**同一物件**）；
+    一切顯示呼叫無作用（`error`／`warning` 之訊息另記於 `msgs`·供停機訊息）；
+    `stop()` ⇒ `_K6BTrialStop`；`rerun()` ⇒ `_K6BTrialDone`。"""
+    def __init__(self, real_st):
+        object.__setattr__(self, 'session_state', real_st.session_state)
+        object.__setattr__(self, 'msgs', [])
+
+    def stop(self):
+        raise _K6BTrialStop('試算中止（st.stop）')
+
+    def rerun(self, *a, **k):
+        raise _K6BTrialDone('配地完成（st.rerun）')
+
+    def columns(self, spec, *a, **k):
+        return [_K6BNullCM() for _ in range(spec if isinstance(spec, int) else len(spec))]
+
+    def tabs(self, names, *a, **k):
+        return [_K6BNullCM() for _ in names]
+
+    def __getattr__(self, name):
+        def _noop(*a, **k):
+            if name in ('error', 'warning') and a:
+                self.msgs.append(str(a[0])[:300])
+            return _K6BNullCM()
+        return _noop
+
+
+def k6b_stage3_fingerprint(build_parcels, setback):
+    """段三結果所依之「段三前之 build ＋ 退縮」之指紋（`sha256` hexdigest）。"""
+    import hashlib as _hl_s3
+    import json as _js_s3
+    _rows = sorted(
+        (str(_b['暫編地號']), str(_b.get('所屬街廓') or ''),
+         round(float(_b.get('面積_m2') or 0), 6), round(float(_b.get('分攤登記面積_m2') or 0), 6))
+        for _b in (build_parcels or []))
+    _s = _js_s3.dumps([round(float(setback or 0), 6), _rows], ensure_ascii=False)
+    return _hl_s3.sha256(_s.encode('utf-8')).hexdigest()
+
+
+def k6b_stage3_selected(ss, build_parcels_pre, setback):
+    """回段三後之 `(temp, build)`；session 無段三之結果 ⇒ `None`。
+    前次段三停機、或指紋與目前之段三前 build／退縮不符 ⇒ `RuntimeError`（loud·⛔ 靜默退回段三前）。"""
+    if ss.get('f3_k6b_stage3_error'):
+        raise RuntimeError(
+            f"🔴 [K-6-B 段三·畫面] 前次「街角合併重試」停機：{ss.get('f3_k6b_stage3_error')}"
+            "——請重跑「街角地優先權選位」")
+    if 'f3_k6b_stage3_fp' not in ss:
+        return None
+    if ss['f3_k6b_stage3_fp'] != k6b_stage3_fingerprint(build_parcels_pre, setback):
+        raise RuntimeError(
+            "🔴 [K-6-B 段三·畫面] 「街角合併重試」之結果與目前之宗地或退縮不符（指紋不符）"
+            "——請重跑「街角地優先權選位」")
+    return ss['f3_k6b_stage3_temp'], ss['f3_k6b_stage3_build']
+
+
+def k6b_screen_build_for_g(st, build_parcels):
+    """畫面配地所用之 build：有段三之結果 ⇒ 段三後之 build；無 ⇒ 原 build；不符 ⇒ `st.error` ＋ `st.stop()`。"""
+    try:
+        _s3 = k6b_stage3_selected(st.session_state, build_parcels,
+                                  st.session_state.get('f3L_setback_default'))
+    except RuntimeError as _e_s3:
+        st.error(str(_e_s3))
+        st.stop()
+        raise
+    if _s3 is None:
+        return build_parcels
+    return _s3[1]
+
+
+def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
+    """段三之畫面入口（`W-G.9-345 §三-2`）。`pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名；
+    `g_kwargs` ＝ `f3_screen_stepg_run` 之 13 名去 `build_parcels`／`_new_params`／`_btn_clicked`／`_auto_recalc`。
+    回 `{'temp', 'build', 'log', 'order', 'ran'}`。"""
+    import copy as _cp_s3
+    import contextlib as _cl_s3
+    import io as _io_s3
+    from shapely.geometry import Polygon as _Pg_s3
+    _ss = st.session_state
+    temp0, build0 = pk_kwargs['temp_parcels'], pk_kwargs['build_parcels']
+    # 1. 先去前次之段三結果與停機訊息
+    for _k in K6B_SCREEN_STAGE3_KEYS + ('f3_k6b_stage3_error',):
+        _ss.pop(_k, None)
+    # 2. 旗標 off ⇒ 逕以真 st 跑街角選位
+    if not k6b_stage3_enabled():
+        f3_screen_corner_pk_run(st, **pk_kwargs)
+        _order = list(_ss.get('f3_k6b_stage2_order') or [])
+        _ss['f3_k6b_stage3_log'] = []
+        _ss['f3_k6b_stage3_order_used'] = _order
+        return {'temp': temp0, 'build': build0, 'log': [], 'order': _order, 'ran': False}
+    # 3. 首趟（代理·寫真 session）；中止 ⇒ 以真 st 再跑一次使畫面現其訊息後重拋
+    _px0 = _K6BTrialSt(st)
+    try:
+        with _cl_s3.redirect_stdout(_io_s3.StringIO()):
+            f3_screen_corner_pk_run(_px0, **pk_kwargs)
+    except _K6BTrialStop:
+        f3_screen_corner_pk_run(st, **pk_kwargs)
+        raise
+    # 4. 段二序
+    order = list(_ss.get('f3_k6b_stage2_order') or [])
+    if not order:
+        f3_screen_corner_pk_run(st, **pk_kwargs)
+        _ss['f3_k6b_stage3_log'] = []
+        _ss['f3_k6b_stage3_order_used'] = order
+        return {'temp': temp0, 'build': build0, 'log': [], 'order': order, 'ran': False}
+
+    # 5. 三注入物
+    _ppz = pk_kwargs['pre_price_by_zone']
+
+    def _p_of(tp):
+        _z = tp.get('重劃前地價區段')
+        if not _z:
+            raise RuntimeError(f"🔴 [段三·畫面 a′] {tp.get('暫編地號')!r} 之重劃前地價區段為空 ⇒ 停機；⛔ 退 a′ ＝ a")
+        if _z not in _ppz:
+            raise RuntimeError(f"🔴 [段三·畫面 a′] 區段 {_z!r}（{tp.get('暫編地號')!r}）不在重劃前地價表 ⇒ 停機；⛔ 退 a′ ＝ a")
+        _p = float(_ppz[_z] or 0)
+        if _p <= 0:
+            raise RuntimeError(f"🔴 [段三·畫面 a′] 區段 {_z!r} 之單價 {_p!r} ≤ 0 ⇒ 停機")
+        return _p
+
+    def a_prime(src, dst):
+        """`K-9-29 三`：a′ ＝ a(src) × ( p(src) ÷ p(dst) )（先除後乘）。"""
+        _a = float(src.get('分攤登記面積_m2', 0) or 0) + float(src.get('面積_m2', 0) or 0)
+        return _a * (_p_of(src) / _p_of(dst))
+
+    def _copy_pair(temp, build):
+        _t = _cp_s3.deepcopy(temp)
+        _by = {x['暫編地號']: x for x in _t}
+        return _t, [_by[b['暫編地號']] for b in build]
+
+    def trial_winner(temp, build, blk, end, cand):
+        _t, _b = _copy_pair(temp, build)
+        _px = _K6BTrialSt(st)
+        try:
+            with _cl_s3.redirect_stdout(_io_s3.StringIO()):
+                f3_screen_corner_pk_run(_px, **dict(pk_kwargs, temp_parcels=_t, build_parcels=_b))
+        except _K6BTrialStop as _e_tw:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三·畫面] 試算（街角選位）中止：{blk}／{end}／{cand}"
+                f"——{_px.msgs[-1:]}（停機款 9）") from _e_tw
+        _key = {'左': 'p1_end', '右': 'p2_end'}[end]
+        _win = ((_ss.get('f3_corner_winners') or {}).get(blk) or {}).get(_key)
+        _row = next((r for r in (_ss.get('f3_corner_cand_diag') or [])
+                     if r.get('街廓') == blk and r.get('端') == end and r.get('候選地號') == cand), None)
+        _G = _row.get('真G(㎡)') if _row else None
+        _thr = _row.get('門檻(㎡)') if _row else None
+        return _win, _G, _thr
+
+    _cat_of = {b['label']: b.get('category', '') for b in g_kwargs['classified_blocks']}
+    _prow = {r['街廓']: r for r in pk_kwargs['_corner_rows_init']}
+
+    def alloc_state(temp, build):
+        _t, _b = _copy_pair(temp, build)
+        K917_DROPPED.clear()
+        _px = _K6BTrialSt(st)
+        _err = None
+        try:
+            with _cl_s3.redirect_stdout(_io_s3.StringIO()):
+                f3_screen_corner_pk_run(_px, **dict(pk_kwargs, temp_parcels=_t, build_parcels=_b))
+                f3_screen_stepg_run(_px, **dict(
+                    g_kwargs, _auto_recalc=False, _btn_clicked=True, build_parcels=_b,
+                    _new_params=dict(_ss.get(g_kwargs['_param_key']) or {})))
+        except _K6BTrialDone:
+            pass
+        except _K6BTrialStop:
+            _err = f"試算中止（st.stop）：{_px.msgs[-1:]}"
+        except RuntimeError as _e_as:
+            _err = str(_e_as).split("\n")[0][:300]
+        _rows = [] if _err else list(_ss.get('f3_G_values') or [])
+        _kept, _bad = {}, {}
+        for _r in _rows:
+            _blk = _r.get('所屬街廓')
+            _pid = str(_r.get('暫編地號'))
+            if '抵費地' in _pid:
+                _cc = _r.get('cut_coords')
+                if _cc and not isinstance(_cc, str):
+                    _P = _Pg_s3(_cc).buffer(0)
+                    if _P.area > 0:
+                        _ms = get_min_lot_size(_cat_of.get(_blk, ''),
+                                               float(_prow[_blk].get('正面路寬(m)', 0) or 0))
+                        if not bool(_rect_fits_free_pose(_P, float(_ms['min_width']),
+                                                         float(_ms['min_depth']))):
+                            _bad[_blk] = _bad.get(_blk, 0) + 1
+            elif _r.get('驗_總判') == '保留':
+                _kept.setdefault(_blk, set()).add(_pid)
+        return {'kept': _kept, 'bad_pools': _bad, 'err': _err}
+
+    # 6. 隔離：試算前存、試算後復
+    _locked = set()
+    for _v in (_ss.get('f3_k6b_stage1_locked_by_block') or {}).values():
+        _locked |= set(_v or [])
+    _blocks = {b['label']: {'category': b.get('category', '')} for b in g_kwargs['classified_blocks']}
+    _saved = {k: _cp_s3.deepcopy(_ss[k]) for k in K6B_SCREEN_TRIAL_KEYS if k in _ss}
+    _k917_saved = _cp_s3.deepcopy(K917_DROPPED)
+    _unhandled = []
+    try:
+        temp2, build2, log = k6b_stage3_run(
+            order, _locked, _ss.get('t8_ownership_map', {}) or {}, temp0, build0, _blocks,
+            _ss.get('f3_manual_road_centerlines') or {}, a_prime, trial_winner, alloc_state,
+            log_print=_unhandled.append)
+    except RuntimeError as _e_s3r:
+        # 7. 段三停機 ⇒ 記其訊息（配地由 `k6b_screen_build_for_g` 擋下）
+        _ss['f3_k6b_stage3_error'] = str(_e_s3r).split("\n")[0][:500]
+        st.error(str(_e_s3r))
+        st.stop()
+        raise
+    finally:
+        for _k in K6B_SCREEN_TRIAL_KEYS:
+            if _k in _saved:
+                _ss[_k] = _saved[_k]
+            else:
+                _ss.pop(_k, None)
+        K917_DROPPED.clear()
+        K917_DROPPED.update(_k917_saved)
+    # 8. 終趟（真 st）＋ 出艙
+    f3_screen_corner_pk_run(st, **dict(pk_kwargs, temp_parcels=temp2, build_parcels=build2))
+    for _m in _unhandled:
+        st.error(_m)
+    with st.expander(f"🔗 K-6-B 段三：街角合併重試之紀錄（{len(log)} 列）", expanded=True):
+        if log:
+            st.dataframe(pd.DataFrame([{k: str(v) for k, v in _r.items()} for _r in log]),
+                         use_container_width=True, hide_index=True)
+        else:
+            st.caption("（本次無紀錄）")
+    _ss['f3_k6b_stage3_log'] = log
+    _ss['f3_k6b_stage3_order_used'] = order
+    _ss['f3_k6b_stage3_temp'] = temp2
+    _ss['f3_k6b_stage3_build'] = build2
+    _ss['f3_k6b_stage3_fp'] = k6b_stage3_fingerprint(build0, _ss['f3L_setback_default'])
+    return {'temp': temp2, 'build': build2, 'log': log, 'order': order, 'ran': True}
 
 
 # ============ 主程式 ============
@@ -22940,6 +23220,9 @@ def main():
                             _st_inv.session_state.pop('f3_G_trace', None)
                             _st_inv.session_state.pop('f3_corner_winners', None)
                             _st_inv.session_state.pop('f3L_corner_winners', None)
+                            # 🆕 `W-G.9-345`：段三（街角合併重試）之結果與停機訊息一併失效
+                            for _k_s3inv in K6B_SCREEN_STAGE3_KEYS + ('f3_k6b_stage3_error',):
+                                _st_inv.session_state.pop(_k_s3inv, None)
                             _st_inv.session_state['f3_g_needs_rerun'] = True
                         except Exception:
                             pass
@@ -23327,18 +23610,29 @@ def main():
                 # 優先權指數選位（按下執行才跑）
                 if st.button("🏁 執行第 1 宗街角地優先權選位（左右側獨立）",
                               use_container_width=True, key='btn_f3L_corner_priority'):
-                    f3_screen_corner_pk_run(
+                    f3_screen_k6b_stage3(
                         st,
-                        B_value=B_value,
-                        C_for_calc=C_for_calc,
-                        _build_blocks=_build_blocks,
-                        _corner_rows_init=_corner_rows_init,
-                        _pd=_pd,
-                        build_parcels=build_parcels,
-                        post_price_by_block=post_price_by_block,
-                        pre_price_by_zone=pre_price_by_zone,
-                        sb_rows_by_label=sb_rows_by_label,
-                        temp_parcels=temp_parcels)
+                        pk_kwargs=dict(
+                            B_value=B_value,
+                            C_for_calc=C_for_calc,
+                            _build_blocks=_build_blocks,
+                            _corner_rows_init=_corner_rows_init,
+                            _pd=_pd,
+                            build_parcels=build_parcels,
+                            post_price_by_block=post_price_by_block,
+                            pre_price_by_zone=pre_price_by_zone,
+                            sb_rows_by_label=sb_rows_by_label,
+                            temp_parcels=temp_parcels),
+                        g_kwargs=dict(
+                            _param_key=_param_key,
+                            B_value=B_value,
+                            C_for_calc=C_for_calc,
+                            _tab6_burden=_tab6_burden,
+                            block_meta_by_label=block_meta_by_label,
+                            sb_rows_by_label=sb_rows_by_label,
+                            post_price_by_block=post_price_by_block,
+                            pre_price_by_zone=pre_price_by_zone,
+                            classified_blocks=classified_blocks))
 
                 # ---- (已停用舊 Step G 圖選器 fragment，僅保留程式碼供參考) ----
                 if False:
@@ -23703,7 +23997,7 @@ def main():
                         _param_key=_param_key,
                         _tab6_burden=_tab6_burden,
                         block_meta_by_label=block_meta_by_label,
-                        build_parcels=build_parcels,
+                        build_parcels=k6b_screen_build_for_g(st, build_parcels),
                         classified_blocks=classified_blocks,
                         post_price_by_block=post_price_by_block,
                         pre_price_by_zone=pre_price_by_zone,
@@ -24523,6 +24817,17 @@ def main():
 - **廣場 / 鄰里公園 / 零售市場（共同負擔）**：合併於相鄰住宅區
 - **非共同負擔（機關、社會住宅）**：公地優先指配 → 不足時按私有歸戶面積比例發還（不受最小分配限制）
 """)
+            # 🆕 `W-G.9-345`：公設地之調配依段三後之宗地（段三所併出之片⛔ 再入公設地之調配·`W-G.9-344` 補令一 裁三）；
+            #   「歸戶自有土地」之圖示照舊讀重劃前之地（temp_parcels）。
+            try:
+                _s3_m = k6b_stage3_selected(st.session_state, build_parcels,
+                                            st.session_state.get('f3L_setback_default'))
+            except RuntimeError as _e_s3m:
+                st.error(str(_e_s3m))
+                st.stop()
+                raise
+            _tp_m = (temp_parcels if _s3_m is None
+                     else [tp for tp in _s3_m[0] if '段三併出' not in tp])
             with st.expander("📋 自動計算公設分配（依目前 土地歸戶 + 街廓互動分析 街廓分類）",
                               expanded=False):
                 _own_map = st.session_state.get('t8_ownership_map', {}) or {}
@@ -24547,7 +24852,7 @@ def main():
                         _road_alloc_summary = []
                         # 預先把暫編地號依「街廓」分組，方便依左右側街廓清單聚合持分
                         _parcel_by_block = {}
-                        for tp in (temp_parcels or []):
+                        for tp in (_tp_m or []):
                             _bk = tp.get('所屬街廓', '')
                             _parcel_by_block.setdefault(_bk, []).append(tp)
                         # 取得非道路街廓清單（道路兩側可能的街廓）
@@ -24615,7 +24920,7 @@ def main():
                             _holdings = {}
                             for gid in _own_groups.keys():
                                 _l_a = 0.0; _r_a = 0.0
-                                for tp in (temp_parcels or []):
+                                for tp in (_tp_m or []):
                                     _own = _own_map.get(tp.get('原地號', ''), '')
                                     if _own != gid:
                                         continue
@@ -24842,7 +25147,7 @@ def main():
 
                     # 收集選定公設街廓內之暫編地號
                     _public_parcels_in_block = [
-                        tp for tp in (temp_parcels or [])
+                        tp for tp in (_tp_m or [])
                         if tp.get('所屬街廓', '') == _selected_block.get('label', '')
                     ]
 
@@ -24868,7 +25173,7 @@ def main():
                         _gid_lands = []   # [(tp_in_buildable, distance)]
                         if _pp_gid:
                             _grp_parcels = _own_groups_for_m.get(_pp_gid, []) or []
-                            for tp2 in (temp_parcels or []):
+                            for tp2 in (_tp_m or []):
                                 if tp2.get('街廓分類', '') not in ('住宅區', '商業區'):
                                     continue
                                 if tp2.get('原地號', '') not in _grp_parcels:
@@ -25213,7 +25518,10 @@ def main():
                         _f1r = _wf1.compute(_cbt, _f0r)
                         _f2r = _wf2.compute(_cbt, _f0r)
                         _f3r = _wf3.compute(_cbt, _f2r)
-                        _f4r = _wf4.compute(_cbt, _f0r, _f2r, _f3r)
+                        # 🆕 `W-G.9-345`：F.4 讀 "build" 者唯模式二 p_avg（重劃前母體）⇒ 送入段三前之 build
+                        from selection_pipeline import k6b_f4_ctx as _k6b_f4_ctx
+                        _f4r = _wf4.compute(_k6b_f4_ctx(_cbt, {_tag: _wg_ss['f3_build_parcels']}),
+                                            _f0r, _f2r, _f3r)
                     _wg_ss['f3_wg_f4'] = _f4r[_tag]
                     _wg_ss['f3_wg_tag'] = _tag
                     # G.2：逐代圖層資料（只讀引擎曝出之原始列/新形座標；禁重算）
