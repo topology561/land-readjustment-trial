@@ -8708,3 +8708,42 @@ vs `TIER_EXPECT` ＝ `{'—': 8, '0': 13, '1': 7, '2': 3, '3': 2}` ⇒ **`0` 與
 `③` **⛔ 本批量**（段三觀測之母體須於步驟 `0` 廢除後重跑·`K-9-29 九`）。
 🛑 **⛔ 解除**（`①` 未成就）。
 🔒 **旁記**（本簿 `p9′` 之結案登記節·`ok_t`／`ok_f`「待 `K-9-29` 碼側落地後重量再定」）：同一二態之 `run_all`，`ok_t`（名目 `F.0-pre 雙軌錨`）🔴 → ✅；`ok_f`（名目 `W-D.4 31旗標全消費`）之出艙「旗標18→消費18（期31）」→「旗標27→消費27（期31）」仍 🔴 ⇒ 二錨之重量俟入主線後再定（⛔ 本批改錨）。
+
+---
+
+## 🔧 `GB-190`／`GB-191` 之立 ＋ `GB-186`／`GB-153` 之進度（`W-G.9-348`·⛔ 上文一字不刪·純末端追加）
+
+🔒 **態** ＝ `57c4623c8d28525565ef0665cffc53e9371b10e6`（本批開工態）。**取號**（`W-G.9-348 §零-1`）：`GB-190`／`GB-191` 於開工態全倉皆 `0` 命中（錨定框·列框）。
+
+### `GB-190` 🆕　**畫面：街角地選定（含街角合併重試）之結果，其失效只綁退縮與分配深度二欄；失效後之配地⛔ 停機**
+
+**受詞**（皆 `app.py` 之 `st.session_state`·開工態 `app.py` blob `f4c47af6b864de683b99985597310d36b1f43d23`）：
+- 甲　`f3_corner_winners` 以字面鍵名寫入者恰一（字樣錨 `st.session_state['f3_corner_winners'] = _f3_corner_winners_state`·街角選位本體 `f3_screen_corner_pk_run`·且僅於本趟有 winner 時寫〔其上一列 `if _f3_corner_winners_state:`〕）、以字面鍵名清除者恰一（`_f3L_invalidate_g_cache`）；段三試算之鍵表（`K6B_SCREEN_TRIAL_KEYS`／`K6B_SCREEN_READBACK_KEYS`）於試算內去而復原，⛔ 失效之用；後者之掛接唯二：退縮欄之 `_f3L_setback_changed`（委派呼叫之）與逐街廓深度覆寫欄（`on_change=_f3L_invalidate_g_cache`）⇒ 街角選位之他項輸入（`f3_screen_corner_pk_run` 之引數：地價、`B`／`C`、街廓、宗地；及 session 之土地歸戶）變更後，`f3_corner_winners` 與段三之產物⛔ 失效，其後之配地讀前次之結果。
+- 乙　`_f3L_invalidate_g_cache` 去 `f3_corner_winners` 與段三諸鍵（`K6B_SCREEN_STAGE3_KEYS` ＋ `f3_k6b_stage3_error`）後之配地：`k6b_stage3_selected` 回 `None`（無指紋）⇒ `k6b_screen_build_for_g` 回段三前之宗地；`f3_screen_stepg_run` 之 `_step_l_winners` 為空 ⇒ 以個別標記定街角；畫面僅見 `f3_g_needs_rerun` 之橫幅（`W-G.9-346R` ⑥-6）。
+- 丙　`f3_screen_k6b_stage3` 之首趟無產出（如土地歸戶為空）時，「段二序為空」之出口撤停機訊息，而前次之 `f3_corner_winners`／`f3L_forced_offset` 可能殘留供配地（`W-G.9-346R` ⑥-7）。
+**實測**（母體 ＝ 開工態 `app.py` 全檔·列框·字樣以 `grep -F`）：`['f3_corner_winners'] = ` ＝ `1`；`pop('f3_corner_winners'` ＝ `1`；`on_change=_f3L_invalidate_g_cache` ＝ `2`（其一為註解列 ⇒ 掛接 `1`）；`_f3L_invalidate_g_cache()` ＝ `2`（其一為定義列 ⇒ 呼叫 `1`·於 `_f3L_setback_changed` 內）；對照組 `f3_corner_winners` ＝ `15`（⇒ 量測器非紅）。乙、丙 ＝ reviewer 之碼面判讀（`W-G.9-346R` ⑥）；本案之實例【未證】。
+**與配地之關係**：可能以過時或缺之街角選定結果照出配地而⛔ 停機；本案之實例【未證】。
+**與既有登記之界**：`GB-187`（街角地選定之結果被清除後之 G 值計算，以技術語中斷）——同族（街角地選定之結果缺漏或過時）、異受詞（`GB-187` ＝ 中斷時之用語；本項 ＝ 不中斷之諸路）。
+**失效條件**：`(1)` 街角地選定（含段三）之產物附其輸入之指紋，配地時指紋不符或缺 ⇒ 以地政用語停機並指示重跑街角地選定（修入生產碼 ＋ KL 放行·附畫面路徑之合成案〔`自誤 517`〕）；`(2)` 合成案之甲／乙／丙三造於改後皆 loud。
+🔒 **排程**：畫面批（`GB-187`／`GB-188`／`GB-189`／Streamlit 升級）併辦。
+
+### `GB-191` 🆕　**畫面：「執行七級調配」之 ctx（`_build_wf_ctx`）無 `baselines` ⇒ 於 `run_step_g` 以「BASELINE 圖層未解析」停機（訊息誤指圖層）**
+
+**受詞**：`app.py` 模組層 `_build_wf_ctx`（字樣錨 `def _build_wf_ctx`）所組之 `cad` 僅六鍵（`alloc_dir_by_block`／`centerlines`／`front_lengths`／`front_lines`／`side_lengths_by_side`／`side_lines_by_side`）；`verify/wf_f0.py` 之 trunk B 以之呼叫 `run_step_g`，而 `verify/stepg_pipeline.py` 之 `run_step_g` 自 `7fa957e`（`2026-07-31`·K-8 段三 commit A）起於 `cad.get("baselines")` 為空即停（字樣錨 `` `cad['baselines']` 為空 ``）。
+**實測**（發單側窗四十四·態 `57c4623`·以 harvest 之 `_build_wf_ctx` 組 ctx·session 以 harness 之產物鋪之〔同 `verify/probes/probe_WG9345_screen.py wfctx` 之法〕）：`0 m`／`3.5 m` 皆 ⇒ `` RuntimeError: 🔴 run_step_g：`cad['baselines']` 為空——BASELINE 圖層未解析或配對全失敗 ``；同 ctx 補 `baselines`（取 harness 之 `cad`）⇒ 改停於 `GSA` 錨檢（`0 m` 值不符 `3` 項；`3.5 m` 值不符 `2` 項 ＋ `G007` 未被評估）。三支端到端複本（`verify/wg_g1_smoke.py`／`wg_g2_smoke.py`／`wg_g3.py`）皆同停於此（各 `rc 1`·發單側窗四十四實跑）；`verify/fixture_e2e_termination.py` 之凍存（`verify/out/WG99_端到端複本_終止點凍存_投影.txt`·三支皆停於 `R2` 之 `②-宗` 閘）已過時，該夾具 `rc 1`。
+**與配地之關係**：⛔ 動配地；畫面「執行七級調配」於本案⛔ 能產出，其訊息令操作者往 CAD 之 BASELINE 圖層找因（誤指）。
+**與既有登記之界**：W-F 凍存為史料（`CLAUDE.md` 之「調配階段之諸裁」節；新調配程式落地後按鈕改接）——本項之受詞係其間之按鈕行為與訊息；`GB-153`（W-F 之逐值迴歸不可得）——異受詞。
+**失效條件**：`(1)` 畫面「執行七級調配」改接新調配程式；或 `(2)` 於改接前，該按鈕以地政用語明示「七級調配（舊程式）已停用、新程式建置中」，⛔ 以圖層之訊息出（修入生產碼 ＋ KL 放行·附畫面路徑之合成案〔`自誤 517`〕）。
+🔒 **排程**：畫面批併辦；或隨新調配模組。
+
+### `GB-186` 之進度（⛔ 解除）
+
+🔒 **本項之片之全精度**（發單側窗四十四·態 `57c4623`·以 `run_corner_pk_k6b` ＋ `run_step_g` 之 `cut_coords` 重算）：harness 配地列之 `R1-抵費地-2`，面積 `0.004575 ㎡`（`0 m`）／`0.004600 ㎡`（`3.5 m`）；最小外接矩形長邊皆 `29.5788 m`、短邊 `0.000525`／`0.000765 m`；其欄 `幾何面積(㎡)` 以二位小數顯示為 `0.0`。
+🔒 **新事實**：畫面路徑（`f3_screen_stepg_run`）之配地列⛔ 含本片——`verify/probes/probe_WG9345_screen.py parity` 之 `Z` 於 `3.5 off`／`3.5 on`／`0.0 on`（發單側窗四十四實跑）皆 ＝ `[('harness', 'R1-抵費地-2')]`，同 `W-G.9-345 §五-2` 項 `2` 之記。`W-G.9-345` 塊 `P1` 序 `3` 之「幾何面積 `0` 之池列——待登記」即本片 ⇒ 自本進度起併入本項、⛔ 另鑄（`自誤 537`）。二路徑於本片相異之成因【未證】。
+🛑 **⛔ 解除**（失效條件 `(1)`〜`(3)` 未成就）。
+
+### `GB-153` 之進度（⛔ 解除）
+
+🔒 `①`（`F.0`–`F.4` 之逐值迴歸）於入主線後之態（`57c4623`）仍不可得：`W-F F.0` 🔴（`GSA` 錨檢·`0m` 值不符 `3` 項）。發單側窗四十四以行程內中性化 `wf_f0.GSA_EXPECT` 實跑 ⇒ `F.0` 過錨後，`F.1` 停於 `R1 楔形面積 0.00 ≠ 錨 5.3±0.05`、`F.4` 停於 `E0` 具名錨，`F.0`／`F.2`／`F.3` 之 baseline 對拍 `24` 項紅。
+🔒 W-F 係凍存之史料（`CLAUDE.md` 之「🔧 待落地清單之補登：調配階段之諸裁」節·`W-G.9-332`；`docs/specs/調配階段_泛用規格_v1.md` `§五` 將「各子波之具名錨」列為不沿用）⇒ `W-G.9-348` 裁：其錨⛔ 重錨；`①` 於 W-F 為受詞之期間⛔ 可得；新調配程式另立其驗收（同規格 `§四`；`§六` 序 `5`「新程式另立路徑，不依之」）。
+🛑 **⛔ 解除**（`①` 未成就）；本項之受詞於新調配程式落地、畫面「執行七級調配」改接新程式時另議。
