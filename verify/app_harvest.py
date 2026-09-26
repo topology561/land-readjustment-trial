@@ -127,8 +127,14 @@ _CACHE = {}
 
 def harvest(app_py=APP_PY):
     """回傳 (ns, fake_st)：ns 為真函式活命名空間，fake_st 供 driver 填 session_state。"""
-    if app_py in _CACHE:
-        return _CACHE[app_py]
+    # 🆕 `W-G.9-348`（`自誤 479` 之攔法「器內正規化」）：快取鍵改為 `os.path.abspath` 之正規形。
+    #   由：同一檔之二寫法（反斜線對正斜線、含 `.` 段）原各成一鍵 ⇒ 二次 harvest ⇒ 後者之 fake
+    #   `streamlit` 取代 `sys.modules['streamlit']`，先 harvest 者之 session 即與 `import streamlit`
+    #   所得者脫鉤（`W-G.9-346R` ⑧-2）。⛔ 用 `os.path.normcase`：`fixture_yi_construction` 以
+    #   `_CACHE[APP_PY]` 就地灌注複本，Windows 下 `normcase` 改大小寫即不命中其鍵。
+    _key = os.path.abspath(app_py)
+    if _key in _CACHE:
+        return _CACHE[_key]
     with open(app_py, "r", encoding="utf-8") as f:
         src = f.read()
     fake = _install_fake_streamlit()
@@ -137,7 +143,7 @@ def harvest(app_py=APP_PY):
     ns = {"__name__": "app_harvested", "__file__": app_py}
     exec(code, ns)
     ns["__harvest_stats__"] = {"kept": nkept, "skipped": nskip}
-    _CACHE[app_py] = (ns, fake)
+    _CACHE[_key] = (ns, fake)
     return ns, fake
 
 
