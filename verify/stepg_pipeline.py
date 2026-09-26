@@ -236,7 +236,7 @@ def assert_depth_same_source(depth_from_snapshot):
 
 
 def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
-               winners_state, forced_map, setback, eff_min_build_by_blk=None):
+               winners_state, forced_map, setback, eff_min_build_by_blk=None, _k929_6_inner=False):
     """一情境 Step G（**薄殼**·`W-G.9-247` 工項一）——**只包、不吞**。
 
     🔒 **本殼之唯一職責** ＝ 於 `RuntimeError` 上掛 `e.partial` 後**原樣 `raise`**
@@ -254,6 +254,37 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     🔒 `_pcap` ＝ partial capture。其 `g_rows` 掛的是 `_run_step_g_impl` 內
     `g_rows = []` 之**同一 list 物件**（掛引用·⛔ 複製）⇒ 中止時已 `extend` 之列全在。
     """
+    # 🆕 `W-G.9-349`（`K-9-29 六` 入池閘·KL 放行 `2026-09-26`）：旗標 on 且非試算趟 ⇒ 以 app 之
+    #   `k929_6_fixpoint` 求末態之 build（試算趟 ＝ 本函式 `_k929_6_inner=True`）；回末趟之結果（即以末態 build
+    #   所跑者·⛔ 重跑）並掛 `k929_6`（`build`／`log`）。`K917_DROPPED` ＝ 呼叫前之內容 ＋ 末趟所記（同單趟之累加）。
+    #   🔒 旗標 off ⇒ 本段⛔ 執行（逐位同本批前）。
+    if not _k929_6_inner and ns["k929_6_enabled"]():
+        import copy as _cp_k9296
+        _k917 = ns["K917_DROPPED"]
+        _saved = _cp_k9296.deepcopy(_k917)
+        _pre = _compute_v3_finance(ns, snapshot, cb, cad)["pre_price_by_zone"]
+        _ss9 = fake_st.session_state
+
+        def _trial(_b):
+            _k917.clear()
+            _sg9 = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _b,
+                              winners_state, forced_map, setback,
+                              eff_min_build_by_blk=eff_min_build_by_blk, _k929_6_inner=True)
+            return _sg9["g_rows"], _cp_k9296.deepcopy(dict(_k917)), _sg9
+
+        try:
+            _bf, _last, _log9 = ns["k929_6_fixpoint"](
+                build_parcels, _trial, _ss9.get("t8_ownership_map", {}) or {}, _pre,
+                _ss9.get("f3_cad_front_lines", {}) or {})
+        finally:
+            _fin_drops = _cp_k9296.deepcopy(dict(_k917))
+            _k917.clear()
+            _k917.update(_saved)
+            for _kk, _vv in _fin_drops.items():
+                _k917.setdefault(_kk, []).extend(_vv)
+        _sg_out = _last[2]
+        _sg_out["k929_6"] = {"build": _bf, "log": _log9}
+        return _sg_out
     _pcap = {'g_rows': [], 'aborted_blk': None}
     try:
         return _run_step_g_impl(

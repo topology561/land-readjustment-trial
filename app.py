@@ -9388,6 +9388,12 @@ def k917_should_drop(res, is_corner_first, has_successor, chain_side, blk_label,
     """
     _v = str(((res or {}).get("_lg_cols") or {}).get("驗_B藍影", "") or "").strip()
     if _v != "不合格":
+        # 🆕 `W-G.9-349`（`K-9-13`：不得建築者不配地·由下一宗遞補）：閘二（`K-9-12` 內接矩形）、
+        #   最小建築面積（`v3` ⑨⑩）與臨正街寬（`K-9-33`）之接線。街角第 `1` 宗免（`K-9-12-e`／`K-9-33`）。
+        #   🔒 末位（無後繼）亦不配地——其位空出即入池（`K-9-13`）；閘一之末位⛔ 受本款影響（仍 loud）。
+        #   🔒 旗標 `WV_K929_6=off` ⇒ 本款⛔ 執行（逐位同本批前）。
+        if (not is_corner_first) and k929_6_enabled() and k929_6_unbuildable(res):
+            return True, "不合格"
         return False, _v
     if is_corner_first:
         raise RuntimeError(
@@ -9395,6 +9401,10 @@ def k917_should_drop(res, is_corner_first, has_successor, chain_side, blk_label,
             f"竟為閘一『不合格』——其分配範圍係 winner 之 `G` 所單獨決定、⛔ 受遞補影響"
             f"（構造保證）⇒ 此情狀⛔ 得發生（`GB-104` 之 loud 斷言）。")
     if not has_successor:
+        # 🆕 `W-G.9-349`：閘二接線後，前宗之不配地得使末位遞補為受藍影檢之宗（連鎖）⇒ 末位之閘一不合格
+        #   依 `K-9-13` 不配地（其位空出即入池）；旗標 off ⇒ 仍 loud（本批前之斷言）。
+        if k929_6_enabled():
+            return True, _v
         raise RuntimeError(
             f"🔴 `K-9-9 六`：街廓 {blk_label} {chain_side} 側之末位 {pid!r} 遭閘一剔除而"
             f"**⛔ 後繼可遞補** ⇒ 候選耗盡。正典逐字「必然產生配餘地……⛔ 會發生『塞不下』」"
@@ -9409,13 +9419,216 @@ def k917_note_drop(blk_label, chain_side, pid, res, tp=None):
        該宗既不進 `g_rows`，其幾何即歸池 ⇒ **⛔ 另設「入池」之碼**（⛔ 第二份定義）。
     🔒 **⛔ 超配**（`K-9-11 三`）：本函式⛔ 動任何宗之 `G`。
     """
-    K917_DROPPED.setdefault((str(blk_label), str(chain_side)), []).append({
+    _rec = {
         "暫編地號": pid,
         "G(㎡)": round(float((res or {}).get("G", 0.0) or 0.0), 4),
         "宗地寬度(m)": round(float((res or {}).get("_宗地寬度", 0.0) or 0.0), 4),
         "驗_B藍影": str(((res or {}).get("_lg_cols") or {}).get("驗_B藍影", "")),
         "歸戶": (tp or {}).get("歸戶鍵Gxxx", (tp or {}).get("歸戶", "")),
-    })
+    }
+    # 🆕 `W-G.9-349`：不配地之由（旗標 on 始記·off ⇒ 紀錄逐位同本批前）
+    if k929_6_enabled():
+        _why = (["藍影"] if _rec["驗_B藍影"].strip() == "不合格" else []) + k929_6_unbuildable(res)
+        _rec["不配地由"] = "、".join(_why) if _why else "—"
+    K917_DROPPED.setdefault((str(blk_label), str(chain_side)), []).append(_rec)
+
+
+# ══════════ 🆕 `W-G.9-349`：`K-9-29 六`（五級之入池閘）＋ 閘二之接線（`K-9-12`／`K-9-13`／`K-9-33`）══════════
+#   KL 放行 `2026-09-26`（發單側窗四十五·附圖）。正典：`K-9-29 四／五／六`、`K-9-13`、`K-9-33`；
+#   規格 ＝ `docs/specs/調配階段_泛用規格_v1.md` 步 `1`（「G < MinA」讀為不能分配·`2026-09-23` 通知三）。
+#   🔒 模組層·⛔ 讀 `st`／session；一切外部量由參數注入（harness ＝ `verify/stepg_pipeline.py` 之 `run_step_g`；
+#      畫面 ＝ `f3_screen_stepg_run`）。旗標 `WV_K929_6`：未設／`on` ⇒ 啟用；`off` ⇒ 逐位回到本批前之行為。
+K929_6_ENV = "WV_K929_6"
+
+
+def k929_6_enabled():
+    """入池閘之旗標：未設或空 ⇒ `True`；`on` ⇒ `True`；`off` ⇒ `False`；其他值 ⇒ `RuntimeError`（⛔ 靜默退回）。"""
+    import os as _os_k9296
+    _v = _os_k9296.environ.get(K929_6_ENV)
+    _s = '' if _v is None else str(_v).strip().lower()
+    if _s in ('', 'on'):
+        return True
+    if _s == 'off':
+        return False
+    raise RuntimeError(
+        f"🔴 [K-9-29 六] 環境變數 {K929_6_ENV} ＝ {_v!r}：只接受 on／off（或未設）——⛔ 靜默退回預設")
+
+
+def k929_6_unbuildable(res):
+    """回該宗之不能建築項（`list`·空 ⇒ 無）：`內接矩形`（`K-9-12`·`驗_A幾何`）、`最小建築面積`（`v3` ⑨⑩·`驗_C面積`）、
+    `臨正街寬`（`K-9-33`：`S < 畸零地寬`；`S ＝ 畸零地寬` 合格·題三）。
+    🔒 只讀 `_lot_gate` 之落欄與 `res` 之 `S_raw`；「不適用」「無從判定」⛔ 當不合格；`W`／`S` 取不到 ⇒ 臨正街寬⛔ 判。"""
+    _lg = (res or {}).get("_lg_cols") or {}
+    _out = []
+    if str(_lg.get("驗_A幾何", "") or "").strip() == "不合格":
+        _out.append("內接矩形")
+    if str(_lg.get("驗_C面積", "") or "").strip() == "不合格":
+        _out.append("最小建築面積")
+    try:
+        _W = float(_lg.get("驗_A_W"))
+        _S = float((res or {}).get("S_raw", (res or {}).get("S")))
+    except (TypeError, ValueError):
+        _W = _S = None
+    if _W is not None and _S is not None and _S + 1e-9 < _W:
+        _out.append("臨正街寬")
+    return _out
+
+
+def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_lines, *, max_rounds=None):
+    """`K-9-29 六`（入池閘）之不動點——`W-G.9-349`。
+
+    參數
+      build_parcels      原位次之輸入宗地（⛔ 改寫；合併以深拷貝之新 dict 取代）。
+      trial              `trial(build) -> (rows, dropped, payload)`：以所給之 build 跑配地（入池閘⛔ 再入）；
+                         `rows` ＝ G 值列；`dropped` ＝ 本趟之 `{(街廓, 側): [不配地紀錄]}`；`payload` 原樣回傳。
+      own_map            `{原地號: gid}`（`t8_ownership_map`）。
+      pre_price_by_zone  `{重劃前地價區段: 單價}`（`a′` 之 `p`）。
+      front_lines        `{街廓: {"p1": (x, y), "p2": (x, y)}}`（投影序之軸）。
+    回傳 `(build_final, (rows, dropped, payload) 之末趟, log)`；末趟即以 `build_final` 所跑者。
+
+    規則（`K-9-29 四／五／六`）：
+      ① 不配地之宗 `u`，取其同街廓、同歸戶、地籍共邊相鄰（可經同歸戶之宗連成）之宗之連通分量 `C`（含原位可配者）；
+      ② `|C| ≥ 2` 且 `C`（以原宗計）未試過 ⇒ 合併：標的宗 ＝ 個別 `G` 最大者（並列取暫編字典序最小）；
+         其餘各以 `a′ ＝ a × p(自身) ÷ p(標的)` 併入（`K-9-29 三`）；合併後之單元佔推進序在先者之位
+         （左側推進 ＝ 投影序最小者；右側推進 ＝ 投影序最大者）；
+      ③ 重跑；合併後可配 ⇒ 留置；仍不配地 ⇒ 全部入池（其地即池）；
+      ④ 反覆至無新合併。
+    停機（`RuntimeError`·⛔ 靜默略過）：合併組含街角第 `1` 宗；合併組跨左右推進；投影軸、地價取不到；
+      含原位可配者之合併單元終不配地（`K-9-29 六`「一達一未達者於閘內併入（不進池）」之反例·【未裁】）；
+      逾 `max_rounds`（預設 ＝ 宗數 ＋ `1`）未收斂。
+    """
+    import copy as _cp_k9296
+    from shapely.geometry import Polygon as _Pg_k9296
+    from shapely.ops import unary_union as _uu_k9296
+
+    def _pid(t):
+        return str(t.get('暫編地號'))
+
+    def _gid(t):
+        return str((own_map or {}).get(str(t.get('原地號', '')), '') or '')
+
+    def _a(t):
+        if '分攤登記面積_m2' in t:
+            return float(t.get('分攤登記面積_m2', 0) or 0) + float(t.get('面積_m2', 0) or 0)
+        return float(t.get('面積_m2', 0) or 0)
+
+    def _p(t):
+        _z = t.get('重劃前地價區段')
+        if not _z or _z not in (pre_price_by_zone or {}):
+            raise RuntimeError(
+                f"🔴 [K-9-29 六 a′] {_pid(t)!r} 之重劃前地價區段 {_z!r} 不在重劃前地價表 ⇒ 停機；⛔ 退 a′ ＝ a")
+        _v = float(pre_price_by_zone[_z] or 0)
+        if _v <= 0:
+            raise RuntimeError(f"🔴 [K-9-29 六 a′] 區段 {_z!r} 之單價 {_v!r} ≤ 0 ⇒ 停機")
+        return _v
+
+    build = list(build_parcels or [])
+    geom = {_pid(t): _Pg_k9296(t['polygon_coords']).buffer(0) for t in build}
+    members = {_pid(t): [_pid(t)] for t in build}
+    tried = set()
+    log = []
+    cap = int(max_rounds) if max_rounds else (len(build) + 1)
+    for _rnd in range(1, cap + 1):
+        out = trial(build)
+        rows, dropped = out[0], out[1]
+        by = {_pid(t): t for t in build}
+        side_of, g_of, corner_first, drops = {}, {}, set(), []
+        for _r in rows or []:
+            _k = str(_r.get('暫編地號'))
+            side_of[_k] = _r.get('推進側別')
+            g_of[_k] = float(_r.get('G(㎡)') or 0)
+            if str(_r.get('驗_宗序', '')) == '街角第1宗':
+                corner_first.add(_k)
+        for (_blk_d, _side_d), _lst in sorted((dropped or {}).items()):
+            for _e in _lst:
+                _k = str(_e.get('暫編地號'))
+                side_of[_k] = _side_d
+                g_of[_k] = float(_e.get('G(㎡)') or 0)
+                drops.append((str(_blk_d), _k))
+        drop_ids = {k for _, k in drops}
+        plans, used = [], set()
+        for _blk_u, u in sorted(set(drops)):
+            if u not in by or u in used:
+                continue
+            _g = _gid(by[u])
+            if not _g:
+                continue
+            _bl = by[u].get('所屬街廓')
+            comp, _stk = {u}, [u]
+            while _stk:
+                _x = _stk.pop()
+                for _y in sorted(by):
+                    if _y in comp or by[_y].get('所屬街廓') != _bl or _gid(by[_y]) != _g:
+                        continue
+                    if k6_shares_segment(geom[_x], geom[_y])[0]:
+                        comp.add(_y)
+                        _stk.append(_y)
+            if len(comp) < 2:
+                continue
+            _orig = frozenset(_m for _c in comp for _m in members[_c])
+            if _orig in tried:
+                continue
+            if comp & corner_first:
+                raise RuntimeError(
+                    f"🔴 [K-9-29 六]【未裁】街廓 {_bl} 之合併組 {sorted(_orig)} 含街角第 1 宗 "
+                    f"{sorted(comp & corner_first)} ⇒ 停機（⛔ 自裁併入街角地與否）")
+            _sides = {side_of.get(_c) for _c in comp}
+            if len(_sides) != 1 or None in _sides:
+                raise RuntimeError(
+                    f"🔴 [K-9-29 六]【未裁】街廓 {_bl} 之合併組 {sorted(_orig)} 之推進側 {sorted(map(str, _sides))} "
+                    "非單一 ⇒ 停機（⛔ 自裁「投影序在前者」）")
+            _side = next(iter(_sides))
+            _fl = (front_lines or {}).get(_bl) or {}
+            if _fl.get('p1') is None or _fl.get('p2') is None:
+                raise RuntimeError(f"🔴 [K-9-29 六] 街廓 {_bl} 之 FRONTLINE 取不到 ⇒ 停機（投影序無從定）")
+            _ord = [_pid(t) for t in _projection_order([by[_c] for _c in comp], _fl['p1'], _fl['p2'])]
+            _first = _ord[0] if _side == 'left' else _ord[-1]
+            _tgt = min(comp, key=lambda _c: (-g_of.get(_c, 0.0), _c))
+            _q = {_c: _a(by[_c]) * (_p(by[_c]) / _p(by[_tgt])) for _c in sorted(comp) if _c != _tgt}
+            plans.append(dict(comp=comp, orig=_orig, bl=_bl, side=_side, gid=_g, first=_first, tgt=_tgt,
+                              q=_q, keep=bool(comp - drop_ids)))
+            used |= comp
+        if not plans:
+            _fin = {str(_r.get('暫編地號')) for _r in rows or []}
+            for _row in log:
+                _u = _row['標的']
+                _row['結果'] = '留置' if _u in _fin else ('入池' if _u in drop_ids else '續併')
+                if _row['結果'] == '入池' and _row['含原位可配']:
+                    raise RuntimeError(
+                        f"🔴 [K-9-29 六]【未裁】合併組 {_row['成員']}（含原位可配之宗）合併後仍不配地 ⇒ 停機"
+                        "（「一達一未達者於閘內併入（不進池）」之反例·⛔ 自裁）")
+            return build, out, log
+        for _pl in plans:
+            _t = by[_pl['tgt']]
+            _unit = _cp_k9296.deepcopy(_t)
+            _unit['面積_m2'] = float(_unit.get('面積_m2', 0) or 0) + sum(_pl['q'].values())
+            if _pl['first'] != _pl['tgt']:
+                _f = by[_pl['first']]
+                for _k in ('polygon_coords', 'centroid_x', 'centroid_y'):
+                    if _k in _f:
+                        _unit[_k] = _cp_k9296.deepcopy(_f[_k])
+            _unit['入池閘併入'] = sorted(_pl['orig'])
+            _nb = []
+            for t in build:
+                _k = _pid(t)
+                if _k == _pl['first']:
+                    _nb.append(_unit)
+                elif _k not in _pl['comp']:
+                    _nb.append(t)
+            build = _nb
+            by = {_pid(t): t for t in build}
+            geom[_pl['tgt']] = _uu_k9296([geom[_c] for _c in _pl['comp']]).buffer(0)
+            members[_pl['tgt']] = sorted(_pl['orig'])
+            for _c in _pl['comp']:
+                if _c != _pl['tgt']:
+                    geom.pop(_c, None)
+                    members.pop(_c, None)
+            tried.add(_pl['orig'])
+            log.append({'輪': _rnd, '街廓': _pl['bl'], '推進側': _pl['side'], '歸戶': _pl['gid'],
+                        '成員': sorted(_pl['orig']), '標的': _pl['tgt'], '佔位': _pl['first'],
+                        '併入量(a′)': round(sum(_pl['q'].values()), 4), 'a 合計': round(_a(_unit), 4),
+                        '含原位可配': _pl['keep'], '結果': '—'})
+    raise RuntimeError(f"🔴 [K-9-29 六] 逾 {cap} 輪未收斂 ⇒ 停機（⛔ 截斷）")
 
 
 def _corner_band_geom(block_poly, d_hat, front_p1, allocation_dir, buf, side,
@@ -15075,6 +15288,8 @@ _WF_NS_NAMES = [
     # 🆕 `W-G.9-269` `c1`：`K-9-17` 遞補迴圈之三名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
     #   🛑 漏列即 **app 生產路徑 KeyError**（`fixture_wf_ns_wiring` 之受詞）。
     "k917_should_drop", "k917_note_drop",
+    # 🆕 `W-G.9-349`：`K-9-29 六` 入池閘之三名（引擎 `verify/stepg_pipeline.py` 之 `run_step_g` 經 `ns` 消費）。
+    "k929_6_enabled", "k929_6_fixpoint", "K917_DROPPED",
     # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
     #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
@@ -16204,8 +16419,19 @@ def f3_screen_stepg_run(st, *,
         classified_blocks,
         post_price_by_block,
         pre_price_by_zone,
-        sb_rows_by_label):
+        sb_rows_by_label,
+        _k929_6_inner=False):
     """畫面「🧮 執行 G 值迭代計算」配地區（_btn_clicked or _auto_recalc）之本體（W-G.9-345 工項三·自 main() 原封抽出·零行為變更）。"""
+    # 🆕 `W-G.9-349`（`K-9-29 六` 入池閘·KL 放行 `2026-09-26`）：旗標 on 且非試算趟 ⇒ 先以試算趟（代理 st）求末態之
+    #   build，再以之跑本體（真 st）；合併紀錄於本體末與 `f3_G_values` 同寫（`f3_k929_6_log`）。旗標 off ⇒ 本段⛔ 執行。
+    _k929_6_log = None
+    if (not _k929_6_inner) and k929_6_enabled():
+        build_parcels, _k929_6_log = _k929_6_screen_gate(st, dict(
+            B_value=B_value, C_for_calc=C_for_calc, _auto_recalc=_auto_recalc, _btn_clicked=_btn_clicked,
+            _new_params=_new_params, _param_key=_param_key, _tab6_burden=_tab6_burden,
+            block_meta_by_label=block_meta_by_label, build_parcels=build_parcels,
+            classified_blocks=classified_blocks, post_price_by_block=post_price_by_block,
+            pre_price_by_zone=pre_price_by_zone, sb_rows_by_label=sb_rows_by_label))
     if _auto_recalc and not _btn_clicked:
         st.info("🔄 偵測到街角地變動，自動重算 G 值…")
     g_rows = []
@@ -16234,6 +16460,7 @@ def f3_screen_stepg_run(st, *,
     #   狀態機閉合：成功時末端寫回二產物並清 `f3_g_needs_rerun`。
     st.session_state.pop('f3_G_values', None)
     st.session_state.pop('f3_G_trace', None)
+    st.session_state.pop('f3_k929_6_log', None)   # 🆕 `W-G.9-349`：同二產物之生命週期
     st.session_state['f3_g_needs_rerun'] = True
     _params_for_g = dict(st.session_state.get(_param_key, _new_params))
 
@@ -17654,6 +17881,9 @@ def f3_screen_stepg_run(st, *,
 
     st.session_state['f3_G_values'] = g_rows
     st.session_state['f3_G_trace'] = detail_trace
+    # 🆕 `W-G.9-349`：入池閘之合併紀錄（旗標 off 或試算趟 ⇒ ⛔ 寫）
+    if _k929_6_log is not None:
+        st.session_state['f3_k929_6_log'] = _k929_6_log
     # 🚨 Phase 9.12 Issue 4：清除 rerun flag（G 值已重新計算完成）
     st.session_state.pop('f3_g_needs_rerun', None)
     _n_offset = sum(1 for r in g_rows if r.get('推進側別') == '抵費地')
@@ -17767,6 +17997,8 @@ K6B_SCREEN_TRIAL_KEYS = (
     'f3_k94_baseline_touch', 'f3_offset_fragments_merged', 'f3_stage2_placed', 'f3_wd2_pool_diag',
     # 本批所增（1）
     'f3_corner_cand_diag',
+    # 🆕 `W-G.9-349`：入池閘之合併紀錄（配地本體所寫）
+    'f3_k929_6_log',
 )
 K6B_SCREEN_STAGE3_KEYS = ('f3_k6b_stage3_temp', 'f3_k6b_stage3_build', 'f3_k6b_stage3_fp')
 # 🆕 `W-G.9-346`：段三於街角選位（首趟／試算趟）後自 session 讀回之鍵（⊂ K6B_SCREEN_TRIAL_KEYS）；
@@ -18048,6 +18280,56 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
     _ss['f3_k6b_stage3_fp'] = k6b_stage3_fingerprint(build0, _ss['f3L_setback_default'])
     _ss.pop('f3_k6b_stage3_error', None)
     return {'temp': temp2, 'build': build2, 'log': log, 'order': order, 'ran': True}
+
+
+def _k929_6_screen_gate(st, g_kwargs):
+    """🆕 `W-G.9-349`：入池閘之畫面入口（`f3_screen_stepg_run` 之首·旗標 on 且非試算趟時）。
+    試算趟 ＝ `f3_screen_stepg_run(代理 st, …, _k929_6_inner=True)`（吃畫面即時之地價·⛔ 借用 harness）；
+    隔離 ＝ 試算前存 `K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`、試算後復。回 `(build_final, log)`。
+    試算中止或 `k929_6_fixpoint` 停機 ⇒ `st.error` ＋ `st.stop()`（loud·⛔ 退回未閘之 build）。"""
+    import copy as _cp_k9296s
+    import contextlib as _cl_k9296s
+    import io as _io_k9296s
+    _ss = st.session_state
+    _saved = {k: _cp_k9296s.deepcopy(_ss[k]) for k in K6B_SCREEN_TRIAL_KEYS if k in _ss}
+    _k917_saved = _cp_k9296s.deepcopy(K917_DROPPED)
+
+    def _trial(_b):
+        K917_DROPPED.clear()
+        _px = _K6BTrialSt(st)
+        try:
+            with _cl_k9296s.redirect_stdout(_io_k9296s.StringIO()):
+                f3_screen_stepg_run(_px, **dict(g_kwargs, _auto_recalc=False, _btn_clicked=True,
+                                                build_parcels=_b, _k929_6_inner=True))
+        except _K6BTrialDone:
+            pass
+        except _K6BTrialStop as _e_t:
+            raise RuntimeError(
+                f"🔴 [K-9-29 六·畫面] 試算（配地）中止：{_px.msgs[-1:]}（⛔ 退回未閘之配地）") from _e_t
+        if 'f3_G_values' not in _ss:
+            raise RuntimeError("🔴 [K-9-29 六·畫面] 試算（配地）未產出 G 值表（⛔ 退回未閘之配地）")
+        return list(_ss.get('f3_G_values') or []), _cp_k9296s.deepcopy(dict(K917_DROPPED)), None
+
+    _err = None
+    try:
+        _bf, _last, _log = k929_6_fixpoint(
+            g_kwargs['build_parcels'], _trial, _ss.get('t8_ownership_map', {}) or {},
+            g_kwargs['pre_price_by_zone'], _ss.get('f3_cad_front_lines', {}) or {})
+    except RuntimeError as _e_g:
+        _err = str(_e_g).split("\n")[0][:500]
+    finally:
+        for _k in K6B_SCREEN_TRIAL_KEYS:
+            if _k in _saved:
+                _ss[_k] = _saved[_k]
+            else:
+                _ss.pop(_k, None)
+        K917_DROPPED.clear()
+        K917_DROPPED.update(_k917_saved)
+    if _err is not None:
+        st.error(_err)
+        st.stop()
+        raise RuntimeError(_err)
+    return _bf, _log
 
 
 # ============ 主程式 ============
@@ -24063,6 +24345,18 @@ def main():
                         _df_g[_display_cols].style.format(_fmt),
                         use_container_width=True, hide_index=True,
                     )
+
+                    # 🆕 `W-G.9-349`：入池閘（`K-9-29 六`）之合併紀錄——同歸戶相鄰合併試算之成否（留置／入池）
+                    _k929_6_log_v = st.session_state.get('f3_k929_6_log')
+                    if _k929_6_log_v is not None:
+                        with st.expander(f"🔗 K-9-29 六：不能建築之宗之同歸戶相鄰合併試算（{len(_k929_6_log_v)} 列）",
+                                         expanded=bool(_k929_6_log_v)):
+                            if _k929_6_log_v:
+                                st.dataframe(_pd.DataFrame([{k: str(v) for k, v in _r.items()}
+                                                            for _r in _k929_6_log_v]),
+                                             use_container_width=True, hide_index=True)
+                            else:
+                                st.caption("（本次無合併試算）")
 
                     # 🆕 W-G Y 波診斷專用（KL 2026-07-14 交辦·非產品功能）：
                     # live g_rows JSON dump 供 sub-cent 定位。
