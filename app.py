@@ -17769,6 +17769,13 @@ K6B_SCREEN_TRIAL_KEYS = (
     'f3_corner_cand_diag',
 )
 K6B_SCREEN_STAGE3_KEYS = ('f3_k6b_stage3_temp', 'f3_k6b_stage3_build', 'f3_k6b_stage3_fp')
+# 🆕 `W-G.9-346`：段三於街角選位（首趟／試算趟）後自 session 讀回之鍵（⊂ K6B_SCREEN_TRIAL_KEYS）；
+#   街角選位本體於「無結果」分支⛔ 寫之 ⇒ 每趟前先去之，使缺漏現形、⛔ 讀到前一趟之殘值。
+K6B_SCREEN_READBACK_KEYS = (
+    'f3_corner_winners', 'f3_corner_cand_diag', 'f3L_forced_offset', 'f3_corner_range_polys',
+    'f3_k6b_stage2_order', 'f3_k6b_stage1_locked_by_block',
+)
+K6B_STAGE3_PENDING = '「街角合併重試」未完成（執行中斷）'
 
 
 class _K6BTrialStop(Exception):
@@ -17887,6 +17894,9 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
         _ss['f3_k6b_stage3_log'] = []
         _ss['f3_k6b_stage3_order_used'] = _order
         return {'temp': temp0, 'build': build0, 'log': [], 'order': _order, 'ran': False}
+    # 🆕 `W-G.9-346`：段三啟用 ⇒ 先立「未完成」（唯正常出口撤之）；任何中斷皆使其後之配地 loud
+    _ss['f3_k6b_stage3_error'] = K6B_STAGE3_PENDING
+    _ss.pop('f3_k6b_stage2_order', None)
     # 3. 首趟（代理·寫真 session）；中止 ⇒ 以真 st 再跑一次使畫面現其訊息後重拋
     _px0 = _K6BTrialSt(st)
     try:
@@ -17901,6 +17911,7 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
         f3_screen_corner_pk_run(st, **pk_kwargs)
         _ss['f3_k6b_stage3_log'] = []
         _ss['f3_k6b_stage3_order_used'] = order
+        _ss.pop('f3_k6b_stage3_error', None)
         return {'temp': temp0, 'build': build0, 'log': [], 'order': order, 'ran': False}
 
     # 5. 三注入物
@@ -17929,6 +17940,8 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
 
     def trial_winner(temp, build, blk, end, cand):
         _t, _b = _copy_pair(temp, build)
+        for _k_rb in K6B_SCREEN_READBACK_KEYS:
+            _ss.pop(_k_rb, None)
         _px = _K6BTrialSt(st)
         try:
             with _cl_s3.redirect_stdout(_io_s3.StringIO()):
@@ -17937,6 +17950,9 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
             raise RuntimeError(
                 f"🔴 [K-6-B 段三·畫面] 試算（街角選位）中止：{blk}／{end}／{cand}"
                 f"——{_px.msgs[-1:]}（停機款 9）") from _e_tw
+        if 'f3_corner_winners' not in _ss:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三·畫面] 試算（街角選位）未產出 winners 表：{blk}／{end}／{cand}（停機款 9）")
         _key = {'左': 'p1_end', '右': 'p2_end'}[end]
         _win = ((_ss.get('f3_corner_winners') or {}).get(blk) or {}).get(_key)
         _row = next((r for r in (_ss.get('f3_corner_cand_diag') or [])
@@ -17953,9 +17969,13 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
         K917_DROPPED.clear()
         _px = _K6BTrialSt(st)
         _err = None
+        for _k_rb in K6B_SCREEN_READBACK_KEYS:
+            _ss.pop(_k_rb, None)
         try:
             with _cl_s3.redirect_stdout(_io_s3.StringIO()):
                 f3_screen_corner_pk_run(_px, **dict(pk_kwargs, temp_parcels=_t, build_parcels=_b))
+                if 'f3_corner_winners' not in _ss:
+                    raise RuntimeError('試算（街角選位）未產出 winners 表（停機款 9）')
                 f3_screen_stepg_run(_px, **dict(
                     g_kwargs, _auto_recalc=False, _btn_clicked=True, build_parcels=_b,
                     _new_params=dict(_ss.get(g_kwargs['_param_key']) or {})))
@@ -18026,6 +18046,7 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
     _ss['f3_k6b_stage3_temp'] = temp2
     _ss['f3_k6b_stage3_build'] = build2
     _ss['f3_k6b_stage3_fp'] = k6b_stage3_fingerprint(build0, _ss['f3L_setback_default'])
+    _ss.pop('f3_k6b_stage3_error', None)
     return {'temp': temp2, 'build': build2, 'log': log, 'order': order, 'ran': True}
 
 
