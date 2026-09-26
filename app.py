@@ -1225,6 +1225,8 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
         'side_lines_matched_count': 0,
         'alloc_dir_by_block': {},          # 🚨 W-B §1-3：宗地分配線方向 {blk: (ux, uy)}
         'side_unmatched_warnings': [],     # 🚨 W-B §1-1b：端點未吻合警示
+        # 🆕 `W-G.9-350`：正面道路之幾何推導（五級 `r3`）{block_label: {...}}·見 `r3_front_road_derive`
+        'front_road_derive': {},
         'diagnostics': {'layers_found': [], 'unbound': []},
     }
     if doc is None or not classified_blocks:
@@ -1446,6 +1448,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
                            'candidates': _rk[:4], 'chosen': None})
         return _rk[0]['block'], _rk[0]['overlap_m'], _rk
 
+    _front_pts_chosen = {}   # 🆕 `W-G.9-350`：各街廓所綁 FRONT_LINE 之全部頂點（折線不截為二端點）
     for _fr in _front_raw:
         _w, _ov, _rk = _best_block(_fr['pts'], 'FRONT_LINE', _fr['handle'])
         if _w is None:
@@ -1455,6 +1458,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
         if _ov <= result.get('_front_ovl', {}).get(_w, 0.0):
             continue
         result.setdefault('_front_ovl', {})[_w] = _ov
+        _front_pts_chosen[_w] = [(float(_q[0]), float(_q[1])) for _q in _fr['pts']]
         try:
             _ang_fl = _m.degrees(_m.atan2(_fr['pts'][-1][1] - _fr['pts'][0][1],
                                           _fr['pts'][-1][0] - _fr['pts'][0][0]))
@@ -1469,6 +1473,15 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
         }
     result.pop('_front_ovl', None)
     result['front_lines_matched_count'] = len(result['front_lines'])
+
+    # ── 🆕 `W-G.9-350`：正面道路之幾何推導（五級八鍵之 `r3`·KL 裁 `2026-09-05`）──────
+    #   候選 ＝ 非「可建築土地」之街廓（與上方 `_buildable_blocks` 同一判準之補集·⛔ 分區名字面）；
+    #   量測原語與容差 ＝ `_best_block` 所用之 `_line_block_overlap`（`W-G.9-235` 工項一之裁）。
+    result['front_road_derive'] = r3_front_road_derive(
+        _front_pts_chosen,
+        {_lr: (_br.get('category', ''), _pr)
+         for _lr, (_br, _pr, _cr, _fr_dir) in blk_polys.items()
+         if _lr not in _buildable_blocks})
 
     # ── 🆕 W-G.5 C-6：SIDE_LINE 同判準綁定（街廓由重疊定·**側別仍由 FRONT p1→p2 導出**）──
     #
@@ -10792,6 +10805,166 @@ K91_SS_MBA_EFFECTIVE = 'f3_min_build_area_effective_by_label'
 #      ——本鍵自成一 dict：鍵 ＝ `bid`、值 ＝ 使用者所填之字串（預設 `''`）。
 #   🔒 ⛔ 及於**側面**道路——`r3` 之受詞為**正面**道路（單 `§三 b`：擴及側面係射程外）。
 SS_FRONT_ROAD_NAME = 'f3_front_road_name_by_bid'
+
+# ── 🆕 `W-G.9-350`：正面道路識別符（五級八鍵之 `r3`·`v3` 五級③）──────────────────
+#   識別符 ＝ 幾何推導 ∪ 區外道路清單（KL 裁 `2026-09-05`）：推導有值時使用者⛔ 覆寫；
+#   清單只填推導之空缺——本批以 `SS_FRONT_ROAD_NAME`（`W-G.9-248` 之欄）為清單之載體，
+#   填同一名稱之街廓即指向同一項。
+#   🔒 幾何推導 ＝ `_best_block` 之同一原語與容差（`_line_block_overlap`·預設 `2.0°`／`1.0 m`）
+#      ＋ 「沿線過半」（`W-G.9-235` 工項一之裁）：某一候選街廓之重疊長 ÷ 該 FRONT_LINE 長
+#      **嚴格大於** `R3_FRONT_ROAD_MAJORITY` 者入推導集。
+#   🛑 本批⛔ 建消費端：⛔ 任何判定式／`G` 式／配地讀此值（新調配模組另單）。
+R3_FRONT_ROAD_MAJORITY = 0.5
+SS_FRONT_ROAD_DERIVE = 'f3_cad_front_road_derive'
+R3_STATUS_DERIVED = '成功'
+R3_STATUS_OUTSIDE = '區外'
+R3_STATUS_AMBIGUOUS = '歧義'
+R3_STATUS_NO_FRONT = '無正面線'
+
+
+def r3_front_road_derive(front_pts_by_label, pool_by_label,
+                         majority=R3_FRONT_ROAD_MAJORITY):
+    """`W-G.9-350`：正面道路之**幾何推導**（純函式·⛔ 讀 session）。
+
+    `front_pts_by_label`  `{街廓 label: [(x, y), …]}`——各街廓所綁 FRONT_LINE 之**全部頂點**
+                          （折線逐段計·⛔ 截為二端點）。
+    `pool_by_label`       `{街廓 label: (category, shapely Polygon)}`——候選（非可建築土地之街廓）。
+    回傳 `{label: {'line_length_m', 'candidates', 'derived', 'status'}}`：
+      `candidates` ＝ 重疊長 `> 0` 之候選，逐項 `{'block','category','overlap_m','ratio'}`，
+                     依重疊長降冪、同長依 label 升冪（決定性）；
+      `derived`    ＝ `ratio > majority` 者之 label 串列；
+      `status`     ＝ 恰一 ⇒ `R3_STATUS_DERIVED`／空 ⇒ `R3_STATUS_OUTSIDE`／`≥ 2` ⇒ `R3_STATUS_AMBIGUOUS`。
+    🔒 FRONT_LINE 頂點不足 `2` 或線長為 `0` ⇒ **loud `ValueError`**（⛔ 靜默略過）。
+    """
+    import math as _m_r3
+    _out = {}
+    for _lbl in sorted(front_pts_by_label or {}):
+        _pts = [(float(_p[0]), float(_p[1])) for _p in (front_pts_by_label[_lbl] or [])]
+        if len(_pts) < 2:
+            raise ValueError(
+                "r3_front_road_derive：街廓 %r 之 FRONT_LINE 頂點不足 2（%d）" % (_lbl, len(_pts)))
+        _L = sum(_m_r3.hypot(_pts[_i + 1][0] - _pts[_i][0], _pts[_i + 1][1] - _pts[_i][1])
+                 for _i in range(len(_pts) - 1))
+        if not (_L > 1e-9):
+            raise ValueError("r3_front_road_derive：街廓 %r 之 FRONT_LINE 線長為 0" % (_lbl,))
+        _cands = []
+        for _k in sorted(pool_by_label or {}):
+            if _k == _lbl:
+                continue
+            _cat, _poly = pool_by_label[_k]
+            _o = float(_line_block_overlap(_pts, _poly))
+            if _o > 0:
+                _cands.append({'block': _k, 'category': _cat,
+                               'overlap_m': _o, 'ratio': _o / _L})
+        _cands.sort(key=lambda _c: (-_c['overlap_m'], _c['block']))
+        _derived = [_c['block'] for _c in _cands if _c['ratio'] > majority]
+        if len(_derived) == 1:
+            _st = R3_STATUS_DERIVED
+        elif not _derived:
+            _st = R3_STATUS_OUTSIDE
+        else:
+            _st = R3_STATUS_AMBIGUOUS
+        _out[_lbl] = {'line_length_m': _L, 'candidates': _cands,
+                      'derived': _derived, 'status': _st}
+    return _out
+
+
+def r3_normalize_road_name(text):
+    """`W-G.9-350`：使用者所填之正面道路名稱之正規形（`NFKC` ＋ 去首尾空白 ＋ 連續空白併一）。"""
+    import unicodedata as _ud_r3
+    return ' '.join(_ud_r3.normalize('NFKC', str(text or '')).split())
+
+
+def r3_front_road_identifier(labels, derive_by_label, name_by_label):
+    """`W-G.9-350`：正面道路**識別符** ＝ 幾何推導 ∪ 區外道路清單（純函式）。
+
+    `labels`          可建築街廓之 label 串列（逐一出艙·⛔ 靜默漏列）。
+    `derive_by_label` `r3_front_road_derive` 之回傳。
+    `name_by_label`   `{label: 使用者所填之名稱}`（區外道路清單之載體）。
+    回傳 `{label: {'id', 'source', 'status', 'user_text', 'user_text_ignored'}}`：
+      推導 `成功` ⇒ `id` ＝ 該道路街廓之 label、`source` ＝ `'圖推導'`；使用者所填者⛔ 採
+                    （`user_text_ignored` ＝ 有填與否）。
+      `區外`／`歧義` ⇒ `id` ＝ 正規化後之名稱（空 ⇒ `None`）、`source` ＝ `'使用者填'`（空 ⇒ `None`）。
+      無推導資料（未綁 FRONT_LINE）⇒ `status` ＝ `R3_STATUS_NO_FRONT`、`id` ＝ `None`。
+    🔒 二街廓之識別符**字串相同**即為同一正面道路（含使用者填一區內道路街廓之 label 者）。
+    """
+    _out = {}
+    for _lbl in labels or []:
+        _name = r3_normalize_road_name((name_by_label or {}).get(_lbl, ''))
+        _d = (derive_by_label or {}).get(_lbl)
+        if _d is None:
+            _out[_lbl] = {'id': None, 'source': None, 'status': R3_STATUS_NO_FRONT,
+                          'user_text': _name, 'user_text_ignored': bool(_name)}
+        elif _d['status'] == R3_STATUS_DERIVED:
+            _out[_lbl] = {'id': _d['derived'][0], 'source': '圖推導', 'status': _d['status'],
+                          'user_text': _name, 'user_text_ignored': bool(_name)}
+        else:
+            _out[_lbl] = {'id': (_name or None), 'source': ('使用者填' if _name else None),
+                          'status': _d['status'], 'user_text': _name,
+                          'user_text_ignored': False}
+    return _out
+
+
+def r3_front_road_caption(derive_entry):
+    """`W-G.9-350`：街廓卡片內「正面道路名稱／識別符」欄下之說明一句（純函式）。"""
+    if not derive_entry:
+        return "🧭 圖推導：本街廓無正面線（FRONT_LINE）之資料，無從推導。"
+    _c = derive_entry.get('candidates') or []
+    _st = derive_entry.get('status')
+    if _st == R3_STATUS_DERIVED:
+        _b = derive_entry['derived'][0]
+        _r = next(_x['ratio'] for _x in _c if _x['block'] == _b)
+        return ("🧭 圖推導：正面道路 ＝ %s（沿正面線 %.2f%%）——推導有值，本欄不採。"
+                % (_b, 100.0 * _r))
+    if _st == R3_STATUS_OUTSIDE:
+        _top = ("；區內道路沿正面線最多 %.2f%%（%s）" % (100.0 * _c[0]['ratio'], _c[0]['block'])
+                if _c else "；正面線未沿任何區內道路")
+        return ("🧭 圖推導：正面道路在重劃區外%s——請填本欄；臨同一條道路之街廓請填相同名稱。"
+                % _top)
+    return ("🧭 圖推導：沿正面線過半之道路不只一條（%s）——請填本欄。"
+            % "、".join(derive_entry.get('derived') or []))
+
+
+def r3_front_road_rows(labels, derive_by_label, name_by_label):
+    """`W-G.9-350`：「正面道路識別」一覽之列（純函式·各欄皆字串·⛔ 混型欄）。
+
+    回傳 `{'rows', 'groups', 'group_lines', 'missing'}`：
+      `groups`      ＝ `{識別符: [label, …]}`（識別符升冪；`None` 不入）；
+      `group_lines` ＝ 逐組一句；`missing` ＝ 識別符為 `None` 之 label 串列（依 `labels` 之序）。
+    """
+    _ident = r3_front_road_identifier(labels, derive_by_label, name_by_label)
+    _rows = []
+    for _lbl in labels or []:
+        _d = (derive_by_label or {}).get(_lbl)
+        _i = _ident[_lbl]
+        if _d is None:
+            _geo = '—（無正面線）'
+        elif _d['status'] == R3_STATUS_DERIVED:
+            _b = _d['derived'][0]
+            _r = next(_x['ratio'] for _x in _d['candidates'] if _x['block'] == _b)
+            _geo = '%s（沿正面線 %.2f%%）' % (_b, 100.0 * _r)
+        elif _d['status'] == R3_STATUS_OUTSIDE:
+            _geo = ('區外（區內道路最多 %.2f%%）' % (100.0 * _d['candidates'][0]['ratio'])
+                    if _d['candidates'] else '區外（未沿任何區內道路）')
+        else:
+            _geo = '歧義（%s）' % '、'.join(_d['derived'])
+        _rows.append({
+            '街廓': str(_lbl),
+            '圖推導': _geo,
+            '使用者所填': (_i['user_text'] or '—') + ('（不採）' if _i['user_text_ignored'] else ''),
+            '採用之識別符': _i['id'] if _i['id'] is not None else '（未填）',
+            '來源': _i['source'] or '—',
+            '狀態': _i['status'],
+        })
+    _groups = {}
+    for _lbl in labels or []:
+        _id = _ident[_lbl]['id']
+        if _id is not None:
+            _groups.setdefault(_id, []).append(_lbl)
+    _groups = {_k: _groups[_k] for _k in sorted(_groups)}
+    _lines = ['正面道路「%s」：%s' % (_k, '、'.join(_v)) for _k, _v in _groups.items()]
+    _missing = [_lbl for _lbl in labels or [] if _ident[_lbl]['id'] is None]
+    return {'rows': _rows, 'groups': _groups, 'group_lines': _lines, 'missing': _missing}
 
 
 def wg9248_stringify_mixed_cols(df, cols):
@@ -21889,6 +22062,10 @@ def main():
                         st.session_state['f3_cad_front_lines'] = (
                             _cad_layers.get('front_lines', {}) or {}
                         )
+                        # 🆕 `W-G.9-350`：正面道路之幾何推導（五級 `r3`·⛔ 消費端·僅供顯示）
+                        st.session_state[SS_FRONT_ROAD_DERIVE] = (
+                            _cad_layers.get('front_road_derive', {}) or {}
+                        )
                         # 🆕 Hotfix：左/右側長度分開儲存
                         st.session_state['f3_cad_side_lengths_by_side'] = (
                             _cad_layers.get('side_lengths_by_side', {}) or {}
@@ -23146,6 +23323,9 @@ def main():
                                  "留空表示未填。",
                         )
                         _new_front_road_names[bid] = frn
+                        # 🆕 `W-G.9-350`：該欄下附圖推導之結果一句（`r3_front_road_caption`·純顯示）
+                        st.caption(r3_front_road_caption(
+                            (st.session_state.get(SS_FRONT_ROAD_DERIVE, {}) or {}).get(b['label'])))
 
                         # 🆕 `W-G.9-248` 工項一（**丙案**·KL 裁 `2026-09-07`）：
                         #   街廓**最小建築面積**之**唯讀顯示**（置於正面道路區塊**下方**）。
@@ -23264,6 +23444,22 @@ def main():
                 st.session_state[SS_FRONT_ROAD_NAME] = _frn_persist
                 st.success("路寬資料已儲存（正面 + 左側 + 右側三組）")
                 st.rerun()
+
+            # 🆕 `W-G.9-350`：正面道路識別之一覽（五級 `r3` 之資料·⛔ 消費端）
+            #   列之組成全在 module 級純函式 `r3_front_road_rows`；此處只渲染。
+            _r3_names_persist = st.session_state.get(SS_FRONT_ROAD_NAME, {}) or {}
+            _r3_view = r3_front_road_rows(
+                [b['label'] for b in build_blocks],
+                st.session_state.get(SS_FRONT_ROAD_DERIVE, {}) or {},
+                {b['label']: _r3_names_persist.get(b['id'], '') for b in build_blocks})
+            st.markdown("##### 🧭 正面道路識別（五級第三鍵之資料·尚未接任何閘）")
+            st.dataframe(pd.DataFrame(_r3_view['rows']), hide_index=True)
+            for _r3_line in _r3_view['group_lines']:
+                st.caption(_r3_line)
+            if _r3_view['missing']:
+                st.info(
+                    "以下街廓之正面道路無從由圖推導，請於上方該街廓之「正面道路名稱／識別符」欄填名"
+                    "（臨同一條道路者填相同名稱）：" + "、".join(_r3_view['missing']))
 
         # ---------- 步驟 F：全區參數 ----------
         st.markdown("---")
