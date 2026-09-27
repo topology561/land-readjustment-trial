@@ -835,6 +835,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
 
             left_cum_S = float(_left_buffer_S)
             right_cum_S = float(_right_buffer_S)
+            # 🆕 `W-G.9-353`：強制抵費地（末）⇒ 該側之鏈起於 `R_end` 之內側界（單一真相源·app 同構）
+            left_cum_S += ns["end_block_forced_buf"](_eb_info, 'left')
+            right_cum_S += ns["end_block_forced_buf"](_eb_info, 'right')
             # W₀＝該側 Rw 累積起算點（telescoping 閘用：ΣRw_側 = R(W_final) − R(W₀)）。
             #   🆕 W 正典（脫鉤 S·da6acf1/補丁七）：W₀ 改＝**首宗近側 KL W**（mp→首宗近側界線＝
             #   res['W_near']）·非舊 `buffer·cos_dn`（群起點 telescoping 約定·已隨 W 脫鉤作廢）。
@@ -1290,6 +1293,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                                                          far_line_dir=_fd)
                         if _gb is not None and not _gb.is_empty:
                             _fb_p2.append(_gb)
+                _fb_p2.extend(ns["end_block_forced_bands"](_eb_info))   # 🆕 `W-G.9-353`：強制抵費地（末）之 `R_end`
                 offset_geoms = _pool_strips_for_block(
                     blk_poly, d_hat, corner_pt, allocation_dir_block,
                     allocated_polys, _label=blk_label, _depth=avg_depth_default,

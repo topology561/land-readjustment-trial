@@ -10499,10 +10499,19 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
 #  皆未達 ⇒ 🔴 停機：合併再試（`K-9-49 ②`）與強制抵費地（`K-9-36 ③`）候次單（⛔ 靜默）。
 #  先後（`K-9-49 ③`）：本評選於配地之首趟為之——街角（含段三及其後處理）皆已定案；入池閘之試算趟與末趟
 #    沿用首趟之當選者（`SS_END_BLOCK_EVAL`），故「各筆單獨」之受詞 ＝ 入池閘合併前之宗。
+#  🆕 `W-G.9-353`（`K-9-49 ②`·`K-9-36 ③`）：上開「皆未達 ⇒ 停機」改為——
+#    ① 試算（`SS_END_BLOCK_MODE` ＝ `'trial'`：街角合併再試與末端塊合併再試所跑之配地）⇒ 暫以強制抵費地計；
+#    ② 定案（無 `'trial'`）⇒ 唯 `SS_END_BLOCK_MERGE` 載該端「合併再試皆未達」者以強制抵費地計，否則仍停機
+#      （合併再試未辦 ⇒ ⛔ 以強制抵費地靜默代之）。
+#    強制抵費地（末）＝ `R_end` 全部（面積嚴格 ＝ area(R_end)·補丁十 §一）：該側之鏈起於 `R_end` 之內側界
+#    （`end_block_forced_buf`），`R_end` 以強制帶入池（`end_block_forced_bands`）；其餘各宗依原位次序。
+#    合併再試 ＝ `end_block_merge_run`（段三之後·比照 `K-9-48`·單一真相源 `k6b_stage3_run`）。
 # ══════════════════════════════════════════════════════════════════════════
 END_BLOCK_UNFRONT_EPS = 1e-3        # ㎡·補丁十 §一 之 ε
 END_BLOCK_CROSS_MIN_AREA = 1.0      # ㎡·跨占之門檻（比照街角選位之跨占門檻）
 SS_END_BLOCK_EVAL = 'f3_end_block_eval'
+SS_END_BLOCK_MODE = 'f3_end_block_mode'      # 🆕 `W-G.9-353`：`'trial'` ⇒ 皆未達者暫以強制抵費地計
+SS_END_BLOCK_MERGE = 'f3_end_block_merge'    # 🆕 `W-G.9-353`：合併再試之紀錄 `{'標的': [...], '皆未達': {街廓: [端…]}}`
 
 
 def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
@@ -10540,13 +10549,22 @@ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, alloc
         return {'gate': False, 'unfront': _unf}
     _band, _r_end, _a = _end_region_R(block_poly, cad_alloc, _end_pt, min_width, _unf_poly,
                                       _label=f"{_label}·{side}")
+    # 🆕 `W-G.9-353`：強制抵費地（末）之鏈起點——`R_end` 之內側界（∥ 分配線）於 s 軸之位置；
+    #   `buf` ＝ 該側之鏈須先讓出之 s 長（左 ＝ s_hi(R_end)；右 ＝ s(p2) − s_lo(R_end)）。
+    _rr = _strip_s_range(_r_end, d_hat, corner_pt, allocation_dir)
+    if _rr is None:
+        raise RuntimeError(f"🔴 end_block_side_geom[{_label}·{side}]：R_end 之 s 域不可定義")
+    _buf = float(_rr[1]) if side == 'left' else float(_sp2 - float(_rr[0]))
+    if not (_buf > 0.0):
+        raise RuntimeError(f"🔴 end_block_side_geom[{_label}·{side}]：R_end 之內側界未入街廓（buf={_buf!r}）")
     return {'gate': True, 'unfront': _unf, 's_back': float(_w), 'r_end': _r_end,
-            'r_end_area': float(_a), 'band_area': float(_band.area)}
+            'r_end_area': float(_a), 'band_area': float(_band.area), 'buf': _buf}
 
 
-def end_block_pick(side, geom, entries, corner_range_polys, trial, _label=''):
+def end_block_pick(side, geom, entries, corner_range_polys, trial, _label='', allow_forced=False):
     """評選（純函式·`trial(tp) -> (G, 臨正街寬)` 由呼叫端供）。`entries` ＝ 自該端起之原位次序列之宗。
-    回 `{'winner': 暫編地號, 'rows': [...]}`；皆未達 ⇒ 🔴 停機。"""
+    回 `{'winner': 暫編地號, 'rows': [...]}`；皆未達 ⇒ `allow_forced` 為真者回 `{'winner': None, 'rows': [...]}`
+    （強制抵費地·`W-G.9-353`），否則 🔴 停機。"""
     from shapely.geometry import Polygon as _P_eb
     _r_end = geom['r_end']
     _thr = float(geom['r_end_area'])
@@ -10576,9 +10594,11 @@ def end_block_pick(side, geom, entries, corner_range_polys, trial, _label=''):
         rows.append(_row)
         if _ok:
             return {'winner': _k, 'rows': rows}
+    if allow_forced:
+        return {'winner': None, 'rows': rows}
     raise RuntimeError(
         f"🔴 [末端塊·{_label}·{side}] 跨占 R_end（{_thr:.2f} ㎡）者各筆單獨試算皆未達：{rows}"
-        "——合併再試（K-9-49 ②）與強制抵費地（K-9-36 ③）候次單（⛔ 靜默）")
+        "——合併再試（K-9-49 ②）未辦或未載皆未達（⛔ 以強制抵費地靜默代之）")
 
 
 def end_block_pin(ordered, side, pid, _label=''):
@@ -10603,10 +10623,12 @@ def end_block_pin(ordered, side, pid, _label=''):
 
 def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p2, cad_alloc,
                     allocation_dir, min_width, has_side_pk, has_side_cad, corner_range_polys,
-                    trial, cache):
+                    trial, cache, allow_forced=None):
     """一街廓之末端塊：評選（首趟）或沿用（`cache` 已有本街廓）＋ 落位。
     `trial(tp, side, s_back) -> (G, 臨正街寬)`；`cache` ＝ `SS_END_BLOCK_EVAL` 之 dict（就地寫）。
-    回 `(ordered′, {'left': {'s_back','winner'}|None, 'right': …})`。"""
+    🆕 `W-G.9-353`：`allow_forced(side) -> bool`（缺 ⇒ 恆偽）——各筆單獨皆未達者，真 ⇒ 強制抵費地（末）
+    （⛔ 落位·紀錄 `當選` ＝ `None`、`強制抵費地` ＝ 真），偽 ⇒ 停機。
+    回 `(ordered′, {'left': {'s_back','winner','forced','buf','r_end'}|None, 'right': …})`。"""
     _info = {'left': None, 'right': None}
     _cached = cache.get(blk_label)
     _rec = {}
@@ -10624,27 +10646,53 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
         if not _g['gate']:
             _rec[_sd] = {'觸發': False, '未臨正街(㎡)': round(float(_g['unfront']), 4)}
             continue
+        _allow = bool(allow_forced(_sd)) if allow_forced is not None else False
         if _cached is not None:
             _c = _cached.get(_sd) or {}
             if not _c.get('觸發'):
                 raise RuntimeError(f"🔴 end_block_apply[{blk_label}·{_sd}]：首趟未觸發而本趟觸發")
             _win = _c['當選']
+            if _win is None and not _allow:
+                raise RuntimeError(
+                    f"🔴 end_block_apply[{blk_label}·{_sd}]：首趟為強制抵費地而本趟不准（⛔ 靜默沿用）")
             _rec[_sd] = _c
         else:
             _seq = _out if _sd == 'left' else list(reversed(_out))
             _pk_res = end_block_pick(_sd, _g, _seq, corner_range_polys,
                                      (lambda tp, _s=_sd, _w=_g['s_back']: trial(tp, _s, _w)),
-                                     _label=blk_label)
+                                     _label=blk_label, allow_forced=_allow)
             _win = _pk_res['winner']
             _rec[_sd] = {'觸發': True, '未臨正街(㎡)': round(float(_g['unfront']), 2),
                          '末端帶(㎡)': round(float(_g['band_area']), 2),
                          'R_end(㎡)': round(float(_g['r_end_area']), 2),
                          '候選': _pk_res['rows'], '當選': _win}
-        _out = end_block_pin(_out, _sd, _win, _label=blk_label)
-        _info[_sd] = {'s_back': float(_g['s_back']), 'winner': _win}
+            if _win is None:
+                _rec[_sd]['強制抵費地'] = True
+        if _win is not None:
+            _out = end_block_pin(_out, _sd, _win, _label=blk_label)
+        _info[_sd] = {'s_back': float(_g['s_back']), 'winner': _win, 'forced': _win is None,
+                      'buf': float(_g['buf']), 'r_end': _g['r_end']}
     if _cached is None:
         cache[blk_label] = _rec
     return _out, _info
+
+
+def end_block_forced_buf(eb_info, side):
+    """🆕 `W-G.9-353`：強制抵費地（末）之該側鏈須先讓出之 s 長；非強制 ⇒ `0.0`（二宿主之單一真相源）。"""
+    _i = (eb_info or {}).get(side)
+    if not _i or not _i.get('forced'):
+        return 0.0
+    return float(_i['buf'])
+
+
+def end_block_forced_bands(eb_info):
+    """🆕 `W-G.9-353`：強制抵費地（末）之 `R_end` 多邊形（入池之強制帶·二宿主之單一真相源）。"""
+    _out = []
+    for _sd in ('left', 'right'):
+        _i = (eb_info or {}).get(_sd)
+        if _i and _i.get('forced'):
+            _out.append(_i['r_end'])
+    return _out
 
 
 def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2, alloc_dir_cad,
@@ -10661,6 +10709,15 @@ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2, 
     _has_pk = ({_sd: bool(_fo.get(f'{_sd}_has_side')) for _sd in ('left', 'right')}
                if ('left_has_side' in _fo and 'right_has_side' in _fo) else dict(_has_cad))
     _cache = session.setdefault(SS_END_BLOCK_EVAL, {})
+    # 🆕 `W-G.9-353`：強制抵費地（末）之准否——試算 ⇒ 恆准；定案 ⇒ 唯合併再試之紀錄（同一退縮）載該端皆未達者准。
+    _mode = session.get(SS_END_BLOCK_MODE)
+    _mrec = session.get(SS_END_BLOCK_MERGE) or {}
+    _msb, _ssb = _mrec.get('退縮'), session.get('f3L_setback_default')
+    _mfail = (((_mrec.get('皆未達') or {}).get(blk_label) or [])
+              if (_msb is not None and _ssb is not None and abs(float(_msb) - float(_ssb)) < 1e-9) else [])
+
+    def _allow(side):
+        return _mode == 'trial' or side in _mfail
     _d = np.asarray(d_hat, dtype=float)
     _cp = np.asarray(corner_pt, dtype=float)
 
@@ -10686,7 +10743,7 @@ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2, 
                            corner_pt=corner_pt, front_p2=front_p2, cad_alloc=alloc_dir_cad,
                            allocation_dir=allocation_dir, min_width=_mw, has_side_pk=_has_pk,
                            has_side_cad=_has_cad, corner_range_polys=corner_range_polys,
-                           trial=_trial, cache=_cache)
+                           trial=_trial, cache=_cache, allow_forced=_allow)
 
 
 def end_block_eval_rows(ev):
@@ -10702,7 +10759,9 @@ def end_block_eval_rows(ev):
                 lines.append(f"{_blk} {_nm[_sd]}端（無側街）：未臨正街 {_r.get('未臨正街(㎡)')} ㎡ ⇒ 未觸發")
                 continue
             lines.append(f"{_blk} {_nm[_sd]}端（無側街）：未臨正街 {_r['未臨正街(㎡)']} ＋ 末端帶 {_r['末端帶(㎡)']}"
-                         f" ＝ R_end {_r['R_end(㎡)']} ㎡；當選 {_r['當選']}")
+                         f" ＝ R_end {_r['R_end(㎡)']} ㎡；"
+                         + (f"當選 {_r['當選']}" if _r.get('當選') is not None
+                            else "各筆單獨與合併再試皆未達 ⇒ 強制抵費地（面積 ＝ R_end）"))
             for _c in (_r.get('候選') or []):
                 rows.append({'街廓': _blk, '端': _nm[_sd],
                              **{_k: ('—' if _v is None else str(_v)) for _k, _v in _c.items()}})
@@ -10715,11 +10774,96 @@ def end_block_assert_head(blk_label, eb_info, left_results, right_results):
         _i = (eb_info or {}).get(_sd)
         if _i is None:
             continue
+        if _i.get('winner') is None:
+            # 🆕 `W-G.9-353`：強制抵費地（末）⇒ 該側之鏈⛔ 得有末端塊之宗（`R_end` 無人承受·由強制帶入池）
+            _bad = [_e['tp'].get('暫編地號') for _e, _r in (_res or []) if _e.get('is_end_block')]
+            if _bad:
+                raise RuntimeError(
+                    f"🔴 [末端塊·{blk_label}·{_sd}] 強制抵費地之側有末端塊之宗 {_bad}（⛔ 一地二用）")
+            continue
         if not _res or not _res[0][0].get('is_end_block'):
             _hd = (_res[0][0]['tp'].get('暫編地號') if _res else None)
             raise RuntimeError(
                 f"🔴 [末端塊·{blk_label}·{_sd}] 定案趟之鏈首宗 {_hd!r} 非當選者 {_i['winner']!r}"
                 "（未臨正街將無人承受·⛔ 靜默成池）")
+
+
+def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lots, blocks, centerlines,
+                        a_prime, alloc_eval, alloc_state, *, setback=None, log_print=print):
+    """🆕 `W-G.9-353`：末端塊之合併再試（`K-9-49 ②`·比照 `K-9-48`·單一真相源 `k6b_stage3_run`）。
+
+    時點（`K-9-49 ③`）：街角之段三（含其後處理）之後、配地之前。
+    參數
+      alloc_eval   `alloc_eval(temp, build) -> {街廓: {端: 評選紀錄}}`：以所給之宗地跑街角選位與配地
+                   （試算·`SS_END_BLOCK_MODE` ＝ `'trial'`），回配地首趟之末端塊評選（`SS_END_BLOCK_EVAL`）；
+                   配地中止 ⇒ `raise RuntimeError`。
+      alloc_state  ／`a_prime`／`blocks`／`centerlines` ＝ 同 `k6b_stage3_run`（其 `alloc_state` 亦須為試算）。
+      locked       段一上鎖集；`corner_lots` ＝ 街角第 1 宗之暫編地號集。
+    流程
+      ① 以現宗地試算一次，取「各筆單獨皆未達」之端（標的）；無 ⇒ 逕回（同一物件）；試算中止 ⇒ 逕回並記其由
+         （定案之配地將遇同一中止，或於標的之端因無紀錄而停機·⛔ 靜默）。
+      ② 競合（⛔ 裁·`K-9-49` 射程 ③）：二以上標的之候選同屬一合併群 ⇒ 🔴 停機。
+      ③ 各標的之未達候選依原投影序為列，交 `k6b_stage3_run`（① 同街廓相鄰 → ② 道路及公設地上相鄰·整筆；
+         ② 驗「不影響原位次」；後處理同段三）；併入之除外 ＝ `locked` ∪ `corner_lots` ∪ 段三已併出者
+         （`K-9-49 ③`：已上鎖、已併入或已分配予街角之土地⛔ 再併入末端塊）。
+      ④ 未成之標的 ⇒ 記「皆未達」（定案之配地據以強制抵費地·`K-9-36 ③`）。
+    回 `(temp_out, build_out, log, rec)`；`rec` ＝ `{'退縮': setback, '標的': [[街廓, 端]…],
+    '皆未達': {街廓: [端…]}}`（試算中止 ⇒ `'標的'` ＝ `None`、另載 `'試算中止'`）。"""
+    _rec = {'退縮': setback, '標的': [], '皆未達': {}}
+    try:
+        _ev = alloc_eval(temp_parcels, build_parcels) or {}
+    except RuntimeError as _e:
+        _rec['標的'] = None
+        _rec['試算中止'] = str(_e).split("\n")[0][:300]
+        return temp_parcels, build_parcels, [], _rec
+    _tg = []
+    for _blk in sorted(_ev):
+        for _sd in ('left', 'right'):
+            _r = (_ev.get(_blk) or {}).get(_sd) or {}
+            if _r.get('觸發') and _r.get('當選') is None:
+                _tg.append((_blk, _sd))
+    _rec['標的'] = [[_b, _s] for _b, _s in _tg]
+    if not _tg:
+        return temp_parcels, build_parcels, [], _rec
+    _END = {'left': '左', 'right': '右'}
+    _SIDE = {'左': 'left', '右': 'right'}
+    _rows, _cand_of = [], {}
+    for _blk, _sd in _tg:
+        for _c in (_ev[_blk][_sd].get('候選') or []):
+            if _c.get('結果') != '未達':
+                continue
+            _rows.append({'最終序位': len(_rows) + 1, '街廓': _blk, '端': _END[_sd],
+                          '暫編地號': _c['暫編地號']})
+            _cand_of.setdefault(_c['暫編地號'], set()).add((_blk, _sd))
+    from shapely.geometry import Polygon as _Pg_ebm
+    _pk = [{'原地號': t.get('原地號', ''),
+            'polygon': (_Pg_ebm(t['polygon_coords']) if len(t.get('polygon_coords') or []) >= 3 else None)}
+           for t in temp_parcels]
+    _dup = {p: tg for p, tg in _cand_of.items() if len(tg) >= 2}
+    if _dup:
+        raise RuntimeError(f"🔴 [末端塊合併再試] 候選 {sorted(_dup)} 同時跨占二以上末端塊之 R_end——"
+                           "數末端塊之競合（⛔ 裁·K-9-49 射程 ③）")
+    for _g in k6_merge_groups(_pk, own_map):
+        _ids = sorted(temp_parcels[i]['暫編地號'] for i in _g)
+        _hit = sorted({x for p in _ids for x in _cand_of.get(p, ())})
+        if len(_hit) >= 2:
+            raise RuntimeError(f"🔴 [末端塊合併再試] 同一合併群 {_ids} 之候選分屬 {len(_hit)} 個末端塊 {_hit}——"
+                               "數末端塊之競合（⛔ 裁·K-9-49 射程 ③）")
+    _L = (set(locked or ()) | set(corner_lots or ())
+          | {t['暫編地號'] for t in temp_parcels if t.get('段三併出')})
+
+    def _trial(temp, build, blk, end, cand):
+        _e = ((alloc_eval(temp, build) or {}).get(blk) or {}).get(_SIDE[end]) or {}
+        _row = next((r for r in (_e.get('候選') or []) if r.get('暫編地號') == cand), None)
+        return _e.get('當選'), (_row or {}).get('試算G(㎡)'), _e.get('R_end(㎡)')
+
+    _temp2, _build2, _log = k6b_stage3_run(_rows, _L, own_map, temp_parcels, build_parcels, blocks,
+                                           centerlines, a_prime, _trial, alloc_state, log_print=log_print)
+    _won = {(r['街廓'], r['端']) for r in _log if r.get('結果') == '成' and r.get('序') != '後處理'}
+    for _blk, _sd in _tg:
+        if (_blk, _END[_sd]) not in _won:
+            _rec['皆未達'].setdefault(_blk, []).append(_sd)
+    return _temp2, _build2, _log, _rec
 
 
 def solve_G_binary(a: float, A: float, B: float, C: float,
@@ -15948,6 +16092,8 @@ _WF_NS_NAMES = [
     "k929_6_enabled", "k929_6_fixpoint", "K917_DROPPED",
     # 🆕 `W-G.9-352`：末端塊之三名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
     "end_block_host", "end_block_assert_head", "SS_END_BLOCK_EVAL",
+    # 🆕 `W-G.9-353`：強制抵費地（末）之二名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
+    "end_block_forced_buf", "end_block_forced_bands",
     # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
     #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
@@ -17678,6 +17824,9 @@ def f3_screen_stepg_run(st, *,
             # 🆕 Phase C：若左側 forced_offset → 從 buffer 寬度起算（跳過街角）
             left_cum_S = float(_left_buffer_S)
             right_cum_S = float(_right_buffer_S)   # 同理右側
+            # 🆕 `W-G.9-353`：強制抵費地（末）⇒ 該側之鏈起於 `R_end` 之內側界（單一真相源·harness 同構）
+            left_cum_S += end_block_forced_buf(_eb_info, 'left')
+            right_cum_S += end_block_forced_buf(_eb_info, 'right')
             # 🆕 W-C §4：thread 累積 W_前（首筆=0；forced_offset 時=buffer 臨街寬）
             _W_prev_left = 0.0
             _W_prev_right = 0.0
@@ -18239,6 +18388,7 @@ def f3_screen_stepg_run(st, *,
                                                    far_line_dir=_fd)
                         if _gb is not None and not _gb.is_empty:
                             _fb_p2.append(_gb)
+                _fb_p2.extend(end_block_forced_bands(_eb_info))   # 🆕 `W-G.9-353`：強制抵費地（末）之 `R_end`
                 offset_geoms = _pool_strips_for_block(
                     blk_poly, d_hat, corner_pt, allocation_dir_block,
                     allocated_polys, _label=blk_label, _depth=avg_depth_default,

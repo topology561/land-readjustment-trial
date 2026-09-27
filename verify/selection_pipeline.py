@@ -643,40 +643,22 @@ def k6b_f4_ctx(ctx_by_tag, build_pre_by_tag):
     return {t: dict(c, build=build_pre_by_tag[t]) for t, c in ctx_by_tag.items()}
 
 
-def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
-                      *, snapshot):
-    """`W-G.9-344`：段三之 harness 入口。回傳七元組
-    `(診斷rows, 指配rows, 抵費地rows, winners, forced, temp_parcels_out, build_parcels_out)`。
-
-    1. 先跑 `run_corner_pk`（同參數）。
-    2. `k6b_stage3_enabled()` 為偽、或段二序（`ss['f3_k6b_stage2_order']`）為空 ⇒ 逕回其五值 ＋
-       原 `temp_parcels`／`build_parcels`（**同一物件**），`ss['f3_k6b_stage3_log'] ＝ []`。
-    3. 否則注入 `a_prime`／`trial_winner`／`alloc_state`（皆於深拷貝上試算）呼叫 `ns["k6b_stage3_run"]`，
-       其後以回傳之宗地再跑一次 `run_corner_pk`，回傳其五值 ＋ 段三後之宗地。
-    4. `ss['f3_k6b_stage3_log']` ＝ 紀錄；`ss['f3_k6b_stage3_order_used']` ＝ 所用之段二序。
-    5. 試算之副作用隔離：試算前深拷貝 `session_state` 與 `ns["K917_DROPPED"]`，段三畢（含例外）
-       於 `finally` 原地回復；最終重跑之 `run_corner_pk` 覆蓋 PK 諸鍵。
-       ⚠️ `stepg_pipeline._V3_FINANCE`（模組全域）亦被試算之 `run_step_g` 改寫——其值只依
-       `snapshot`／`cb`／`cad`（⛔ 依宗地），與最終之 `run_step_g` 所寫者同值 ⇒ ⛔ 回復（具名）。
-    """
+def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+    """`W-G.9-344`／🆕 `W-G.9-353`：段三與末端塊合併再試所注入之試算回呼（原位於 `run_corner_pk_k6b` 內·
+    抽出以供二者共用；本體唯 `_p_of` 之快照查找改於呼叫時為之〔段三不辦時亦須建回呼·⛔ 預取〕，餘逐字未改）。
+    回 `{'a_prime', 'trial_winner', 'alloc_state', 'alloc_eval'}`。
+    🆕 `W-G.9-353`：`alloc_state`／`alloc_eval` 之配地一律為**試算**（`SS_END_BLOCK_MODE` ＝ `'trial'`·
+    各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。"""
     import copy as _cp
     import contextlib as _cl
     import io as _io
-    ss = fake_st.session_state
-    res = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
-                        snapshot=snapshot)
-    order = list(ss.get('f3_k6b_stage2_order') or [])
-    if (not ns["k6b_stage3_enabled"]()) or not order:
-        ss['f3_k6b_stage3_log'] = []
-        ss['f3_k6b_stage3_order_used'] = order
-        return (*res, temp_parcels, build_parcels)
-
     from stepg_pipeline import run_step_g
     from shapely.geometry import Polygon as _Pg
-    _fv3 = snapshot["財務接線_v3"]
-    _zone_of, _price_of = _fv3["原地號_區段"], _fv3["重劃前區段_面積單價"]
+    ss = fake_st.session_state
 
     def _p_of(tp):
+        _fv3 = snapshot["財務接線_v3"]
+        _zone_of, _price_of = _fv3["原地號_區段"], _fv3["重劃前區段_面積單價"]
         _lot = tp.get("原地號", "")
         if _lot not in _zone_of:
             raise RuntimeError(f"🔴 [段三 a′] {tp.get('暫編地號')!r} 之原地號 {_lot!r} 不在 原地號_區段"
@@ -722,6 +704,7 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
         with _cl.redirect_stdout(_io.StringIO()):
             _d, _s, _o, _w, _f = run_corner_pk(ns, fake_st, cb, cad, param_rows, _t, _b, setback,
                                                snapshot=snapshot)
+            ss[ns["SS_END_BLOCK_MODE"]] = 'trial'   # 🆕 `W-G.9-353`：試算
             try:
                 _sg = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _b, _w, _f, setback,
                                  eff_min_build_by_blk={})
@@ -747,22 +730,108 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
                 _kept.setdefault(_blk, set()).add(_pid)
         return {"kept": _kept, "bad_pools": _bad, "err": _err}
 
+    def alloc_eval(temp, build):
+        """🆕 `W-G.9-353`：以所給之宗地試算街角選位與配地，回配地首趟之末端塊評選（深拷貝）；
+        配地中止 ⇒ `raise`（⛔ 以空評選代之）。"""
+        _t, _b = _copy_pair(temp, build)
+        ns["K917_DROPPED"].clear()
+        with _cl.redirect_stdout(_io.StringIO()):
+            _d, _s, _o, _w, _f = run_corner_pk(ns, fake_st, cb, cad, param_rows, _t, _b, setback,
+                                               snapshot=snapshot)
+            ss[ns["SS_END_BLOCK_MODE"]] = 'trial'
+            run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _b, _w, _f, setback,
+                       eff_min_build_by_blk={})
+        return _cp.deepcopy(ss.get(ns["SS_END_BLOCK_EVAL"]) or {})
+
+    return {'a_prime': a_prime, 'trial_winner': trial_winner, 'alloc_state': alloc_state,
+            'alloc_eval': alloc_eval}
+
+
+def run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                        *, snapshot, callbacks):
+    """🆕 `W-G.9-353`：末端塊合併再試之 harness 入口（`ns["end_block_merge_run"]`·單一真相源在 `app.py`）。
+    回 `(temp_out, build_out)`（無標的或試算中止 ⇒ 同一物件）；並寫 `ss[SS_END_BLOCK_MERGE]` ＝ 紀錄、
+    `ss['f3_end_block_merge_log']` ＝ 逐列紀錄。試算之副作用隔離同段三（深拷貝 `session_state` 與
+    `ns["K917_DROPPED"]`·`finally` 原地回復）。"""
+    import copy as _cp
+    ss = fake_st.session_state
     _locked = set()
     for _v in (ss.get('f3_k6b_stage1_locked_by_block') or {}).values():
         _locked |= set(_v or [])
+    _corner = set()
+    for _w in (ss.get('f3_corner_winners') or {}).values():
+        for _pid in (_w or {}).values():
+            if _pid:
+                _corner.add(str(_pid))
     _blocks = {b["label"]: {"category": b.get("category", "")} for b in cb}
     _ss_saved = _cp.deepcopy(dict(ss))
     _k917_saved = _cp.deepcopy(ns["K917_DROPPED"])
     try:
-        temp2, build2, log = ns["k6b_stage3_run"](
-            order, _locked, ss.get("t8_ownership_map", {}) or {}, temp_parcels, build_parcels,
-            _blocks, cad.get("centerlines", {}) or {}, a_prime, trial_winner, alloc_state)
+        temp3, build3, log, rec = ns["end_block_merge_run"](
+            temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {}, _locked, _corner, _blocks,
+            cad.get("centerlines", {}) or {}, callbacks['a_prime'], callbacks['alloc_eval'],
+            callbacks['alloc_state'], setback=setback)
     finally:
         ss.clear()
         ss.update(_ss_saved)
         ns["K917_DROPPED"].clear()
         ns["K917_DROPPED"].update(_k917_saved)
-    res2 = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp2, build2, setback, snapshot=snapshot)
-    ss['f3_k6b_stage3_log'] = log
-    ss['f3_k6b_stage3_order_used'] = order
-    return (*res2, temp2, build2)
+    ss[ns["SS_END_BLOCK_MERGE"]] = rec
+    ss['f3_end_block_merge_log'] = log
+    return temp3, build3
+
+
+def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                      *, snapshot):
+    """`W-G.9-344`：段三之 harness 入口。回傳七元組
+    `(診斷rows, 指配rows, 抵費地rows, winners, forced, temp_parcels_out, build_parcels_out)`。
+
+    1. 先跑 `run_corner_pk`（同參數）。
+    2. `k6b_stage3_enabled()` 為偽、或段二序（`ss['f3_k6b_stage2_order']`）為空 ⇒ 段三不辦（宗地為
+       原 `temp_parcels`／`build_parcels`·**同一物件**），`ss['f3_k6b_stage3_log'] ＝ []`。
+    3. 否則注入 `a_prime`／`trial_winner`／`alloc_state`（皆於深拷貝上試算·`_k6b_callbacks`）呼叫
+       `ns["k6b_stage3_run"]`，其後以回傳之宗地再跑一次 `run_corner_pk`。
+    4. `ss['f3_k6b_stage3_log']` ＝ 紀錄；`ss['f3_k6b_stage3_order_used']` ＝ 所用之段二序。
+    5. 試算之副作用隔離：試算前深拷貝 `session_state` 與 `ns["K917_DROPPED"]`，段三畢（含例外）
+       於 `finally` 原地回復；最終重跑之 `run_corner_pk` 覆蓋 PK 諸鍵。
+       ⚠️ `stepg_pipeline._V3_FINANCE`（模組全域）亦被試算之 `run_step_g` 改寫——其值只依
+       `snapshot`／`cb`／`cad`（⛔ 依宗地），與最終之 `run_step_g` 所寫者同值 ⇒ ⛔ 回復（具名）。
+    6. 🆕 `W-G.9-353`：段三（或其不辦）之後，辦末端塊之合併再試（`run_end_block_merge`）；宗地有變 ⇒
+       再跑一次 `run_corner_pk`。回傳其五值 ＋ 末態之宗地。
+    """
+    import copy as _cp
+    ss = fake_st.session_state
+    res = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                        snapshot=snapshot)
+    order = list(ss.get('f3_k6b_stage2_order') or [])
+    _cbk = _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot)
+    if (not ns["k6b_stage3_enabled"]()) or not order:
+        ss['f3_k6b_stage3_log'] = []
+        ss['f3_k6b_stage3_order_used'] = order
+        temp2, build2 = temp_parcels, build_parcels
+    else:
+        _locked = set()
+        for _v in (ss.get('f3_k6b_stage1_locked_by_block') or {}).values():
+            _locked |= set(_v or [])
+        _blocks = {b["label"]: {"category": b.get("category", "")} for b in cb}
+        _ss_saved = _cp.deepcopy(dict(ss))
+        _k917_saved = _cp.deepcopy(ns["K917_DROPPED"])
+        try:
+            temp2, build2, log = ns["k6b_stage3_run"](
+                order, _locked, ss.get("t8_ownership_map", {}) or {}, temp_parcels, build_parcels,
+                _blocks, cad.get("centerlines", {}) or {}, _cbk['a_prime'], _cbk['trial_winner'],
+                _cbk['alloc_state'])
+        finally:
+            ss.clear()
+            ss.update(_ss_saved)
+            ns["K917_DROPPED"].clear()
+            ns["K917_DROPPED"].update(_k917_saved)
+        res = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp2, build2, setback, snapshot=snapshot)
+        ss['f3_k6b_stage3_log'] = log
+        ss['f3_k6b_stage3_order_used'] = order
+    # 🆕 `W-G.9-353`：末端塊之合併再試（`K-9-49 ②`·段三之後）
+    temp3, build3 = run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp2, build2, setback,
+                                        snapshot=snapshot, callbacks=_cbk)
+    if temp3 is not temp2:
+        res = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp3, build3, setback, snapshot=snapshot)
+    return (*res, temp3, build3)
