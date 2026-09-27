@@ -7936,8 +7936,9 @@ def _select_pool_slot(widths, left_side, right_side, rw_func=None, widths_R=None
     b_R = float(_Rt.get('b', 0.0) or 0.0)
     note = ''
     # STEP 1：候選槽 K（有左街角 → 左群至少含 p_1；有右街角 → 右群至少含 p_n）
-    k_min = 1 if has_L else 0
-    k_max = (n - 1) if has_R else n
+    # 🆕 `W-G.9-352`：末端塊（`pin`）同街角第 1 宗⛔ 被池頂掉（該端之第 1 位恆屬該側之鏈）
+    k_min = 1 if (has_L or bool(_L.get('pin'))) else 0
+    k_max = (n - 1) if (has_R or bool(_Rt.get('pin'))) else n
     if k_min > k_max:
         # 退化（如 n=1 且雙側 pin 衝突）：無合法槽 → 全域比較、具名註記（不靜默）
         K = list(range(0, n + 1))
@@ -10483,6 +10484,244 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
     return band, r_end, float(r_end.area)
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  🆕 `W-G.9-352`：末端塊之評選與落位（`K-9-36 ①②`·`K-9-49`〔KL 裁 `2026-09-27`〕·補丁十 §一）
+#
+#  觸發（該端·二條件皆真）：① 該端無側街（街角選位表之 `{側}_has_side` 與 CAD 之 SIDELINE 二源須一致·
+#    不一致 ⇒ 停機）；② 該端之未臨正街土地（左 ＝ block∩{s<0}、右 ＝ block∩{s>s(p2)}·s 相對 FRONT p1）
+#    ＞ `END_BLOCK_UNFRONT_EPS`。
+#  R_end ＝ 未臨正街 ∪ 末端帶（`_end_region_R`·帶寬 ＝ 畸零地寬）。
+#  候選 ＝ 本街廓原位次序列之宗，其重劃前多邊形 ∩ R_end ＞ `END_BLOCK_CROSS_MIN_AREA`；
+#    跨占本街廓任一街角規定範圍（＞ 同門檻）者⛔ 為候選（`K-9-49 ③`：同時跨占二者之土地歸街角側）。
+#  評選（`K-9-36 ①`·`K-9-49 ①`）：依原投影序自該端起，**各筆單獨**於末端位試算 G——其宗地 ＝ 未臨正街 ∪
+#    正街段之帶、G 公式之 S ＝ 正街段之寬（未臨正街不計臨街）；第一個 G ≥ area(R_end) 者當選（往後找）。
+#  落位（`K-9-36 ②`）：當選者移至該端之第 1 位，其餘保持原相對序；配地時其宗地同上（`solve_G_binary` 之 `s_back`）。
+#  皆未達 ⇒ 🔴 停機：合併再試（`K-9-49 ②`）與強制抵費地（`K-9-36 ③`）候次單（⛔ 靜默）。
+#  先後（`K-9-49 ③`）：本評選於配地之首趟為之——街角（含段三及其後處理）皆已定案；入池閘之試算趟與末趟
+#    沿用首趟之當選者（`SS_END_BLOCK_EVAL`），故「各筆單獨」之受詞 ＝ 入池閘合併前之宗。
+# ══════════════════════════════════════════════════════════════════════════
+END_BLOCK_UNFRONT_EPS = 1e-3        # ㎡·補丁十 §一 之 ε
+END_BLOCK_CROSS_MIN_AREA = 1.0      # ㎡·跨占之門檻（比照街角選位之跨占門檻）
+SS_END_BLOCK_EVAL = 'f3_end_block_eval'
+
+
+def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+                        min_width, side, _label=''):
+    """一端之末端塊幾何（純函式）。回 dict：`gate`、`unfront`（未臨正街面積）；`gate` 真另有
+    `s_back`（未臨正街沿 s 之寬）、`r_end`（多邊形）、`r_end_area`、`band_area`。"""
+    import numpy as np
+    if side not in ('left', 'right'):
+        raise RuntimeError(f"🔴 end_block_side_geom[{_label}]：side={side!r}（只接受 left／right）")
+    if block_poly is None or d_hat is None or corner_pt is None or front_p2 is None:
+        raise RuntimeError(f"🔴 end_block_side_geom[{_label}·{side}]：缺街廓／FRONT 之幾何（no-silent-fallback）")
+    _dom = _strip_s_range(block_poly, d_hat, corner_pt, allocation_dir)
+    if _dom is None:
+        raise RuntimeError(f"🔴 end_block_side_geom[{_label}·{side}]：街廓之 s 域不可定義")
+    _smin, _smax = float(_dom[0]), float(_dom[1])
+    _p1 = np.asarray(corner_pt, dtype=float)[:2]
+    _v = np.asarray(front_p2, dtype=float)[:2] - _p1
+    _d = np.asarray(d_hat, dtype=float)[:2]
+    _sp2 = float(np.dot(_v, _d))                      # s(p2)：恆等 s(p1 + s0·d̂) ≡ s0
+    if not (_sp2 > 0.0) or abs(float(_v[0] * _d[1] - _v[1] * _d[0])) > 1e-6:
+        raise RuntimeError(f"🔴 end_block_side_geom[{_label}·{side}]：FRONT p2 不在 p1 沿 d̂ 之射線上")
+    if side == 'left':
+        _w = (-_smin) if _smin < -1e-6 else 0.0
+        _start = _p1 + _smin * _d
+        _end_pt = _p1
+    else:
+        _w = (_smax - _sp2) if _smax > _sp2 + 1e-6 else 0.0
+        _start = _p1 + _sp2 * _d
+        _end_pt = _p1 + _sp2 * _d
+    if _w <= 0.0:
+        return {'gate': False, 'unfront': 0.0}
+    _unf_poly, _unf = _block_strip(block_poly, d_hat, _start, _w, allocation_dir=allocation_dir)
+    _unf = float(_unf or 0.0)
+    if _unf <= END_BLOCK_UNFRONT_EPS:
+        return {'gate': False, 'unfront': _unf}
+    _band, _r_end, _a = _end_region_R(block_poly, cad_alloc, _end_pt, min_width, _unf_poly,
+                                      _label=f"{_label}·{side}")
+    return {'gate': True, 'unfront': _unf, 's_back': float(_w), 'r_end': _r_end,
+            'r_end_area': float(_a), 'band_area': float(_band.area)}
+
+
+def end_block_pick(side, geom, entries, corner_range_polys, trial, _label=''):
+    """評選（純函式·`trial(tp) -> (G, 臨正街寬)` 由呼叫端供）。`entries` ＝ 自該端起之原位次序列之宗。
+    回 `{'winner': 暫編地號, 'rows': [...]}`；皆未達 ⇒ 🔴 停機。"""
+    from shapely.geometry import Polygon as _P_eb
+    _r_end = geom['r_end']
+    _thr = float(geom['r_end_area'])
+    _crs = [p for p in (corner_range_polys or {}).values() if p is not None]
+    rows = []
+    for _e in entries:
+        _tp = _e['tp']
+        _k = str(_tp.get('暫編地號', ''))
+        _cs = _tp.get('polygon_coords') or []
+        if len(_cs) < 3:
+            continue
+        _pg = _P_eb(_cs)
+        if not _pg.is_valid:
+            _pg = _pg.buffer(0)
+        _ov = float(_pg.intersection(_r_end).area)
+        if _ov <= END_BLOCK_CROSS_MIN_AREA:
+            continue
+        _row = {'暫編地號': _k, '原地號': str(_tp.get('原地號', '')), '跨占R_end(㎡)': round(_ov, 2)}
+        if any(float(_pg.intersection(_c).area) > END_BLOCK_CROSS_MIN_AREA for _c in _crs):
+            _row.update({'試算G(㎡)': None, '臨正街寬(m)': None, '結果': '跨占街角規定範圍·歸街角側'})
+            rows.append(_row)
+            continue
+        _g, _s = trial(_tp)
+        _ok = float(_g) >= _thr
+        _row.update({'試算G(㎡)': round(float(_g), 2), '臨正街寬(m)': round(float(_s), 2),
+                     '結果': '當選' if _ok else '未達'})
+        rows.append(_row)
+        if _ok:
+            return {'winner': _k, 'rows': rows}
+    raise RuntimeError(
+        f"🔴 [末端塊·{_label}·{side}] 跨占 R_end（{_thr:.2f} ㎡）者各筆單獨試算皆未達：{rows}"
+        "——合併再試（K-9-49 ②）與強制抵費地（K-9-36 ③）候次單（⛔ 靜默）")
+
+
+def end_block_pin(ordered, side, pid, _label=''):
+    """落位（`K-9-36 ②`）：當選者移至該端之第 1 位（左 ＝ 首、右 ＝ 末），其餘保持原相對序；回新序列。
+    `pid` 不在序列而為某入池閘合併單元之成員者 ⇒ 移該單元；找不到或不唯一 ⇒ 停機。"""
+    _idx = [i for i, e in enumerate(ordered) if str(e['tp'].get('暫編地號', '')) == pid]
+    if not _idx:
+        _idx = [i for i, e in enumerate(ordered) if pid in (e['tp'].get('入池閘併入') or [])]
+    if len(_idx) != 1:
+        raise RuntimeError(f"🔴 end_block_pin[{_label}·{side}]：當選者 {pid} 於序列中 {len(_idx)} 筆（期恰 1）")
+    _out = list(ordered)
+    _e = _out.pop(_idx[0])
+    if _e.get('is_corner_winner'):
+        raise RuntimeError(f"🔴 end_block_pin[{_label}·{side}]：當選者 {pid} 為街角第 1 宗")
+    _e['is_end_block'] = True
+    if side == 'left':
+        _out.insert(0, _e)
+    else:
+        _out.append(_e)
+    return _out
+
+
+def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p2, cad_alloc,
+                    allocation_dir, min_width, has_side_pk, has_side_cad, corner_range_polys,
+                    trial, cache):
+    """一街廓之末端塊：評選（首趟）或沿用（`cache` 已有本街廓）＋ 落位。
+    `trial(tp, side, s_back) -> (G, 臨正街寬)`；`cache` ＝ `SS_END_BLOCK_EVAL` 之 dict（就地寫）。
+    回 `(ordered′, {'left': {'s_back','winner'}|None, 'right': …})`。"""
+    _info = {'left': None, 'right': None}
+    _cached = cache.get(blk_label)
+    _rec = {}
+    _out = list(ordered)
+    for _sd in ('left', 'right'):
+        _pk = bool((has_side_pk or {}).get(_sd))
+        _cad = bool((has_side_cad or {}).get(_sd))
+        if _pk != _cad:
+            raise RuntimeError(
+                f"🔴 end_block_apply[{blk_label}·{_sd}]：有無側街之二源不一致（街角選位表 {_pk}／CAD {_cad}）")
+        if _pk:
+            continue
+        _g = end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+                                 min_width, _sd, _label=blk_label)
+        if not _g['gate']:
+            _rec[_sd] = {'觸發': False, '未臨正街(㎡)': round(float(_g['unfront']), 4)}
+            continue
+        if _cached is not None:
+            _c = _cached.get(_sd) or {}
+            if not _c.get('觸發'):
+                raise RuntimeError(f"🔴 end_block_apply[{blk_label}·{_sd}]：首趟未觸發而本趟觸發")
+            _win = _c['當選']
+            _rec[_sd] = _c
+        else:
+            _seq = _out if _sd == 'left' else list(reversed(_out))
+            _pk_res = end_block_pick(_sd, _g, _seq, corner_range_polys,
+                                     (lambda tp, _s=_sd, _w=_g['s_back']: trial(tp, _s, _w)),
+                                     _label=blk_label)
+            _win = _pk_res['winner']
+            _rec[_sd] = {'觸發': True, '未臨正街(㎡)': round(float(_g['unfront']), 2),
+                         '末端帶(㎡)': round(float(_g['band_area']), 2),
+                         'R_end(㎡)': round(float(_g['r_end_area']), 2),
+                         '候選': _pk_res['rows'], '當選': _win}
+        _out = end_block_pin(_out, _sd, _win, _label=blk_label)
+        _info[_sd] = {'s_back': float(_g['s_back']), 'winner': _win}
+    if _cached is None:
+        cache[blk_label] = _rec
+    return _out, _info
+
+
+def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2, alloc_dir_cad,
+                   allocation_dir, session, corner_range_polys, solve_one, l_front, avg_depth,
+                   S_block_max, post_price, pre_price_by_zone):
+    """`W-G.9-352`：二宿主（畫面 `f3_screen_stepg_run`／harness `_run_step_g_impl`）之共同入口（單一真相源·#20）。
+    讀 session 之畸零地寬、街角選位表之有無側街、CAD 之 SIDELINE；試算之 G 經宿主之 `_solve_one`
+    （與配地同一解算路徑）。回 `end_block_apply` 之回傳。"""
+    import numpy as np
+    _mw = float((session.get('f3_min_width_by_label', {}) or {}).get(blk_label, 0.0) or 0.0)
+    _fo = (session.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}
+    _sl = (session.get('f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+    _has_cad = {_sd: ((_sl.get(_sd) or {}).get('mid') is not None) for _sd in ('left', 'right')}
+    _has_pk = ({_sd: bool(_fo.get(f'{_sd}_has_side')) for _sd in ('left', 'right')}
+               if ('left_has_side' in _fo and 'right_has_side' in _fo) else dict(_has_cad))
+    _cache = session.setdefault(SS_END_BLOCK_EVAL, {})
+    _d = np.asarray(d_hat, dtype=float)
+    _cp = np.asarray(corner_pt, dtype=float)
+
+    def _trial(tp, side, s_back):
+        if '分攤登記面積_m2' in tp:
+            _a = round(float(tp.get('分攤登記面積_m2', 0) or 0) + float(tp.get('面積_m2', 0) or 0), 2)
+        else:
+            _a = round(float(tp.get('面積_m2', 0) or 0), 2)
+        _pre = float(pre_price_by_zone.get(tp.get('重劃前地價區段', ''), 0.0) or 0.0)
+        _post = float(post_price or 0.0)
+        _A = (_post / _pre) if (_pre > 0 and _post > 0) else 1.0
+        if side == 'left':
+            _dd, _bp = _d, _cp
+        else:
+            _dd, _bp = -_d, _cp + float(S_block_max) * _d
+        _res, _ = solve_one(_a, _A, l_front, 0.0, 0.0, blk_poly, _dd, _bp, max(0.1, float(S_block_max)),
+                            False, '無', avg_depth,
+                            _allocation_dir=allocation_dir, _side_mid=None, _W_prev=0.0,
+                            _w0_start=0.0, _near_dir=None, _is_chain_head=True, _s_back=s_back)
+        return float(_res.get('G', 0.0)), float(_res.get('S_raw', _res.get('S', 0.0)))
+
+    return end_block_apply(ordered, blk_label=blk_label, block_poly=blk_poly, d_hat=d_hat,
+                           corner_pt=corner_pt, front_p2=front_p2, cad_alloc=alloc_dir_cad,
+                           allocation_dir=allocation_dir, min_width=_mw, has_side_pk=_has_pk,
+                           has_side_cad=_has_cad, corner_range_polys=corner_range_polys,
+                           trial=_trial, cache=_cache)
+
+
+def end_block_eval_rows(ev):
+    """`W-G.9-352`：末端塊評選之顯示（純函式·表列之值皆字串）。回 `{'lines': [...], 'rows': [...]}`。"""
+    _nm = {'left': '左', 'right': '右'}
+    lines, rows = [], []
+    for _blk in sorted(ev or {}):
+        for _sd in ('left', 'right'):
+            _r = (ev.get(_blk) or {}).get(_sd)
+            if _r is None:
+                continue
+            if not _r.get('觸發'):
+                lines.append(f"{_blk} {_nm[_sd]}端（無側街）：未臨正街 {_r.get('未臨正街(㎡)')} ㎡ ⇒ 未觸發")
+                continue
+            lines.append(f"{_blk} {_nm[_sd]}端（無側街）：未臨正街 {_r['未臨正街(㎡)']} ＋ 末端帶 {_r['末端帶(㎡)']}"
+                         f" ＝ R_end {_r['R_end(㎡)']} ㎡；當選 {_r['當選']}")
+            for _c in (_r.get('候選') or []):
+                rows.append({'街廓': _blk, '端': _nm[_sd],
+                             **{_k: ('—' if _v is None else str(_v)) for _k, _v in _c.items()}})
+    return {'lines': lines, 'rows': rows}
+
+
+def end_block_assert_head(blk_label, eb_info, left_results, right_results):
+    """`W-G.9-352`：定案趟之檢——觸發之端，其鏈之首宗須為末端塊之當選者（含入池閘合併單元）；否則停機。"""
+    for _sd, _res in (('left', left_results), ('right', right_results)):
+        _i = (eb_info or {}).get(_sd)
+        if _i is None:
+            continue
+        if not _res or not _res[0][0].get('is_end_block'):
+            _hd = (_res[0][0]['tp'].get('暫編地號') if _res else None)
+            raise RuntimeError(
+                f"🔴 [末端塊·{blk_label}·{_sd}] 定案趟之鏈首宗 {_hd!r} 非當選者 {_i['winner']!r}"
+                "（未臨正街將無人承受·⛔ 靜默成池）")
+
+
 def solve_G_binary(a: float, A: float, B: float, C: float,
                    l_front: float, l_side: float, F: float,
                    block_poly, d_hat, baseline_pt,
@@ -10494,7 +10733,8 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
                    allocation_dir=None,
                    side_mid=None, W_prev: float = 0.0,
                    w0_start=None,
-                   near_dir=None) -> dict:
+                   near_dir=None,
+                   s_back: float = 0.0) -> dict:
     """
     幾何驅動的二分法解 S：
       每輪猜 S_guess → 從 baseline_pt 沿 d_hat 切出 block strip 多邊形 → 計算 area_geom；
@@ -10568,11 +10808,25 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         _near_ad = _nd
         _far_nhat = np.array([-_ad_f[1], _ad_f[0]])   # ＝ `_block_strip` 內之 rot90(allocation_dir)
 
+    # 🆕 `W-G.9-352`（末端塊·`K-9-36 ②`）：`s_back` ＞ 0 ⇒ 本宗之帶向後延伸 `s_back`（未臨正街），
+    #   宗地 ＝ 未臨正街 ∪ [baseline, baseline + S]；G 公式之 S 仍為正街段之寬（未臨正街不計臨街）。
+    #   `s_back == 0` ⇒ 原式一字未動（逐位不變）。
+    _s_back = float(s_back or 0.0)
+    if _s_back < 0.0:
+        raise RuntimeError(f"🔴 solve_G_binary：s_back={s_back!r} < 0")
+    if _s_back > 0.0 and (_near_ad is not None or side_mid is not None):
+        raise RuntimeError(
+            "🔴 solve_G_binary：s_back ＞ 0（末端塊）而 near_dir／side_mid 有值——末端塊⛔ 臨側街、⛔ 承前一宗之界")
+
     def _cut_strip(_S):
         """本函式**唯一**之切帶入口（⛔ 兩處呼叫共用·避免同式分岔·#20）。
 
         `_near_ad is None` ⇒ **原式一字未動**（逐位不變）；否則走 `_block_strip` 雙線分支。
         """
+        if _near_ad is None and _s_back > 0.0:
+            return _block_strip(block_poly, d_hat,
+                                np.asarray(baseline_pt, dtype=float) - _s_back * np.asarray(d_hat, dtype=float),
+                                _S + _s_back, allocation_dir=allocation_dir)
         if _near_ad is None:
             return _block_strip(block_poly, d_hat, baseline_pt, _S,
                                 allocation_dir=allocation_dir)
@@ -15168,7 +15422,8 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                  S_max, is_corner, side, avg_depth, B, C, tab6_burden,
                  allocation_dir=None, side_mid=None, W_prev=0.0, near_dir=None,
                  w0_start=None,
-                 is_chain_head=False):
+                 is_chain_head=False,
+                 s_back=0.0):
     """🆕 P-0b（裁定M·Q-M4）：G 解算**單一真相源**——幾何二分法優先，失敗 fallback 至代數迭代。
 
     app 內嵌 `_solve_one`（`main()` 內）與 `verify/stepg_pipeline.py` 之 `_solve_one` 皆改**薄殼**
@@ -15212,12 +15467,17 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
                 side_mid=side_mid, W_prev=W_prev,
                 near_dir=near_dir,                       # 🆕 D-2b-23【甲】：界面單線（⛔ 不在此推導）
                 w0_start=w0_start,                       # 🆕 W-G.9-318：K-9-41 ① 起算點（薄殼直通·⛔ 在此推導）
+                s_back=s_back,                           # 🆕 W-G.9-352：末端塊之未臨正街（薄殼直通·⛔ 在此推導）
             )
             _r['_alloc_dir_used'] = _alloc_dir_used      # D-2b-3 §二-3（純加性）
             return _r, '幾何二分法'
         except Exception:
             pass
     # fallback：代數迭代（同樣攜帶 W_prev 累積差額，§4）
+    if float(s_back or 0.0) > 0.0:
+        raise RuntimeError(
+            "🔴 W-G.9-352：solve_G_binary 失敗而落入 iterate_G_S，該路徑未實作末端塊之未臨正街"
+            "（s_back）⇒ ⛔ 靜默改以矩形估算")
     if w0_start is not None and (is_corner or is_chain_head):
         raise RuntimeError(
             "🔴 K-9-41 ①：solve_G_binary 失敗而落入 iterate_G_S，"
@@ -15686,6 +15946,8 @@ _WF_NS_NAMES = [
     "k917_should_drop", "k917_note_drop",
     # 🆕 `W-G.9-349`：`K-9-29 六` 入池閘之三名（引擎 `verify/stepg_pipeline.py` 之 `run_step_g` 經 `ns` 消費）。
     "k929_6_enabled", "k929_6_fixpoint", "K917_DROPPED",
+    # 🆕 `W-G.9-352`：末端塊之三名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
+    "end_block_host", "end_block_assert_head", "SS_END_BLOCK_EVAL",
     # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
     #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
@@ -16821,6 +17083,10 @@ def f3_screen_stepg_run(st, *,
     # 🆕 `W-G.9-349`（`K-9-29 六` 入池閘·KL 放行 `2026-09-26`）：旗標 on 且非試算趟 ⇒ 先以試算趟（代理 st）求末態之
     #   build，再以之跑本體（真 st）；合併紀錄於本體末與 `f3_G_values` 同寫（`f3_k929_6_log`）。旗標 off ⇒ 本段⛔ 執行。
     _k929_6_log = None
+    # 🆕 `W-G.9-352`：末端塊之評選於本趟之首趟為之（入池閘之試算趟與本體沿用·`SS_END_BLOCK_EVAL`）
+    #   ⇒ 非試算趟先清前次之評選（⛔ 列入 `K6B_SCREEN_TRIAL_KEYS`：入池閘之復原⛔ 得清之）。
+    if not _k929_6_inner:
+        st.session_state.pop(SS_END_BLOCK_EVAL, None)
     if (not _k929_6_inner) and k929_6_enabled():
         build_parcels, _k929_6_log = _k929_6_screen_gate(st, dict(
             B_value=B_value, C_for_calc=C_for_calc, _auto_recalc=_auto_recalc, _btn_clicked=_btn_clicked,
@@ -16978,7 +17244,7 @@ def f3_screen_stepg_run(st, *,
                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                    _allocation_dir=None, _side_mid=None, _W_prev=0.0,
                    _w0_start=None,
-                   _near_dir=None, _is_chain_head=False):
+                   _near_dir=None, _is_chain_head=False, _s_back=0.0):
         """求解單筆宗地 — 薄殼委派 module 級 `_solve_G_one`（P-0b·單一真相源·Q-M4）。
 
                         🆕 W-C §0.5-B/§4：_allocation_dir = rot90(f3_cad_alloc_dir)（臨街向）；
@@ -16993,7 +17259,8 @@ def f3_screen_stepg_run(st, *,
             allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
             near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
             w0_start=_w0_start,   # 🆕 W-G.9-318：K-9-41 ①（薄殼直通·⛔ 在此推導）
-            is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·不推導）
+            is_chain_head=_is_chain_head,   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·不推導）
+            s_back=_s_back)   # 🆕 W-G.9-352：末端塊之未臨正街（薄殼直通·⛔ 在此推導）
 
     st.session_state['f3_wd2_pool_diag'] = {}   # 🆕 W-D.2 §3：每輪重建（防殘留舊塊）
     for blk_label, parcels_in_blk in parcels_by_block.items():
@@ -17201,6 +17468,24 @@ def f3_screen_stepg_run(st, *,
                 forced_offset=_v2_forced,
             )
             ordered_v2 = list(_v2_res.get('ordered', []) or [])
+
+        # 🆕 `W-G.9-352`：末端塊之評選與落位（`K-9-36 ①②`·`K-9-49`）——原位次序列定後、`_ov2_idx` 前
+        #   （單一真相源 `end_block_host`·harness 同構）。
+        _eb_info = {'left': None, 'right': None}
+        if (not _degenerate_order) and _front_p2_blk is not None:
+            from shapely.geometry import Polygon as _SP_eb
+            _eb_crp_raw = (st.session_state.get('f3_corner_range_polys', {}) or {}).get(blk_label) or {}
+            _eb_crp = {_w_eb: (_SP_eb(_eb_crp_raw[_w_eb])
+                               if (_eb_crp_raw.get(_w_eb) and len(_eb_crp_raw[_w_eb]) >= 3) else None)
+                       for _w_eb in ('left', 'right')}
+            ordered_v2, _eb_info = end_block_host(
+                ordered_v2, blk_label=blk_label, blk_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt,
+                front_p2=_front_p2_blk, alloc_dir_cad=_alloc_dir_cad,
+                allocation_dir=allocation_dir_block, session=st.session_state,
+                corner_range_polys=_eb_crp, solve_one=_solve_one, l_front=l_front,
+                avg_depth=avg_depth_default, S_block_max=S_block_max,
+                post_price=post_price_by_block.get(blk_label, 0.0),
+                pre_price_by_zone=pre_price_by_zone)
 
         # 🆕 W-D.2 §3：註記原位次 index（基準趟寬度→_select_pool_slot 映射用）。
         #   k 切分與 side 標籤依 k 而變 → 移入 _advance_block_with_split（趟內建）。
@@ -17508,6 +17793,9 @@ def f3_screen_stepg_run(st, *,
                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                     _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
                     _w0_start=(0.0 if not _fo_left else None),   # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                    _s_back=(float(_eb_info['left']['s_back'])   # 🆕 W-G.9-352：末端塊（左）
+                             if (_eb_info['left'] is not None and _lg_idx_left == 0
+                                 and entry.get('is_end_block')) else 0.0),
                 )
                 # 🆕 `W-G.9-246′` 工項二 **站 1／4（app 左鏈）**：`res` 定案後、鏈推進前。
                 #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
@@ -17579,6 +17867,8 @@ def f3_screen_stepg_run(st, *,
                                          has_side_right=_has_right_corner,
                                          forced_right=_fo_right)
                 actual_max_proj = _smax_g if _smax_g is not None else S_block_max
+                if _eb_info['right'] is not None:   # 🆕 W-G.9-352：末端塊（右）⇒ 鏈起於 FRONT p2、首宗向外延伸未臨正街
+                    actual_max_proj = S_block_max
                 end_pt = corner_pt + actual_max_proj * d_hat
                 d_hat_rev = -d_hat
             else:
@@ -17632,6 +17922,9 @@ def f3_screen_stepg_run(st, *,
                     _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                     _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                     _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                    _s_back=(float(_eb_info['right']['s_back'])   # 🆕 W-G.9-352：末端塊（右）
+                             if (_eb_info['right'] is not None and _lg_idx_right == 0
+                                 and entry.get('is_end_block')) else 0.0),
                 )
                 # 極端防呆 2 後援：右側起點數值微修
                 if (float(res.get('area_geom', 0)) < 0.5
@@ -17649,6 +17942,9 @@ def f3_screen_stepg_run(st, *,
                             _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                             _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                             _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                            _s_back=(float(_eb_info['right']['s_back'])   # 🆕 W-G.9-352：末端塊（右）
+                                     if (_eb_info['right'] is not None and _lg_idx_right == 0
+                                         and entry.get('is_end_block')) else 0.0),
                         )
                         if float(_r2.get('area_geom', 0)) >= 0.5:
                             res, solver_label = _r2, _sl2
@@ -17707,6 +18003,10 @@ def f3_screen_stepg_run(st, *,
                 _rows_local.append(_lg_row)
                 _trace_local[k] = res.get('trace', [])
                 right_results.append((entry, res))
+
+            # 🆕 `W-G.9-352`：定案趟之末端塊須為該側鏈之首宗（⛔ 靜默讓未臨正街成池）
+            if _commit:
+                end_block_assert_head(blk_label, _eb_info, left_results, right_results)
 
             return {
                 'rows': _rows_local, 'trace': _trace_local,
@@ -17788,8 +18088,8 @@ def f3_screen_stepg_run(st, *,
             # 🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：估算寬度改取**各側全鏈**
             #   （左 ＝ 推進至 k_max、右 ＝ 推進至 k_min 之試推進）之逐宗 `W` 差；
             #   居中平手仍用基準趟之宗地寬度。與 `verify/stepg_pipeline.py` 同構（#20）。
-            _kmin_c = 1 if _has_left_corner else 0
-            _kmax_c = (_N - 1) if _has_right_corner else _N
+            _kmin_c = 1 if (_has_left_corner or _eb_info['left'] is not None) else 0   # 🆕 W-G.9-352：末端塊同 pin
+            _kmax_c = (_N - 1) if (_has_right_corner or _eb_info['right'] is not None) else _N
             _wL_c = [0.0] * _N; _wR_c = [0.0] * _N
             _bL_c = _b_L0; _bR_c = _b_R0
             if _kmin_c <= _kmax_c:
@@ -17809,9 +18109,9 @@ def f3_screen_stepg_run(st, *,
             _slot_res = _select_pool_slot(
                 _wL_c,
                 {'has': _has_left_corner, 'F': _F_left,
-                 'l1': _lside_left, 'b': _bL_c},
+                 'l1': _lside_left, 'b': _bL_c, 'pin': _eb_info['left'] is not None},
                 {'has': _has_right_corner, 'F': _F_right,
-                 'l1': _lside_right, 'b': _bR_c},
+                 'l1': _lside_right, 'b': _bR_c, 'pin': _eb_info['right'] is not None},
                 widths_R=_wR_c, dev_widths=_adv_base['widths'],
             )
             _k_star = int(_slot_res['k'])
@@ -17844,6 +18144,8 @@ def f3_screen_stepg_run(st, *,
                     blk_meta['vertices'], d_hat, corner_pt,
                     allocation_dir_block, front_p2=_front_p2_blk,
                     has_side_right=_has_right_corner, forced_right=_fo_right)
+                if _eb_info['right'] is not None:   # 🆕 W-G.9-352：右鏈起於 FRONT p2（同推進）
+                    _smax_blk = S_block_max
             _s2 = _place_pool_parcels(
                 stage2_parcels=_stage2_parcels,
                 adv_final=_adv_final,
@@ -18398,6 +18700,8 @@ K6B_SCREEN_TRIAL_KEYS = (
     'f3_corner_cand_diag',
     # 🆕 `W-G.9-351`：入池閘之末態 build 與其末趟之不配地紀錄（配地本體所寫·調配之輸入）
     'f3_k929_6_build', 'f3_k929_6_dropped',
+    # 🆕 `W-G.9-352`：末端塊之評選（配地本體之首趟所寫·`SS_END_BLOCK_EVAL`；入池閘之畫面入口於復原之後帶出）
+    'f3_end_block_eval',
     # 🆕 `W-G.9-349`：入池閘之合併紀錄（配地本體所寫）
     'f3_k929_6_log',
 )
@@ -18713,10 +19017,12 @@ def _k929_6_screen_gate(st, g_kwargs):
         return list(_ss.get('f3_G_values') or []), _cp_k9296s.deepcopy(dict(K917_DROPPED)), None
 
     _err = None
+    _ev352 = None
     try:
         _bf, _last, _log = k929_6_fixpoint(
             g_kwargs['build_parcels'], _trial, _ss.get('t8_ownership_map', {}) or {},
             g_kwargs['pre_price_by_zone'], _ss.get('f3_cad_front_lines', {}) or {})
+        _ev352 = _cp_k9296s.deepcopy(_ss.get(SS_END_BLOCK_EVAL))   # 🆕 `W-G.9-352`：首趟之末端塊評選（本體沿用）
     except RuntimeError as _e_g:
         _err = str(_e_g).split("\n")[0][:500]
     finally:
@@ -18732,6 +19038,8 @@ def _k929_6_screen_gate(st, g_kwargs):
         st.stop()
         raise RuntimeError(_err)
     _ss[SS_ADJ_DROPPED] = _cp_k9296s.deepcopy(dict(_last[1]))   # 🆕 `W-G.9-351`：調配之輸入（末趟之不配地紀錄）
+    if _ev352 is not None:
+        _ss[SS_END_BLOCK_EVAL] = _ev352   # 🆕 `W-G.9-352`：本體沿用首趟之當選者（⛔ 以末態之合併單元重評）
     return _bf, _log
 
 
@@ -24783,6 +25091,17 @@ def main():
                                              use_container_width=True, hide_index=True)
                             else:
                                 st.caption("（本次無合併試算）")
+
+                    # 🆕 `W-G.9-352`：末端塊之評選（無側街之端·`K-9-36`／`K-9-49`）——跨占者、各筆單獨試算之 G、當選者
+                    _eb352 = st.session_state.get(SS_END_BLOCK_EVAL)
+                    if _eb352 is not None:
+                        _eb352_v = end_block_eval_rows(_eb352)
+                        with st.expander("🧱 末端塊之評選（無側街之端·K-9-36／K-9-49）", expanded=False):
+                            for _eb352_l in _eb352_v['lines']:
+                                st.caption(_eb352_l)
+                            if _eb352_v['rows']:
+                                st.dataframe(_pd.DataFrame(_eb352_v['rows']),
+                                             use_container_width=True, hide_index=True)
 
                     # 🆕 `W-G.9-351`：調配階段之輸入（步 1 之尾〜步 2·`K-9-45`／`K-9-46`）——僅盤點·⛔ 調配
                     _adj351_bf = st.session_state.get(SS_ADJ_BUILD_FINAL)

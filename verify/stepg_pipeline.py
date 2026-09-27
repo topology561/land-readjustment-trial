@@ -258,6 +258,9 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
     #   `k929_6_fixpoint` 求末態之 build（試算趟 ＝ 本函式 `_k929_6_inner=True`）；回末趟之結果（即以末態 build
     #   所跑者·⛔ 重跑）並掛 `k929_6`（`build`／`log`）。`K917_DROPPED` ＝ 呼叫前之內容 ＋ 末趟所記（同單趟之累加）。
     #   🔒 旗標 off ⇒ 本段⛔ 執行（逐位同本批前）。
+    # 🆕 `W-G.9-352`：末端塊之評選於本趟之首趟為之（入池閘之試算趟沿用·`SS_END_BLOCK_EVAL`）⇒ 非試算趟先清前次之評選。
+    if not _k929_6_inner:
+        fake_st.session_state.pop(ns["SS_END_BLOCK_EVAL"], None)
     if not _k929_6_inner and ns["k929_6_enabled"]():
         import copy as _cp_k9296
         _k917 = ns["K917_DROPPED"]
@@ -543,7 +546,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                    _baseline_pt, _S_max, _is_corner, _side, _avg_depth,
                    _allocation_dir=None, _side_mid=None, _W_prev=0.0,
                    _w0_start=None,
-                   _near_dir=None, _is_chain_head=False):
+                   _near_dir=None, _is_chain_head=False, _s_back=0.0):
         # 🆕 P-0b（裁定M·Q-M4）：薄殼委派 app module 級 `_solve_G_one`（單一真相源·經 ns）。
         #   B_value/C_for_calc（_compute_v3_finance 拆出）＋ _tab6_burden（本函式上方檢查）為閉包捕獲。
         return ns["_solve_G_one"](
@@ -554,7 +557,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             allocation_dir=_allocation_dir, side_mid=_side_mid, W_prev=_W_prev,
             near_dir=_near_dir,   # 🆕 D-2b-23【甲】：界面單線（薄殼直通·不推導）
             w0_start=_w0_start,   # 🆕 W-G.9-318：K-9-41 ①（薄殼直通·⛔ 在此推導）
-            is_chain_head=_is_chain_head)   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·⛔ 不推導）
+            is_chain_head=_is_chain_head,   # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·⛔ 不推導）
+            s_back=_s_back)   # 🆕 W-G.9-352：末端塊之未臨正街（薄殼直通·⛔ 在此推導）
 
     # ── 逐街廓（app Step G 迴圈逐行複刻；st.* 於 headless 為 fake no-op 故略） ──
     for blk_label, parcels_in_blk in parcels_by_block.items():
@@ -653,6 +657,19 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 forced_offset=_v2_forced,
             )
             ordered_v2 = list(_v2_res.get('ordered', []) or [])
+        # 🆕 `W-G.9-352`：末端塊之評選與落位（`K-9-36 ①②`·`K-9-49`）——原位次序列定後、`_ov2_idx` 前
+        #   （單一真相源 `end_block_host`·app 同構）。
+        _eb_info = {'left': None, 'right': None}
+        if (not _degenerate_order) and _front_p2_blk is not None:
+            ordered_v2, _eb_info = ns["end_block_host"](
+                ordered_v2, blk_label=blk_label, blk_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt,
+                front_p2=_front_p2_blk, alloc_dir_cad=_alloc_dir_cad,
+                allocation_dir=allocation_dir_block, session=ss,
+                corner_range_polys={_w_eb: ctx['corner_range_polys'].get((blk_label, _w_eb))
+                                    for _w_eb in ('left', 'right')},
+                solve_one=_solve_one, l_front=l_front, avg_depth=avg_depth_default,
+                S_block_max=S_block_max, post_price=post_price_by_block.get(blk_label, 0.0),
+                pre_price_by_zone=pre_price_by_zone)
         for _i_ov2, _e_ov2 in enumerate(ordered_v2):
             _e_ov2['_ov2_idx'] = _i_ov2
 
@@ -871,6 +888,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _near_dir=_near_dir_left,   # 🆕 D-2b-23【甲】
                     _is_chain_head=(_lg_idx_left == 0),   # 🆕 W-G.9-261：本側鏈頭
                     _w0_start=(0.0 if not _fo_left else None),   # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                    _s_back=(float(_eb_info['left']['s_back'])   # 🆕 W-G.9-352：末端塊（左）
+                             if (_eb_info['left'] is not None and _lg_idx_left == 0
+                                 and entry.get('is_end_block')) else 0.0),
                 )
                 # 🆕 `W-G.9-246′` 工項二 **站 3／4（harness 左鏈）**：`res` 定案後、鏈推進前。
                 #   🛑 只做二事：呼叫、寫欄（`I-5`）——⛔ 依其 verdict 寫任何 `if`。
@@ -931,6 +951,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                                                 front_p2=_front_p2_blk, has_side_right=_has_right_corner,
                                                 forced_right=_fo_right)
                 actual_max_proj = _smax_a if _smax_a is not None else S_block_max
+                if _eb_info['right'] is not None:   # 🆕 W-G.9-352：末端塊（右）⇒ 鏈起於 FRONT p2、首宗向外延伸未臨正街
+                    actual_max_proj = S_block_max
                 end_pt = corner_pt + actual_max_proj * d_hat
                 d_hat_rev = -d_hat
             else:
@@ -981,6 +1003,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                     _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                     _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                    _s_back=(float(_eb_info['right']['s_back'])   # 🆕 W-G.9-352：末端塊（右）
+                             if (_eb_info['right'] is not None and _lg_idx_right == 0
+                                 and entry.get('is_end_block')) else 0.0),
                 )
                 if (float(res.get('area_geom', 0)) < 0.5
                     and d_hat_rev is not None and baseline_pt is not None):
@@ -997,6 +1022,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                             _near_dir=_near_dir_right,   # 🆕 D-2b-23【甲】
                             _is_chain_head=(_lg_idx_right == 0),   # 🆕 W-G.9-261：本側鏈頭
                             _w0_start=(0.0 if not _fo_right else None),  # 🆕 K-9-41 ①前段（W-G.9-318 補令一）
+                            _s_back=(float(_eb_info['right']['s_back'])   # 🆕 W-G.9-352：末端塊（右）
+                                     if (_eb_info['right'] is not None and _lg_idx_right == 0
+                                         and entry.get('is_end_block')) else 0.0),
                         )
                         if float(_r2.get('area_geom', 0)) >= 0.5:
                             res, solver_label = _r2, _sl2
@@ -1053,6 +1081,10 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _trace_local[k] = res.get('trace', [])
                 right_results.append((entry, res))
 
+            # 🆕 `W-G.9-352`：定案趟之末端塊須為該側鏈之首宗（app 同構）
+            if _commit:
+                ns["end_block_assert_head"](blk_label, _eb_info, left_results, right_results)
+
             return {
                 'rows': _rows_local, 'trace': _trace_local,
                 'widths': _widths_local,
@@ -1107,8 +1139,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             # 🆕 `W-G.9-333` `c3`（`GB-168` 之修·`K-9-43`）：估算寬度改取**各側全鏈**
             #   （左 ＝ 推進至 k_max、右 ＝ 推進至 k_min 之試推進）之逐宗 `W` 差（單一真相源
             #   `ns['_slot_side_chain_widths']`）；居中平手仍用基準趟之宗地寬度。app 同構（#20）。
-            _kmin_c = 1 if _has_left_corner else 0
-            _kmax_c = (_N - 1) if _has_right_corner else _N
+            _kmin_c = 1 if (_has_left_corner or _eb_info['left'] is not None) else 0   # 🆕 W-G.9-352：末端塊同 pin
+            _kmax_c = (_N - 1) if (_has_right_corner or _eb_info['right'] is not None) else _N
             _wL_c = [0.0] * _N; _wR_c = [0.0] * _N
             _bL_c = _b_L0; _bR_c = _b_R0
             if _kmin_c <= _kmax_c:
@@ -1128,9 +1160,9 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
             _slot_res = _select_pool_slot(
                 _wL_c,
                 {'has': _has_left_corner, 'F': _F_left,
-                 'l1': _lside_left, 'b': _bL_c},
+                 'l1': _lside_left, 'b': _bL_c, 'pin': _eb_info['left'] is not None},
                 {'has': _has_right_corner, 'F': _F_right,
-                 'l1': _lside_right, 'b': _bR_c},
+                 'l1': _lside_right, 'b': _bR_c, 'pin': _eb_info['right'] is not None},
                 widths_R=_wR_c, dev_widths=_adv_base['widths'],
             )
             _k_star = int(_slot_res['k'])
@@ -1170,6 +1202,8 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 _smax_blk = _right_chain_origin_s(blk_meta['vertices'], d_hat, corner_pt,
                                                   allocation_dir_block, front_p2=_front_p2_blk,
                                                   has_side_right=_has_right_corner, forced_right=_fo_right)
+                if _eb_info['right'] is not None:   # 🆕 W-G.9-352：右鏈起於 FRONT p2（同推進）
+                    _smax_blk = S_block_max
             _s2 = ns["_place_pool_parcels"](
                 stage2_parcels=_stage2_parcels,
                 adv_final=_adv_final,
