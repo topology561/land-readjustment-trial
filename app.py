@@ -10967,6 +10967,229 @@ def r3_front_road_rows(labels, derive_by_label, name_by_label):
     return {'rows': _rows, 'groups': _groups, 'group_lines': _lines, 'missing': _missing}
 
 
+# ── 🆕 `W-G.9-351`：調配階段之輸入（`docs/specs/調配階段_泛用規格_v1.md` 步 `1` 之尾〜步 `2`·`K-9-45`／`K-9-46`）──
+#   受詞 ＝ 原位次（含段三、入池閘）之末態：每一重劃前切片恰歸一類；同歸戶者組合併單位（軌、原街廓）。
+#   🔒 純函式·⛔ 讀 session；一切外部量由參數注入（畫面 ＝ `main()` 成果區；harness ＝ 量測器 `F10`）。
+#   🛑 本批⛔ 調配、⛔ 動任何宗之 `G` 與幾何、⛔ 建消費端（任何配地、G 式、判定⛔ 讀此值·步 `3` 起另單）。
+#   🔒 判別以**負擔屬性**（`F3_CATEGORY_BURDEN` 之值）為之，⛔ 以分區名之字面。
+ADJ_DISP_ALLOC = '原位次配地'
+ADJ_DISP_POOL = '建築街廓內不能分配'
+ADJ_DISP_COMMON_UNIT = '共同負擔用地·入合併單位'
+ADJ_DISP_COMMON_STEP4 = '共同負擔用地·待同歸戶併入'
+ADJ_DISP_GHOST = '無地號之殘料'
+ADJ_TRACK_BUILD = '建地軌'
+ADJ_TRACK_PUBLIC = '公設軌'
+ADJ_BURDEN_BUILD = '可建築土地'
+ADJ_BURDEN_COMMON = '共同負擔'
+ADJ_ALLOC_SIDES = ('left', 'right')
+ADJ_POOL_SIDE = '抵費地'
+#: 畫面之二鍵（旗標 on·非試算趟）：入池閘之末態 build（配地本體與 `f3_G_values` 同寫）與其末趟之不配地紀錄（入池閘之畫面入口寫）。
+SS_ADJ_BUILD_FINAL = 'f3_k929_6_build'
+SS_ADJ_DROPPED = 'f3_k929_6_dropped'
+
+
+def adj_intake(temp_parcels, build_final, g_rows, dropped, own_map, burden_by_block):
+    """`W-G.9-351`：調配階段之輸入盤點（純函式）。
+
+    參數
+      temp_parcels     段三後之全部重劃前切片（含共同負擔用地上者；段三所併出者帶鍵 `段三併出`）。
+      build_final      入池閘之末態 build（合併單元帶鍵 `入池閘併入`）。
+      g_rows           以 `build_final` 所跑之 G 值列（`推進側別` ∈ `left`／`right` ⇒ 原位次配地；`抵費地` ⇒ 池列）。
+      dropped          同一趟之不配地紀錄 `{(街廓, 側): [{暫編地號, G(㎡), 不配地由…}]}`。
+      own_map          `{原地號: 歸戶}`。
+      burden_by_block  `{街廓: 負擔屬性}`（`F3_CATEGORY_BURDEN` 之值）。
+    回傳 `{'slices', 'units', 'step4', 'totals'}`：
+      `slices` ＝ 逐切片之類（`ADJ_DISP_*`）；`units` ＝ 合併單位（`K-9-45`（一）·軌 `K-9-46`（一）·
+      原街廓 `K-9-46`（三）：其建築街廓內不能分配之土地所在之街廓，分處二以上者取應分配面積〔該趟之 `G`〕較大者）；
+      `step4` ＝ 同歸戶有原位次配地而無不能分配者之共同負擔用地（待同歸戶併入·候步 `4` 之道路五則／公設地併入）；
+      `totals` ＝ 逐類之切片數與原有面積（`分攤登記面積_m2`·⛔ 含 `a′` 累加器）。
+    停機（`RuntimeError`·⛔ 靜默略過）：切片或列之身分重複／缺漏；G 值列有未知之 `推進側別`；
+      build 之宗既非配地亦非不配地、或二者兼是；可建築土地上之切片不在 build；段三之受併宗未配地；
+      切片之街廓無負擔屬性、或屬非共同負擔／未分類（【未裁】）；非殘料之切片無歸戶；
+      殘料之原有面積 `> 0`；原街廓之應分配面積並列（【未裁】）。
+    🔒 殘料（`_is_ghost_sliver`）⛔ 入任何合併單位（無地號·無地主）；其於 build／G 值列者略之。
+    """
+    _EPS = 1e-9
+
+    def _pid(t):
+        return str(t.get('暫編地號'))
+
+    def _a(t):
+        return float(t.get('分攤登記面積_m2', 0) or 0)
+
+    _slices = list(temp_parcels or [])
+    _ghost = [t for t in _slices if t.get('_is_ghost_sliver')]
+    _real = [t for t in _slices if not t.get('_is_ghost_sliver')]
+    for t in _ghost:
+        if _a(t) > _EPS:
+            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 殘料 {_pid(t)!r} 之原有面積 {_a(t)!r} > 0 ⇒ 停機")
+    _by = {}
+    for t in _real:
+        if _pid(t) in _by:
+            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 切片 {_pid(t)!r} 重複 ⇒ 停機")
+        _by[_pid(t)] = t
+    _ghost_ids = {_pid(t) for t in _ghost}
+    _alloc, _odd = set(), set()
+    for _r in g_rows or []:
+        _s = _r.get('推進側別')
+        _k = str(_r.get('暫編地號'))
+        if _k in _ghost_ids:
+            continue
+        if _s in ADJ_ALLOC_SIDES:
+            if _k in _alloc:
+                raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] G 值列之 {_k!r} 重複 ⇒ 停機")
+            _alloc.add(_k)
+        elif _s != ADJ_POOL_SIDE:
+            _odd.add(str(_s))
+    if _odd:
+        raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] G 值列有未知之推進側別 {sorted(_odd)} ⇒ 停機（⛔ 臆其去向）")
+    _drop_g, _drop_why, _drop_blk = {}, {}, {}
+    for (_blk_d, _side_d), _lst in sorted((dropped or {}).items()):
+        for _e in _lst or []:
+            _k = str(_e.get('暫編地號'))
+            if _k in _drop_g:
+                raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 不配地紀錄之 {_k!r} 重複 ⇒ 停機")
+            _drop_g[_k] = float(_e.get('G(㎡)') or 0)
+            _drop_why[_k] = str(_e.get('不配地由', '—') or '—')
+            _drop_blk[_k] = str(_blk_d)
+    _unit_of, _bf_ids = {}, set()
+    for _u in build_final or []:
+        if _u.get('_is_ghost_sliver'):
+            continue
+        _up = _pid(_u)
+        if _up in _bf_ids:
+            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] build 之 {_up!r} 重複 ⇒ 停機")
+        _bf_ids.add(_up)
+        for _m in (_u.get('入池閘併入') or [_up]):
+            _m = str(_m)
+            if _m in _unit_of:
+                raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 切片 {_m!r} 屬二以上之 build 單元 ⇒ 停機")
+            _unit_of[_m] = _up
+    _both = sorted(_bf_ids & _alloc & set(_drop_g))
+    _none = sorted(_bf_ids - _alloc - set(_drop_g))
+    if _both or _none:
+        raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] build 之宗兼為配地與不配地 {_both}／二者皆非 {_none} ⇒ 停機")
+    _stray = sorted((_alloc | set(_drop_g)) - _bf_ids)
+    if _stray:
+        raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] G 值列或不配地紀錄之 {_stray} 不在 build ⇒ 停機")
+    _rows = []
+    for t in _real:
+        _k, _bl = _pid(t), str(t.get('所屬街廓', ''))
+        if _bl not in (burden_by_block or {}) or not (burden_by_block or {}).get(_bl):
+            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 切片 {_k!r} 之街廓 {_bl!r} 無負擔屬性 ⇒ 停機")
+        _bt = burden_by_block[_bl]
+        _g = str((own_map or {}).get(str(t.get('原地號', '')), '') or '')
+        if not _g:
+            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入]【未裁】切片 {_k!r}（原地號 {t.get('原地號')!r}）無歸戶 ⇒ 停機")
+        _row = {'暫編地號': _k, '原地號': str(t.get('原地號', '')), '歸戶': _g, '所屬街廓': _bl,
+                '負擔屬性': _bt, '原有面積': _a(t), '重劃前地價區段': str(t.get('重劃前地價區段', '') or ''),
+                '所屬單元': '', '應分配面積': None, '不配地由': '', '配地街廓': []}
+        if '段三併出' in t:
+            _rcv = [str(_x) for _x in (t.get('段三併出') or [])]
+            if not _rcv or any(_x not in _alloc for _x in _rcv):
+                raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 段三所併出之 {_k!r} 之受併宗 {_rcv} 未配地 ⇒ 停機")
+            _row.update(類=ADJ_DISP_ALLOC, 所屬單元='段三併入 ' + '、'.join(_rcv),
+                        配地街廓=sorted({str((_by.get(_x) or {}).get('所屬街廓', '')) for _x in _rcv}))
+        elif _bt == ADJ_BURDEN_BUILD:
+            if _k not in _unit_of:
+                raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 可建築土地上之切片 {_k!r} 不在 build ⇒ 停機")
+            _up = _unit_of[_k]
+            _row['所屬單元'] = _up
+            if _up in _alloc:
+                _row.update(類=ADJ_DISP_ALLOC, 配地街廓=[_bl])
+            else:
+                if _drop_blk.get(_up) != _bl:
+                    raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] {_k!r} 之街廓 {_bl!r} 與其不配地紀錄之街廓 "
+                                       f"{_drop_blk.get(_up)!r} 不同 ⇒ 停機")
+                _row.update(類=ADJ_DISP_POOL, 應分配面積=_drop_g[_up], 不配地由=_drop_why[_up])
+        elif _bt == ADJ_BURDEN_COMMON:
+            _row['類'] = ADJ_DISP_COMMON_STEP4   # 暫記·依歸戶定之（下）
+        else:
+            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入]【未裁】切片 {_k!r} 位於負擔屬性 {_bt!r} 之街廓 {_bl!r} ⇒ 停機"
+                               "（⛔ 臆其調配之處置）")
+        _rows.append(_row)
+    _missing = sorted(set(_unit_of) - {_r['暫編地號'] for _r in _rows})
+    if _missing:
+        raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] build 之成員 {_missing} 不在切片 ⇒ 停機")
+    _byg = {}
+    for _r in _rows:
+        _byg.setdefault(_r['歸戶'], []).append(_r)
+    _units, _step4 = [], []
+    for _g in sorted(_byg):
+        _rs = _byg[_g]
+        _pool = [_r for _r in _rs if _r['類'] == ADJ_DISP_POOL]
+        _al = [_r for _r in _rs if _r['類'] == ADJ_DISP_ALLOC]
+        _cm = [_r for _r in _rs if _r['負擔屬性'] == ADJ_BURDEN_COMMON and _r['類'] != ADJ_DISP_ALLOC]
+        _al_blk = sorted({_b for _r in _al for _b in _r['配地街廓']})
+        if _pool or (_cm and not _al):
+            for _r in _cm:
+                _r['類'] = ADJ_DISP_COMMON_UNIT
+            _track = ADJ_TRACK_BUILD if _pool else ADJ_TRACK_PUBLIC
+            _home, _basis = None, {}
+            if _pool:
+                _seen = set()
+                for _r in _pool:
+                    if _r['所屬單元'] in _seen:
+                        continue
+                    _seen.add(_r['所屬單元'])
+                    _basis[_r['所屬街廓']] = _basis.get(_r['所屬街廓'], 0.0) + float(_r['應分配面積'])
+                _top = max(_basis.values())
+                _cands = sorted(_b for _b, _v in _basis.items() if abs(_v - _top) <= _EPS)
+                if len(_cands) != 1:
+                    raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入]【未裁】歸戶 {_g} 之原街廓：應分配面積並列 {_cands} "
+                                       f"（{_top!r}）⇒ 停機（⛔ 自裁）")
+                _home = _cands[0]
+            _units.append({'歸戶': _g, '軌': _track, '原街廓': _home, '原街廓之據': _basis,
+                           '建築街廓內不能分配': _pool, '共同負擔用地': _cm,
+                           '原有面積合計': sum(_r['原有面積'] for _r in _pool + _cm),
+                           '同歸戶原位次配地之街廓': _al_blk})
+        elif _cm:
+            _step4.append({'歸戶': _g, '共同負擔用地': _cm, '原有面積合計': sum(_r['原有面積'] for _r in _cm),
+                           '同歸戶原位次配地之街廓': _al_blk})
+    _tot = {}
+    for _r in _rows:
+        _c = _tot.setdefault(_r['類'], [0, 0.0])
+        _c[0] += 1
+        _c[1] += _r['原有面積']
+    _tot[ADJ_DISP_GHOST] = [len(_ghost), sum(_a(t) for t in _ghost)]
+    return {'slices': _rows, 'units': _units, 'step4': _step4, 'totals': _tot,
+            'all_area': sum(_a(t) for t in _slices), 'all_count': len(_slices),
+            'n_alloc_units': len(_bf_ids & _alloc), 'n_drop_units': len(_bf_ids & set(_drop_g))}
+
+
+def adj_intake_rows(intake):
+    """`W-G.9-351`：調配之輸入之顯示列（純函式·各欄皆字串·⛔ 混型欄）。回 `{'units', 'step4', 'totals', 'lines'}`。"""
+    def _pc(_r):
+        return f"{_r['暫編地號']}〔{_r['所屬街廓']}·{_r['原有面積']:.2f}〕"
+
+    _u = []
+    for _x in intake['units']:
+        _u.append({
+            '歸戶': _x['歸戶'], '軌': _x['軌'], '原街廓': _x['原街廓'] or '—（無建築街廓內土地）',
+            '原街廓之據（應分配面積㎡）': '、'.join(f"{_b} {_v:.2f}" for _b, _v in sorted(_x['原街廓之據'].items())) or '—',
+            '建築街廓內不能分配之土地': '、'.join(_pc(_r) for _r in _x['建築街廓內不能分配']) or '—',
+            '公設地／道路上之土地': '、'.join(_pc(_r) for _r in _x['共同負擔用地']) or '—',
+            '原有面積合計(㎡)': f"{_x['原有面積合計']:.2f}",
+            '同歸戶原位次配地之街廓': '、'.join(_x['同歸戶原位次配地之街廓']) or '—',
+        })
+    _s4 = []
+    for _x in intake['step4']:
+        _s4.append({
+            '歸戶': _x['歸戶'], '公設地／道路上之土地': '、'.join(_pc(_r) for _r in _x['共同負擔用地']),
+            '原有面積合計(㎡)': f"{_x['原有面積合計']:.2f}",
+            '同歸戶原位次配地之街廓': '、'.join(_x['同歸戶原位次配地之街廓']),
+        })
+    _order = [ADJ_DISP_ALLOC, ADJ_DISP_POOL, ADJ_DISP_COMMON_UNIT, ADJ_DISP_COMMON_STEP4, ADJ_DISP_GHOST]
+    _t = [{'類': _k, '切片數': str(intake['totals'].get(_k, [0, 0.0])[0]),
+           '原有面積(㎡)': f"{intake['totals'].get(_k, [0, 0.0])[1]:.2f}"} for _k in _order]
+    _t.append({'類': '合計', '切片數': str(intake['all_count']), '原有面積(㎡)': f"{intake['all_area']:.2f}"})
+    _nb = sum(1 for _x in intake['units'] if _x['軌'] == ADJ_TRACK_BUILD)
+    _np = sum(1 for _x in intake['units'] if _x['軌'] == ADJ_TRACK_PUBLIC)
+    _lines = [f"合併單位 {len(intake['units'])}（{ADJ_TRACK_BUILD} {_nb}·{ADJ_TRACK_PUBLIC} {_np}）；"
+              f"待同歸戶併入之歸戶 {len(intake['step4'])}"]
+    return {'units': _u, 'step4': _s4, 'totals': _t, 'lines': _lines}
+
+
 def wg9248_stringify_mixed_cols(df, cols):
     """把指定欄轉為 `str`，以避 `pyarrow.lib.ArrowInvalid`（混型欄之 Arrow 轉換紅）。
 
@@ -16634,6 +16857,7 @@ def f3_screen_stepg_run(st, *,
     st.session_state.pop('f3_G_values', None)
     st.session_state.pop('f3_G_trace', None)
     st.session_state.pop('f3_k929_6_log', None)   # 🆕 `W-G.9-349`：同二產物之生命週期
+    st.session_state.pop(SS_ADJ_BUILD_FINAL, None)   # 🆕 `W-G.9-351`：同上（調配之輸入·其不配地紀錄由入池閘之畫面入口寫）
     st.session_state['f3_g_needs_rerun'] = True
     _params_for_g = dict(st.session_state.get(_param_key, _new_params))
 
@@ -18057,6 +18281,8 @@ def f3_screen_stepg_run(st, *,
     # 🆕 `W-G.9-349`：入池閘之合併紀錄（旗標 off 或試算趟 ⇒ ⛔ 寫）
     if _k929_6_log is not None:
         st.session_state['f3_k929_6_log'] = _k929_6_log
+        # 🆕 `W-G.9-351`：調配之輸入（入池閘之末態 build·同生命週期）
+        st.session_state[SS_ADJ_BUILD_FINAL] = build_parcels
     # 🚨 Phase 9.12 Issue 4：清除 rerun flag（G 值已重新計算完成）
     st.session_state.pop('f3_g_needs_rerun', None)
     _n_offset = sum(1 for r in g_rows if r.get('推進側別') == '抵費地')
@@ -18170,6 +18396,8 @@ K6B_SCREEN_TRIAL_KEYS = (
     'f3_k94_baseline_touch', 'f3_offset_fragments_merged', 'f3_stage2_placed', 'f3_wd2_pool_diag',
     # 本批所增（1）
     'f3_corner_cand_diag',
+    # 🆕 `W-G.9-351`：入池閘之末態 build 與其末趟之不配地紀錄（配地本體所寫·調配之輸入）
+    'f3_k929_6_build', 'f3_k929_6_dropped',
     # 🆕 `W-G.9-349`：入池閘之合併紀錄（配地本體所寫）
     'f3_k929_6_log',
 )
@@ -18459,6 +18687,7 @@ def _k929_6_screen_gate(st, g_kwargs):
     """🆕 `W-G.9-349`：入池閘之畫面入口（`f3_screen_stepg_run` 之首·旗標 on 且非試算趟時）。
     試算趟 ＝ `f3_screen_stepg_run(代理 st, …, _k929_6_inner=True)`（吃畫面即時之地價·⛔ 借用 harness）；
     隔離 ＝ 試算前存 `K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`、試算後復。回 `(build_final, log)`。
+    🆕 `W-G.9-351`：復原之後另寫末趟之不配地紀錄於 `SS_ADJ_DROPPED`（調配之輸入·同 `f3_G_values` 之生命週期）。
     試算中止或 `k929_6_fixpoint` 停機 ⇒ `st.error` ＋ `st.stop()`（loud·⛔ 退回未閘之 build）。"""
     import copy as _cp_k9296s
     import contextlib as _cl_k9296s
@@ -18502,6 +18731,7 @@ def _k929_6_screen_gate(st, g_kwargs):
         st.error(_err)
         st.stop()
         raise RuntimeError(_err)
+    _ss[SS_ADJ_DROPPED] = _cp_k9296s.deepcopy(dict(_last[1]))   # 🆕 `W-G.9-351`：調配之輸入（末趟之不配地紀錄）
     return _bf, _log
 
 
@@ -24553,6 +24783,38 @@ def main():
                                              use_container_width=True, hide_index=True)
                             else:
                                 st.caption("（本次無合併試算）")
+
+                    # 🆕 `W-G.9-351`：調配階段之輸入（步 1 之尾〜步 2·`K-9-45`／`K-9-46`）——僅盤點·⛔ 調配
+                    _adj351_bf = st.session_state.get(SS_ADJ_BUILD_FINAL)
+                    if _adj351_bf is not None:
+                        with st.expander("🧩 調配階段之輸入：需調配之土地與合併單位（僅盤點·尚未調配）",
+                                         expanded=False):
+                            try:
+                                _adj351_s3 = k6b_stage3_selected(st.session_state, build_parcels,
+                                                                 st.session_state.get('f3L_setback_default'))
+                                _adj351_view = adj_intake_rows(adj_intake(
+                                    temp_parcels if _adj351_s3 is None else _adj351_s3[0], _adj351_bf,
+                                    st.session_state.get('f3_G_values') or [],
+                                    st.session_state.get(SS_ADJ_DROPPED) or {},
+                                    st.session_state.get('t8_ownership_map', {}) or {},
+                                    {b['label']: F3_CATEGORY_BURDEN.get(b.get('category', ''), '')
+                                     for b in classified_blocks}))
+                            except RuntimeError as _e_adj351:
+                                st.error(str(_e_adj351))
+                                _adj351_view = None
+                            if _adj351_view is not None:
+                                for _adj351_line in _adj351_view['lines']:
+                                    st.caption(_adj351_line)
+                                st.markdown("###### 合併單位（`K-9-45`：同歸戶之建築街廓內不能分配之土地，"
+                                            "連同其公設地、道路上之土地；`K-9-46`：軌與原街廓）")
+                                st.dataframe(_pd.DataFrame(_adj351_view['units']),
+                                             use_container_width=True, hide_index=True)
+                                st.markdown("###### 待同歸戶併入（同歸戶已有原位次配地者之公設地、道路上之土地·依道路五則與公設地併入之規定另辦）")
+                                st.dataframe(_pd.DataFrame(_adj351_view['step4']),
+                                             use_container_width=True, hide_index=True)
+                                st.markdown("###### 重劃前土地之盤點（每一筆暫編地號恰歸一類）")
+                                st.dataframe(_pd.DataFrame(_adj351_view['totals']),
+                                             use_container_width=True, hide_index=True)
 
                     # 🆕 W-G Y 波診斷專用（KL 2026-07-14 交辦·非產品功能）：
                     # live g_rows JSON dump 供 sub-cent 定位。
