@@ -10802,13 +10802,16 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
     流程
       ① 以現宗地試算一次，取「各筆單獨皆未達」之端（標的）；無 ⇒ 逕回（同一物件）；試算中止 ⇒ 逕回並記其由
          （定案之配地將遇同一中止，或於標的之端因無紀錄而停機·⛔ 靜默）。
-      ② 競合（⛔ 裁·`K-9-49` 射程 ③）：二以上標的之候選同屬一合併群 ⇒ 🔴 停機。
+      ② 🆕 `W-G.9-354`（`K-9-50`·KL 裁 `2026-09-28`）：數末端塊之競合——同一合併群之候選分屬二末端塊 ⇒ 競合
+         （二末端塊分屬二街廓 ＝ 題一〔隔道路相對〕；同一街廓之左右端 ＝ 題二），交 `k6b_stage3_run` 依
+         `K-9-50` 處之；分屬三個以上之末端塊、一端屬二以上之競合、同一候選同時跨占二末端塊之 `R_end`
+         ⇒ 🔴 停機（逐案呈核·⛔ 推）。
       ③ 各標的之未達候選依原投影序為列，交 `k6b_stage3_run`（① 同街廓相鄰 → ② 道路及公設地上相鄰·整筆；
          ② 驗「不影響原位次」；後處理同段三）；併入之除外 ＝ `locked` ∪ `corner_lots` ∪ 段三已併出者
          （`K-9-49 ③`：已上鎖、已併入或已分配予街角之土地⛔ 再併入末端塊）。
       ④ 未成之標的 ⇒ 記「皆未達」（定案之配地據以強制抵費地·`K-9-36 ③`）。
     回 `(temp_out, build_out, log, rec)`；`rec` ＝ `{'退縮': setback, '標的': [[街廓, 端]…],
-    '皆未達': {街廓: [端…]}}`（試算中止 ⇒ `'標的'` ＝ `None`、另載 `'試算中止'`）。"""
+    '皆未達': {街廓: [端…]}}`（試算中止 ⇒ `'標的'` ＝ `None`、另載 `'試算中止'`；有競合 ⇒ 另載 `'競合'`）。"""
     _rec = {'退縮': setback, '標的': [], '皆未達': {}}
     try:
         _ev = alloc_eval(temp_parcels, build_parcels) or {}
@@ -10842,13 +10845,32 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
     _dup = {p: tg for p, tg in _cand_of.items() if len(tg) >= 2}
     if _dup:
         raise RuntimeError(f"🔴 [末端塊合併再試] 候選 {sorted(_dup)} 同時跨占二以上末端塊之 R_end——"
-                           "數末端塊之競合（⛔ 裁·K-9-49 射程 ③）")
+                           "一筆土地同時跨占二末端塊（K-9-50 射程 ③·逐案呈核）")
+    _ct, _tgc = [], {}
     for _g in k6_merge_groups(_pk, own_map):
         _ids = sorted(temp_parcels[i]['暫編地號'] for i in _g)
         _hit = sorted({x for p in _ids for x in _cand_of.get(p, ())})
         if len(_hit) >= 2:
-            raise RuntimeError(f"🔴 [末端塊合併再試] 同一合併群 {_ids} 之候選分屬 {len(_hit)} 個末端塊 {_hit}——"
-                               "數末端塊之競合（⛔ 裁·K-9-49 射程 ③）")
+            if len(_hit) >= 3:
+                raise RuntimeError(f"🔴 [末端塊合併再試] 同一合併群 {_ids} 之候選分屬 {len(_hit)} 個末端塊 {_hit}——"
+                                   "三個以上之末端塊（K-9-50 射程 ③·逐案呈核）")
+            _gid = own_map.get(str(temp_parcels[_g[0]].get('原地號', '')))
+            _ent = []
+            for _blk, _sd in _hit:
+                if (_blk, _sd) in _tgc:
+                    raise RuntimeError(
+                        f"🔴 [末端塊合併再試] 末端塊 {(_blk, _sd)} 屬二以上之競合（K-9-50 射程 ③·逐案呈核）")
+                _first = next(r for r in _rows if (r['街廓'], _SIDE[r['端']]) == (_blk, _sd)
+                              and r['暫編地號'] in set(_ids))
+                _area = sum(float(_c.get('跨占R_end(㎡)', 0) or 0) for _c in (_ev[_blk][_sd].get('候選') or [])
+                            if _gid is not None and own_map.get(str(_c.get('原地號', ''))) == _gid)
+                _ent.append((_first['最終序位'], (_blk, _END[_sd], _first['暫編地號'], round(_area, 2))))
+            for _blk, _sd in _hit:
+                _tgc[(_blk, _sd)] = len(_ct)
+            _ent.sort()
+            _ct.append({'形': ('二' if _hit[0][0] == _hit[1][0] else '一'), '列': [e for _, e in _ent]})
+    if _ct:
+        _rec['競合'] = [{'形': c['形'], '列': [list(e) for e in c['列']]} for c in _ct]
     _L = (set(locked or ()) | set(corner_lots or ())
           | {t['暫編地號'] for t in temp_parcels if t.get('段三併出')})
 
@@ -10858,7 +10880,8 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
         return _e.get('當選'), (_row or {}).get('試算G(㎡)'), _e.get('R_end(㎡)')
 
     _temp2, _build2, _log = k6b_stage3_run(_rows, _L, own_map, temp_parcels, build_parcels, blocks,
-                                           centerlines, a_prime, _trial, alloc_state, log_print=log_print)
+                                           centerlines, a_prime, _trial, alloc_state, log_print=log_print,
+                                           contests=(_ct or None))
     _won = {(r['街廓'], r['端']) for r in _log if r.get('結果') == '成' and r.get('序') != '後處理'}
     for _blk, _sd in _tg:
         if (_blk, _END[_sd]) not in _won:
@@ -12965,7 +12988,7 @@ def k6b_stage3_enabled():
 
 
 def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, centerlines,
-                   a_prime, trial_winner, alloc_state, *, log_print=print):
+                   a_prime, trial_winner, alloc_state, *, log_print=print, contests=None):
     """`K-6 §二 段三`（逐一嘗試）＋ `K-9-48`（街角合併重試·後處理）——`W-G.9-344`。
 
     參數
@@ -12983,6 +13006,10 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
       alloc_state    `alloc_state(temp, build) -> {"kept": {街廓: set}, "bad_pools": {街廓: int}, "err": str|None}`：
                      以所給之宗地重跑街角選位與配地。
       log_print      未處置之 `🔴` 出艙所用之印出函式。
+      contests       🆕 `W-G.9-354`（`K-9-50`）：數末端塊合併再試之競合（唯 `end_block_merge_run` 給之；段三之呼叫恆
+                     `None` ⇒ 逐列依序·逐位同本批前）。`list[dict]`：`{'形': '一'|'二', '列': [(街廓, 端, 候選, 交面積),
+                     (…)]}`——二列 ＝ 同一合併群於二端之首個候選（依原投影序）；`交面積` ＝ 該地主原有土地與該端
+                     `R_end` 之交（㎡）；`形` ＝ `'一'`（隔道路相對·二街廓）／`'二'`（同一街廓兩端）。
     回傳 `(temp_out, build_out, log)`
       `order` 為空 ⇒ `(temp_parcels, build_parcels, [])`（同一物件·逐位同輸入）；
       否則 `temp_out` 為深拷貝，被段三「成」所消耗之片加鍵 `段三併出`（受併宗之相異字典序列表·補令一 裁三）；
@@ -13063,6 +13090,25 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
         _nb = _nbr_blocks(_raw[pid], _blk_of[pid])
         return len(_nb) >= 3 and any(_blk_is_pub(b) for b in _nb)
 
+    def _road_halves(x, _stage):
+        # 道路片依中心線切分（後處理 (b) 與 `K-9-50` 題一之切半共用·單一真相源）；🆕 `W-G.9-354`：片全在中心線之
+        #   一側者不切（得 1 片·道路以中心線為界 ⇒ 全歸該側），3 片以上 ⇒ 停機
+        _rb = _blk_of[x]
+        _cl = (centerlines or {}).get(_rb) or []
+        if len(_cl) != 2:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三 {_stage}] {x} 所屬道路 {_rb} 之中心線頂點數 {len(_cl)}（期 2）（停機款 9）")
+        (x1, y1), (x2, y2) = _cl[0], _cl[-1]
+        _dx, _dy = x2 - x1, y2 - y1
+        _L = (_dx * _dx + _dy * _dy) ** 0.5
+        _ux, _uy = _dx / _L, _dy / _L
+        _line = _Ls([(x1 - _ux * 500, y1 - _uy * 500), (x2 + _ux * 500, y2 + _uy * 500)])
+        _parts = list(_split(_geo[x], _line).geoms)
+        if len(_parts) not in (1, 2):
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三 {_stage}] {x} 經中心線切分得 {len(_parts)} 片（期 1 或 2）（停機款 9）")
+        return _parts
+
     # 合併群（K-6 §一·跨街廓·⛔ 濾分區）
     _pk = [{'原地號': t.get('原地號', ''), 'polygon': _raw[t['暫編地號']]} for t in _temp0]
     _group_of = {}
@@ -13079,6 +13125,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
     won = set()
     successes = []          # (群索引, 受併宗, 街廓)
     log = []
+    _closer = {}            # 🆕 `W-G.9-354`：群索引 → 題一只一端成之得失（後處理之地主土地去處）
+    _skip = {}              # 🆕 `W-G.9-354`：(街廓, 端) → 該端⛔ 再試之合併群成員（競合歸他端·`K-9-50`）
 
     def _apply(st, recv, items):
         # items: [(src_pid, qty, whole)]；qty ＝ 已折算之 a′
@@ -13113,16 +13161,7 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
         log.append(_r)
         return _r
 
-    # ── 步驟 1〜8 ──
-    for _r in sorted(order, key=lambda r: r['最終序位']):
-        _blk, _end, c = _r['街廓'], _r['端'], _r['暫編地號']
-        _base = dict(序=_r['最終序位'], 街廓=_blk, 端=_end, 候選=c)
-        if (_blk, _end) in won:
-            _row(**_base, 結果='略·已定案')
-            continue
-        if c in merged_out:
-            _row(**_base, 結果='略·已併出')
-            continue
+    def _sets(c):
         _gi = _group_of.get(c)
         M = (set(_groups[_gi]) if _gi is not None else set()) - {c} - L - merged_out
         S, _stk = set(), [c]
@@ -13140,6 +13179,346 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
                 if _adj(_u, _v):
                     U.add(_v)
                     _stk.append(_v)
+        return _gi, S, U
+
+    # ── 🆕 `W-G.9-354`（`K-9-50`）：數末端塊合併再試之競合 ──
+    def _ct_try(e, items, lvl):
+        # 一端之試算（於現態之深拷貝）；① 免驗、② 驗「不影響原位次」（同逐列之判）
+        _t = _clone(state)
+        _apply(_t, e['c'], items)
+        _w, _G, _thr = trial_winner(_t["temp"], _t["build"], e['blk'], e['end'], e['c'])
+        _ok = (_w == e['c'])
+        _chk = '—'
+        if _ok and lvl == '①':
+            _chk = '免'
+        elif _ok:
+            _ok = _noaff(state, _t, {e['blk']}, {x for x, _q, _w2 in items})
+            _chk = '通過' if _ok else '不過'
+        return {'ok': _ok, 'G': _G, 'thr': _thr, 'chk': _chk, 'items': items, 'lvl': lvl}
+
+    def _ct_whole(e, pids):
+        return [(x, _aprime(state, x, e['c']), True) for x in sorted(pids)]
+
+    def _ct_commit(pairs):
+        # pairs: [(e, res)]——自現態之深拷貝依序施之（各端之片互不相交）
+        nonlocal state
+        _t = _clone(state)
+        for e, res in pairs:
+            _apply(_t, e['c'], res['items'])
+        state = _t
+        for e, res in pairs:
+            won.add((e['blk'], e['end']))
+            for x, _q, _w2 in res['items']:
+                marks.setdefault(x, set()).add(e['c'])
+                if _w2:
+                    merged_out.add(x)
+            successes.append((e['gi'], e['c'], e['blk']))
+
+    def _ct_log(e, res, ok, note):
+        _qty = {}
+        for x, q, _w2 in (res or {}).get('items', []):
+            if not _w2:
+                _qty[x] = round(float(q), 4)
+        _row(**e['base'], 層級=(res or {}).get('lvl', '—'), 結果=('成' if ok else '未成'),
+             整筆併入=sorted(x for x, _q, _w2 in (res or {}).get('items', []) if _w2),
+             切分併入=_qty,
+             併入量=({e['c']: round(sum(q for _, q, _w2 in res['items']), 4)} if ok else {}),
+             受併宗=(e['c'] if ok else '—'), 試算G=(res or {}).get('G', '—'), 門檻=(res or {}).get('thr', '—'),
+             檢核=(res or {}).get('chk', '—'), 競合=note)
+
+    def _ct_pick(A, B, form):
+        # 二端皆拿得下：與 R_end 之交之面積大者；並列 ⇒ 題一取跨占者暫編地號（字典序）小者、題二取前緣線 p1 側
+        if round(float(A['area']), 2) != round(float(B['area']), 2):
+            return (A, B) if float(A['area']) > float(B['area']) else (B, A)
+        if form == '二':
+            return (A, B) if A['end'] == '左' else (B, A)
+        return (A, B) if A['c'] < B['c'] else (B, A)
+
+    def _ct_same_block(A, B):
+        # 題二（`K-9-50` 二·比照 `K-9-24 二`、`K-9-27`）：二端分別以地主相連之土地試（先同街廓，再及道路、公設地）；
+        #   土地⛔ 切開；只一端拿得下 ⇒ 歸該端；皆拿得下 ⇒ 交面積大者 → p1 側；皆拿不下 ⇒ 皆⛔ 併
+        _path = []
+        for _lvl in ('①', '②'):
+            _res = {}
+            for e in (A, B):
+                _ms = e['S'] if _lvl == '①' else (e['S'] | e['U'])
+                _need = e['S'] if _lvl == '①' else e['U']
+                _res[e['k']] = _ct_try(e, _ct_whole(e, _ms), _lvl) if _need else None
+            _oks = [e for e in (A, B) if _res[e['k']] is not None and _res[e['k']]['ok']]
+            _path.append(f"{_lvl}：" + "／".join(
+                f"{e['c']} {'—' if _res[e['k']] is None else ('成' if _res[e['k']]['ok'] else '未成')}" for e in (A, B)))
+            if _oks:
+                if len(_oks) == 2:
+                    W, Lo = _ct_pick(A, B, '二')
+                    _why = f"二端皆拿得下 ⇒ {W['c']}（交面積 {W['area']:.2f} ／ {Lo['area']:.2f}）"
+                else:
+                    W, Lo = _oks[0], (B if _oks[0] is A else A)
+                    _why = f"只一端拿得下 ⇒ {W['c']}"
+                _ct_commit([(W, _res[W['k']])])
+                _note = "題二｜" + "；".join(_path) + "｜" + _why
+                _ct_log(W, _res[W['k']], True, _note)
+                _ct_log(Lo, _res[Lo['k']], False, _note)
+                return [Lo]
+        _note = "題二｜" + "；".join(_path) + "｜二端皆拿不下 ⇒ 皆⛔ 併"
+        _ct_log(A, None, False, _note)
+        _ct_log(B, None, False, _note)
+        return [A, B]
+
+    def _ct_cross(A, B):
+        # 題一（`K-9-50` 一·比照 `K-9-48` 其二）：隔道路相對之二末端塊
+        nonlocal state
+        _path = []
+        _r1 = {e['k']: (_ct_try(e, _ct_whole(e, e['S']), '①') if e['S'] else None) for e in (A, B)}
+        _o1 = [e for e in (A, B) if _r1[e['k']] is not None and _r1[e['k']]['ok']]
+        _path.append("①：" + "／".join(
+            f"{e['c']} {'—' if _r1[e['k']] is None else ('成' if _r1[e['k']]['ok'] else '未成')}" for e in (A, B)))
+        if len(_o1) == 2:
+            _ct_commit([(A, _r1[A['k']]), (B, _r1[B['k']])])
+            _note = "題一｜" + "；".join(_path) + "｜二端皆以本街廓內之土地成"
+            _ct_log(A, _r1[A['k']], True, _note)
+            _ct_log(B, _r1[B['k']], True, _note)
+            return []
+        if len(_o1) == 1:
+            W = _o1[0]
+            Lo = B if W is A else A
+            _ct_commit([(W, _r1[W['k']])])
+            # 只一端需要道路／公設地 ⇒ 整片併入該端試（段三 ②）
+            _gi2, _S2, _U2 = _sets(Lo['c'])
+            _rL = _ct_try(Lo, _ct_whole(Lo, _S2 | _U2), '②') if _U2 else None
+            _path.append(f"只一端需要 ⇒ {Lo['c']} 整片 {'—' if _rL is None else ('成' if _rL['ok'] else '未成')}")
+            _note = "題一｜" + "；".join(_path)
+            _ct_log(W, _r1[W['k']], True, _note)
+            if _rL is not None and _rL['ok']:
+                _ct_commit([(Lo, _rL)])
+                _ct_log(Lo, _rL, True, _note)
+                return []
+            _ct_log(Lo, _rL, False, _note)
+            _closer[A['gi']] = {'勝': W, '敗': Lo}
+            return [Lo]
+        X = A['U'] & B['U']
+        if not X:
+            # 二端之道路／公設地互不相涉 ⇒ 各以其整片試
+            _rw = {e['k']: (_ct_try(e, _ct_whole(e, e['S'] | e['U']), '②') if e['U'] else None) for e in (A, B)}
+            _oks = [e for e in (A, B) if _rw[e['k']] is not None and _rw[e['k']]['ok']]
+            _path.append("整片（無共同之道路／公設地）：" + "／".join(
+                f"{e['c']} {'—' if _rw[e['k']] is None else ('成' if _rw[e['k']]['ok'] else '未成')}" for e in (A, B)))
+            _note = "題一｜" + "；".join(_path)
+            if _oks:
+                _ct_commit([(e, _rw[e['k']]) for e in _oks])
+            for e in (A, B):
+                _ct_log(e, _rw[e['k']], e in _oks, _note)
+            if len(_oks) == 1:
+                _closer[A['gi']] = {'勝': _oks[0], '敗': (B if _oks[0] is A else A)}
+            return [e for e in (A, B) if e not in _oks]
+        # 切半：道路片依中心線、公設片（含路口之道路片）按面積平分
+        _frac = {A['k']: {}, B['k']: {}}
+        for x in sorted(X):
+            if _kind(x) == 'road' and not _is_crossing(x):
+                for _q in _road_halves(x, 'K-9-50 題一'):
+                    _nb = set(_nbr_blocks(_q, _blk_of[x]))
+                    _s = [e for e in (A, B) if e['blk'] in _nb]
+                    if len(_s) != 1:
+                        raise RuntimeError(
+                            f"🔴 [K-6-B 段三 K-9-50 題一] {x} 之片（{_q.area:.4f}）所鄰之末端塊街廓 ＝ "
+                            f"{[e['blk'] for e in _s]}（期恰一）（停機款 9）")
+                    _frac[_s[0]['k']][x] = _frac[_s[0]['k']].get(x, 0.0) + float(_q.area) / float(_geo[x].area)
+            else:
+                _frac[A['k']][x] = 0.5
+                _frac[B['k']][x] = 0.5
+        _rh = {}
+        for e in (A, B):
+            _its = _ct_whole(e, e['S'] | (e['U'] - X)) + \
+                [(x, _aprime(state, x, e['c']) * _frac[e['k']][x], False) for x in sorted(X)
+                 if _frac[e['k']].get(x, 0.0) > 0.0]
+            _rh[e['k']] = _ct_try(e, _its, '②半')
+        _oh = [e for e in (A, B) if _rh[e['k']]['ok']]
+        _path.append("切半：" + "／".join(f"{e['c']} {'成' if _rh[e['k']]['ok'] else '未成'}" for e in (A, B)))
+        if len(_oh) == 2:
+            _ct_commit([(A, _rh[A['k']]), (B, _rh[B['k']])])
+            merged_out.update(X)
+            _note = "題一｜" + "；".join(_path) + "｜二端各配一宗"
+            _ct_log(A, _rh[A['k']], True, _note)
+            _ct_log(B, _rh[B['k']], True, _note)
+            return []
+        if len(_oh) == 1:
+            W = _oh[0]
+            Lo = B if W is A else A
+            _ct_commit([(W, _rh[W['k']])])
+            _closer[A['gi']] = {'勝': W, '敗': Lo}
+            # `K-9-50` 題一 4：未得之一端之候選連同分給該端之半——能依原位次配地 ⇒ 其半併之；否則併入已取得之一端
+            _lb = Lo['blk']
+            _its_L = [(x, _aprime(state, x, Lo['c']) * _frac[Lo['k']][x], False) for x in sorted(X)
+                      if _frac[Lo['k']].get(x, 0.0) > 0.0]
+            _t1 = _clone(state)
+            _apply(_t1, Lo['c'], _its_L)
+            _sb = alloc_state(state["temp"], state["build"])
+            _sa = alloc_state(_t1["temp"], _t1["build"])
+            if _sb.get("err") or _sa.get("err"):
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段三 K-9-50 題一] 未得之一端之原位次無從判定（配地中止）：{_sb.get('err')!r}｜"
+                    f"{_sa.get('err')!r}（停機款 9）")
+            _kb0, _kb1 = set(_sb["kept"].get(_lb, set())), set(_sa["kept"].get(_lb, set()))
+            if (Lo['c'] in _kb1 and not (_kb0 - _kb1)
+                    and int(_sa["bad_pools"].get(_lb, 0)) <= int(_sb["bad_pools"].get(_lb, 0))):
+                state = _t1
+                for x in X:
+                    marks.setdefault(x, set()).add(Lo['c'])
+                _to = f"{Lo['c']} 依原位次配地，其半併之"
+                _r4 = dict(整筆併入=[], 切分併入={x: round(float(q), 4) for x, q, _w2 in _its_L},
+                           併入量={Lo['c']: round(sum(q for _, q, _w2 in _its_L), 4)}, 受併宗=Lo['c'], 檢核='通過')
+            else:
+                _its_W = [(x, _aprime(state, x, W['c']) * _frac[Lo['k']][x], False) for x in sorted(X)
+                          if _frac[Lo['k']].get(x, 0.0) > 0.0] + \
+                    [(Lo['c'], _aprime(state, Lo['c'], W['c']), True)]
+                _t2 = _clone(state)
+                _apply(_t2, W['c'], _its_W)
+                if not _noaff(state, _t2, {W['blk'], _lb}, {Lo['c']}):
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 K-9-50 題一] {Lo['c']}（{_lb}）連同其半既不能依原位次配地，併入 {W['c']}"
+                        "（已取得之一端）亦不過「不影響原位次」——`K-9-48` 七項 3〜5 未落地（停機款 9）")
+                state = _t2
+                merged_out.add(Lo['c'])
+                for x in list(X) + [Lo['c']]:
+                    marks.setdefault(x, set()).add(W['c'])
+                _to = f"{Lo['c']} 不能依原位次配地 ⇒ 連同其半併入 {W['c']}"
+                _r4 = dict(整筆併入=[Lo['c']],
+                           切分併入={x: round(float(q), 4) for x, q, _w2 in _its_W if not _w2},
+                           併入量={W['c']: round(sum(q for _, q, _w2 in _its_W), 4)}, 受併宗=W['c'], 檢核='通過')
+            merged_out.update(X)
+            _note = "題一｜" + "；".join(_path) + f"｜只一端成 ⇒ {W['c']}；{_to}"
+            _ct_log(W, _rh[W['k']], True, _note)
+            _ct_log(Lo, _rh[Lo['k']], False, _note)
+            # 未得之一端之地主土地之去處（`K-9-50` 題一 4）——列於後處理之序（⛔ 計入定案之端）
+            _row(序='後處理', 街廓=_lb, 端=Lo['end'], 候選=Lo['c'], 層級='題一 4', 結果='成', **_r4, 競合=_note)
+            return [Lo]
+        # 整片各試
+        _rw = {e['k']: _ct_try(e, _ct_whole(e, e['S'] | e['U']), '②') for e in (A, B)}
+        _ow = [e for e in (A, B) if _rw[e['k']]['ok']]
+        _path.append("整片：" + "／".join(f"{e['c']} {'成' if _rw[e['k']]['ok'] else '未成'}" for e in (A, B)))
+        if not _ow:
+            _note = "題一｜" + "；".join(_path) + "｜二端皆⛔ 併"
+            _ct_log(A, _rw[A['k']], False, _note)
+            _ct_log(B, _rw[B['k']], False, _note)
+            return [A, B]
+        if len(_ow) == 2:
+            W, Lo = _ct_pick(A, B, '一')
+            _why = (f"二端皆成 ⇒ {W['c']}（交面積 {W['area']:.2f} ／ {Lo['area']:.2f}"
+                    + ("·並列 ⇒ 暫編地號小者" if round(float(W['area']), 2) == round(float(Lo['area']), 2) else "") + "）")
+        else:
+            W = _ow[0]
+            Lo = B if W is A else A
+            _why = f"只一端成 ⇒ {W['c']}"
+        _ct_commit([(W, _rw[W['k']])])
+        _closer[A['gi']] = {'勝': W, '敗': Lo}
+        _note = "題一｜" + "；".join(_path) + "｜" + _why
+        _ct_log(W, _rw[W['k']], True, _note)
+        _ct_log(Lo, _rw[Lo['k']], False, _note)
+        return [Lo]
+
+    def _contest(ct, rX, rY):
+        _ends = []
+        for _r in (rX, rY):
+            _k = (_r['街廓'], _r['端'], _r['暫編地號'])
+            _ar = [float(e[3]) for e in ct['列'] if tuple(e[:3]) == _k]
+            if len(_ar) != 1:
+                raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 列 {_k} 不在其競合之列（停機款 9）")
+            _gi, S, U = _sets(_r['暫編地號'])
+            _ends.append({'k': _k, 'blk': _r['街廓'], 'end': _r['端'], 'c': _r['暫編地號'], 'gi': _gi,
+                          'S': S, 'U': U, 'area': _ar[0],
+                          'base': dict(序=_r['最終序位'], 街廓=_r['街廓'], 端=_r['端'], 候選=_r['暫編地號'])})
+        A, B = _ends
+        if A['gi'] is None or A['gi'] != B['gi']:
+            raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 競合之二候選 {A['c']}／{B['c']} 非同一合併群（停機款 9）")
+        if ct['形'] == '二':
+            if A['blk'] != B['blk'] or {A['end'], B['end']} != {'左', '右'}:
+                raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 題二之二端須為同一街廓之左右端：{A['k']}／{B['k']}（停機款 9）")
+            _losers = _ct_same_block(A, B)
+        elif ct['形'] == '一':
+            if A['blk'] == B['blk']:
+                raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 題一之二端須分屬二街廓：{A['k']}／{B['k']}（停機款 9）")
+            _losers = _ct_cross(A, B)
+        else:
+            raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 競合之形 {ct.get('形')!r} 未定（停機款 9）")
+        _mem = set(_groups[A['gi']])
+        for e in _losers:
+            _skip.setdefault((e['blk'], e['end']), set()).update(_mem)
+
+    def _k950_rows(rows):
+        # 🆕 `W-G.9-354`（`K-9-50`）：無競合 ⇒ 逐列依序（逐位同本批前）；有競合 ⇒ 競合之列候其夥伴之列，二列並解；
+        #   夥伴之端先由他人定案 ⇒ 競合消滅，依逐列辦；未得之一端之同群候選⛔ 再試（其他跨占者依原投影序續試）
+        if not contests:
+            yield from rows
+            return
+        from collections import deque as _dq
+        _kf = lambda r: (r['街廓'], r['端'], r['暫編地號'])
+        _cmap, _tgc = {}, {}
+        for _ci, _ct in enumerate(contests):
+            if len(_ct.get('列') or []) != 2:
+                raise RuntimeError(
+                    f"🔴 [K-6-B 段三 K-9-50] 競合 {_ci} 之列數 ≠ 2（三個以上之末端塊·K-9-50 射程 ③·停機款 9）")
+            for _e in _ct['列']:
+                if tuple(_e[:3]) in _cmap or (tuple(_e[:2]) in _tgc and _tgc[tuple(_e[:2])] != _ci):
+                    raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] {tuple(_e[:3])} 屬二以上之競合（K-9-50 射程 ③·停機款 9）")
+                _cmap[tuple(_e[:3])] = _ci
+                _tgc[tuple(_e[:2])] = _ci
+        _ks = {_kf(r) for r in rows}
+        _pt = {}
+        for _k, _ci in _cmap.items():
+            if _k not in _ks:
+                raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 競合之列 {_k} 不在 order（停機款 9）")
+            _pt[_k] = [tuple(e[:3]) for e in contests[_ci]['列'] if tuple(e[:3]) != _k][0]
+        _cdone, _susp = set(), {}
+        _q = _dq(rows)
+        while _q:
+            _r = _q.popleft()
+            _k = _kf(_r)
+            _tg = _k[:2]
+            _hold = [ci for ci, lst in _susp.items() if _kf(lst[0])[:2] == _tg]
+            if _hold:
+                _susp[_hold[0]].append(_r)
+                continue
+            if _r['暫編地號'] in _skip.get(_tg, ()):
+                _row(序=_r['最終序位'], 街廓=_r['街廓'], 端=_r['端'], 候選=_r['暫編地號'], 結果='略·競合歸他端')
+                continue
+            _ci = _cmap.get(_k)
+            if _ci is not None and _ci not in _cdone and _tg not in won and _r['暫編地號'] not in merged_out:
+                if _pt[_k][:2] in won:
+                    _cdone.add(_ci)
+                elif _ci not in _susp:
+                    _susp[_ci] = [_r]
+                    continue
+                else:
+                    _other = _susp.pop(_ci)
+                    _contest(contests[_ci], _other[0], _r)
+                    _cdone.add(_ci)
+                    for _x in reversed(_other[1:]):
+                        _q.appendleft(_x)
+                    continue
+            _was = _tg in won
+            yield _r
+            if (not _was) and _tg in won:
+                for _ci2 in sorted(_susp):
+                    _lst = _susp[_ci2]
+                    if _pt[_kf(_lst[0])][:2] == _tg:
+                        _cdone.add(_ci2)
+                        del _susp[_ci2]
+                        for _x in reversed(_lst):
+                            _q.appendleft(_x)
+        if _susp:
+            raise RuntimeError(
+                f"🔴 [K-6-B 段三 K-9-50] 競合之列 {[_kf(l[0]) for l in _susp.values()]} 候其夥伴而夥伴未至（停機款 9）")
+
+    # ── 步驟 1〜8 ──
+    for _r in _k950_rows(sorted(order, key=lambda r: r['最終序位'])):
+        _blk, _end, c = _r['街廓'], _r['端'], _r['暫編地號']
+        _base = dict(序=_r['最終序位'], 街廓=_blk, 端=_end, 候選=c)
+        if (_blk, _end) in won:
+            _row(**_base, 結果='略·已定案')
+            continue
+        if c in merged_out:
+            _row(**_base, 結果='略·已併出')
+            continue
+        _gi, S, U = _sets(c)
         _done = False
         _last = None
         for _lvl, _mset in (('①', S), ('②', S | U)):
@@ -13188,6 +13567,7 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
                         f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 於街廓 {_b2} 有二受併宗"
                         f"（{_recv_by_blk[_b2]}／{_c2}）⇒ 停機款 9")
                 _recv_by_blk[_b2] = _c2
+        _cl0 = _closer.get(_gi)
         R = _mem - merged_out - set(_recv_by_blk.values()) - L
         if not R:
             continue
@@ -13196,11 +13576,30 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
             raise RuntimeError(f"🔴 [K-6-B 段三 後處理] 現態配地中止：{_cur['err']!r}（停機款 9）")
         B = sorted({_blk_of[m] for m in _mem
                     if _kind(m) == 'bld' and m in _cur["kept"].get(_blk_of[m], set())})
-        for b in B:
-            if b not in _recv_by_blk:
-                raise RuntimeError(
-                    f"🔴 [K-6-B 段三 後處理] 街廓 {b} 有群 {sorted(_mem)} 之保留宗而無本段之受併宗"
-                    "（停機款 9）")
+        # 🆕 `W-G.9-354`（`K-9-48` 其二·讀法 `1` ⑤·`K-9-50` 題一 4）：該群於本段無受併宗之街廓，其依原位次配得之宗
+        #   照配（⛔ 動）；分往該街廓之土地由其配得之宗承受（`_recv_of`）
+        _stay = {m for m in _mem if _kind(m) == 'bld' and _blk_of[m] in B and _blk_of[m] not in _recv_by_blk
+                 and m in _cur["kept"].get(_blk_of[m], set())}
+        R = R - _stay
+        _orig = {}
+
+        def _recv_of(b):
+            # 受併宗：本段之受併宗；無 ⇒ 題一未得之一端取其候選（現態配得者），他街廓唯恰一宗配得者；餘 ⇒ 停機
+            if b in _recv_by_blk:
+                return _recv_by_blk[b]
+            if b not in _orig:
+                _kb = sorted(m for m in _stay if _blk_of[m] == b)
+                if _cl0 is not None and b == _cl0['敗']['blk'] and _cl0['敗']['c'] in _kb:
+                    _orig[b] = _cl0['敗']['c']
+                elif len(_kb) == 1:
+                    _orig[b] = _kb[0]
+                else:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 後處理] 街廓 {b} 有群 {sorted(_mem)} 之保留宗 {_kb} 而無本段之受併宗"
+                        "——承受之宗未定（停機款 9）")
+            return _orig[b]
+        if not R:
+            continue
         # 🔧 補令二 裁五 2：B 為空、或某受併宗之街廓 ∉ B ⇒ 停機款 9（⛔ 靜默略過·⛔ 除以 0）
         if not B:
             raise RuntimeError(
@@ -13222,6 +13621,10 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
                     raise RuntimeError(
                         f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）為 B 內之保留建築片而非受併宗"
                         "——§三-2 未定（停機款 9）")
+                if _cl0 is not None and _blk_of[x] == _cl0['敗']['blk']:
+                    # 🆕 `W-G.9-354`（`K-9-50` 題一 4）：未得之一端之地主土地不能依原位次配地者 ⇒ 併入已取得之一端
+                    _cls['a'].append((x, _cl0['勝']['blk']))
+                    continue
                 _tb = sorted({b for b in B for m in _mem
                               if _blk_of[m] == b and m != x and _adj(x, m)})
                 if len(_tb) != 1:
@@ -13235,23 +13638,11 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
             else:
                 raise RuntimeError(f"🔴 [K-6-B 段三 後處理] {x} 之類別無從歸入 (a)(b)(c)（停機款 9）")
         for x, b in sorted(_cls['a'], key=lambda p: _ga(p[0])):
-            _plan.append(('a', x, [(_recv_by_blk[b], _aprime(state, x, _recv_by_blk[b]))], True,
+            _plan.append(('a', x, [(_recv_of(b), _aprime(state, x, _recv_of(b)))], True,
                           _nbr_blocks(_raw[x], _blk_of[x]), None))
         for x in sorted(_cls['b'], key=_ga):
             _rb = _blk_of[x]
-            _cl = (centerlines or {}).get(_rb) or []
-            if len(_cl) != 2:
-                raise RuntimeError(
-                    f"🔴 [K-6-B 段三 後處理 (b)] {x} 所屬道路 {_rb} 之中心線頂點數 {len(_cl)}（期 2）（停機款 9）")
-            (x1, y1), (x2, y2) = _cl[0], _cl[-1]
-            _dx, _dy = x2 - x1, y2 - y1
-            _L = (_dx * _dx + _dy * _dy) ** 0.5
-            _ux, _uy = _dx / _L, _dy / _L
-            _line = _Ls([(x1 - _ux * 500, y1 - _uy * 500), (x2 + _ux * 500, y2 + _uy * 500)])
-            _parts = list(_split(_geo[x], _line).geoms)
-            if len(_parts) != 2:
-                raise RuntimeError(
-                    f"🔴 [K-6-B 段三 後處理 (b)] {x} 經中心線切分得 {len(_parts)} 片（期 2）（停機款 9）")
+            _parts = _road_halves(x, '後處理 (b)')
             _halves = []
             for _q in _parts:
                 _nb = _nbr_blocks(_q, _rb)
@@ -13265,16 +13656,16 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
             if not _ones:
                 _plan.append(('b', x, [], False, _nbr_blocks(_raw[x], _rb), _half_log))
             elif len(_ones) == 1:
-                _recv = _recv_by_blk[_ones[0][1][0]]
+                _recv = _recv_of(_ones[0][1][0])
                 _plan.append(('b', x, [(_recv, _aprime(state, x, _recv))], False,
                               _nbr_blocks(_raw[x], _rb), _half_log))
             else:
-                _qs = [(_recv_by_blk[h[1][0]],
-                        _aprime(state, x, _recv_by_blk[h[1][0]]) * (h[0].area / _geo[x].area))
+                _qs = [(_recv_of(h[1][0]),
+                        _aprime(state, x, _recv_of(h[1][0])) * (h[0].area / _geo[x].area))
                        for h in _halves]
                 _plan.append(('b', x, _qs, False, _nbr_blocks(_raw[x], _rb), _half_log))
         for x in sorted(_cls['c'], key=_ga):
-            _recvs = [_recv_by_blk[b] for b in B]
+            _recvs = [_recv_of(b) for b in B]
             _plan.append(('c', x, [(r, _aprime(state, x, r) / len(B)) for r in _recvs], False,
                           _nbr_blocks(_raw[x], _blk_of[x]), None))
 
