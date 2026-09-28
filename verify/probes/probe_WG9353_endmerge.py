@@ -7,8 +7,10 @@
            合成對照（⛔ 讀本案資料·`harvest(app.py)` 取函式）：S1 評選之強制抵費地准否；S2〜S4 一街廓之落位
            （強制 ⇒ ⛔ 落位·紀錄·沿用·不准即停機）；S5 強制帶之 s 長；S6 強制帶之多邊形；S7 定案趟之檢；
            S8 顯示；S9 宿主之准否（試算恆准·定案唯同退縮之合併再試紀錄所載者准）；S10 合併再試（① 同街廓成·
-           ② 道路成且驗「不影響原位次」·該驗不過 ⇒ 未成·皆未達 ⇒ 記之·除外三類·競合停機·試算中止 ⇒ 逕回並記）。
-           另施八突變，每一突變須使至少一例轉紅（判別力）。
+           ② 道路成且驗「不影響原位次」·該驗不過 ⇒ 未成·皆未達 ⇒ 記之·除外三類·試算中止 ⇒ 逕回並記）。
+           另施七突變，每一突變須使至少一例轉紅（判別力）。
+           🔧 `W-G.9-354`：原 S10h（數末端塊之競合 ⇒ 停機）與其突變 M7 撤除——競合自該批起依 `K-9-50` 處之，
+           其對照移量測器 F13（`verify/probes/probe_WG9354_endcontest.py`）。
   wiring   <repo>
            AST／字樣查接線：W1 模組層之常數與函式、⛔ 案件字面；W2 二宿主之強制帶 s 長與池之強制帶；
            W3 宿主之准否；W4 harness 段三與末端塊合併再試之試算皆為 `'trial'`、`run_corner_pk_k6b` 於段三（或其
@@ -20,6 +22,8 @@
            甲 ＝ 假設 `628-4(1)` 跨占街角規定範圍；乙 ＝ 甲 ＋ `628-1(3)` 上鎖；丙 ＝ 乙 ＋ `628-21(1)`、`628-22(1)` 上鎖；
            丁 ＝ `R6` 左端之末端帶以 `13 m` 構之。外部錨 ＝ 本器另寫之幾何與 G 公式（⛔ 呼叫 `end_block_*`／
            `_end_region_R`／`solve_G_binary`）。
+           🔧 `W-G.9-354`：甲之停機點由「他街廓已配地而本段無受併宗」移至後處理 (a)（他街廓依原位次配得者照配·
+           `K-9-48` 其二·讀法 `1` ⑤；餘片不鄰任一配得之街廓·`K-9-48` 七項 3／5／6 之承前缺口）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, io, os, re, sys
@@ -292,8 +296,6 @@ def _cases(ns):
          ("C1(1)", "—", "未成", "—"))
     _run(out, "S10g 除外：段三已併出者⛔ 併入", lambda: m(150.0, a_c1b=60.0, mark="C1(2)")["rows"][0],
          ("C1(1)", "—", "未成", "—"))
-    _run(out, "S10h 競合：同一合併群之候選分屬二末端塊 ⇒ 停機",
-         lambda: m(500.0, both={"left": ["C1(1)"], "right": ["C1(2)"]}), ("例外", "RuntimeError"))
     _run(out, "S10i 試算中止 ⇒ 逕回並記其由",
          lambda: (lambda r: (r["same"], r["rec"]["標的"], "試算中止" in r["rec"]))(m(150.0, fail=True)),
          (True, None, True))
@@ -322,7 +324,6 @@ SELF_MUTS = [
     ("M5 強制⛔ 入池", "end_block_forced_bands", "            _out.append(_i['r_end'])", "            pass"),
     ("M6 段三已併出者⛔ 除外", "end_block_merge_run",
      "          | {t['暫編地號'] for t in temp_parcels if t.get('段三併出')})", "          | set())"),
-    ("M7 ⛔ 查競合", "end_block_merge_run", "        if len(_hit) >= 2:", "        if False:"),
     ("M8 試算中止⛔ 攔", "end_block_merge_run", "    except RuntimeError as _e:\n        _rec['標的'] = None",
      "    except KeyError as _e:\n        _rec['標的'] = None"),
 ]
@@ -668,8 +669,10 @@ def run(repo, sbs):
                 continue
             if scen == "甲":
                 e = P["err"]
-                ok = (e is not None and e[0] == "段三／合併再試" and "後處理" in e[1] and "停機款 9" in e[1])
-                print(("  ✅" if ok else "  🔴") + f" X1 甲：地主 G009 以道路併入成，其合併群之他街廓已配地而本段無受併宗 ⇒ 停機（{e}）")
+                ok = (e is not None and e[0] == "段三／合併再試" and "後處理 (a)" in e[1]
+                      and "所鄰之 B 內街廓 ＝ []" in e[1] and "停機款 9" in e[1])
+                print(("  ✅" if ok else "  🔴") + " X1 甲：地主 G009 以道路併入成，其合併群之他街廓依原位次配得者照配"
+                      f"（`W-G.9-354`·`K-9-48` 其二·讀法 `1` ⑤）；餘片不鄰任一配得之街廓 ⇒ 後處理 (a) 停機（{e}）")
                 if not ok:
                     red.append("X1@甲")
                 continue
