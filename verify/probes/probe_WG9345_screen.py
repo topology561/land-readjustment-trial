@@ -21,6 +21,9 @@
            on ：畫面（f3_screen_k6b_stage3 → f3_screen_stepg_run〔段三後之 build〕）對 harness
                 （run_corner_pk_k6b → run_step_g〔段三後之 build〕）；另驗 session 之回復與 K917_DROPPED。
            s3off：同 on 之二路徑，惟旗標 WV_K6B_STAGE3=off（二側皆須回到段三前·紀錄為空）。
+           🔧 `W-G.9-355`（發單側窗五十一·⛔ 上列一字不刪）：on／s3off 另驗末端塊合併再試之二 session 鍵
+           （`SS_END_BLOCK_MERGE` 之值／`f3_end_block_merge_log`）與 harness 同；二鍵係畫面入口之正當輸出，
+           ⛔ 計入「session 之回復」之外洩；試算旗標 `SS_END_BLOCK_MODE` 仍計入（⛔ 外洩）。
            配地列以暫編地號對齊；一側獨有之列須「幾何面積 0 且 G 0」（零面積池列·逐一出艙為 Z），餘須全等；
            cut_coords 以環（去閉合點·容旋轉與反向）比對。--perturb：將畫面側之 B 值乘 1.0001（必紅造）。
   wiring   <repo>
@@ -29,6 +32,7 @@
            W3 _f3L_invalidate_g_cache 失效段三之鍵；W4 wf_f4.compute 之五呼叫點皆以 k6b_f4_ctx 為首參；
            W5 _build_wf_ctx 依段三取 build／temp（ctx 仍 14 鍵）；W6 步驟 M 之讀；W7 過時之說明已去；W8 候選診斷表入 session。
            本部全綠時另施四種 AST 突變，須逐一轉紅（器紅 ⇒ rc 1）。
+           🔧 `W-G.9-355`（`自誤 548`·⛔ 上列一字不刪）：W1／W2 之期之名集取**無預設**之 kwonly 參數。
   f4ctx    <repo>        verify/selection_pipeline.py 之 k6b_f4_ctx 之單元檢。
   wfctx    <repo> <退縮>  _build_wf_ctx 之四情形：無段三之鍵／段三仍適用／指紋不符（二造）／前次停機。
   selftest 合成對照（⛔ 讀倉）：ast 之四種突變皆紅、原封者綠；列比對之擾動紅、環旋轉綠、零面積列入 Z。
@@ -543,6 +547,11 @@ def cmd_parity(repo, sb, mode, out=None, perturb=False):
             ok = _same(REF.get(k, "<缺>"), ssS_pk.get(k, "<缺>"))
             bad += (not ok)
             say(f"  {'✅' if ok else '🔴'} 段三 session 鍵 {k}（{len(REF.get(k) or [])} 列）")
+        EBM = (ns["SS_END_BLOCK_MERGE"], "f3_end_block_merge_log")   # 🔧 `W-G.9-355`：末端塊合併再試之二鍵
+        for k in EBM:
+            ok = _same(REF.get(k, "<缺>"), ssS_pk.get(k, "<缺>"))
+            bad += (not ok)
+            say(f"  {'✅' if ok else '🔴'} 合併再試 session 鍵 {k}（harness {REF.get(k, '<缺>')!r:.80}）")
         idsH = [(t["暫編地號"], t.get("段三併出")) for t in tH]
         idsS = [(t["暫編地號"], t.get("段三併出")) for t in tS2]
         ok = idsH == idsS
@@ -563,9 +572,9 @@ def cmd_parity(repo, sb, mode, out=None, perturb=False):
         bad += (not ok)
         say(f"  {'✅' if ok else '🔴'} K917_DROPPED（段三畢·與 harness 同）")
         leak = [k for k in pre if k not in PK_WRITES and not k.startswith("f3_k6b_stage3")
-                and k != "f3_corner_cand_diag" and not _same(pre.get(k), ssS_pk.get(k))]
+                and k != "f3_corner_cand_diag" and k not in EBM and not _same(pre.get(k), ssS_pk.get(k))]
         newk = sorted(k for k in ssS_pk if k not in pre and k not in PK_WRITES and not k.startswith("f3_k6b_stage3")
-                      and k != "f3_corner_cand_diag")
+                      and k != "f3_corner_cand_diag" and k not in EBM)
         ok = not leak and not newk
         bad += (not ok)
         say(f"  {'✅' if ok else '🔴'} session 之回復：段三前已有之非街角選位鍵值未變、未新生他鍵"
@@ -625,8 +634,10 @@ def wiring_check(srcs, say):
         chk(fn in fns, f"W0 模組層有 def {fn}")
     if not all(fn in fns for fn in (FN_PK, FN_G, FN_S3)):
         return bad
-    pk10 = [a.arg for a in fns[FN_PK].args.kwonlyargs]
-    g13 = [a.arg for a in fns[FN_G].args.kwonlyargs]
+    # 🔧 `W-G.9-355`（`自誤 548`）：期之名集 ＝ **無預設**之 kwonly 參數（`W-G.9-349` 於 FN_G 增有預設之
+    #   `_k929_6_inner=False`〔入池閘之試算趟專用·main() ⛔ 傳〕⇒ 舊式以全部 kwonly 為期，W2 自 `5eeb95f` 起恆紅）。
+    pk10 = [a.arg for a, d in zip(fns[FN_PK].args.kwonlyargs, fns[FN_PK].args.kw_defaults) if d is None]
+    g13 = [a.arg for a, d in zip(fns[FN_G].args.kwonlyargs, fns[FN_G].args.kw_defaults) if d is None]
     # W1
     ifn = _target_if(main, lines, KEY_PK)
     ok = False
