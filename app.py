@@ -10768,6 +10768,32 @@ def end_block_eval_rows(ev):
     return {'lines': lines, 'rows': rows}
 
 
+def end_block_merge_rows(rec, log):
+    """🆕 `W-G.9-355`：末端塊合併再試（`end_block_merge_run` 之 `rec`／`log`）之顯示（純函式）。
+    回 `{'lines': [...], 'rows': [...]}`：`rows` ＝ `log` 之逐列（鍵同 `log`、值一律字串·`None` ⇒ `'—'`）；
+    `lines` 載退縮、標的逐端、競合逐組、皆未達逐端；`rec` 為 `None` ⇒ 皆空。"""
+    if rec is None:
+        return {'lines': [], 'rows': []}
+    _nm = {'left': '左', 'right': '右'}
+    lines = [f"退縮 {rec.get('退縮')} m"]
+    if rec.get('試算中止') is not None:
+        lines.append(f"試算中止：{rec.get('試算中止')}（未取得標的；定案之配地遇各筆單獨皆未達之端將停機）")
+    _tg = rec.get('標的')
+    if _tg is not None:
+        if _tg:
+            lines.append("標的（各筆單獨皆未達之末端塊）：" + "、".join(f"{_b} {_nm.get(_s, _s)}端" for _b, _s in _tg))
+        else:
+            lines.append("無標的（無各筆單獨皆未達之末端塊）")
+    for _i, _c in enumerate(rec.get('競合') or [], 1):
+        lines.append(f"競合 {_i}（形{_c.get('形')}）：" + " ／ ".join(
+            f"{_b} {_e}端 候選 {_p} 交 {float(_a):.2f} ㎡" for _b, _e, _p, _a in (_c.get('列') or [])))
+    for _b in sorted(rec.get('皆未達') or {}):
+        for _s in (rec['皆未達'][_b] or []):
+            lines.append(f"{_b} {_nm.get(_s, _s)}端：合併再試皆未達 ⇒ 強制抵費地（面積 ＝ R_end）")
+    rows = [{_k: ('—' if _v is None else str(_v)) for _k, _v in _r.items()} for _r in (log or [])]
+    return {'lines': lines, 'rows': rows}
+
+
 def end_block_assert_head(blk_label, eb_info, left_results, right_results):
     """`W-G.9-352`：定案趟之檢——觸發之端，其鏈之首宗須為末端塊之當選者（含入池閘合併單元）；否則停機。"""
     for _sd, _res in (('left', left_results), ('right', right_results)):
@@ -19243,6 +19269,9 @@ K6B_SCREEN_TRIAL_KEYS = (
     'f3_k929_6_build', 'f3_k929_6_dropped',
     # 🆕 `W-G.9-352`：末端塊之評選（配地本體之首趟所寫·`SS_END_BLOCK_EVAL`；入池閘之畫面入口於復原之後帶出）
     'f3_end_block_eval',
+    # 🆕 `W-G.9-355`：試算旗標（`SS_END_BLOCK_MODE`·段三與末端塊合併再試之試算配地所設）——復原即去之，
+    #   使定案之配地⛔ 見 `'trial'`
+    'f3_end_block_mode',
     # 🆕 `W-G.9-349`：入池閘之合併紀錄（配地本體所寫）
     'f3_k929_6_log',
 )
@@ -19254,6 +19283,8 @@ K6B_SCREEN_READBACK_KEYS = (
     'f3_k6b_stage2_order', 'f3_k6b_stage1_locked_by_block',
 )
 K6B_STAGE3_PENDING = '「街角合併重試」未完成（執行中斷）'
+# 🆕 `W-G.9-355`：末端塊合併再試之未完成標記（合併再試開始前立之，唯其正常完成且末態已存始撤）
+K6B_ENDMERGE_PENDING = '「末端塊合併再試」未完成（執行中斷）'
 
 
 class _K6BTrialStop(Exception):
@@ -19352,47 +19383,20 @@ def k6b_screen_build_for_g(st, build_parcels):
     return _s3[1]
 
 
-def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
-    """段三之畫面入口（`W-G.9-345 §三-2`）。`pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名；
-    `g_kwargs` ＝ `f3_screen_stepg_run` 之 13 名去 `build_parcels`／`_new_params`／`_btn_clicked`／`_auto_recalc`。
-    回 `{'temp', 'build', 'log', 'order', 'ran'}`。"""
+def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+    """🆕 `W-G.9-355`：段三與末端塊合併再試之**畫面**試算所注入之四物（單一真相源·體例同 harness
+    `verify/selection_pipeline.py` 之 `_k6b_callbacks`）。回 `{'a_prime', 'trial_winner', 'alloc_state', 'alloc_eval'}`。
+    `pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名；`g_kwargs` ＝ 同段三之畫面入口。
+    試算一律以畫面自身之二段（`f3_screen_corner_pk_run`／`f3_screen_stepg_run`·代理 st `_K6BTrialSt`）為之，吃畫面
+    即時之地價；⛔ 借用 harness。`a_prime`／`trial_winner`／`alloc_state` 原位於 `f3_screen_k6b_stage3` 內（`W-G.9-345`），
+    本批抽出以供二者共用——其本體唯 `alloc_state` 之配地改於 `SS_END_BLOCK_MODE` ＝ `'trial'` 下為之（同 harness），
+    餘逐字未改。`alloc_state`／`alloc_eval` 所寫之 session 鍵（含 `SS_END_BLOCK_MODE`）由呼叫端之隔離
+    （`K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`·試算前存、試算後復）去之。"""
     import copy as _cp_s3
     import contextlib as _cl_s3
     import io as _io_s3
     from shapely.geometry import Polygon as _Pg_s3
     _ss = st.session_state
-    temp0, build0 = pk_kwargs['temp_parcels'], pk_kwargs['build_parcels']
-    # 1. 先去前次之段三結果與停機訊息
-    for _k in K6B_SCREEN_STAGE3_KEYS + ('f3_k6b_stage3_error',):
-        _ss.pop(_k, None)
-    # 2. 旗標 off ⇒ 逕以真 st 跑街角選位
-    if not k6b_stage3_enabled():
-        f3_screen_corner_pk_run(st, **pk_kwargs)
-        _order = list(_ss.get('f3_k6b_stage2_order') or [])
-        _ss['f3_k6b_stage3_log'] = []
-        _ss['f3_k6b_stage3_order_used'] = _order
-        return {'temp': temp0, 'build': build0, 'log': [], 'order': _order, 'ran': False}
-    # 🆕 `W-G.9-346`：段三啟用 ⇒ 先立「未完成」（唯正常出口撤之）；任何中斷皆使其後之配地 loud
-    _ss['f3_k6b_stage3_error'] = K6B_STAGE3_PENDING
-    _ss.pop('f3_k6b_stage2_order', None)
-    # 3. 首趟（代理·寫真 session）；中止 ⇒ 以真 st 再跑一次使畫面現其訊息後重拋
-    _px0 = _K6BTrialSt(st)
-    try:
-        with _cl_s3.redirect_stdout(_io_s3.StringIO()):
-            f3_screen_corner_pk_run(_px0, **pk_kwargs)
-    except _K6BTrialStop:
-        f3_screen_corner_pk_run(st, **pk_kwargs)
-        raise
-    # 4. 段二序
-    order = list(_ss.get('f3_k6b_stage2_order') or [])
-    if not order:
-        f3_screen_corner_pk_run(st, **pk_kwargs)
-        _ss['f3_k6b_stage3_log'] = []
-        _ss['f3_k6b_stage3_order_used'] = order
-        _ss.pop('f3_k6b_stage3_error', None)
-        return {'temp': temp0, 'build': build0, 'log': [], 'order': order, 'ran': False}
-
-    # 5. 三注入物
     _ppz = pk_kwargs['pre_price_by_zone']
 
     def _p_of(tp):
@@ -19454,6 +19458,7 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
                 f3_screen_corner_pk_run(_px, **dict(pk_kwargs, temp_parcels=_t, build_parcels=_b))
                 if 'f3_corner_winners' not in _ss:
                     raise RuntimeError('試算（街角選位）未產出 winners 表（停機款 9）')
+                _ss[SS_END_BLOCK_MODE] = 'trial'   # 🆕 `W-G.9-355`：試算（同 harness·`W-G.9-353`）
                 f3_screen_stepg_run(_px, **dict(
                     g_kwargs, _auto_recalc=False, _btn_clicked=True, build_parcels=_b,
                     _new_params=dict(_ss.get(g_kwargs['_param_key']) or {})))
@@ -19482,6 +19487,160 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
                 _kept.setdefault(_blk, set()).add(_pid)
         return {'kept': _kept, 'bad_pools': _bad, 'err': _err}
 
+    def alloc_eval(temp, build):
+        """🆕 `W-G.9-355`：以所給之宗地試算街角選位與配地（`SS_END_BLOCK_MODE` ＝ `'trial'`），回配地首趟之
+        末端塊評選（`SS_END_BLOCK_EVAL`）之深拷貝。試算中止（代理 st 之 `st.stop`、`RuntimeError`、街角選位
+        未產出 winners 表、配地未產出 G 值表）⇒ `raise RuntimeError`（⛔ 以空評選代之·`end_block_merge_run` 之契約）。"""
+        _t, _b = _copy_pair(temp, build)
+        K917_DROPPED.clear()
+        _px = _K6BTrialSt(st)
+        for _k_rb in K6B_SCREEN_READBACK_KEYS:
+            _ss.pop(_k_rb, None)
+        _ss.pop(SS_END_BLOCK_EVAL, None)
+        try:
+            with _cl_s3.redirect_stdout(_io_s3.StringIO()):
+                f3_screen_corner_pk_run(_px, **dict(pk_kwargs, temp_parcels=_t, build_parcels=_b))
+                if 'f3_corner_winners' not in _ss:
+                    raise RuntimeError('🔴 [末端塊合併再試·畫面] 試算（街角選位）未產出 winners 表')
+                _ss[SS_END_BLOCK_MODE] = 'trial'
+                f3_screen_stepg_run(_px, **dict(
+                    g_kwargs, _auto_recalc=False, _btn_clicked=True, build_parcels=_b,
+                    _new_params=dict(_ss.get(g_kwargs['_param_key']) or {})))
+        except _K6BTrialDone:
+            pass
+        except _K6BTrialStop as _e_ae:
+            raise RuntimeError(
+                f"🔴 [末端塊合併再試·畫面] 試算（配地）中止（st.stop）：{_px.msgs[-1:]}") from _e_ae
+        if 'f3_G_values' not in _ss:
+            raise RuntimeError('🔴 [末端塊合併再試·畫面] 試算（配地）未產出 G 值表')
+        return _cp_s3.deepcopy(_ss.get(SS_END_BLOCK_EVAL) or {})
+
+    return {'a_prime': a_prime, 'trial_winner': trial_winner, 'alloc_state': alloc_state,
+            'alloc_eval': alloc_eval}
+
+
+def f3_screen_end_block_merge(st, *, pk_kwargs, g_kwargs):
+    """🆕 `W-G.9-355`：末端塊之合併再試（`K-9-49 ②`·`K-9-36 ③`·`K-9-50`）之**畫面**入口——同 harness
+    `verify/selection_pipeline.py` 之 `run_end_block_merge`；單一真相源 ＝ `end_block_merge_run`。
+    呼叫端 ＝ `f3_screen_k6b_stage3` 之三個正常出口（皆於其真 st 之街角選位之後）。
+    `pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名（其 `temp_parcels`／`build_parcels` ＝ 合併再試之輸入）；
+    `g_kwargs` ＝ 同段三之畫面入口。回 `{'temp', 'build', 'log', 'rec'}`（無變 ⇒ `temp`／`build` 為輸入之同一物件）。
+      ① 輸入（其時之 session）：上鎖 ＝ `f3_k6b_stage1_locked_by_block` 各值之聯集；街角第 1 宗 ＝ `f3_corner_winners`
+         各值中之非空者；街廓 ＝ `classified_blocks` 之類別；道路中心線 ＝ `f3_manual_road_centerlines`；
+         歸戶 ＝ `t8_ownership_map`；退縮 ＝ `f3L_setback_default`。
+      ② 試算 ＝ `k6b_screen_callbacks`（配地一律 `'trial'`）；隔離 ＝ 試算前存 `K6B_SCREEN_TRIAL_KEYS` 與
+         `K917_DROPPED`、試算後（含例外）復原。
+      ③ 復原之後寫紀錄：`SS_END_BLOCK_MERGE` ＝ `rec`、`'f3_end_block_merge_log'` ＝ `log`。
+      ④ 有變（回傳之宗地非輸入之同一物件）⇒ 以真 st 再跑一次街角選位（所用 ＝ 合併再試之出）。
+    停機（`RuntimeError`）⇒ `f3_k6b_stage3_error` ＝ 其訊息之首列、`st.error` ＋ `st.stop()`（其後之配地 loud）；
+    非 `RuntimeError` 之例外 ⇒ 上拋。未完成之標記（`K6B_ENDMERGE_PENDING`）由呼叫端立之、存末態後撤之。"""
+    import copy as _cp_ebm
+    _ss = st.session_state
+    temp_in, build_in = pk_kwargs['temp_parcels'], pk_kwargs['build_parcels']
+    # 先去前次之紀錄（停機時⛔ 殘留）
+    _ss.pop(SS_END_BLOCK_MERGE, None)
+    _ss.pop('f3_end_block_merge_log', None)
+    _locked = set()
+    for _v in (_ss.get('f3_k6b_stage1_locked_by_block') or {}).values():
+        _locked |= set(_v or [])
+    _corner = set()
+    for _w in (_ss.get('f3_corner_winners') or {}).values():
+        for _pid in (_w or {}).values():
+            if _pid:
+                _corner.add(str(_pid))
+    _blocks = {b['label']: {'category': b.get('category', '')} for b in g_kwargs['classified_blocks']}
+    _cb = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)
+    _saved = {k: _cp_ebm.deepcopy(_ss[k]) for k in K6B_SCREEN_TRIAL_KEYS if k in _ss}
+    _k917_saved = _cp_ebm.deepcopy(K917_DROPPED)
+    _unhandled = []
+    try:
+        temp3, build3, log, rec = end_block_merge_run(
+            temp_in, build_in, _ss.get('t8_ownership_map', {}) or {}, _locked, _corner, _blocks,
+            _ss.get('f3_manual_road_centerlines') or {}, _cb['a_prime'], _cb['alloc_eval'], _cb['alloc_state'],
+            setback=_ss.get('f3L_setback_default'), log_print=_unhandled.append)
+    except RuntimeError as _e_ebm:
+        _ss['f3_k6b_stage3_error'] = '（末端塊合併再試）' + str(_e_ebm).split("\n")[0][:500]
+        st.error(str(_e_ebm))
+        st.stop()
+        raise
+    finally:
+        for _k in K6B_SCREEN_TRIAL_KEYS:
+            if _k in _saved:
+                _ss[_k] = _saved[_k]
+            else:
+                _ss.pop(_k, None)
+        K917_DROPPED.clear()
+        K917_DROPPED.update(_k917_saved)
+    _ss[SS_END_BLOCK_MERGE] = rec
+    _ss['f3_end_block_merge_log'] = log
+    for _m in _unhandled:
+        st.error(_m)
+    if temp3 is not temp_in:
+        f3_screen_corner_pk_run(st, **dict(pk_kwargs, temp_parcels=temp3, build_parcels=build3))
+    return {'temp': temp3, 'build': build3, 'log': log, 'rec': rec}
+
+
+def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
+    """段三之畫面入口（`W-G.9-345 §三-2`）。`pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名；
+    `g_kwargs` ＝ `f3_screen_stepg_run` 之 13 名去 `build_parcels`／`_new_params`／`_btn_clicked`／`_auto_recalc`。
+    回 `{'temp', 'build', 'log', 'order', 'ran'}`。
+    🆕 `W-G.9-355`：三個正常出口（旗標 off／段二序為空／段三實辦而成）皆於其真 st 之街角選位之後辦末端塊之
+    合併再試（`f3_screen_end_block_merge`·同 harness `run_corner_pk_k6b`）；回傳之 `temp`／`build` ＝ 末態，
+    `log` 仍 ＝ 段三之紀錄。段三實辦或合併再試有變 ⇒ 末態存於 `K6B_SCREEN_STAGE3_KEYS`（指紋 ＝ 段三前之
+    build ＋ 退縮）；二者皆無 ⇒ ⛔ 存。合併再試之前立其未完成之標記（`K6B_ENDMERGE_PENDING`·段三實辦者即以之
+    接替段三之標記），存末態之後撤之。段三停機 ⇒ 合併再試⛔ 辦。"""
+    import copy as _cp_s3
+    import contextlib as _cl_s3
+    import io as _io_s3
+    _ss = st.session_state
+    temp0, build0 = pk_kwargs['temp_parcels'], pk_kwargs['build_parcels']
+    # 1. 先去前次之段三結果與停機訊息（🆕 `W-G.9-355`：併去前次之末端塊合併再試之紀錄）
+    for _k in K6B_SCREEN_STAGE3_KEYS + ('f3_k6b_stage3_error',):
+        _ss.pop(_k, None)
+    _ss.pop(SS_END_BLOCK_MERGE, None)
+    _ss.pop('f3_end_block_merge_log', None)
+
+    def _end_merge(temp_x, build_x, log_x, order_x, ran):
+        """🆕 `W-G.9-355`：正常出口之末段——末端塊之合併再試、存末態、撤未完成之標記。"""
+        _ss['f3_k6b_stage3_error'] = K6B_ENDMERGE_PENDING
+        _em = f3_screen_end_block_merge(
+            st, pk_kwargs=dict(pk_kwargs, temp_parcels=temp_x, build_parcels=build_x), g_kwargs=g_kwargs)
+        if ran or _em['temp'] is not temp_x:
+            _ss['f3_k6b_stage3_temp'] = _em['temp']
+            _ss['f3_k6b_stage3_build'] = _em['build']
+            _ss['f3_k6b_stage3_fp'] = k6b_stage3_fingerprint(build0, _ss['f3L_setback_default'])
+        _ss.pop('f3_k6b_stage3_error', None)
+        return {'temp': _em['temp'], 'build': _em['build'], 'log': log_x, 'order': order_x, 'ran': ran}
+
+    # 2. 旗標 off ⇒ 逕以真 st 跑街角選位
+    if not k6b_stage3_enabled():
+        f3_screen_corner_pk_run(st, **pk_kwargs)
+        _order = list(_ss.get('f3_k6b_stage2_order') or [])
+        _ss['f3_k6b_stage3_log'] = []
+        _ss['f3_k6b_stage3_order_used'] = _order
+        return _end_merge(temp0, build0, [], _order, False)
+    # 🆕 `W-G.9-346`：段三啟用 ⇒ 先立「未完成」（唯正常出口撤之）；任何中斷皆使其後之配地 loud
+    _ss['f3_k6b_stage3_error'] = K6B_STAGE3_PENDING
+    _ss.pop('f3_k6b_stage2_order', None)
+    # 3. 首趟（代理·寫真 session）；中止 ⇒ 以真 st 再跑一次使畫面現其訊息後重拋
+    _px0 = _K6BTrialSt(st)
+    try:
+        with _cl_s3.redirect_stdout(_io_s3.StringIO()):
+            f3_screen_corner_pk_run(_px0, **pk_kwargs)
+    except _K6BTrialStop:
+        f3_screen_corner_pk_run(st, **pk_kwargs)
+        raise
+    # 4. 段二序
+    order = list(_ss.get('f3_k6b_stage2_order') or [])
+    if not order:
+        f3_screen_corner_pk_run(st, **pk_kwargs)
+        _ss['f3_k6b_stage3_log'] = []
+        _ss['f3_k6b_stage3_order_used'] = order
+        return _end_merge(temp0, build0, [], order, False)
+
+    # 5. 三注入物（🆕 `W-G.9-355`：由 `k6b_screen_callbacks` 供之·與末端塊合併再試共用）
+    _cb = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)
+
     # 6. 隔離：試算前存、試算後復
     _locked = set()
     for _v in (_ss.get('f3_k6b_stage1_locked_by_block') or {}).values():
@@ -19493,8 +19652,8 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
     try:
         temp2, build2, log = k6b_stage3_run(
             order, _locked, _ss.get('t8_ownership_map', {}) or {}, temp0, build0, _blocks,
-            _ss.get('f3_manual_road_centerlines') or {}, a_prime, trial_winner, alloc_state,
-            log_print=_unhandled.append)
+            _ss.get('f3_manual_road_centerlines') or {}, _cb['a_prime'], _cb['trial_winner'],
+            _cb['alloc_state'], log_print=_unhandled.append)
     except RuntimeError as _e_s3r:
         # 7. 段三停機 ⇒ 記其訊息（配地由 `k6b_screen_build_for_g` 擋下）
         _ss['f3_k6b_stage3_error'] = str(_e_s3r).split("\n")[0][:500]
@@ -19521,11 +19680,8 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
             st.caption("（本次無紀錄）")
     _ss['f3_k6b_stage3_log'] = log
     _ss['f3_k6b_stage3_order_used'] = order
-    _ss['f3_k6b_stage3_temp'] = temp2
-    _ss['f3_k6b_stage3_build'] = build2
-    _ss['f3_k6b_stage3_fp'] = k6b_stage3_fingerprint(build0, _ss['f3L_setback_default'])
-    _ss.pop('f3_k6b_stage3_error', None)
-    return {'temp': temp2, 'build': build2, 'log': log, 'order': order, 'ran': True}
+    # 9. 🆕 `W-G.9-355`：末端塊之合併再試（段三之後）；段三之未完成標記延至其正常完成始撤
+    return _end_merge(temp2, build2, log, order, True)
 
 
 def _k929_6_screen_gate(st, g_kwargs):
@@ -24801,6 +24957,9 @@ def main():
                             # 🆕 `W-G.9-345`：段三（街角合併重試）之結果與停機訊息一併失效
                             for _k_s3inv in K6B_SCREEN_STAGE3_KEYS + ('f3_k6b_stage3_error',):
                                 _st_inv.session_state.pop(_k_s3inv, None)
+                            # 🆕 `W-G.9-355`：末端塊合併再試之紀錄一併失效
+                            _st_inv.session_state.pop(SS_END_BLOCK_MERGE, None)
+                            _st_inv.session_state.pop('f3_end_block_merge_log', None)
                             _st_inv.session_state['f3_g_needs_rerun'] = True
                         except Exception:
                             pass
@@ -25642,6 +25801,18 @@ def main():
                                 st.caption(_eb352_l)
                             if _eb352_v['rows']:
                                 st.dataframe(_pd.DataFrame(_eb352_v['rows']),
+                                             use_container_width=True, hide_index=True)
+
+                    # 🆕 `W-G.9-355`：末端塊之合併再試（`K-9-49 ②`·`K-9-36 ③`·`K-9-50`）——標的、競合、皆未達與逐列紀錄
+                    _ebm355 = st.session_state.get(SS_END_BLOCK_MERGE)
+                    if _ebm355 is not None:
+                        _ebm355_v = end_block_merge_rows(_ebm355, st.session_state.get('f3_end_block_merge_log'))
+                        with st.expander("🔗 末端塊之合併再試（K-9-49 ②／K-9-36 ③／K-9-50）",
+                                         expanded=bool(_ebm355_v['rows'])):
+                            for _ebm355_l in _ebm355_v['lines']:
+                                st.caption(_ebm355_l)
+                            if _ebm355_v['rows']:
+                                st.dataframe(_pd.DataFrame(_ebm355_v['rows']),
                                              use_container_width=True, hide_index=True)
 
                     # 🆕 `W-G.9-351`：調配階段之輸入（步 1 之尾〜步 2·`K-9-45`／`K-9-46`）——僅盤點·⛔ 調配
