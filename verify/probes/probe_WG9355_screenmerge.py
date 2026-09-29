@@ -374,7 +374,8 @@ def _t3(ns, ss, merge):
              (True, True, [L3], [L3], ORDER)),
             (f"{tag}b 段三本體與合併再試各恰一次", (rig.s3_n, rig.merge_n), (1, 1)),
             (f"{tag}c 段三之試算配地亦 'trial'", [c[1] for c in gs3], ["trial"]),
-            (f"{tag}d 段三之 alloc_state 之出", rig.s3_state, {"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None}),
+            (f"{tag}d 段三之 alloc_state 之出", rig.s3_state, {"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None,
+                                                           "G": {"A(1)": 0.0}}),
             (f"{tag}e 合併再試之輸入 ＝ 段三之出（同一物件）；上鎖取自段三終趟之真 st 街角選位",
              (a.get("temp") is s3r[0], a.get("build") is s3r[1], a.get("locked")), (True, True, {"C(1)"})),
             (f"{tag}f 回傳之宗地 ＝ 末態（同一物件）", (ret is not None and ret["temp"] is fin[0], ret is not None and ret["build"] is fin[1]),
@@ -471,7 +472,7 @@ def _t6(ns, ss):
             stt = cb["alloc_state"](t0, b0)
         gs = [c for c in rig.calls[n0:] if c[0] == "g"]
         out.append(("T6d 試算配地（alloc_state）之出與其 'trial'", (stt, [c[1] for c in gs]),
-                    ({"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None}, ["trial"])))
+                    ({"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None, "G": {"A(1)": 0.0}}, ["trial"])))
         n0 = len(rig.calls)
         with contextlib.redirect_stdout(io.StringIO()):
             ev = cb["alloc_eval"](t0, b0)
