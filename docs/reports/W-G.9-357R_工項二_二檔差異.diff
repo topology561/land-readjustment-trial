@@ -1,0 +1,458 @@
+diff --git a/app.py b/app.py
+index e11232a..63abb4b 100644
+--- a/app.py
++++ b/app.py
+@@ -11520,6 +11520,7 @@ def adj_intake(temp_parcels, build_final, g_rows, dropped, own_map, burden_by_bl
+     if _stray:
+         raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] G 值列或不配地紀錄之 {_stray} 不在 build ⇒ 停機")
+     _rows = []
++    _s3_ids = set()     # 🆕 `W-G.9-357`：段三後處理之剩下（部分併出之餘量·一分未併者）之切片——恆入其歸戶之合併單位
+     for t in _real:
+         _k, _bl = _pid(t), str(t.get('所屬街廓', ''))
+         if _bl not in (burden_by_block or {}) or not (burden_by_block or {}).get(_bl):
+@@ -11531,12 +11532,29 @@ def adj_intake(temp_parcels, build_final, g_rows, dropped, own_map, burden_by_bl
+         _row = {'暫編地號': _k, '原地號': str(t.get('原地號', '')), '歸戶': _g, '所屬街廓': _bl,
+                 '負擔屬性': _bt, '原有面積': _a(t), '重劃前地價區段': str(t.get('重劃前地價區段', '') or ''),
+                 '所屬單元': '', '應分配面積': None, '不配地由': '', '配地街廓': []}
++        _rem3 = float(t.get('段三餘量', 0) or 0) if '段三餘量' in t else None
++        if _rem3 is not None and _bt != ADJ_BURDEN_COMMON:
++            raise RuntimeError(f"🔴 [W-G.9-357 調配之輸入] 帶段三餘量之 {_k!r} 位於負擔屬性 {_bt!r} 之街廓 {_bl!r}"
++                               "（段三之剩下唯可拆分之共同負擔用地有之）⇒ 停機")
+         if '段三併出' in t:
+             _rcv = [str(_x) for _x in (t.get('段三併出') or [])]
+             if not _rcv or any(_x not in _alloc for _x in _rcv):
+                 raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 段三所併出之 {_k!r} 之受併宗 {_rcv} 未配地 ⇒ 停機")
+-            _row.update(類=ADJ_DISP_ALLOC, 所屬單元='段三併入 ' + '、'.join(_rcv),
+-                        配地街廓=sorted({str((_by.get(_x) or {}).get('所屬街廓', '')) for _x in _rcv}))
++            if _rem3 is not None and _rem3 > 0:
++                # 🆕 `W-G.9-357`（`K-9-48` 七項 3〜6）：部分併出 ⇒ 其餘量入合併單位；已併出之量計入原位次配地
++                _den = _a(t) + float(t.get('面積_m2', 0) or 0)
++                if not _den > 0:
++                    raise RuntimeError(f"🔴 [W-G.9-357 調配之輸入] 帶段三餘量之 {_k!r} 之面積 {_den!r} ≤ 0 ⇒ 停機")
++                _rho = _rem3 / _den
++                _row.update(類=ADJ_DISP_COMMON_UNIT, 原有面積=_a(t) * _rho, 段三併出面積=_a(t) * (1.0 - _rho))
++                _s3_ids.add(_k)
++            else:
++                _row.update(類=ADJ_DISP_ALLOC, 所屬單元='段三併入 ' + '、'.join(_rcv),
++                            配地街廓=sorted({str((_by.get(_x) or {}).get('所屬街廓', '')) for _x in _rcv}))
++        elif _rem3 is not None:
++            # 🆕 `W-G.9-357`：一分未併之共同負擔用地 ⇒ 入合併單位（`K-9-45`）
++            _row['類'] = ADJ_DISP_COMMON_UNIT
++            _s3_ids.add(_k)
+         elif _bt == ADJ_BURDEN_BUILD:
+             if _k not in _unit_of:
+                 raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入] 可建築土地上之切片 {_k!r} 不在 build ⇒ 停機")
+@@ -11591,13 +11609,27 @@ def adj_intake(temp_parcels, build_final, g_rows, dropped, own_map, burden_by_bl
+                            '原有面積合計': sum(_r['原有面積'] for _r in _pool + _cm),
+                            '同歸戶原位次配地之街廓': _al_blk})
+         elif _cm:
+-            _step4.append({'歸戶': _g, '共同負擔用地': _cm, '原有面積合計': sum(_r['原有面積'] for _r in _cm),
+-                           '同歸戶原位次配地之街廓': _al_blk})
++            # 🆕 `W-G.9-357`：段三之剩下之切片恆入其歸戶之合併單位（`K-9-45`）——依現碼不成單位者另成一單位（公設軌）；
++            #   其餘之共同負擔用地之去處（步 4）同前
++            _s3 = [_r for _r in _cm if _r['暫編地號'] in _s3_ids]
++            _cm = [_r for _r in _cm if _r['暫編地號'] not in _s3_ids]
++            if _s3:
++                _units.append({'歸戶': _g, '軌': ADJ_TRACK_PUBLIC, '原街廓': None, '原街廓之據': {},
++                               '建築街廓內不能分配': [], '共同負擔用地': _s3,
++                               '原有面積合計': sum(_r['原有面積'] for _r in _s3),
++                               '同歸戶原位次配地之街廓': _al_blk})
++            if _cm:
++                _step4.append({'歸戶': _g, '共同負擔用地': _cm, '原有面積合計': sum(_r['原有面積'] for _r in _cm),
++                               '同歸戶原位次配地之街廓': _al_blk})
+     _tot = {}
+     for _r in _rows:
+         _c = _tot.setdefault(_r['類'], [0, 0.0])
+         _c[0] += 1
+         _c[1] += _r['原有面積']
++    for _r in _rows:
++        if '段三併出面積' in _r:
++            # 🆕 `W-G.9-357`：部分併出之已併出之量計入原位次配地之面積（⛔ 加列數）⇒ 諸類面積之和恆 ＝ all_area
++            _tot.setdefault(ADJ_DISP_ALLOC, [0, 0.0])[1] += _r['段三併出面積']
+     _tot[ADJ_DISP_GHOST] = [len(_ghost), sum(_a(t) for t in _ghost)]
+     return {'slices': _rows, 'units': _units, 'step4': _step4, 'totals': _tot,
+             'all_area': sum(_a(t) for t in _slices), 'all_count': len(_slices),
+@@ -13029,8 +13061,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                      回 `a(src) × (p(src) ÷ p(dst))`；任一環取不到 ⇒ `raise`。
+       trial_winner   `trial_winner(temp, build, 街廓, 端, 候選) -> (winner, 試算G, 門檻)`：
+                      以所給之宗地重跑街角選位；`端` ∈ {`左`, `右`}。
+-      alloc_state    `alloc_state(temp, build) -> {"kept": {街廓: set}, "bad_pools": {街廓: int}, "err": str|None}`：
+-                     以所給之宗地重跑街角選位與配地。
++      alloc_state    `alloc_state(temp, build) -> {"kept": {街廓: set}, "bad_pools": {街廓: int}, "err": str|None,
++                     "G": {暫編地號: float}}`：以所給之宗地重跑街角選位與配地；🆕 `W-G.9-357`：`G` ＝ 保留宗之
++                     應分配面積（`G(㎡)`），其鍵集 ＝ `kept` 諸值之聯集（後處理之第 `5` 項〔`K-9-51`〕之序用之·缺 ⇒ 停機）。
+       log_print      未處置之 `🔴` 出艙所用之印出函式。
+       contests       🆕 `W-G.9-354`（`K-9-50`）：數末端塊合併再試之競合（唯 `end_block_merge_run` 給之；段三之呼叫恆
+                      `None` ⇒ 逐列依序·逐位同本批前）。`list[dict]`：`{'形': '一'|'二', '列': [(街廓, 端, 候選, 交面積),
+@@ -13040,7 +13073,12 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       `order` 為空 ⇒ `(temp_parcels, build_parcels, [])`（同一物件·逐位同輸入）；
+       否則 `temp_out` 為深拷貝，被段三「成」所消耗之片加鍵 `段三併出`（受併宗之相異字典序列表·補令一 裁三）；
+       `build_out` ⊂ `temp_out`（同物件），整筆併出之建築片自其中移除；`log` 為逐列 `dict`。
+-    停機（`RuntimeError`）：步驟 9 之配地中止（無從判定）、後處理之未定情形（原單停機款 `9`）。
++      🆕 `W-G.9-357`（`K-9-48` 七項 `3`〜`6` ＋ `K-9-51`）：後處理之整批不過 ⇒ 逐片——不可拆分者整筆、不過 ⇒ 第 `5` 項；
++      可拆分者逐受併宗以最大面積（`0.01 ㎡` 之格）併之、其餘 ⇒ 第 `5` 項（同一歸戶之保留宗，距離〔至其街廓〕近者先、
++      同距離者 `G` 大者先；都不行 ⇒ 記「轉調配」）；`K-9-50` 題一 `4` 之合併不過者同之（⛔ 停機）。可拆分之片經此而
++      仍有剩下者加鍵 `段三部分併出`（`{受併宗: 所併之來源面積}`·有併入者）與 `段三餘量`（剩下之來源面積）。
++    停機（`RuntimeError`）：步驟 9 之配地中止（無從判定）、後處理之未定情形（原單停機款 `9`）、
++      第 `5` 項之 `alloc_state` 未回 `G`。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -13398,24 +13436,30 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                     [(Lo['c'], _aprime(state, Lo['c'], W['c']), True)]
+                 _t2 = _clone(state)
+                 _apply(_t2, W['c'], _its_W)
+-                if not _noaff(state, _t2, {W['blk'], _lb}, {Lo['c']}):
+-                    raise RuntimeError(
+-                        f"🔴 [K-6-B 段三 K-9-50 題一] {Lo['c']}（{_lb}）連同其半既不能依原位次配地，併入 {W['c']}"
+-                        "（已取得之一端）亦不過「不影響原位次」——`K-9-48` 七項 3〜5 未落地（停機款 9）")
+-                state = _t2
+-                merged_out.add(Lo['c'])
+-                for x in list(X) + [Lo['c']]:
+-                    marks.setdefault(x, set()).add(W['c'])
+-                _to = f"{Lo['c']} 不能依原位次配地 ⇒ 連同其半併入 {W['c']}"
+-                _r4 = dict(整筆併入=[Lo['c']],
+-                           切分併入={x: round(float(q), 4) for x, q, _w2 in _its_W if not _w2},
+-                           併入量={W['c']: round(sum(q for _, q, _w2 in _its_W), 4)}, 受併宗=W['c'], 檢核='通過')
++                if _noaff(state, _t2, {W['blk'], _lb}, {Lo['c']}):
++                    state = _t2
++                    merged_out.add(Lo['c'])
++                    for x in list(X) + [Lo['c']]:
++                        marks.setdefault(x, set()).add(W['c'])
++                    _to = f"{Lo['c']} 不能依原位次配地 ⇒ 連同其半併入 {W['c']}"
++                    _r4 = dict(整筆併入=[Lo['c']],
++                               切分併入={x: round(float(q), 4) for x, q, _w2 in _its_W if not _w2},
++                               併入量={W['c']: round(sum(q for _, q, _w2 in _its_W), 4)}, 受併宗=W['c'], 檢核='通過')
++                else:
++                    # 🆕 `W-G.9-357`：連同其半併入已取得之一端不過 ⇒ 依 `K-9-48` 七項 4／3／5 與 `K-9-51` 處之
++                    #   （於其列之處為之·⛔ 停機）
++                    _to = (f"{Lo['c']} 不能依原位次配地；連同其半併入 {W['c']} 不過 ⇒ "
++                           "K-9-48 七項 4／3／5（K-9-51）")
++                    _r4 = None
+             merged_out.update(X)
+             _note = "題一｜" + "；".join(_path) + f"｜只一端成 ⇒ {W['c']}；{_to}"
+             _ct_log(W, _rh[W['k']], True, _note)
+             _ct_log(Lo, _rh[Lo['k']], False, _note)
+             # 未得之一端之地主土地之去處（`K-9-50` 題一 4）——列於後處理之序（⛔ 計入定案之端）
+-            _row(序='後處理', 街廓=_lb, 端=Lo['end'], 候選=Lo['c'], 層級='題一 4', 結果='成', **_r4, 競合=_note)
++            if _r4 is not None:
++                _row(序='後處理', 街廓=_lb, 端=Lo['end'], 候選=Lo['c'], 層級='題一 4', 結果='成', **_r4, 競合=_note)
++            else:
++                _t14_357(W, Lo, X, _frac[Lo['k']], _frac[W['k']], _note)
+             return [Lo]
+         # 整片各試
+         _rw = {e['k']: _ct_try(e, _ct_whole(e, e['S'] | e['U']), '②') for e in (A, B)}
+@@ -13534,6 +13578,199 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             raise RuntimeError(
+                 f"🔴 [K-6-B 段三 K-9-50] 競合之列 {[_kf(l[0]) for l in _susp.values()]} 候其夥伴而夥伴未至（停機款 9）")
+ 
++    # ── 🆕 `W-G.9-357`（`K-9-48` 七項 3〜6 ＋ `K-9-51`）：後處理之整批不過者之逐片處置——步驟 10 與題一 4 呼叫之 ──
++    #   「來源面積」＝ 以 a(x)（段三之輸入之 分攤登記面積 ＋ 面積）計之量；k(x, r) ＝ a′(x, r) ÷ a(x)。
++    _part = {}              # 可拆分之片 → {受併宗: 本趟已併之來源面積（㎡）}
++    _left = {}              # 可拆分之片（本趟經七項 3／5 處置者）→ 剩下之來源面積（㎡）
++    _bunion = {}            # 街廓 → 段三之輸入中該街廓之全部切片之幾何之聯集（第 5 項之距離）
++    _EPS357 = 1e-6
++
++    def _a357(x):
++        _v = float(_by0[x].get('分攤登記面積_m2', 0) or 0) + float(_by0[x].get('面積_m2', 0) or 0)
++        if not _v > 0:
++            raise RuntimeError(f"🔴 [K-6-B 段三 後處理] {x} 之面積 {_v!r} ≤ 0——來源面積之折算無從定之（停機款 9）")
++        return _v
++
++    def _k357(x, recv):
++        _k = _aprime(state, x, recv) / _a357(x)
++        if not _k > 0:
++            raise RuntimeError(f"🔴 [K-6-B 段三 後處理] {x} → {recv} 之 a′ 折算 {_k!r} ≤ 0（停機款 9）")
++        return _k
++
++    def _res357(g, s):
++        if g >= s:
++            return '成', '通過'
++        if g > 0:
++            return '部分成', '部分通過'
++        return '未成', '不過'
++
++    def _got357(x, recv, g):
++        # 可拆分之片之併入之帳（來源面積）；有正之併入 ⇒ 記其受併宗（`段三併出`）
++        if g > 0:
++            _part.setdefault(x, {})
++            _part[x][recv] = _part[x].get(recv, 0.0) + g
++            marks.setdefault(x, set()).add(recv)
++
++    def _max357(x, recv, s):
++        # 七項 3（`K-9-51` ②）：最大面積——先試 s；不過 ⇒ 於 {n × 0.01 < s} 中以二分法求通過之最大者；
++        #   所施者恆為已通過檢核之量（通過之試算態逕為現態·⛔ 另施未驗之量）。回所併之來源面積
++        nonlocal state
++        if not s > 0:
++            return 0.0
++        _k = _k357(x, recv)
++        _rb = {_blk_of[recv]}
++
++        def _try(g):
++            _t = _clone(state)
++            _apply(_t, recv, [(x, _k * g, False)])
++            return _t if _noaff(state, _t, _rb, set()) else None
++        _t = _try(s)
++        if _t is not None:
++            state = _t
++            return s
++        _n = int(s * 100.0)
++        while _n > 0 and _n / 100.0 >= s:
++            _n -= 1
++        while (_n + 1) / 100.0 < s:
++            _n += 1
++        _lo, _hi, _best = 0, _n, None
++        while _lo < _hi:
++            _mid = (_lo + _hi + 1) // 2
++            _tm = _try(_mid / 100.0)
++            if _tm is not None:
++                _lo, _best = _mid, _tm
++            else:
++                _hi = _mid - 1
++        if _best is not None:
++            state = _best
++        return _lo / 100.0
++
++    def _dist357(x, blk):
++        if blk not in _bunion:
++            from shapely.ops import unary_union as _uu357
++            _gs = [_geo[p] for p in sorted(_geo) if _blk_of[p] == blk and _geo[p] is not None]
++            if not _gs:
++                raise RuntimeError(
++                    f"🔴 [K-6-B 段三 後處理·第5項] 候選宗所在之街廓 {blk} 於段三之輸入中無切片——距離無從定之"
++                    "（域上之未定·停機上呈）")
++            _bunion[blk] = _uu357(_gs)
++        if _geo[x] is None:
++            raise RuntimeError(f"🔴 [K-6-B 段三 後處理·第5項] {x} 無重劃前幾何——距離無從定之（停機款 9）")
++        return round(float(_geo[x].distance(_bunion[blk])), 2)
++
++    def _k951(x, s, F, whole):
++        # 七項 5（`K-9-51` ①）：剩下之土地（來源面積 s）先併入同一地主另一個已配得土地之街廓（每次須通過檢核）——
++        #   候選 ＝ 現態保留之同歸戶宗（扣 x、已併出者、F 內街廓之宗）；距離近者先 → 配得面積（G）大者先 → 暫編地號小者先；
++        #   整筆者依序整筆試、過即止；可拆分者依序以最大面積併之。都不行 ⇒ 記「轉調配」（⛔ 停機·⛔ 🔴）。回剩下
++        nonlocal state
++        _cur = alloc_state(state["temp"], state["build"])
++        if _cur.get("err"):
++            raise RuntimeError(f"🔴 [K-6-B 段三 後處理·第5項] 現態配地中止：{_cur['err']!r}（停機款 9）")
++        _G = _cur.get("G")
++        if not isinstance(_G, dict):
++            raise RuntimeError(f"🔴 [K-6-B 段三 後處理·第5項] {x}：alloc_state 未回 G——配得面積之序無從定之（停機款 9）")
++        _own = own_map or {}
++        _gx = str(_own.get(str(_by0[x].get('原地號', '') or ''), '') or '')
++        _cands = []
++        if _gx:
++            for _b in sorted(_cur["kept"]):
++                for _p in sorted(_cur["kept"][_b]):
++                    if _p == x or _p in merged_out or _b in F or _p not in state["by"]:
++                        continue
++                    if str(_own.get(str(state["by"][_p].get('原地號', '') or ''), '') or '') != _gx:
++                        continue
++                    if _p not in _G:
++                        raise RuntimeError(
++                            f"🔴 [K-6-B 段三 後處理·第5項] alloc_state 未回 G 之 {_p}——配得面積之序無從定之（停機款 9）")
++                    _cands.append((_dist357(x, _b), -float(_G[_p]), _p, _b))
++        _cands.sort()
++        _rem = s
++        for _d, _ng, _p, _b in _cands:
++            _base = dict(序='後處理', 街廓=_blk_of[x], 候選=x, 層級='後處理·第5項', 受併宗=_p, 距離=_d, G=-_ng)
++            if whole:
++                _q = _aprime(state, x, _p)
++                _t = _clone(state)
++                _apply(_t, _p, [(x, _q, True)])
++                if _noaff(state, _t, {_b, _blk_of[x]}, {x}):
++                    state = _t
++                    merged_out.add(x)
++                    marks.setdefault(x, set()).add(_p)
++                    _row(**_base, 結果='成', 檢核='通過', 整筆併入=[x], 併入量={_p: round(float(_q), 4)})
++                    _rem = 0.0
++                    break
++                _row(**_base, 結果='未成', 檢核='不過')
++            else:
++                if _rem <= _EPS357:
++                    break
++                _k = _k357(x, _p)
++                _g = _max357(x, _p, _rem)
++                _res, _chk = _res357(_g, _rem)
++                _qq = {_p: round(_k * _g, 4)} if _g > 0 else {}
++                _row(**_base, 結果=_res, 檢核=_chk, 切分併入=dict(_qq), 併入量=dict(_qq))
++                _got357(x, _p, _g)
++                _rem -= _g
++        if _rem > _EPS357:
++            _row(序='後處理', 街廓=_blk_of[x], 候選=x, 層級='後處理·第5項', 受併宗='—', 結果='轉調配', 檢核='—',
++                 併入量={}, 餘量=round(float(_a357(x) if whole else _rem), 4))
++        return _rem
++
++    def _split357(x, qs, lvl, extra):
++        # 七項 3：可拆分者逐受併宗之分（`_plan` 之序）以最大面積併之；其餘 ⇒ 七項 5（F ＝ 未全收之分之街廓）
++        _rem, _F = 0.0, set()
++        for _recv, _q in qs:
++            _k = _k357(x, _recv)
++            _s = float(_q) / _k
++            _g = _max357(x, _recv, _s)
++            _res, _chk = _res357(_g, _s)
++            _qq = {_recv: round(_k * _g, 4)} if _g > 0 else {}
++            _row(序='後處理', 街廓=_blk_of[x], 候選=x, 層級=lvl, 受併宗=_recv, 結果=_res, 檢核=_chk,
++                 整筆併入=[], 切分併入=dict(_qq), 併入量=dict(_qq), 全量=round(float(_q), 4), **extra)
++            _got357(x, _recv, _g)
++            if _g < _s:
++                _F.add(_blk_of[_recv])
++                _rem += _s - _g
++        if _rem > _EPS357:
++            _rem = _k951(x, _rem, _F, False)
++        _left[x] = _rem
++
++    def _t14_357(W, Lo, X, frac_lo, frac_w, note):
++        # `K-9-50` 題一 4 之合併不過 ⇒ ① 未取得之一端之候選整筆試併入已取得之一端之受併宗（七項 4），不過 ⇒ 第 5 項；
++        #   ② 其半之每一片以最大面積併入之（七項 3·已取得之一端先前所併之半計入其帳），其餘 ⇒ 第 5 項（七項 6）
++        nonlocal state
++        c, w = Lo['c'], W['c']
++        _base = dict(序='後處理', 街廓=Lo['blk'], 端=Lo['end'], 層級='題一 4', 受併宗=w, 競合=note)
++        _q = _aprime(state, c, w)
++        _t = _clone(state)
++        _apply(_t, w, [(c, _q, True)])
++        if _noaff(state, _t, {W['blk'], _blk_of[c]}, {c}):
++            state = _t
++            merged_out.add(c)
++            marks.setdefault(c, set()).add(w)
++            _row(**_base, 候選=c, 結果='成', 檢核='通過', 整筆併入=[c], 併入量={w: round(float(_q), 4)})
++        else:
++            _row(**_base, 候選=c, 結果='未成', 檢核='不過')
++            _k951(c, _a357(c), {W['blk']}, True)
++        for x in sorted(X):
++            _f = float(frac_lo.get(x, 0.0))
++            if not _f > 0.0:
++                continue
++            _fw = float(frac_w.get(x, 0.0))
++            if _fw > 0.0:
++                _part.setdefault(x, {})
++                _part[x][w] = _part[x].get(w, 0.0) + _a357(x) * _fw
++            _k = _k357(x, w)
++            _s = _a357(x) * _f
++            _g = _max357(x, w, _s)
++            _res, _chk = _res357(_g, _s)
++            _qq = {w: round(_k * _g, 4)} if _g > 0 else {}
++            _row(**_base, 候選=x, 結果=_res, 檢核=_chk, 整筆併入=[], 切分併入=dict(_qq), 併入量=dict(_qq),
++                 全量=round(_k * _s, 4))
++            _got357(x, w, _g)
++            _rem = _s - _g
++            if _rem > _EPS357:
++                _rem = _k951(x, _rem, {W['blk']}, False)
++            _left[x] = _rem
++
+     # ── 步驟 1〜8 ──
+     for _r in _k950_rows(sorted(order, key=lambda r: r['最終序位'])):
+         _blk, _end, c = _r['街廓'], _r['端'], _r['暫編地號']
+@@ -13729,6 +13966,10 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                 _row(**{**_base, '受併宗': '—'}, 結果='未處置', 檢核='—')
+                 log_print(f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）未處置：二半片皆不鄰 B 內街廓")
+                 continue
++            if not _batch_ok and not _whole:
++                # 🆕 `W-G.9-357`（`K-9-48` 七項 3／5·`K-9-51`）：可拆分者逐受併宗以最大面積併之，其餘 ⇒ 第 5 項
++                _split357(x, _qs, _lvl_name[_cl2], _extra)
++                continue
+             if _batch_ok:
+                 _ok = True
+             else:
+@@ -13744,14 +13985,27 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                     merged_out.add(x)
+                 for _recv in _qty:
+                     marks.setdefault(x, set()).add(_recv)
+-            elif _whole:
+-                _row(**_base, 結果='未成', 檢核='不過')
+             else:
+-                _row(**_base, 結果='未處置', 檢核='不過')
+-                log_print(f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）未處置：「不影響原位次」不過")
++                _row(**_base, 結果='未成', 檢核='不過')
++                # 🆕 `W-G.9-357`（`K-9-48` 七項 4／5·`K-9-51`）：不可拆分者整筆不併入 ⇒ 第 5 項（F ＝ 其受併宗之街廓）
++                _k951(x, _a357(x), {_blk_of[r] for r, _ in _qs}, True)
+ 
+     for _pid, _rs in marks.items():
+         state["by"][_pid]['段三併出'] = sorted(_rs)
++    # 🆕 `W-G.9-357`：可拆分之片之部分併出與剩下——仍有剩下者：有併入 ⇒ `段三部分併出`（來源面積）＋ `段三餘量`，
++    #   全無併入 ⇒ 唯 `段三餘量` ＝ a(x)；本趟全收或有併入而無剩下者 ⇒ 去此二鍵；本趟未觸者⛔ 動
++    for _pid in sorted(set(marks) | set(_left)):
++        _tp = state["by"][_pid]
++        _rm = float(_left.get(_pid, 0.0))
++        if _rm > _EPS357 and _pid in marks:
++            _tp['段三部分併出'] = {_r: round(_v, 4) for _r, _v in sorted(_part.get(_pid, {}).items()) if _v > 0}
++            _tp['段三餘量'] = round(_rm, 4)
++        elif _rm > _EPS357:
++            _tp.pop('段三部分併出', None)
++            _tp['段三餘量'] = round(_a357(_pid), 4)
++        else:
++            _tp.pop('段三部分併出', None)
++            _tp.pop('段三餘量', None)
+     return state["temp"], state["build"], log
+ 
+ 
+@@ -19469,7 +19723,7 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+         except RuntimeError as _e_as:
+             _err = str(_e_as).split("\n")[0][:300]
+         _rows = [] if _err else list(_ss.get('f3_G_values') or [])
+-        _kept, _bad = {}, {}
++        _kept, _bad, _G = {}, {}, {}
+         for _r in _rows:
+             _blk = _r.get('所屬街廓')
+             _pid = str(_r.get('暫編地號'))
+@@ -19485,7 +19739,8 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+                             _bad[_blk] = _bad.get(_blk, 0) + 1
+             elif _r.get('驗_總判') == '保留':
+                 _kept.setdefault(_blk, set()).add(_pid)
+-        return {'kept': _kept, 'bad_pools': _bad, 'err': _err}
++                _G[_pid] = float(_r.get('G(㎡)', 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
++        return {'kept': _kept, 'bad_pools': _bad, 'err': _err, 'G': _G}
+ 
+     def alloc_eval(temp, build):
+         """🆕 `W-G.9-355`：以所給之宗地試算街角選位與配地（`SS_END_BLOCK_MODE` ＝ `'trial'`），回配地首趟之
+diff --git a/verify/selection_pipeline.py b/verify/selection_pipeline.py
+index 8bb4592..8d38e55 100644
+--- a/verify/selection_pipeline.py
++++ b/verify/selection_pipeline.py
+@@ -632,8 +632,26 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
+ 
+ def k6b_stage3_pool_temp(temp_parcels):
+     """`W-G.9-344` 補令一 裁三：交予公設地調配（F.3／F.4）之 temp——去除段三所併出之片
+-    （帶鍵 `段三併出` 者）。回傳**新 list**；⛔ 改其元素。段三不動（無標記）⇒ 元素全同。"""
+-    return [tp for tp in (temp_parcels or []) if "段三併出" not in tp]
++    （帶鍵 `段三併出` 者）。回傳**新 list**；⛔ 改其元素。段三不動（無標記）⇒ 元素全同。
++    🆕 `W-G.9-357`（`K-9-48` 七項 3〜6）：帶 `段三併出` 且其 `段三餘量` ＞ 0 之片（部分併出）⇒ 以新 dict（淺拷貝）入之，
++    其 `分攤登記面積_m2`、`面積_m2` 各乘 ρ ＝ `段三餘量` ÷（分攤登記面積 ＋ 面積）；其餘同上。"""
++    _out = []
++    for tp in (temp_parcels or []):
++        if "段三併出" not in tp:
++            _out.append(tp)
++            continue
++        _rem = float(tp.get("段三餘量", 0) or 0)
++        if not _rem > 0:
++            continue
++        _a = float(tp.get("分攤登記面積_m2", 0) or 0) + float(tp.get("面積_m2", 0) or 0)
++        if not _a > 0:
++            raise RuntimeError(f"🔴 [段三 公設地調配之 temp] {tp.get('暫編地號')!r} 帶段三餘量而其面積 {_a!r} ≤ 0 ⇒ 停機")
++        _rho = _rem / _a
++        _tp = dict(tp)
++        _tp["分攤登記面積_m2"] = float(tp.get("分攤登記面積_m2", 0) or 0) * _rho
++        _tp["面積_m2"] = float(tp.get("面積_m2", 0) or 0) * _rho
++        _out.append(_tp)
++    return _out
+ 
+ 
+ def k6b_f4_ctx(ctx_by_tag, build_pre_by_tag):
+@@ -712,7 +730,7 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+             except RuntimeError as _e:
+                 _err = str(_e).split("\n")[0][:300]
+                 _rows = (getattr(_e, "partial", None) or {}).get("g_rows") or []
+-        _kept, _bad = {}, {}
++        _kept, _bad, _G = {}, {}, {}
+         for _r in _rows:
+             _blk = _r.get("所屬街廓")
+             _pid = str(_r.get("暫編地號"))
+@@ -728,7 +746,8 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+                             _bad[_blk] = _bad.get(_blk, 0) + 1
+             elif _r.get("驗_總判") == "保留":
+                 _kept.setdefault(_blk, set()).add(_pid)
+-        return {"kept": _kept, "bad_pools": _bad, "err": _err}
++                _G[_pid] = float(_r.get("G(㎡)", 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
++        return {"kept": _kept, "bad_pools": _bad, "err": _err, "G": _G}
+ 
+     def alloc_eval(temp, build):
+         """🆕 `W-G.9-353`：以所給之宗地試算街角選位與配地，回配地首趟之末端塊評選（深拷貝）；
