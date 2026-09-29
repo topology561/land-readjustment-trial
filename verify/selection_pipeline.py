@@ -632,8 +632,26 @@ def run_corner_pk(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels,
 
 def k6b_stage3_pool_temp(temp_parcels):
     """`W-G.9-344` 補令一 裁三：交予公設地調配（F.3／F.4）之 temp——去除段三所併出之片
-    （帶鍵 `段三併出` 者）。回傳**新 list**；⛔ 改其元素。段三不動（無標記）⇒ 元素全同。"""
-    return [tp for tp in (temp_parcels or []) if "段三併出" not in tp]
+    （帶鍵 `段三併出` 者）。回傳**新 list**；⛔ 改其元素。段三不動（無標記）⇒ 元素全同。
+    🆕 `W-G.9-357`（`K-9-48` 七項 3〜6）：帶 `段三併出` 且其 `段三餘量` ＞ 0 之片（部分併出）⇒ 以新 dict（淺拷貝）入之，
+    其 `分攤登記面積_m2`、`面積_m2` 各乘 ρ ＝ `段三餘量` ÷（分攤登記面積 ＋ 面積）；其餘同上。"""
+    _out = []
+    for tp in (temp_parcels or []):
+        if "段三併出" not in tp:
+            _out.append(tp)
+            continue
+        _rem = float(tp.get("段三餘量", 0) or 0)
+        if not _rem > 0:
+            continue
+        _a = float(tp.get("分攤登記面積_m2", 0) or 0) + float(tp.get("面積_m2", 0) or 0)
+        if not _a > 0:
+            raise RuntimeError(f"🔴 [段三 公設地調配之 temp] {tp.get('暫編地號')!r} 帶段三餘量而其面積 {_a!r} ≤ 0 ⇒ 停機")
+        _rho = _rem / _a
+        _tp = dict(tp)
+        _tp["分攤登記面積_m2"] = float(tp.get("分攤登記面積_m2", 0) or 0) * _rho
+        _tp["面積_m2"] = float(tp.get("面積_m2", 0) or 0) * _rho
+        _out.append(_tp)
+    return _out
 
 
 def k6b_f4_ctx(ctx_by_tag, build_pre_by_tag):
@@ -712,7 +730,7 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
             except RuntimeError as _e:
                 _err = str(_e).split("\n")[0][:300]
                 _rows = (getattr(_e, "partial", None) or {}).get("g_rows") or []
-        _kept, _bad = {}, {}
+        _kept, _bad, _G = {}, {}, {}
         for _r in _rows:
             _blk = _r.get("所屬街廓")
             _pid = str(_r.get("暫編地號"))
@@ -728,7 +746,8 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
                             _bad[_blk] = _bad.get(_blk, 0) + 1
             elif _r.get("驗_總判") == "保留":
                 _kept.setdefault(_blk, set()).add(_pid)
-        return {"kept": _kept, "bad_pools": _bad, "err": _err}
+                _G[_pid] = float(_r.get("G(㎡)", 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
+        return {"kept": _kept, "bad_pools": _bad, "err": _err, "G": _G}
 
     def alloc_eval(temp, build):
         """🆕 `W-G.9-353`：以所給之宗地試算街角選位與配地，回配地首趟之末端塊評選（深拷貝）；
