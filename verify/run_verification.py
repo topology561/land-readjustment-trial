@@ -1529,5 +1529,26 @@ def main():
     return 0 if allok else 1
 
 
+# 🆕 `W-G.9-359`（`K-9-52` ⑤·通知二）：驗證路徑（無畫面）之區外道路名稱——畫面由使用者於步驟 E 之
+#   「正面道路名稱／識別符」欄填之；本檔只供 harness 比對「是否同一條道路」（既有之案件參數檔⛔ 動）。
+#   🔒 置於 `def main` 之後：本檔 `main` 以前之行號⛔ 移（`run_all` 之出艙含本檔之 traceback 行號）。
+#   本批之消費者唯量測器 `F18`（`verify/probes/probe_WG9359_cand.py`）。
+FRONT_ROAD_NAMES = os.path.join(HERE, "case_front_road_names_UC9898.json")
+
+
+def load_front_road_names():
+    """讀 `FRONT_ROAD_NAMES`（UTF-8），回 `dict(該檔之 'names')`（`{街廓 label: 區外道路名稱}`）。
+
+    `names` 非 `{str: 非空 str}` ⇒ `RuntimeError`（⛔ 靜默回空）；檔缺或 JSON 壞 ⇒ 原例外照拋。
+    """
+    with open(FRONT_ROAD_NAMES, encoding="utf-8") as f:
+        data = json.load(f)
+    names = data.get("names") if isinstance(data, dict) else None
+    if not isinstance(names, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) and v.strip() != "" for k, v in names.items()):
+        raise RuntimeError(f"🔴 {FRONT_ROAD_NAMES} 之 names 非 {{str: 非空 str}}：{names!r} ⇒ 停機")
+    return dict(names)
+
+
 if __name__ == "__main__":
     sys.exit(main())
