@@ -1,0 +1,130 @@
+diff --git a/app.py b/app.py
+index 40bc7a1..6e6d7e3 100644
+--- a/app.py
++++ b/app.py
+@@ -1475,7 +1475,7 @@ def parse_cad_precision_layers(doc, classified_blocks: list, dxf_bytes) -> dict:
+     result['front_lines_matched_count'] = len(result['front_lines'])
+ 
+     # ── 🆕 `W-G.9-350`：正面道路之幾何推導（五級八鍵之 `r3`·KL 裁 `2026-09-05`）──────
+-    #   候選 ＝ 非「可建築土地」之街廓（與上方 `_buildable_blocks` 同一判準之補集·⛔ 分區名字面）；
++    #   候選 ＝ 非「可建築土地」之街廓（與上方 `_buildable_blocks` 同一判準之補集·⛔ 分區名字面）中類別為「道路」者（`K-9-52` ①·`F3_CATEGORY_FRONT_ROAD`）；
+     #   量測原語與容差 ＝ `_best_block` 所用之 `_line_block_overlap`（`W-G.9-235` 工項一之裁）。
+     result['front_road_derive'] = r3_front_road_derive(
+         _front_pts_chosen,
+@@ -11297,7 +11297,7 @@ def r3_front_road_derive(front_pts_by_label, pool_by_label,
+ 
+     `front_pts_by_label`  `{街廓 label: [(x, y), …]}`——各街廓所綁 FRONT_LINE 之**全部頂點**
+                           （折線逐段計·⛔ 截為二端點）。
+-    `pool_by_label`       `{街廓 label: (category, shapely Polygon)}`——候選（非可建築土地之街廓）。
++    `pool_by_label`       `{街廓 label: (category, shapely Polygon)}`——候選（非可建築土地之街廓中類別為「道路」者·`K-9-52` ①）。
+     回傳 `{label: {'line_length_m', 'candidates', 'derived', 'status'}}`：
+       `candidates` ＝ 重疊長 `> 0` 之候選，逐項 `{'block','category','overlap_m','ratio'}`，
+                      依重疊長降冪、同長依 label 升冪（決定性）；
+@@ -11716,18 +11716,21 @@ def adj_block_ctx(labels, category_by, eff_min_build_by, ident_by, width_by, dep
+     回 `{label: {'使用分區', '最小建築面積', '正面道路', '正面路寬', '深度'}}`（後四者中之數量皆為 `adj_q2` 之值；
+     最小建築面積缺者 ＝ `0`〔無規定·`K-9-1` ⑨〕）。
+     停機（`RuntimeError`·⛔ 靜默略過）：
+-      ① 正面道路之識別符為空（`None` 或空字串）者——**一次列出全部**（依 `labels` 之序），告以於步驟 E 之
+-         「正面道路名稱／識別符」欄填名（`K-9-52` ⑤·通知三）；
+-      ② 其後逐街廓：使用分區為空；正面路寬缺、非數或 `≤ 0`；深度缺、非數或 `≤ 0`（皆以 `adj_q2` 之值判之）。
++      ① 正面道路之識別符為空（`None` 或空字串）者——**一次列出全部**（依 `labels` 之序），並分述二補法：圖推導為
++         區外或歧義者，於步驟 E 之「正面道路名稱／識別符」欄填名；無正面線（`FRONT_LINE`）者，須先於圖補其正面線
++         （`K-9-52` ⑤·通知三·`W-G.9-359` 補令一 `R-5′` ①）；
++      ② 其後逐街廓：使用分區為空；正面路寬缺、非數或 `≤ 0`；深度缺、非數或 `≤ 0`；最小建築面積非數、非有限或
++         `＜ 0`（缺者 ＝ `0`·補令一 `R-5′` ②）——皆以 `adj_q2` 之值判之。
+     """
+     _labels = list(labels or [])
+     _ident = ident_by or {}
+     _miss = [_l for _l in _labels if _ident.get(_l) is None or str(_ident.get(_l)) == '']
+     if _miss:
+         raise RuntimeError(
+-            "🔴 [W-G.9-359 候選街廓名單] 下列街廓之正面道路無識別符（圖推導為區外或歧義，而未填名）：%s ⇒ 停機。"
+-            "請於步驟 E 該街廓之「正面道路名稱／識別符」欄填名（臨同一條道路者填相同名稱），"
+-            "按「✅ 儲存路寬資料」後重跑。" % '、'.join(str(_l) for _l in _miss))
++            "🔴 [W-G.9-359 候選街廓名單] 下列街廓之正面道路無識別符：%s ⇒ 停機。"
++            "圖推導為區外或歧義者：請於步驟 E 該街廓之「正面道路名稱／識別符」欄填名（臨同一條道路者填相同名稱），"
++            "按「✅ 儲存路寬資料」後重跑；無正面線（FRONT_LINE）者：須先於圖補其正面線，填名無從補之。"
++            % '、'.join(str(_l) for _l in _miss))
+ 
+     def _pos_q2(_v, _what, _l):
+         if _v is None or (isinstance(_v, str) and _v.strip() == ''):
+@@ -11741,6 +11744,20 @@ def adj_block_ctx(labels, category_by, eff_min_build_by, ident_by, width_by, dep
+             raise RuntimeError(f"🔴 [W-G.9-359 候選街廓名單] 街廓 {_l!r} 之{_what} {_v!r}（{_q}）≤ 0 ⇒ 停機")
+         return _q
+ 
++    def _nonneg_q2(_v, _l):
++        # 補令一 `R-5′` ②：缺、`None` 或空白字串 ⇒ `0`（無規定）；非數、非有限或 `＜ 0` ⇒ 停機
++        if _v is None or (isinstance(_v, str) and _v.strip() == ''):
++            _v = 0
++        try:
++            _q = adj_q2(_v)
++            _ok = _q.is_finite() and _q >= 0
++        except (TypeError, ValueError, ArithmeticError):
++            raise RuntimeError(f"🔴 [W-G.9-359 候選街廓名單] 街廓 {_l!r} 之最小建築面積 {_v!r} 非數 ⇒ 停機")
++        if not _ok:
++            raise RuntimeError(f"🔴 [W-G.9-359 候選街廓名單] 街廓 {_l!r} 之最小建築面積 {_v!r}（{_q}）"
++                               "非有限或 ＜ 0 ⇒ 停機")
++        return _q
++
+     _eff = eff_min_build_by or {}
+     _out = {}
+     for _l in _labels:
+@@ -11749,7 +11766,8 @@ def adj_block_ctx(labels, category_by, eff_min_build_by, ident_by, width_by, dep
+             raise RuntimeError(f"🔴 [W-G.9-359 候選街廓名單] 街廓 {_l!r} 無使用分區 ⇒ 停機")
+         _w = _pos_q2((width_by or {}).get(_l), '正面路寬', _l)
+         _d = _pos_q2((depth_by or {}).get(_l), '深度', _l)
+-        _out[_l] = {'使用分區': str(_cat), '最小建築面積': adj_q2(_eff.get(_l, 0) or 0),
++        _m = _nonneg_q2(_eff.get(_l), _l)
++        _out[_l] = {'使用分區': str(_cat), '最小建築面積': _m,
+                     '正面道路': str(_ident[_l]), '正面路寬': _w, '深度': _d}
+     return _out
+ 
+@@ -11757,9 +11775,9 @@ def adj_block_ctx(labels, category_by, eff_min_build_by, ident_by, width_by, dep
+ def adj_pool_anchor(g_rows):
+     """`W-G.9-359`：各街廓之距離迄點（KL 質心起迄法之迄點·純函式）。
+ 
+-    逐 `所屬街廓`，於 `推進側別` ＝ `ADJ_POOL_SIDE` 且 `cut_coords` 至少 `3` 點之列中，取多邊形（無效者 `buffer(0)`）
+-    面積最大者（並列 ⇒ `str(暫編地號)` 字典序小者），回 `{街廓: (質心 x, 質心 y)}`（`float`）；無此種列之街廓⛔ 入。
+-    停機：所取者之多邊形為空（無從取質心）。
++    逐 `所屬街廓`，於 `推進側別` ＝ `ADJ_POOL_SIDE` 且 `cut_coords` 至少 `3` 點之列中，取多邊形（無效者 `buffer(0)`），
++    **其為空者⛔ 計**（退化之片·無可容之地·補令一 裁一）；餘者中面積最大者（並列 ⇒ `str(暫編地號)` 字典序小者）之質心，
++    回 `{街廓: (質心 x, 質心 y)}`（`float`）；無餘者之街廓⛔ 入（視同無抵費地·⛔ 停機）。
+     """
+     from shapely.geometry import Polygon
+     _best = {}
+@@ -11772,14 +11790,14 @@ def adj_pool_anchor(g_rows):
+         _p = Polygon(_cs)
+         if not _p.is_valid:
+             _p = _p.buffer(0)
++        if _p.is_empty:
++            continue
+         _b = str(_r.get('所屬街廓'))
+         _k = (-float(_p.area), str(_r.get('暫編地號')))
+         if _b not in _best or _k < _best[_b][0]:
+             _best[_b] = (_k, _p)
+     _out = {}
+     for _b, (_k, _p) in _best.items():
+-        if _p.is_empty:
+-            raise RuntimeError(f"🔴 [W-G.9-359 候選街廓名單] 街廓 {_b!r} 之抵費地最大片 {_k[1]!r} 之多邊形為空 ⇒ 停機")
+         _c = _p.centroid
+         _out[_b] = (float(_c.x), float(_c.y))
+     return _out
+@@ -11796,14 +11814,16 @@ def adj_candidate_lists(intake, blk_ctx, pool_anchor, slice_coords, tol=ADJ_DEPT
+       tol           深度之同深容差（`K-9-52` ③）。
+     依 `intake['units']` 之序逐單位回 `{'歸戶', '軌', '原街廓', '錨點', '名單'}`：
+       錨點 ＝ 該單位之建築街廓內不能分配 ＋ 共同負擔用地之列中原有面積最大者（並列取暫編地號小者）；
+-      距離 `d(T)` ＝ 錨點之多邊形之質心至 `pool_anchor[T]` 之直線距離（`adj_q2`）；無迄點者 ＝ `None`
++      距離 `d(T)` ＝ 錨點之多邊形（無效者 `buffer(0)`·同抵費地之迄點·補令一 裁三）之質心至 `pool_anchor[T]`
++      之直線距離（`adj_q2`）；無迄點者 ＝ `None`
+       （`r7` ＝ `(1, 0)`·排於同鍵者之後）。
+       建地軌：名單首 ＝ 原街廓（⛔ 排序）；其餘依八鍵 `(r1, r2, r3, r4, r5, r6, r7, 街廓)` 升序：
+         `r1` 使用分區同／異；`r2` 最小建築面積之級（相異值升序；往小 `(0, n)`、往大 `(1, n)`·往大者第二趟排除）；
+         `r3` 正面道路同／異；`r4` 正面路寬同／異；`r5` 路寬之級（相異值由寬而窄；往窄 `(0, n)`、往寬 `(1, n)`·
+         `K-9-52` ②）；`r6` 深度（`|Δ| ≤ tol` 同深 `(0, 0)`、較淺 `(0, −Δ)`、較深 `(1, Δ)`·`K-9-52` ③）；`r7` 距離。
+       公設軌：名單 ＝ 全部可建築街廓依 `(r7, 街廓)` 升序。
+-    停機：單位無列；錨點無幾何（`slice_coords` 無至少 `3` 點或多邊形為空）；建地軌之原街廓非可建築街廓。
++    停機：單位無列；錨點無幾何（`slice_coords` 無至少 `3` 點或 `buffer(0)` 後為空·位置無從定·補令一 裁二）；
++      建地軌之原街廓非可建築街廓。
+     """
+     import math as _m
+     from decimal import Decimal
