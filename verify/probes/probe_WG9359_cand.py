@@ -9,7 +9,8 @@
            `adj_candidate_lists`／`adj_candidate_rows` 與 `ADJ_DEPTH_TIE_TOL_M`、`F3_CATEGORY_FRONT_ROAD`）。
            C1〜C18 ＝ 八鍵各鍵之決勝（使用分區／最小建築面積〔往小、往大、第二趟排除〕／正面道路／正面路寬／
            次一級路寬〔問二附圖之例〕／深度〔0.10 同深·0.11 較淺〕／距離／街廓名）、公設軌、錨點、原街廓居首、
-           停機、抵費地之迄點、類別表、顯示列、四捨五入、深度差之 2 位；P0 ＝ 判式自驗。
+           停機、抵費地之迄點、類別表、顯示列、四捨五入、深度差之 2 位；C19〜C22 ＝ 補令一（退化之池列⛔ 計、
+           錨點退化 ⇒ 停機、自交之錨點以 buffer(0) 之質心、最小建築面積非數／非有限／負 ⇒ 停機）；P0 ＝ 判式自驗。
            🔒 以程式字樣為錨之突變（判別力）⛔ 載於本器——規格單流程由發單側讀受單側之碼後補寫（`W-G.9-359 §四-2`）。
   wiring   <repo>
            AST ＋ 畫面區塊之合成執行：W1 具名常數 ＝ `0.1`、二函式之預設引用之、新函式內⛔ 字面 `0.1`／`0.5`；
@@ -242,6 +243,36 @@ def _cases(ns):
     _run(out, "C18 深度差以二位小數計：−0.13 ⇒ 較淺；＋0.10 ⇒ 同深",
          lambda: [(it["街廓"], it["深度差"], it["深度"]) for it in _one(ns, s18, {"A": X(9), "B": X(1)})[0]["名單"][1:]],
          [("B", D("0.10"), "同深"), ("A", D("-0.13"), "較淺")])
+    # ── 補令一（`W-G.9-359`）──
+    from shapely.geometry import Polygon as _Pg
+    s19 = {"S": (H, 0, "X", 8, 40), "A": (H, 0, "X", 8, 40), "B": (H, 0, "X", 8, 40)}
+    r19 = [{"推進側別": "抵費地", "所屬街廓": "A", "暫編地號": "A-p1", "cut_coords": [[0, 0], [1, 0], [2, 0]]},
+           {"推進側別": "抵費地", "所屬街廓": "B", "暫編地號": "B-p1", "cut_coords": [[0, 5], [1, 5], [2, 5]]},
+           {"推進側別": "抵費地", "所屬街廓": "B", "暫編地號": "B-p2", "cut_coords": _sq(10, 0, 2)}]
+
+    def _c19():
+        pa = ns["adj_pool_anchor"](r19)
+        return ({k: (round(v[0], 6), round(v[1], 6)) for k, v in pa.items()},
+                [(it["街廓"], it["距離"]) for it in _one(ns, s19, pa)[0]["名單"][1:]])
+    _run(out, "C19 退化（buffer(0) 後為空）之池列⛔ 計；某街廓之池列皆退化 ⇒ 視同無抵費地（距離 —·排於同鍵者之後）",
+         _c19, ({"B": (10.0, 0.0)}, [("B", D("10.00")), ("A", None)]))
+    _run(out, "C20 錨點之多邊形退化（buffer(0) 後為空）⇒ 停機",
+         lambda: _stop(lambda: _one(ns, {"S": (H, 0, "X", 8, 40), "A": (H, 0, "X", 8, 40)}, {"A": X(10)},
+                                    coords={"u": [[0, 0], [1, 0], [2, 0]]})), ("停",))
+    bow = [[0, 0], [6, 3], [6, 0], [0, 3]]
+
+    def _c21():
+        pb = _Pg(bow).buffer(0)
+        pr = _Pg(bow)
+        e_b = ns["adj_q2"](math.hypot(10.0 - pb.centroid.x, 0.0 - pb.centroid.y))
+        e_r = ns["adj_q2"](math.hypot(10.0 - pr.centroid.x, 0.0 - pr.centroid.y))
+        got = _one(ns, {"S": (H, 0, "X", 8, 40), "A": (H, 0, "X", 8, 40)}, {"A": X(10)},
+                   coords={"u": bow})[0]["名單"][1]["距離"]
+        return (_Pg(bow).is_valid, got == e_b, e_b != e_r)
+    _run(out, "C21 錨點之多邊形無效（自交）⇒ 以 buffer(0) 之質心起算（同抵費地之迄點）", _c21, (False, True, True))
+    _run(out, "C22 最小建築面積非數、非有限或負 ⇒ 停機",
+         lambda: tuple(_stop(lambda v=v: ns["adj_block_ctx"](["A"], {"A": H}, {"A": v}, {"A": "X"}, {"A": 8}, {"A": 40}))
+                       for v in ("x", float("nan"), -1.0)), (("停",), ("停",), ("停",)))
     return out
 
 
@@ -493,6 +524,8 @@ def _independent(units, labels, cat, mba, ident, width, depth, g_rows, coords, p
             continue
         p = Polygon(cs)
         p = p if p.is_valid else p.buffer(0)
+        if p.is_empty:
+            continue    # 補令一 裁一：退化之池列⛔ 計
         k = (-p.area, str(r["暫編地號"]))
         b = str(r["所屬街廓"])
         if b not in best or k < best[b][0]:
@@ -510,6 +543,8 @@ def _independent(units, labels, cat, mba, ident, width, depth, g_rows, coords, p
         a = min(sl, key=lambda r: (-float(r["原有面積"]), str(r["暫編地號"])))
         p = Polygon(coords[str(a["暫編地號"])])
         p = p if p.is_valid else p.buffer(0)
+        if p.is_empty:
+            raise RuntimeError(f"外部錨：錨點 {a['暫編地號']!r} 之多邊形為空（補令一 裁二 ⇒ 停機）")
         ax, ay = p.centroid.x, p.centroid.y
         dist = {l: (_q2(math.hypot(pa[l][0] - ax, pa[l][1] - ay)) if l in pa else None) for l in labels}
         dk = {l: ((0, dist[l]) if dist[l] is not None else (1, Decimal(0))) for l in labels}
