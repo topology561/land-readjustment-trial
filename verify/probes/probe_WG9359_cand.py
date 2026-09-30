@@ -10,7 +10,9 @@
            C1〜C18 ＝ 八鍵各鍵之決勝（使用分區／最小建築面積〔往小、往大、第二趟排除〕／正面道路／正面路寬／
            次一級路寬〔問二附圖之例〕／深度〔0.10 同深·0.11 較淺〕／距離／街廓名）、公設軌、錨點、原街廓居首、
            停機、抵費地之迄點、類別表、顯示列、四捨五入、深度差之 2 位；C19〜C22 ＝ 補令一（退化之池列⛔ 計、
-           錨點退化 ⇒ 停機、自交之錨點以 buffer(0) 之質心、最小建築面積非數／非有限／負 ⇒ 停機）；P0 ＝ 判式自驗。
+           錨點退化 ⇒ 停機、自交之錨點以 buffer(0) 之質心、最小建築面積非數／非有限／負 ⇒ 停機）；C23〜C26 ＝ 補令二
+           （池片之面積以 adj_q2 計為 0 者⛔ 計〔0.0046 ㎡ 之細縫⛔ 計·恰 0.005 ㎡ 者計〕、池片之坐標含非數值 ⇒ 停機
+           〔一次列出全部〕、錨點之坐標含非數值 ⇒ 停機）；P0 ＝ 判式自驗。
            🔒 以程式字樣為錨之突變（判別力）⛔ 載於本器——規格單流程由發單側讀受單側之碼後補寫（`W-G.9-359 §四-2`）。
   wiring   <repo>
            AST ＋ 畫面區塊之合成執行：W1 具名常數 ＝ `0.1`、二函式之預設引用之、新函式內⛔ 字面 `0.1`／`0.5`；
@@ -273,6 +275,51 @@ def _cases(ns):
     _run(out, "C22 最小建築面積非數、非有限或負 ⇒ 停機",
          lambda: tuple(_stop(lambda v=v: ns["adj_block_ctx"](["A"], {"A": H}, {"A": v}, {"A": "X"}, {"A": 8}, {"A": 40}))
                        for v in ("x", float("nan"), -1.0)), (("停",), ("停",), ("停",)))
+    # ── 補令二（`W-G.9-359`）──
+    nan, inf = float("nan"), float("inf")
+    s23 = {"S": (H, 0, "X", 8, 40), "A": (H, 0, "X", 8, 40), "B": (H, 0, "X", 8, 40), "C": (H, 0, "X", 8, 40)}
+    r23 = [{"推進側別": "抵費地", "所屬街廓": "A", "暫編地號": "A-p1", "cut_coords": [[50, 0], [54.6, 0], [54.6, 0.001], [50, 0.001]]},
+           {"推進側別": "抵費地", "所屬街廓": "B", "暫編地號": "B-p1", "cut_coords": [[0, 0], [0.5, 0], [0.5, 0.01], [0, 0.01]]},
+           {"推進側別": "抵費地", "所屬街廓": "C", "暫編地號": "C-p1", "cut_coords": _sq(30, 0, 2)}]
+
+    def _c23():
+        pa = ns["adj_pool_anchor"](r23)
+        return ({k: (round(v[0], 6), round(v[1], 6)) for k, v in pa.items()},
+                [(it["街廓"], it["距離"]) for it in _one(ns, s23, pa, coords={"u": _sq(100, 0)})[0]["名單"][1:]])
+    _run(out, "C23 池片之面積以 adj_q2 計為 0 者⛔ 計（0.0046 ㎡ 之細縫⛔ 計、恰 0.005 ㎡ 者計）；某街廓之池片皆如此 ⇒ 視同無抵費地",
+         _c23, ({"B": (0.25, 0.005), "C": (30.0, 0.0)}, [("C", D("70.00")), ("B", D("99.75")), ("A", None)]))
+    ok24 = {"推進側別": "抵費地", "所屬街廓": "A", "暫編地號": "A-ok", "cut_coords": _sq(0, 0, 2)}
+    bad24 = ([[10, -1], [12, -1], [nan, nan], [12, 1], [10, 1]], [[0, 0], [2, 0], [nan, 1]],
+             [[10, -1], [14, -1], [inf, 0], [14, 1], [10, 1]], [[10, -1], [12, -1], ["x", 0], [12, 1]],
+             [[10, -1], [12, -1], [None, 0], [12, 1]], [[10, -1], [12, -1], [10 ** 400, 0], [12, 1]])
+    _run(out, "C24 池片之坐標含非數值（NaN〔餘形非空／為空〕、無窮大、字串、None、轉之溢位）⇒ 停機（同街廓另有正常之片亦然）",
+         lambda: tuple(_stop(lambda cs=cs: ns["adj_pool_anchor"](
+             [ok24, {"推進側別": "抵費地", "所屬街廓": "A", "暫編地號": "A-bad", "cut_coords": cs}])) for cs in bad24),
+         (("停",),) * 6)
+    r25 = [{"推進側別": "抵費地", "所屬街廓": "QA", "暫編地號": "壞一", "cut_coords": bad24[0]},
+           {"推進側別": "抵費地", "所屬街廓": "QC", "暫編地號": "好", "cut_coords": _sq(0, 0, 2)},
+           {"推進側別": "抵費地", "所屬街廓": "QB", "暫編地號": "壞二", "cut_coords": bad24[2]},
+           {"推進側別": "抵費地", "所屬街廓": "QD", "暫編地號": "短一", "cut_coords": [[0, 0], [nan, 1]]}]
+
+    def _c25():
+        try:
+            ns["adj_pool_anchor"](r25)
+            return "未停"
+        except RuntimeError as ex:
+            return (all(t in str(ex) for t in ("QA", "壞一", "QB", "壞二")), "短一" in str(ex))
+    _run(out, "C25 池片之坐標含非數值者一次列出全部（街廓與暫編地號）；未滿 3 點之列⛔ 取、⛔ 列", _c25, (True, False))
+
+    def _c26(cs):
+        try:
+            _lists(ns, {"S": (H, 0, "X", 8, 40), "A": (H, 0, "X", 8, 40)}, {"A": X(10)},
+                   [_unit(ns, "g9", True, "S", [("錨壞", 100.0)])], coords={"錨壞": cs})
+            return "未停"
+        except RuntimeError as ex:
+            return "g9" in str(ex) and "錨壞" in str(ex)
+    _run(out, "C26 錨點之坐標含非數值（NaN〔餘形非空〕、無窮大、字串）⇒ 停機，訊息含歸戶與暫編地號",
+         lambda: tuple(_c26(cs) for cs in ([[-1, -1], [1, -1], [nan, 0], [1, 1], [-1, 1]],
+                                           [[-1, -1], [1, -1], [inf, 0], [1, 1], [-1, 1]],
+                                           [[-1, -1], [1, -1], ["x", 0], [1, 1]])), (True, True, True))
     return out
 
 
@@ -514,6 +561,13 @@ def _q2(x):
     return Decimal(repr(float(x))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+def _fin(cs):
+    try:
+        return all(math.isfinite(float(pt[0])) and math.isfinite(float(pt[1])) for pt in cs)
+    except (TypeError, ValueError, OverflowError, IndexError, KeyError):
+        return False
+
+
 def _independent(units, labels, cat, mba, ident, width, depth, g_rows, coords, pool_side, track_build, tol):
     """外部錨：本器另寫之排序（⛔ 呼叫名單之函式）。回 {歸戶: (錨點, [(街廓, 距離, 第二趟排除)])}。"""
     from shapely.geometry import Polygon
@@ -522,10 +576,12 @@ def _independent(units, labels, cat, mba, ident, width, depth, g_rows, coords, p
         cs = r.get("cut_coords") or []
         if r.get("推進側別") != pool_side or len(cs) < 3:
             continue
+        if not _fin(cs):
+            raise RuntimeError(f"外部錨：池片 {r['暫編地號']!r} 之坐標含非數值（補令二 裁二 ⇒ 停機）")
         p = Polygon(cs)
         p = p if p.is_valid else p.buffer(0)
-        if p.is_empty:
-            continue    # 補令一 裁一：退化之池列⛔ 計
+        if _q2(p.area) == 0:
+            continue    # 補令二 裁一：面積以 q2 計為 0 之池片⛔ 計（含空）
         k = (-p.area, str(r["暫編地號"]))
         b = str(r["所屬街廓"])
         if b not in best or k < best[b][0]:
@@ -541,6 +597,8 @@ def _independent(units, labels, cat, mba, ident, width, depth, g_rows, coords, p
     for u in units:
         sl = list(u["建築街廓內不能分配"]) + list(u["共同負擔用地"])
         a = min(sl, key=lambda r: (-float(r["原有面積"]), str(r["暫編地號"])))
+        if not _fin(coords[str(a["暫編地號"])]):
+            raise RuntimeError(f"外部錨：錨點 {a['暫編地號']!r} 之坐標含非數值（補令二 裁二 ⇒ 停機）")
         p = Polygon(coords[str(a["暫編地號"])])
         p = p if p.is_valid else p.buffer(0)
         if p.is_empty:
