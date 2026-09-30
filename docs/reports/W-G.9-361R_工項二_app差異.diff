@@ -1,0 +1,71 @@
+diff --git a/app.py b/app.py
+index cae2523..9d3c1fa 100644
+--- a/app.py
++++ b/app.py
+@@ -13115,6 +13115,29 @@ K6_SHARE_MIN_LEN = 0.01   # 共用線段之最小長度（m）＝ 辦法 §3 長
+                           #      交集若為 Point 或長度 < 本值 ⇒ 視為「單點相接」⇒ ⛔ 不連通。
+                           #   ⛔ 非容差：本值係**長度門檻**，⛔ 不用於座標比較。
+ 
++K6_SHARE_COORD_TOL = 0.0001   # 地籍界線之座標容差（m）＝ 0.1 mm（`K-9-54`·KL 裁 `2026-09-30`·`GB-195`·`W-G.9-361`）
++                              #   🔒 用途唯一：`k6_shares_segment` 之精確共線長未達門檻時之重判——二片相距 ≤ 本值，
++                              #      且二片之邊界各落於他片邊界本值以內之線長之小者 ≥ 門檻 ⇒ 視為共用同一段界線。
++                              #   ⛔ 非面積之密合（有面積之縫隙⛔ 由此密合·`K-9-25`）；⛔ 他處引用本值。
++
++
++def _k954_lin_len(geom):
++    # 🔒 `K-9-54`（`W-G.9-361`）：線長 λ(g) ＝ g 之 LineString／LinearRing 之長之和；
++    #   Multi*／GeometryCollection 逐元素下探；Point／MultiPoint（及其他非線之型）計 0。
++    #   唯為 `k6_shares_segment` 之座標容差重判所呼叫。
++    _tot = 0.0
++    _stack = [geom]
++    while _stack:
++        _g = _stack.pop()
++        if _g is None or _g.is_empty:
++            continue
++        _gt = _g.geom_type
++        if _gt in ('LineString', 'LinearRing'):
++            _tot += float(_g.length)
++        elif _gt in ('MultiLineString', 'MultiPoint', 'MultiPolygon', 'GeometryCollection'):
++            _stack.extend(list(_g.geoms))
++    return _tot
++
+ 
+ def k6_shares_segment(poly_a, poly_b, min_len=None):
+     # 🔒 K-6 §一：二片之邊界是否**共用線段**（⛔ 單點相接不算）。
+@@ -13130,6 +13153,8 @@ def k6_shares_segment(poly_a, poly_b, min_len=None):
+     #   - 交集僅 Point／MultiPoint ⇒ 長度 0 ⇒ **⛔ 不連通**（正典「單點相接不算」）
+     #   - GeometryCollection ⇒ 逐元素分流（⛔ 不整體取 length·Point 之 length 恆 0 但混入易誤讀）
+     # ⛔ **不以面積交集判**：二片若重疊（上游 bug），面積交集非 0 而邊界未必共線。
++    # 🔧 `K-9-54`（KL 裁 `2026-09-30`·`W-G.9-361`·`GB-195`）：上開精確交集之線長未達門檻者，
++    #   另以座標容差（0.1 mm）重判（見函式末段）；精確之長已達門檻者，布林與長皆同本批前。
+     _ml = float(K6_SHARE_MIN_LEN if min_len is None else min_len)
+     if poly_a is None or poly_b is None:
+         return (False, 0.0)
+@@ -13153,7 +13178,26 @@ def k6_shares_segment(poly_a, poly_b, min_len=None):
+         elif _gt == 'Polygon':
+             _tot += float(_g.exterior.length)   # 邊界交集為面 ⇒ 二片邊界重疊一段閉環
+         # Point ⇒ 長度 0 ⇒ ⛔ 不累加
+-    return (_tot >= _ml, _tot)
++    if _tot >= _ml:
++        return (True, _tot)          # 精確之長達門檻 ⇒ 相連·其長 ＝ 精確之長（同本批前）
++    # 🔧 `K-9-54`：精確之長未達門檻 ⇒ 以座標容差重判。界線於圖上重合而座標有微米級之差者，
++    #   精確交集退化為點 ⇒ 本批前判為不相連（`GB-195`）。
++    #   二片相距 ≤ 容差，且 L ＝ min(L₁, L₂) ≥ 門檻 ⇒ 相連·其長 ＝ L；否則 ⇒ 不相連·其長 ＝ 精確之長。
++    #     L₁ ＝ poly_a 之邊界落於 poly_b 之邊界之容差帶內之線長；L₂ ＝ 反向
++    #     （二向取小 ⇒ (a, b) 與 (b, a) 同判、同長）。
++    #   ⛔ 重判之任一幾何運算拋例外 ⇒ 不相連·其長 ＝ 精確之長（⛔ 靜默改判相連）。
++    _tol = float(K6_SHARE_COORD_TOL)
++    try:
++        if poly_a.distance(poly_b) > _tol:
++            return (False, _tot)
++        _l1 = _k954_lin_len(_ba.intersection(_bb.buffer(_tol)))
++        _l2 = _k954_lin_len(_bb.intersection(_ba.buffer(_tol)))
++    except Exception:
++        return (False, _tot)
++    _l = min(_l1, _l2)
++    if _l >= _ml:
++        return (True, _l)
++    return (False, _tot)
+ 
+ 
+ def k6_merge_groups(parcels, own_map, min_len=None):
