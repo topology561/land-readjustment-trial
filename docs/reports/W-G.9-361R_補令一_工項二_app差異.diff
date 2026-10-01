@@ -1,0 +1,142 @@
+diff --git a/app.py b/app.py
+index cae2523..9827066 100644
+--- a/app.py
++++ b/app.py
+@@ -13115,6 +13115,100 @@ K6_SHARE_MIN_LEN = 0.01   # 共用線段之最小長度（m）＝ 辦法 §3 長
+                           #      交集若為 Point 或長度 < 本值 ⇒ 視為「單點相接」⇒ ⛔ 不連通。
+                           #   ⛔ 非容差：本值係**長度門檻**，⛔ 不用於座標比較。
+ 
++K6_SHARE_COORD_TOL = 0.0001   # 地籍界線之座標容差（m）＝ 0.1 mm（`K-9-54`·KL 裁 `2026-09-30`·`GB-195`·`W-G.9-361`）
++                              #   🔒 用途唯一：`k6_shares_segment` 之精確共線長未達門檻時之重判——以**界址點**為之
++                              #      （`W-G.9-361` 補令一）：二片之邊兩兩相對，其互投影之重疊段之 Hausdorff 距 ≤ 本值者
++                              #      始為共線之段（`K-6 §一`「兩端完全共點」以本值讀之）。
++                              #   ⛔ 非面積之密合（有面積之縫隙⛔ 由此密合·`K-9-25`）；⛔ 他處引用本值。
++
++
++def _k954_all_finite(poly):
++    # 🔒 `K-9-54`（`W-G.9-361` 補令一 ④″-0）：poly 之任一環之任一頂點之 x、y 皆有限 ⇒ True。
++    #   唯為 `k6_shares_segment` 之重判所呼叫。
++    import math as _m954
++    for _r in [poly.exterior] + list(poly.interiors):
++        for _c in _r.coords:
++            if not (_m954.isfinite(_c[0]) and _m954.isfinite(_c[1])):
++                return False
++    return True
++
++
++def _k954_vtx_len(poly_a, poly_b, tol):
++    # 🔒 `K-9-54`（`W-G.9-361` 補令一 ④″-2）：界址點之讀法之共線長 L。
++    #   邊 ＝ 各環（exterior 與 interiors）相鄰二頂點所成之線段（長 0 者略）。以一方之邊 s 為軸（起點 s₀、單位方向 d、
++    #   長 |s|），他方之邊 t 之二端投影 u₀ ＝ (t₀ − s₀)·d、u₁ ＝ (t₁ − s₀)·d（u₀ ＝ u₁ 者略）；重疊區
++    #   I ＝ [max(0, min(u₀, u₁)), min(|s|, max(u₀, u₁))]（|I| ≤ 0 者略）；s′ ＝ s 於 I 之子段，t′ ＝ t 上參數
++    #   λ(u) ＝ (u − u₀)／(u₁ − u₀) 於 [λ(lo), λ(hi)] 之子段；H(s′, t′)（四端點至他段之距之最大者）≤ tol 者，
++    #   I 計入 s 之段集、[min λ, max λ] × |t| 計入 t 之段集。各邊之段集取聯集之長、逐片加總；二軸 × 二片之四長取小。
++    #   🔒 先篩：二邊之外接矩形相距逾 tol 者略——其任二點之距皆 > tol ⇒ H > tol ⇒ 本⛔ 計入（⛔ 改結果）。
++    #   唯為 `k6_shares_segment` 所呼叫。
++    def _edges(_p):
++        _out = []
++        for _r in [_p.exterior] + list(_p.interiors):
++            _cs = [(float(_c[0]), float(_c[1])) for _c in _r.coords]
++            for _i in range(len(_cs) - 1):
++                if _cs[_i] != _cs[_i + 1]:
++                    _out.append((_cs[_i], _cs[_i + 1]))
++        return _out
++
++    def _pt_seg(_px, _py, _a, _b):
++        _dx, _dy = _b[0] - _a[0], _b[1] - _a[1]
++        _ll = _dx * _dx + _dy * _dy
++        if _ll == 0.0:
++            return ((_px - _a[0]) ** 2 + (_py - _a[1]) ** 2) ** 0.5
++        _k = ((_px - _a[0]) * _dx + (_py - _a[1]) * _dy) / _ll
++        _k = 0.0 if _k < 0.0 else (1.0 if _k > 1.0 else _k)
++        _qx, _qy = _a[0] + _k * _dx, _a[1] + _k * _dy
++        return ((_px - _qx) ** 2 + (_py - _qy) ** 2) ** 0.5
++
++    def _ulen(_iv):
++        _tot, _cur = 0.0, None
++        for _lo, _hi in sorted(_iv):
++            if _cur is not None and _lo <= _cur[1]:
++                _cur[1] = max(_cur[1], _hi)
++            else:
++                if _cur is not None:
++                    _tot += _cur[1] - _cur[0]
++                _cur = [_lo, _hi]
++        return _tot + (_cur[1] - _cur[0] if _cur is not None else 0.0)
++
++    def _axis(_SX, _SY):
++        _ix, _iy = [[] for _ in _SX], [[] for _ in _SY]
++        for _i, ((_x0, _y0), (_x1, _y1)) in enumerate(_SX):
++            _ls = ((_x1 - _x0) ** 2 + (_y1 - _y0) ** 2) ** 0.5
++            _ux, _uy = (_x1 - _x0) / _ls, (_y1 - _y0) / _ls
++            _bx0, _bx1 = min(_x0, _x1), max(_x0, _x1)
++            _by0, _by1 = min(_y0, _y1), max(_y0, _y1)
++            for _j, ((_p0, _q0), (_p1, _q1)) in enumerate(_SY):
++                _gx = max(0.0, min(_p0, _p1) - _bx1, _bx0 - max(_p0, _p1))
++                _gy = max(0.0, min(_q0, _q1) - _by1, _by0 - max(_q0, _q1))
++                if (_gx * _gx + _gy * _gy) ** 0.5 > tol:
++                    continue
++                _u0 = (_p0 - _x0) * _ux + (_q0 - _y0) * _uy
++                _u1 = (_p1 - _x0) * _ux + (_q1 - _y0) * _uy
++                if _u0 == _u1:
++                    continue
++                _lo, _hi = max(0.0, min(_u0, _u1)), min(_ls, max(_u0, _u1))
++                if _hi <= _lo:
++                    continue
++                _f0, _f1 = (_lo - _u0) / (_u1 - _u0), (_hi - _u0) / (_u1 - _u0)
++                _s0 = (_x0 + _lo * _ux, _y0 + _lo * _uy)
++                _s1 = (_x0 + _hi * _ux, _y0 + _hi * _uy)
++                _t0 = (_p0 + _f0 * (_p1 - _p0), _q0 + _f0 * (_q1 - _q0))
++                _t1 = (_p0 + _f1 * (_p1 - _p0), _q0 + _f1 * (_q1 - _q0))
++                _h = max(_pt_seg(_s0[0], _s0[1], _t0, _t1), _pt_seg(_s1[0], _s1[1], _t0, _t1),
++                         _pt_seg(_t0[0], _t0[1], _s0, _s1), _pt_seg(_t1[0], _t1[1], _s0, _s1))
++                if _h <= tol:
++                    _ix[_i].append((_lo, _hi))
++                    _lt = ((_p1 - _p0) ** 2 + (_q1 - _q0) ** 2) ** 0.5
++                    _iy[_j].append((min(_f0, _f1) * _lt, max(_f0, _f1) * _lt))
++        return sum(_ulen(_v) for _v in _ix), sum(_ulen(_v) for _v in _iy)
++
++    _SA, _SB = _edges(poly_a), _edges(poly_b)
++    _la_a, _lb_a = _axis(_SA, _SB)
++    _lb_b, _la_b = _axis(_SB, _SA)
++    return min(_la_a, _lb_a, _lb_b, _la_b)
++
+ 
+ def k6_shares_segment(poly_a, poly_b, min_len=None):
+     # 🔒 K-6 §一：二片之邊界是否**共用線段**（⛔ 單點相接不算）。
+@@ -13130,6 +13224,8 @@ def k6_shares_segment(poly_a, poly_b, min_len=None):
+     #   - 交集僅 Point／MultiPoint ⇒ 長度 0 ⇒ **⛔ 不連通**（正典「單點相接不算」）
+     #   - GeometryCollection ⇒ 逐元素分流（⛔ 不整體取 length·Point 之 length 恆 0 但混入易誤讀）
+     # ⛔ **不以面積交集判**：二片若重疊（上游 bug），面積交集非 0 而邊界未必共線。
++    # 🔧 `K-9-54`（KL 裁 `2026-09-30`·`W-G.9-361` 補令一·`GB-195`）：上開精確交集之線長未達門檻者，
++    #   另以座標容差（0.1 mm）就**界址點**重判（見函式末段）；精確之長已達門檻者，布林與長皆同本批前。
+     _ml = float(K6_SHARE_MIN_LEN if min_len is None else min_len)
+     if poly_a is None or poly_b is None:
+         return (False, 0.0)
+@@ -13153,7 +13249,26 @@ def k6_shares_segment(poly_a, poly_b, min_len=None):
+         elif _gt == 'Polygon':
+             _tot += float(_g.exterior.length)   # 邊界交集為面 ⇒ 二片邊界重疊一段閉環
+         # Point ⇒ 長度 0 ⇒ ⛔ 不累加
+-    return (_tot >= _ml, _tot)
++    if _tot >= _ml:
++        return (True, _tot)          # 精確之長達門檻 ⇒ 相連·其長 ＝ 精確之長（同本批前）
++    # 🔧 `K-9-54`（補令一 ④″）：精確之長未達門檻 ⇒ 就界址點重判。界線於圖上重合而座標有微米級之差者，
++    #   精確交集退化為點 ⇒ 本批前判為不相連（`GB-195`）。
++    #   ④″-0 任一頂點之坐標非有限 ⇒ 不相連（⛔ 重判）；④″-1 二片相距逾容差 ⇒ 不相連；
++    #   ④″-2 界址點之共線長 L（`_k954_vtx_len`·二軸 × 二片之四長取小 ⇒ (a, b) 與 (b, a) 同判、L 逐位同）；
++    #   ④″-3 L ≥ 門檻 ⇒ 相連·其長 ＝ L；否則 ⇒ 不相連·其長 ＝ 精確之長。
++    #   ⑤ 重判之任一運算拋例外 ⇒ 不相連·其長 ＝ 精確之長（⛔ 靜默改判相連）。
++    _tol = float(K6_SHARE_COORD_TOL)
++    try:
++        if not (_k954_all_finite(poly_a) and _k954_all_finite(poly_b)):
++            return (False, _tot)
++        if poly_a.distance(poly_b) > _tol:
++            return (False, _tot)
++        _l = _k954_vtx_len(poly_a, poly_b, _tol)
++    except Exception:
++        return (False, _tot)
++    if _l >= _ml:
++        return (True, _l)
++    return (False, _tot)
+ 
+ 
+ def k6_merge_groups(parcels, own_map, min_len=None):
