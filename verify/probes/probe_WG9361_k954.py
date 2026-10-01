@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""W-G.9-361 量測器（發單側窗六十擬·檔 F21·⛔ 由受單側改一字）：地籍相連之判之座標容差（`K-9-54`·`GB-195`）。
+"""W-G.9-361 量測器（發單側窗六十擬·補令一改〔發單側窗六十一〕·檔 F21·⛔ 由受單側改一字）：地籍相連之判之座標容差（`K-9-54`·`GB-195`）。
 
 `K-6 §一`：合併群 ＝ 同歸戶 ∧ 幾何連通（重劃前地籍上共用線段·單點相接不算）。現碼以二片邊界之精確交集之
 線長判之；二片之界線於圖上重合而其座標有微米級之差者（本案 R4／R5／R6 之分配線兩側、公園 G1 與道路 RD3 之
 間），精確交集為點 ⇒ 判為不相連。`K-9-54`（KL `2026-09-30 20:34` 逐字「是」）：界線座標相差在 `0.1 mm`
-以內者視為共用同一段界線（相連）。
+以內者視為共用同一段界線（相連）。補令一（`R-2` ④″）：「座標相差」以**界址點**為之——二片之邊兩兩相對，
+其互投影之重疊段之 Hausdorff 距 ≤ 容差者為共線之段（段之兩端 ＝ 某片之界址點或其投影·`K-6 §一`「兩端完全共點」
+以 `0.1 mm` 讀之）；單點相接、夾角甚小之近切、重疊之淺交、界址點相差逾容差者⛔ 因容差而相連；坐標非有限者⛔ 重判。
 
 子命令（一律 python verify/probes/probe_WG9361_k954.py <子命令> …）：
   selftest <repo>
@@ -15,7 +17,11 @@
            平行錯位 2e-4 m ⇒ 不相連；錯位在容差內而共線長未達門檻 ⇒ 不相連、其長 ＝ 精確之長；
            二片相距逾容差 ⇒ 不相連）；A8 ＝ 本案坐標量級（1e5〜1e6 m）之微米錯位；A9 ＝ 缺片 ⇒ (False, 0.0)；
            A10〜A11 ＝ 合併群（三片鏈之第二環為微米錯位 ⇒ 一群；錯位 2e-4 ⇒ 二群）；A12 ＝ 常數；
-           A13 ＝ 既有之 `k6_merge_selftest()` 仍過；P0 ＝ 判式自驗。
+           A13 ＝ 既有之 `k6_merge_selftest()` 仍過；A14〜A19 ＝ 補令一（界址點之讀法）之否例：精確共線
+           0.0099 ⇒ (False, 0.0099)；角點相接而二邊近切（斜率 0.0087）⇒ (False, 0.0)；重疊而邊界淺交 ⇒ (False, 0.0)；
+           一端之界址點相差 1.5e-4 而餘段在容差內 ⇒ (False, 0.0)；中間之界址點相差 2e-4 ⇒ (False, 0.0)；坐標含 NaN
+           ⇒ 二向皆不相連；A20 ＝ 重判之長二向逐位同；A21 ＝ 中間之界址點相差 5e-5（容差內）⇒ 相連、其長 ≈ 10；
+           P0 ＝ 判式自驗。
   wiring   <repo> [<基準 rev>]
            AST：W1 模組層 `K6_SHARE_COORD_TOL = 0.0001` 恰一處；W2 `k6_shares_segment` 先算精確交集
            （既有之字樣 `_it = _ba.intersection(_bb)` 存）、其後引 `K6_SHARE_COORD_TOL`；W3 除
@@ -24,7 +30,7 @@
            新增而唯為 `k6_shares_segment` 所呼叫之函式}。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：R0 新判為相連之對（段三之輸入之切片·精確共線長 < 0.01 而
-           相距 ≤ 1e-4 且二向容差共線長之小者 ≥ 0.01）＝ `19` 對（同歸戶 `15`）、其頂點至他片界線之距之最大者
+           相距 ≤ 1e-4 且界址點之共線長〔`_vtx_L`〕≥ 0.01）＝ `19` 對（同歸戶 `15`）、其頂點至他片界線之距之最大者
            < `2e-5 m`；R1 合併群（段三之輸入之全部重劃前切片）＝ 外部錨（本器另寫之
            判·⛔ 呼叫 `k6_shares_segment`）；R2 與精確之判相異之歸戶 ＝ `G005`／`G007`／`G012`／`G017`／`G022`，
            其群如 `GROUPS_TOL`；R3 段三之紀錄（`3.5` ⇒ `19` 列·`0.0` ⇒ `0` 列）與 `3.5` 之後處理之
@@ -158,6 +164,30 @@ def _cases(ns):
          lambda: (ns["K6_SHARE_COORD_TOL"], ns["K6_SHARE_MIN_LEN"]), (TOL, MINLEN))
     _run(c, "A13 既有之 k6_merge_selftest() 仍過（S-1〜S-7）",
          lambda: len(ns["k6_merge_selftest"]()) >= 16, True)
+    # A14〜A21：補令一（`R-2` ④″·界址點之讀法）
+    a10 = _P([(0, 0), (10, 0), (10, -5), (0, -5)])
+    _run(c, "A14 精確共線 0.0099（容差不增其長）⇒ (False, 0.0099)",
+         lambda: _bt(sh(a, _sq(1, 0, 2, 0.0099)), 9), (False, 0.0099))
+    _run(c, "A15 角點相接而二邊近切（斜率 0.0087）⇒ (False, 0.0)",
+         lambda: _bt(sh(a10, _P([(0, 0), (10, 0.087), (10, 5), (0, 5)])), 9), (False, 0.0))
+    _run(c, "A16 二片重疊而邊界淺交（斜率 0.0087）⇒ (False, 0.0)",
+         lambda: _bt(sh(a10, _P([(2, -0.0261), (8, 0.0261), (8, 5), (2, 5)])), 9), (False, 0.0))
+    _run(c, "A17 一端之界址點相差 1.5e-4、他端 5e-5（中段在容差內）⇒ (False, 0.0)",
+         lambda: _bt(sh(_P([(0, 0), (20, 0), (20, -5), (0, -5)]), _P([(0, 1.5e-4), (20, 5e-5), (20, 5), (0, 5)])), 9),
+         (False, 0.0))
+    _run(c, "A18 中間之界址點相差 2e-4 ⇒ (False, 0.0)",
+         lambda: _bt(sh(a10, _P([(0, 0), (5, 2e-4), (10, 0), (10, 5), (0, 5)])), 9), (False, 0.0))
+    def _a19():
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            b19 = _P([(1 + 3e-6, -0.3), (2, -0.3), (1.5, float("nan")), (2, 1.3), (1 - 3e-6, 1.3)])
+            return (bool(sh(a, b19)[0]), bool(sh(b19, a)[0]))
+    _run(c, "A19 坐標含 NaN（共線之邊在容差內）⇒ 二向皆不相連", _a19, (False, False))
+    _run(c, "A20 重判之長二向逐位同（A4 之形）",
+         lambda: (bool(sh(a, b4)[0]), sh(a, b4)[1] == sh(b4, a)[1]), (True, True))
+    _run(c, "A21 中間之界址點相差 5e-5（容差內）⇒ 相連、其長 ≈ 10（三位小數）",
+         lambda: _bt(sh(a10, _P([(0, 0), (5, 5e-5), (10, 0), (10, 5), (0, 5)])), 3), (True, 10.0))
     return c
 
 
@@ -285,21 +315,77 @@ def _lin(g):
     return t
 
 
+def _vtx_L(pa, pb, tol):
+    """外部錨（⛔ 呼叫 k6_shares_segment·補令一）：界址點之讀法之共線長。二片之邊兩兩相對：以一方之邊為軸，取他方
+    之邊之投影與之重疊之段（二邊各一子段），其 Hausdorff 距 ≤ tol 者計入；各邊所得之段取聯集計長；二軸 × 二片之
+    四長取其小。"""
+    from shapely.geometry import LineString
+
+    def segs(p):
+        out = []
+        for r in [p.exterior] + list(p.interiors):
+            cs = [tuple(c[:2]) for c in r.coords]
+            out += [(cs[i], cs[i + 1]) for i in range(len(cs) - 1) if cs[i] != cs[i + 1]]
+        return out
+
+    def ulen(iv):
+        tot, cur = 0.0, None
+        for lo, hi in sorted(iv):
+            if cur is not None and lo <= cur[1]:
+                cur[1] = max(cur[1], hi)
+            else:
+                if cur is not None:
+                    tot += cur[1] - cur[0]
+                cur = [lo, hi]
+        return tot + (cur[1] - cur[0] if cur is not None else 0.0)
+
+    def axis(SX, SY):
+        ix, iy = [[] for _ in SX], [[] for _ in SY]
+        for i, ((x0, y0), (x1, y1)) in enumerate(SX):
+            ls = ((x1 - x0) ** 2 + (y1 - y0) ** 2) ** 0.5
+            ux, uy = (x1 - x0) / ls, (y1 - y0) / ls
+            for j, ((p0, q0), (p1, q1)) in enumerate(SY):
+                u0, u1 = (p0 - x0) * ux + (q0 - y0) * uy, (p1 - x0) * ux + (q1 - y0) * uy
+                if u0 == u1:
+                    continue
+                lo, hi = max(0.0, min(u0, u1)), min(ls, max(u0, u1))
+                if hi <= lo:
+                    continue
+                f0, f1 = (lo - u0) / (u1 - u0), (hi - u0) / (u1 - u0)
+                s_ = LineString([(x0 + lo * ux, y0 + lo * uy), (x0 + hi * ux, y0 + hi * uy)])
+                t_ = LineString([(p0 + f0 * (p1 - p0), q0 + f0 * (q1 - q0)), (p0 + f1 * (p1 - p0), q0 + f1 * (q1 - q0))])
+                if s_.hausdorff_distance(t_) <= tol:
+                    ix[i].append((lo, hi))
+                    lt = ((p1 - p0) ** 2 + (q1 - q0) ** 2) ** 0.5
+                    iy[j].append((min(f0, f1) * lt, max(f0, f1) * lt))
+        return sum(ulen(v) for v in ix), sum(ulen(v) for v in iy)
+
+    SA, SB = segs(pa), segs(pb)
+    a1, b1 = axis(SA, SB)
+    b2, a2 = axis(SB, SA)
+    return min(a1, b1, a2, b2)
+
+
+def _finite(p):
+    import math
+    return all(math.isfinite(c[0]) and math.isfinite(c[1])
+               for r in [p.exterior] + list(p.interiors) for c in r.coords)
+
+
 def _conn_ext(pa, pb, tol):
-    """外部錨（⛔ 呼叫 k6_shares_segment）：精確共邊之線長 ≥ 0.01，或（tol 非 None 且）二片相距 ≤ tol 而
-    二向容差共線長之小者 ≥ 0.01。"""
+    """外部錨（⛔ 呼叫 k6_shares_segment）：精確共邊之線長 ≥ 0.01，或（tol 非 None 且）二片之坐標皆有限、相距 ≤ tol
+    而界址點之共線長（`_vtx_L`）≥ 0.01。"""
     if pa is None or pb is None:
         return False
     if _lin(pa.boundary.intersection(pb.boundary)) >= MINLEN:
         return True
-    if tol is None or pa.distance(pb) > tol:
+    if tol is None or not (_finite(pa) and _finite(pb)) or pa.distance(pb) > tol:
         return False
-    return min(_lin(pa.boundary.intersection(pb.boundary.buffer(tol))),
-               _lin(pb.boundary.intersection(pa.boundary.buffer(tol)))) >= MINLEN
+    return _vtx_L(pa, pb, tol) >= MINLEN
 
 
 def _new_pairs(temp):
-    """精確共線長 < 0.01 而（相距 ≤ TOL 且）二向容差共線長之小者 ≥ 0.01 之對；並回諸對之頂點至他片界線之距之最大者
+    """精確共線長 < 0.01 而（相距 ≤ TOL 且）界址點之共線長（`_vtx_L`）≥ 0.01 之對；並回諸對之頂點至他片界線之距之最大者
     （唯計距 ≤ TOL 之頂點）。對之元 ＝ (暫編地號, 原地號, 街廓)。"""
     from shapely.geometry import Polygon, Point
     ps = []
@@ -314,8 +400,7 @@ def _new_pairs(temp):
             (ka, A), (kb, B) = ps[i], ps[j]
             if A.distance(B) > TOL or _lin(A.boundary.intersection(B.boundary)) >= MINLEN:
                 continue
-            if min(_lin(A.boundary.intersection(B.boundary.buffer(TOL))),
-                   _lin(B.boundary.intersection(A.boundary.buffer(TOL)))) < MINLEN:
+            if _vtx_L(A, B, TOL) < MINLEN:
                 continue
             out.append((ka, kb))
             for X, Y in ((A, B), (B, A)):
