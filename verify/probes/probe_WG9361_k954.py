@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""W-G.9-361 量測器（發單側窗六十擬·補令一改〔發單側窗六十一〕·檔 F21·⛔ 由受單側改一字）：地籍相連之判之座標容差（`K-9-54`·`GB-195`）。
+"""W-G.9-361 量測器（發單側窗六十擬·補令一改〔發單側窗六十一〕·補令二改〔發單側窗六十二〕·檔 F21·⛔ 由受單側改一字）：地籍相連之判之座標容差（`K-9-54`·`GB-195`）。
 
 `K-6 §一`：合併群 ＝ 同歸戶 ∧ 幾何連通（重劃前地籍上共用線段·單點相接不算）。現碼以二片邊界之精確交集之
 線長判之；二片之界線於圖上重合而其座標有微米級之差者（本案 R4／R5／R6 之分配線兩側、公園 G1 與道路 RD3 之
@@ -7,6 +7,8 @@
 以內者視為共用同一段界線（相連）。補令一（`R-2` ④″）：「座標相差」以**界址點**為之——二片之邊兩兩相對，
 其互投影之重疊段之 Hausdorff 距 ≤ 容差者為共線之段（段之兩端 ＝ 某片之界址點或其投影·`K-6 §一`「兩端完全共點」
 以 `0.1 mm` 讀之）；單點相接、夾角甚小之近切、重疊之淺交、界址點相差逾容差者⛔ 因容差而相連；坐標非有限者⛔ 重判。
+補令二（裁四）：片之型為 `MultiPolygon` 者，其各部之環皆為片之環（同 `Polygon`·`K-9-54` 及於地籍界線而⛔ 繫於圖形之存法）；
+非面狀（`Polygon`／`MultiPolygon` 以外）或空之片⛔ 重判。
 
 子命令（一律 python verify/probes/probe_WG9361_k954.py <子命令> …）：
   selftest <repo>
@@ -21,6 +23,10 @@
            0.0099 ⇒ (False, 0.0099)；角點相接而二邊近切（斜率 0.0087）⇒ (False, 0.0)；重疊而邊界淺交 ⇒ (False, 0.0)；
            一端之界址點相差 1.5e-4 而餘段在容差內 ⇒ (False, 0.0)；中間之界址點相差 2e-4 ⇒ (False, 0.0)；坐標含 NaN
            ⇒ 二向皆不相連；A20 ＝ 重判之長二向逐位同；A21 ＝ 中間之界址點相差 5e-5（容差內）⇒ 相連、其長 ≈ 10；
+           A22〜A27 ＝ 補令二（片之多邊形部分）：MultiPolygon 與他片微米錯位而共線 ⇒ 二向皆相連、其長 ≈ 1；
+           自觸之環經 buffer(0) 成 MultiPolygon、其一部與他片微米錯位而共線 ⇒ 相連；MultiPolygon 之他部之坐標含
+           NaN ⇒ 二向皆不相連；MultiPolygon 之一部平行錯位 2e-4 ⇒ (False, 0.0)；非面狀之受詞（線）與空片 ⇒ (False, 0.0)；
+           以容差相連之二片之聯集（經 buffer(0) 仍為 MultiPolygon）與第三片（與其一部平行錯位 5e-5）⇒ 相連、其長 ≈ 1；
            P0 ＝ 判式自驗。
   wiring   <repo> [<基準 rev>]
            AST：W1 模組層 `K6_SHARE_COORD_TOL = 0.0001` 恰一處；W2 `k6_shares_segment` 先算精確交集
@@ -188,6 +194,32 @@ def _cases(ns):
          lambda: (bool(sh(a, b4)[0]), sh(a, b4)[1] == sh(b4, a)[1]), (True, True))
     _run(c, "A21 中間之界址點相差 5e-5（容差內）⇒ 相連、其長 ≈ 10（三位小數）",
          lambda: _bt(sh(a10, _P([(0, 0), (5, 5e-5), (10, 0), (10, 5), (0, 5)])), 3), (True, 10.0))
+    # A22〜A27：補令二（裁四·片之多邊形部分）
+    from shapely.geometry import MultiPolygon, LineString
+    m22 = MultiPolygon([a])
+    _run(c, "A22 MultiPolygon 與他片微米錯位而共線（A4 之形）⇒ 二向皆相連、其長 ≈ 1",
+         lambda: (bool(sh(m22, b4)[0]), round(float(sh(m22, b4)[1]), 2), bool(sh(b4, m22)[0])), (True, 1.0, True))
+    f23 = _P([(0, 0), (1, 0), (1, 1), (2, 1), (2, 2), (1, 2), (1, 1), (0, 1)]).buffer(0)
+    b23 = _P([(2 + 3e-6, 0.7), (3, 0.7), (3, 2.3), (2 - 3e-6, 2.3)])
+    _run(c, "A23 自觸之環經 buffer(0) 成 MultiPolygon（二部）、其一部與他片微米錯位而共線 ⇒ 相連、其長 ≈ 1",
+         lambda: (f23.geom_type, len(f23.geoms), _bt(sh(f23, b23), 2)), ("MultiPolygon", 2, (True, 1.0)))
+    def _a24():
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            m24 = MultiPolygon([a, _P([(5, 5), (6, 5), (5.5, float("nan")), (6, 6), (5, 6)])])
+            return (bool(sh(m24, b4)[0]), bool(sh(b4, m24)[0]))
+    _run(c, "A24 MultiPolygon 之他部之坐標含 NaN（共線之部在容差內）⇒ 二向皆不相連", _a24, (False, False))
+    _run(c, "A25 MultiPolygon 之一部與他片平行錯位 2e-4 ⇒ (False, 0.0)",
+         lambda: _bt(sh(MultiPolygon([a, _sq(5, 5, 6, 6)]), _sq(1 + 2e-4, 0, 2, 1)), 9), (False, 0.0))
+    l26 = LineString([(1 + 1e-6, 0), (1 + 1e-6, 1)])
+    _run(c, "A26 非面狀之受詞（線·沿 A1 之共邊微米錯位）二向與空片 ⇒ 皆 (False, 0.0)",
+         lambda: (_bt(sh(l26, a), 9), _bt(sh(a, l26), 9), _bt(sh(_P([]), a), 9)),
+         ((False, 0.0), (False, 0.0), (False, 0.0)))
+    from shapely.ops import unary_union
+    u27 = unary_union([a, _sq(1 + 5e-5, 0, 2, 1)]).buffer(0)
+    _run(c, "A27 以容差相連之二片之聯集（buffer(0) 後仍為 MultiPolygon）與第三片平行錯位 5e-5 ⇒ 相連、其長 ≈ 1",
+         lambda: (u27.geom_type, _bt(sh(u27, _sq(2 + 5e-5, 0, 3, 1)), 2)), ("MultiPolygon", (True, 1.0)))
     return c
 
 
@@ -323,7 +355,7 @@ def _vtx_L(pa, pb, tol):
 
     def segs(p):
         out = []
-        for r in [p.exterior] + list(p.interiors):
+        for r in _rings(p):
             cs = [tuple(c[:2]) for c in r.coords]
             out += [(cs[i], cs[i + 1]) for i in range(len(cs) - 1) if cs[i] != cs[i + 1]]
         return out
@@ -366,20 +398,36 @@ def _vtx_L(pa, pb, tol):
     return min(a1, b1, a2, b2)
 
 
+def _parts(p):
+    """補令二（裁四）：片之多邊形部分（`Polygon` ⇒ 其本身；`MultiPolygon` ⇒ 其各部）；他型或空 ⇒ None。"""
+    if p is None or p.is_empty:
+        return None
+    if p.geom_type == "Polygon":
+        return [p]
+    if p.geom_type == "MultiPolygon":
+        return list(p.geoms)
+    return None
+
+
+def _rings(p):
+    return [r for q in _parts(p) for r in [q.exterior] + list(q.interiors)]
+
+
 def _finite(p):
     import math
-    return all(math.isfinite(c[0]) and math.isfinite(c[1])
-               for r in [p.exterior] + list(p.interiors) for c in r.coords)
+    return all(math.isfinite(c[0]) and math.isfinite(c[1]) for r in _rings(p) for c in r.coords)
 
 
 def _conn_ext(pa, pb, tol):
-    """外部錨（⛔ 呼叫 k6_shares_segment）：精確共邊之線長 ≥ 0.01，或（tol 非 None 且）二片之坐標皆有限、相距 ≤ tol
-    而界址點之共線長（`_vtx_L`）≥ 0.01。"""
+    """外部錨（⛔ 呼叫 k6_shares_segment）：精確共邊之線長 ≥ 0.01，或（tol 非 None 且）二片皆為非空之 `Polygon`／
+    `MultiPolygon`、坐標皆有限、相距 ≤ tol 而界址點之共線長（`_vtx_L`）≥ 0.01。"""
     if pa is None or pb is None:
         return False
     if _lin(pa.boundary.intersection(pb.boundary)) >= MINLEN:
         return True
-    if tol is None or not (_finite(pa) and _finite(pb)) or pa.distance(pb) > tol:
+    if tol is None or _parts(pa) is None or _parts(pb) is None:
+        return False
+    if not (_finite(pa) and _finite(pb)) or pa.distance(pb) > tol:
         return False
     return _vtx_L(pa, pb, tol) >= MINLEN
 
