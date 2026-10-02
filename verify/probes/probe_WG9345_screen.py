@@ -24,6 +24,8 @@
            🔧 `W-G.9-355`（發單側窗五十一·⛔ 上列一字不刪）：on／s3off 另驗末端塊合併再試之二 session 鍵
            （`SS_END_BLOCK_MERGE` 之值／`f3_end_block_merge_log`）與 harness 同；二鍵係畫面入口之正當輸出，
            ⛔ 計入「session 之回復」之外洩；試算旗標 `SS_END_BLOCK_MODE` 仍計入（⛔ 外洩）。
+           🔧 `W-G.9-363`（發單側窗六十四·⛔ 上列一字不刪）：on／s3off 另驗手冊先行之紀錄（`f3_k953_log`）與 harness
+           逐列同；其鍵係畫面入口之正當輸出，⛔ 計入外洩。
            配地列以暫編地號對齊；一側獨有之列須「幾何面積 0 且 G 0」（零面積池列·逐一出艙為 Z），餘須全等；
            cut_coords 以環（去閉合點·容旋轉與反向）比對。--perturb：將畫面側之 B 值乘 1.0001（必紅造）。
   wiring   <repo>
@@ -552,6 +554,12 @@ def cmd_parity(repo, sb, mode, out=None, perturb=False):
             ok = _same(REF.get(k, "<缺>"), ssS_pk.get(k, "<缺>"))
             bad += (not ok)
             say(f"  {'✅' if ok else '🔴'} 合併再試 session 鍵 {k}（harness {REF.get(k, '<缺>')!r:.80}）")
+        # 🔧 `W-G.9-363`（發單側窗六十四·⛔ 上列一字不刪）：手冊先行（`K-9-53` ①）之紀錄係畫面入口之正當輸出——
+        #   與 harness 同（逐列）、⛔ 計入「session 之回復」之外洩
+        ok = _same(REF.get("f3_k953_log", "<缺>"), ssS_pk.get("f3_k953_log", "<缺>"))
+        bad += (not ok)
+        say(f"  {'✅' if ok else '🔴'} 手冊先行 session 鍵 f3_k953_log（{len(REF.get('f3_k953_log') or [])} 列）")
+        EBM = EBM + ("f3_k953_log",)
         idsH = [(t["暫編地號"], t.get("段三併出")) for t in tH]
         idsS = [(t["暫編地號"], t.get("段三併出")) for t in tS2]
         ok = idsH == idsS

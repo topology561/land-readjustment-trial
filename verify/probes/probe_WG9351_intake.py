@@ -10,7 +10,8 @@
   wiring   <repo>
            AST 查接線：W1 模組層之常數與二函式、二函式內⛔ 案件字面；W2 入池閘之畫面入口於復原之後寫末趟之不配地紀錄、
            配地本體同生命週期去／寫末態 build；W3 二鍵 ∈ `K6B_SCREEN_TRIAL_KEYS` 且其末項仍為 `f3_k929_6_log`；
-           W4 消費端 ＝ 生產碼 `34` 檔中除 `app.py` 外命中 `0`、`app.py` 中只在許可之函式內；W5 畫面路徑之合成案
+           W4 消費端 ＝ 生產碼 `34` 檔中除 `app.py` 外命中 `0`、`app.py` 中只在許可之函式內（🔧 `W-G.9-363`：許可之函式
+           另含 `f3_screen_k953`〔手冊先行之畫面試算讀入池閘之末態 build〕）；W5 畫面路徑之合成案
            （`自誤 517`：抽出 `main()` 之盤點區塊，以假 st 與合成資料實際執行）。另施四突變，每一突變須轉紅。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0` 二者）：以 `adj_intake` 盤點，並以本器**另寫之分類**（⛔ 呼叫
@@ -329,6 +330,7 @@ def _wiring_checks(app_src, others):
     tok_re = re.compile("|".join(re.escape(t) for t in toks))
     other_hits = {p: len(tok_re.findall(s)) for p, s in sorted(others.items()) if tok_re.search(s)}
     allowed = set(ADJ_FUNCS) | {"main", "f3_screen_stepg_run", "_k929_6_screen_gate"}
+    allowed |= {"f3_screen_k953"}   # 🔧 `W-G.9-363`（發單側窗六十四）：手冊先行之畫面試算讀入池閘之末態 build（其單元）
     bad = []
     for fname, node in top.items():
         if fname in allowed:
@@ -403,13 +405,18 @@ def _independent(tp3, bfin, rows, drops, own, bur):
             continue
         for m in u.get("入池閘併入") or [u["暫編地號"]]:
             mem[str(m)] = str(u["暫編地號"])
-    kind, owner = {}, {}
+    kind, owner, s3 = {}, {}, set()
     for t in tp3:
         if t.get("_is_ghost_sliver"):
             continue
         k = str(t["暫編地號"])
         owner[k] = own[str(t["原地號"])]
-        if "段三併出" in t:
+        # 🔧 `W-G.9-363`（發單側窗六十四·⛔ 下列一字不刪）：帶 段三餘量 而其值 ＞ 0 之片（段三或手冊先行之剩下）⇒
+        #   恆入合併單位（`W-G.9-357`）——其歸戶無入池之宗而有配地者，另成公設軌之單位（`adj_intake` 之 `_s3`）
+        if float(t.get("段三餘量", 0) or 0) > 0:
+            kind[k] = "公"
+            s3.add(k)
+        elif "段三併出" in t:
             kind[k] = "配"
         elif bur[t["所屬街廓"]] == "可建築土地":
             kind[k] = "配" if mem[k] in alloc else "池"
@@ -437,6 +444,12 @@ def _independent(tp3, bfin, rows, drops, own, bur):
         else:
             for k in cm:
                 kind[k] = "公4"
+            # 🔧 `W-G.9-363`：段三之剩下（`s3`）⇒ 另成公設軌之單位
+            if any(k in s3 for k in cm):
+                units[g] = ("公", None, sorted(k for k in cm if k in s3))
+                for k in cm:
+                    if k in s3:
+                        kind[k] = "公入"
     return kind, units
 
 

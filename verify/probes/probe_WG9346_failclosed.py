@@ -14,6 +14,7 @@
     C3 無歸戶 ＋ session 殘留前次之段二序            ：k6b_stage3_run 呼叫數 0；ran False；k6b_stage3_selected 回 None。
     C4 試算趟之街角選位無產出（首趟照跑·其後代理趟皆不寫 session）：session 之停機訊息含「未產出」；k6b_stage3_selected 須 raise。
     C5 旗標 off              ：ran False；session 無停機訊息、無指紋；k6b_stage3_selected 回 None。
+       🔧 `W-G.9-363`（⛔ 上列一字不刪）：C5 之 WV_K953（手冊先行）亦設 off。
     C6 首趟（代理）中止        ：其後 k6b_stage3_selected 須 raise 且訊息含「請重跑」。
   （判別力：於 `W-G.9-345` 之態〔b0c9edc〕跑，須恰 C1／C2／C3／C4／C6 紅、C0／C5 綠 ⇒ 本器非恆綠亦非恆紅。）
   （退縮須使段三實際執行〔段二序非空〕；本案 3.5 m 是、0 m 否〔段二序 0 列 ⇒ rc 3〕。）
@@ -173,7 +174,11 @@ def cmd_run(repo, sb):
 
     # C5 旗標 off
     pk, b = reset("off")
+    # 🔧 `W-G.9-363`（發單側窗六十四·⛔ 上列一字不刪）：手冊先行（`K-9-53` ①）於段三之旗標 off 時仍辦，有併入 ⇒ 存其
+    #   末態與指紋——本情形之期係段三與手冊先行皆 off ⇒ 其旗標 WV_K953 亦於行程內設 off（畢則去之）
+    os.environ["WV_K953"] = "off"
     ret, exc = call(pk)
+    os.environ.pop("WV_K953", None)
     sel, msg = selected(b)
     ran = ret.get("ran") if ret else None
     judge("C5", "旗標 off", exc is None and ran is False and ERR_KEY not in ss

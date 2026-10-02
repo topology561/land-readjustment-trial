@@ -19,6 +19,7 @@
            畫面之 `k6b_screen_callbacks`·同一宗地）——二者之保留集相同、`G` 之鍵 ＝ 保留集之聯集、逐宗差 ≤ `0.01`；
            R2 段三（harness `run_corner_pk_k6b`）之紀錄逐列 ＝ 開工態之實測（本器所載·數值容差 `0.01`），且其出之
            宗地⛔ 帶 `段三部分併出`／`段三餘量`（本案⛔ 觸發七項 `3`〜`6`）。
+           🔧 `W-G.9-363`（⛔ 上列一字不刪）：run 於行程內設 WV_K953=off（手冊先行亦以段三之鍵標其片）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import contextlib, copy, importlib.util, io, os, sys
@@ -542,6 +543,9 @@ def _same_log(a, b):
 
 
 def run(repo, sbs):
+    # 🔧 `W-G.9-363`（發單側窗六十四）：R2 之期係段三之出（手冊先行〔`K-9-53` ①〕前之態·其亦以段三之鍵標之）
+    #   ⇒ 行程內設 WV_K953=off
+    os.environ["WV_K953"] = "off"
     ns, fst = _harvest(repo)
     import run_verification as rv
     import selection_pipeline as sp

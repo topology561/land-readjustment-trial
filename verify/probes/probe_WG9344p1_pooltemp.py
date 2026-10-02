@@ -10,6 +10,7 @@
   python verify/probes/probe_WG9344p1_pooltemp.py selftest
 
 rc：0 相符／1 不符（判定為偽）／3 無從判定（受詞缺或執行中止）／2 用法錯。
+🔧 `W-G.9-363`（⛔ 上列一字不刪）：run 於行程內設 WV_K953=off（手冊先行亦以段三之鍵標其所併出之片）。
 「無從判定」與「判定為偽」⛔ 共用出艙碼。
 """
 import collections
@@ -99,6 +100,9 @@ def cmd_run(repo, sb, mode):
     if mode not in ("on", "off"):
         return 2
     os.environ[ENV] = mode
+    # 🔧 `W-G.9-363`（發單側窗六十四）：本器之期係段三之標記（手冊先行〔`K-9-53` ①〕前之態·其亦以段三之鍵標之）
+    #   ⇒ 行程內設 WV_K953=off
+    os.environ["WV_K953"] = "off"
     spec = importlib.util.spec_from_file_location(
         "f2", os.path.join(repo, "verify", "probes", "probe_WG9344_k6s3.py"))
     f2 = importlib.util.module_from_spec(spec)

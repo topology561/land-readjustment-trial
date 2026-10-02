@@ -41,6 +41,7 @@
            判·⛔ 呼叫 `k6_shares_segment`）；R2 與精確之判相異之歸戶 ＝ `G005`／`G007`／`G012`／`G017`／`G022`，
            其群如 `GROUPS_TOL`；R3 段三之紀錄（`3.5` ⇒ `19` 列·`0.0` ⇒ `0` 列）與 `3.5` 之後處理之
            `628-20(3)`／`628-45(3)`／`628-45(4)` 三列；R4 `3.5` 之配地（三受併宗之 `G`、`R3`／`R5`／`R6` 之抵費地）。
+           🔧 `W-G.9-363`（⛔ 上列一字不刪）：run 於行程內設 WV_K953=off（其期係手冊先行前之態）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, os, re, subprocess, sys
@@ -505,6 +506,8 @@ def _groups_code(ns, temp, own):
 
 
 def run(repo, sbs):
+    # 🔧 `W-G.9-363`（發單側窗六十四）：本器 run 之期（R3／R4）係手冊先行（`K-9-53` ①）前之態 ⇒ 行程內設 WV_K953=off
+    os.environ["WV_K953"] = "off"
     sys.path.insert(0, os.path.join(repo, "verify"))
     cwd = os.getcwd()
     os.chdir(repo)
