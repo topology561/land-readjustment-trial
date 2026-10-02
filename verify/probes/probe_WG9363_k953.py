@@ -10,6 +10,10 @@
            之配餘地不合格一處；`err_cap` 逾者 ⇒ 配地中止；`G` ＝ 分攤登記面積 ＋ 面積（`gmap` 覆寫）；`units` ＝ 入池閘之
            合併單元（`unit_g` ⇒ 取代後之 G 異）；`a_prime` ＝ a(src) × p(src 之街廓) ÷ p(dst 之街廓）。
            K1〜K27 ＝ 各支；P0 ＝ 判式自驗（逐項擾動其期須恰該項紅）。
+           🔧 `W-G.9-363` 補令一（發單側窗六十四·⛔ 上列一字不刪）：K28 ＝ `K-9-51` 之候選含 x 之本街廓之宗 ⇒ 先試併之
+           （`K-9-55`）、其檢核不過 ⇒ 停機【未裁】（裁二）；K29 ＝ 入池閘之旗標 off ⇒ 手冊先行不辦（harness 與畫面·二旗標皆判·裁一）；K30 ＝ 畫面之旗標值非法 ⇒
+           走停機之路（`f3_k6b_stage3_error`·`st.error`·`st.stop`·裁五）；K31 ＝ 入池閘之單元之取代後 build ⊂ temp（同物件）
+           且 temp 中之標的 ＝ 單元（裁三）。P0 隨之 31 項。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -26,6 +30,9 @@
            段三之三鍵·面積二欄）、build、段三紀錄、末端塊紀錄、配地列、入池閘紀錄、不配地紀錄、調配之輸入，寫 out。
   offcmp   <a.json> <b.json>
            二 offsnap 之摘要逐項同（手冊先行之紀錄之列數唯出艙·⛔ 入判）。
+  gatesnap <repo> <out.json> [<退縮> …]
+           🔧 補令一：同 offsnap，唯於行程內設 WV_K929_6=off 並去 WV_K953（入池閘 off·手冊先行之旗標未設）；二份以
+           offcmp 比之（入池閘 off ⇒ 逐位同開工態之同設定·`R-17′`）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, importlib.util, io, os, re, subprocess, sys, warnings
@@ -313,7 +320,128 @@ def _cases(ns, sp):
          lambda: _k26(ns), ({"B1": ["A(1)"]}, {"B1": 1}, {"A(1)": 123.4}))
     _run(out, "K27 入池閘之單元：成員（缺 ⇒ 自身）；成員 ≥ 2 者為單元（深拷貝）",
          lambda: _k27(ns), ({"A(1)": ["A(1)", "A(2)"], "B(1)": ["B(1)"]}, ["A(1)"], False))
+    # 🔧 補令一（⛔ 上列一字不刪）
+    _run(out, "K28 K-9-51 之候選含 x 之本街廓之已配得之宗（與 x ⛔ 相連·距離 0）⇒ 先試併之、過 ⇒ 併入、出 build（K-9-55）；"
+              "其檢核不過 ⇒ 停機【未裁】（K-9-55 之前提不立·⛔ 改試他宗）",
+         lambda: _k28(W),
+         ([("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "未成"),
+           ("K-9-51", "X1(1)", "a", "Q1(1)", (("Q1(1)", 60.0),), "成")], False, ("停機", True)))
+    _run(out, "K29 入池閘之旗標 off（WV_K929_6）⇒ 手冊先行不辦（harness 與畫面皆回輸入之同一物件、紀錄 []、畫面⛔ 呼叫 st）；"
+              "二旗標皆判（WV_K953 off 而 WV_K929_6 非法 ⇒ 停機）",
+         lambda: _k29(ns, sp), ((True, True, []), "停機", (True, True, [], [], [])))
+    _run(out, "K30 畫面：旗標值非法（WV_K953 或 WV_K929_6）⇒ f3_k6b_stage3_error ＝ （手冊先行）…、st.error ＋ st.stop、"
+              "⛔ 寫紀錄",
+         lambda: _k30(ns), (("停機", ["error", "stop"], True, False), ("停機", ["error", "stop"], True, False)))
+    _run(out, "K31 入池閘之單元之取代後：build ⊂ temp（同物件）、temp 中之標的 ＝ 單元（帶入池閘併入）、他成員仍在 temp 而⛔ 在 build",
+         lambda: _k31(W), (True, 1, True, ["X1(2)", "Y1(1)"], True, False))
     return out
+
+
+def _k28(W):
+    kw = dict(own_upd={"Q1": "g1", "C1": "gC1"}, geom_upd={"Q1(1)": _R(0, 8, 0, 30)}, rm=("R1(1)", "P1(1)"))
+    r = _go(W, cap={"BB": 10.0}, **kw)
+    return (_rows(r), "X1(1)" in [b["暫編地號"] for b in r[0][1]],
+            _halt2(lambda: _go(W, cap={"BB": 10.0, "BA": 10.0}, **kw), ("【未裁】", "K-9-55 之前提不立")))
+
+
+def _halt2(fn, phrases):
+    try:
+        fn()
+    except RuntimeError as e:
+        return ("停機", all(p in str(e) for p in phrases))
+    return ("無停機",)
+
+
+class _FakeSt:
+    """畫面之假 st：`session_state` ＝ dict；方法之呼叫依序記其名（`error`／`stop`／其他）。"""
+
+    def __init__(self):
+        self.session_state = {}
+        self.calls = []
+
+    def error(self, *a, **k):
+        self.calls.append("error")
+
+    def stop(self):
+        self.calls.append("stop")
+
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+
+        def _f(*a, **k):
+            self.calls.append(name)
+            return contextlib.nullcontext()
+        return _f
+
+
+def _setenv2(v953, v9296):
+    for k, v in (("WV_K953", v953), ("WV_K929_6", v9296)):
+        if v is None:
+            os.environ.pop(k, None)
+        else:
+            os.environ[k] = v
+
+
+def _k29(ns, sp):
+    keep = (os.environ.get("WV_K953"), os.environ.get("WV_K929_6"))
+    t, own, blocks, cl = _w1()
+    b = [x for x in t if x["街廓分類"] == H]
+    out = []
+    try:
+        _setenv2(None, "off")
+        fst = _FakeSt()
+        r = sp.run_k953(ns, fst, None, None, None, t, b, 0.0, snapshot=None, callbacks=None, winners=None, forced=None)
+        out.append((r[0] is t, r[1] is b, fst.session_state.get("f3_k953_log")))
+        _setenv2("off", "maybe")
+        try:
+            sp.run_k953(ns, _FakeSt(), None, None, None, t, b, 0.0, snapshot=None, callbacks=None, winners=None,
+                        forced=None)
+            out.append("無停機")
+        except RuntimeError:
+            out.append("停機")
+        _setenv2(None, "off")
+        st = _FakeSt()
+        rr = ns["f3_screen_k953"](st, pk_kwargs={"temp_parcels": t, "build_parcels": b}, g_kwargs={})
+        out.append((rr["temp"] is t, rr["build"] is b, rr["log"], st.session_state.get("f3_k953_log"), st.calls))
+    finally:
+        _setenv2(*keep)
+    return tuple(out)
+
+
+def _k30(ns):
+    keep = (os.environ.get("WV_K953"), os.environ.get("WV_K929_6"))
+    t, own, blocks, cl = _w1()
+    b = [x for x in t if x["街廓分類"] == H]
+    out = []
+    try:
+        for v953, v9296 in (("maybe", None), (None, "maybe")):
+            _setenv2(v953, v9296)
+            st = _FakeSt()
+            st.session_state["f3_k6b_stage3_error"] = "前之標記"
+            try:
+                ns["f3_screen_k953"](st, pk_kwargs={"temp_parcels": t, "build_parcels": b}, g_kwargs={})
+                how = "無停機"
+            except RuntimeError:
+                how = "停機"
+            except Exception as e:  # noqa: BLE001
+                how = type(e).__name__
+            out.append((how, st.calls, str(st.session_state.get("f3_k6b_stage3_error", "")).startswith("（手冊先行）"),
+                        "f3_k953_log" in st.session_state))
+    finally:
+        _setenv2(*keep)
+    return tuple(out)
+
+
+def _k31(W):
+    r = _go(W, units={"X1(2)": ["X1(2)", "Y1(1)"]}, own_upd={"Y1": "g1"})
+    t2, b2, _log = r[0]
+    ids = {id(x) for x in t2}
+    ht = [x for x in t2 if x["暫編地號"] == "X1(2)"]
+    hb = [x for x in b2 if x["暫編地號"] == "X1(2)"]
+    return (all(id(x) in ids for x in b2), len(ht), bool(ht and hb and ht[0] is hb[0]),
+            (ht[0].get("入池閘併入") if ht else None), "Y1(1)" in [x["暫編地號"] for x in t2],
+            "Y1(1)" in [x["暫編地號"] for x in b2])
 
 
 def _k13(W):
@@ -429,8 +557,9 @@ def _perturb(v):
 def selftest(repo):
     ns, _ = _harvest(repo)
     import selection_pipeline as sp
-    need = [n for n in (FN, "k953_enabled", "k953_alloc_summary", "k953_units_of", "adj_intake") if n not in ns]
-    if need or not hasattr(sp, "k6b_stage3_pool_temp"):
+    need = [n for n in (FN, "k953_enabled", "k953_alloc_summary", "k953_units_of", "adj_intake", "f3_screen_k953",
+                        "k929_6_enabled") if n not in ns]
+    if need or not hasattr(sp, "k6b_stage3_pool_temp") or not hasattr(sp, "run_k953"):
         print(f"  🔴 受詞缺：{need}")
         print("⇒ 紅 ['受詞缺']；rc 1")
         return 1
@@ -891,9 +1020,12 @@ def _canon(x):
     return hashlib.sha256(b).hexdigest(), len(b)
 
 
-def offsnap(repo, out, sbs):
+def offsnap(repo, out, sbs, gate=False):
     import json
     os.environ["WV_K953"] = "off"           # 行程內自設（開工態無此旗標 ⇒ 無作用）
+    if gate:                                # 🔧 補令一：入池閘 off、手冊先行之旗標未設（R-17′）
+        os.environ["WV_K929_6"] = "off"
+        os.environ.pop("WV_K953", None)
     ns, fst = _harvest(repo)
     import run_verification as rv
     import selection_pipeline as sp
@@ -919,15 +1051,24 @@ def offsnap(repo, out, sbs):
         drops = {f"{k}": list(v) for k, v in ns["K917_DROPPED"].items()}
         own = dict(fst.session_state.get("t8_ownership_map") or {})
         bur = {b["label"]: ns["F3_CATEGORY_BURDEN"].get(b.get("category", ""), "") for b in cb_by.values()}
-        it = ns["adj_intake"](res[5], sg["k929_6"]["build"], sg["g_rows"], ns["K917_DROPPED"], own, bur)
+        if "k929_6" in sg:
+            it = ns["adj_intake"](res[5], sg["k929_6"]["build"], sg["g_rows"], ns["K917_DROPPED"], own, bur)
+            k9log, itp = sg["k929_6"].get("log"), {"totals": it["totals"], "units": it["units"], "step4": it["step4"]}
+        else:                               # 🔧 補令一：入池閘 off ⇒ 無其回傳；調配之輸入以 build 為之（停機 ⇒ 記其首列）
+            k9log = "<入池閘 off>"
+            try:
+                it = ns["adj_intake"](res[5], res[6], sg["g_rows"], ns["K917_DROPPED"], own, bur)
+                itp = {"totals": it["totals"], "units": it["units"], "step4": it["step4"]}
+            except RuntimeError as e:
+                itp = ["停機", str(e).splitlines()[0][:300] if str(e) else ""]
         part = {
             "街角": [res[3], res[4]],
             "宗地": [[t.get("暫編地號"), t.get("段三併出"), t.get("段三部分併出"), t.get("段三餘量"),
                      t.get("面積_m2"), t.get("分攤登記面積_m2")] for t in res[5]],
             "build": [b.get("暫編地號") for b in res[6]],
             "段三紀錄": s3log, "末端塊紀錄": eblog,
-            "配地": sg["g_rows"], "入池閘": sg["k929_6"].get("log"), "不配地": drops,
-            "調配之輸入": {"totals": it["totals"], "units": it["units"], "step4": it["step4"]},
+            "配地": sg["g_rows"], "入池閘": k9log, "不配地": drops,
+            "調配之輸入": itp,
         }
         snap_out[str(sb)] = {k: _canon(v) for k, v in part.items()}
         snap_out[str(sb)]["手冊先行之紀錄"] = (k953 if k953 == "<缺>" else len(k953))
@@ -971,6 +1112,8 @@ def main(argv):
         return run(repo, sbs)
     if cmd == "offsnap" and len(argv) >= 4:
         return offsnap(repo, os.path.abspath(argv[3]), [float(x) for x in argv[4:]] or [3.5, 0.0])
+    if cmd == "gatesnap" and len(argv) >= 4:
+        return offsnap(repo, os.path.abspath(argv[3]), [float(x) for x in argv[4:]] or [3.5, 0.0], gate=True)
     if cmd == "offcmp" and len(argv) == 4:
         return offcmp(os.path.abspath(argv[2]), os.path.abspath(argv[3]))
     print(__doc__)
