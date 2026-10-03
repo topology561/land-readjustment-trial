@@ -17,6 +17,9 @@
            🔧 補令二（⛔ 上列一字不刪）：K32 ＝ `K-9-51` 之候選同距離（0）而本街廓之宗與他街廓之宗（G 較大）並存 ⇒ 本街廓
            之宗居先（KL `2026-10-03` 採乙案·`K-9-55` 之二）；K33 ＝ 本街廓之候選與 x 相連（`C0` 之後始為已配得）⇒ 停機
            （入池閘之射程）。P0 隨之 33 項。
+           🔧 補令三（⛔ 上列一字不刪）：K34 ＝ 本街廓之候選之成員取當下之試算（其單元於 `C0` 之後始含與 x 相接之片 ⇒
+           停機）；K35 ＝ 整筆者於候選之迴圈之前全檢本街廓之候選（G 較大而⛔ 相接之宗居先亦停機）；K36 ＝ x 於當下之試算
+           已自為已配得之宗或為其成員 ⇒ 停機（`K-9-51` 之「剩餘土地」不立）。P0 隨之 36 項。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -349,6 +352,19 @@ def _cases(ns, sp):
     _run(out, "K33 K-9-51 之本街廓之候選與 x 相連（C0 之後始為已配得）⇒ 停機（入池閘之射程）；⛔ 相連 ⇒ 本街廓之宗居先、併入之",
          lambda: _k33(),
          (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+    # 🔧 補令三（⛔ 上列一字不刪）
+    _run(out, "K34 K-9-51 之本街廓之候選之成員取當下之試算：其單元於 C0 之後始含與 x 相接之片 ⇒ 停機（入池閘之射程）；"
+              "該片⛔ 與 x 相接 ⇒ 併入之；C0 之 members 所載之舊單元含與 x 相接之片而當下之單元⛔ 含 ⇒ ⛔ 停機（⛔ 取聯集）",
+         lambda: _k34(),
+         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")],
+          [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+    _run(out, "K35 整筆者於候選之迴圈之前全檢本街廓之候選：G 較大而⛔ 與 x 相接之宗居先、G 較小者與 x 相接 ⇒ 停機；"
+              "後者⛔ 與 x 相接 ⇒ 併入 G 較大者",
+         lambda: _k35(),
+         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+    _run(out, "K36 x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機（K-9-51 之「剩餘土地」不立）；皆非 ⇒ 併入",
+         lambda: _k36(),
+         (("停機", True), ("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
     return out
 
 
@@ -390,6 +406,91 @@ def _k33():
         return _NS["fn"](t, build, own, blocks, {}, ap, st2, log_print=lambda *x: None), t, build
     return (_halt2(lambda: one(True), ("入池閘之射程", "K-9-55")),
             [x for x in _rows(one(False)) if x[0] == "K-9-51"])
+
+
+# 🔧 補令三（⛔ 上列一字不刪）
+def _w3(extra=()):
+    """世界三（K34〜K36）：BA x∈[0,30]、BB x∈[30,60]、BC x∈[60,90]、BD x∈[90,120]（y∈[0,30]）；BA 另可有 y∈[30,40] 之片
+    （extra）。地主 g1 之 X(1)〔BA·[20,30]·分不到〕與 BB 之 B1(1) 相接（跨分配線·BB 之容量小 ⇒ 不過 ⇒ K-9-51）；
+    O1(1)〔BA·[10,20]·他地主〕隔 A1(1)〔BA·[0,10]·g1·已配得〕與 X(1)；Y(1)〔BC·[75,90]·分不到·面積大 ⇒ 先〕併入 BD 之
+    D1(1)。M1(1) ⛔ 入 build（唯 temp）；H2(1) 入 build 而現態⛔ 保留。"""
+    t = [_tp("A1(1)", "BA", H, _R(0, 10, 0, 30), 300), _tp("O1(1)", "BA", H, _R(10, 20, 0, 30), 300),
+         _tp("X(1)", "BA", H, _R(20, 30, 0, 30), 300), _tp("B1(1)", "BB", H, _R(30, 40, 0, 30), 300),
+         _tp("B9(1)", "BB", H, _R(40, 60, 0, 30), 300), _tp("C9(1)", "BC", H, _R(60, 75, 0, 30), 300),
+         _tp("Y(1)", "BC", H, _R(75, 90, 0, 30), 450), _tp("D1(1)", "BD", H, _R(90, 100, 0, 30), 300),
+         _tp("D9(1)", "BD", H, _R(100, 120, 0, 30), 300)] + [copy.deepcopy(e) for e in extra]
+    own = {"A1": "g1", "O1": "gO", "X": "g1", "B1": "g1", "B9": "gB", "C9": "gC", "Y": "g1", "D1": "g1", "D9": "gD",
+           "M1": "g1", "H2": "g1"}
+    blocks = {b: {"category": H} for b in ("BA", "BB", "BC", "BD")}
+    return t, own, blocks
+
+
+def _go3(extra, after):
+    """玩具之回呼：Y(1) 併出之後之試算以 after(r) 改之（造「C0 之後」之態·其前 ＝ 現態）。"""
+    t, own, blocks = _w3(extra)
+    build = [x for x in t if x["暫編地號"] != "M1(1)"]
+    ap, st = _cbs(cap={"BB": 10.0}, drop=("X(1)", "Y(1)", "H2(1)"))
+
+    def st3(temp, build_):
+        r = st(temp, build_)
+        if "Y(1)" not in {b["暫編地號"] for b in build_}:
+            r = after(r)
+        return r
+    return _NS["fn"](t, build, own, blocks, {}, ap, st3, log_print=lambda *x: None), t, build
+
+
+def _k34():
+    def one(m1x):
+        def after(r):
+            return dict(r, members=dict(r["members"], **{"A1(1)": ["A1(1)", "M1(1)"]}))
+        return _go3([_tp("M1(1)", "BA", H, _R(m1x[0], m1x[1], 30, 40), 100)], after)
+    return (_halt2(lambda: one((20, 30)), ("入池閘之射程", "K-9-55")),
+            [x for x in _rows(one((0, 10))) if x[0] == "K-9-51"], _k34s())
+
+
+def _k34s():
+    """C0 之 members 載 H2(1)〔現態⛔ 保留〕之舊單元 [H2(1), M1(1)]（M1 與 x 相接）；Y(1) 併出之後 H2(1) 始為已配得、
+    其單元唯 [H2(1)]（H2 ＝ [10,20]×[30,40]·⛔ 與 x 相接）⇒ ⛔ 停機；本街廓之候選 A1(1)〔G 300〕、H2(1)〔G 100〕⇒ 併入 A1。"""
+    t, own, blocks = _w3([_tp("H2(1)", "BA", H, _R(10, 20, 30, 40), 100),
+                          _tp("M1(1)", "BA", H, _R(20, 30, 30, 40), 100)])
+    build = [x for x in t if x["暫編地號"] != "M1(1)"]
+    ap, st = _cbs(cap={"BB": 10.0}, drop=("X(1)", "Y(1)", "H2(1)"))
+
+    def st4(temp, build_):
+        r = st(temp, build_)
+        if "Y(1)" in {b["暫編地號"] for b in build_}:
+            return dict(r, members=dict(r["members"], **{"H2(1)": ["H2(1)", "M1(1)"]}))
+        k = {b: set(v) for b, v in r["kept"].items()}
+        k.setdefault("BA", set()).add("H2(1)")
+        return dict(r, kept=k, G=dict(r["G"], **{"H2(1)": 100.0}), members=dict(r["members"], **{"H2(1)": ["H2(1)"]}))
+    res = _NS["fn"](t, build, own, blocks, {}, ap, st4, log_print=lambda *x: None), t, build
+    return [x for x in _rows(res) if x[0] == "K-9-51"]
+
+
+def _k35():
+    def one(h2x):
+        def after(r):
+            k = {b: set(v) for b, v in r["kept"].items()}
+            k.setdefault("BA", set()).add("H2(1)")
+            return dict(r, kept=k, G=dict(r["G"], **{"H2(1)": 100.0}), members=dict(r["members"], **{"H2(1)": ["H2(1)"]}))
+        return _go3([_tp("H2(1)", "BA", H, _R(h2x[0], h2x[1], 30, 40), 100)], after)
+    return (_halt2(lambda: one((20, 30)), ("入池閘之射程", "K-9-55")),
+            [x for x in _rows(one((10, 20))) if x[0] == "K-9-51"])
+
+
+def _k36():
+    def one(mode):
+        def after(r):
+            if mode == "kept":
+                k = {b: set(v) for b, v in r["kept"].items()}
+                k.setdefault("BA", set()).add("X(1)")
+                return dict(r, kept=k, G=dict(r["G"], **{"X(1)": 300.0}), members=dict(r["members"], **{"X(1)": ["X(1)"]}))
+            if mode == "member":
+                return dict(r, members=dict(r["members"], **{"A1(1)": ["A1(1)", "X(1)"]}))
+            return r
+        return _go3((), after)
+    return (_halt2(lambda: one("kept"), ("「剩餘土地」不立",)), _halt2(lambda: one("member"), ("「剩餘土地」不立",)),
+            [x for x in _rows(one("none")) if x[0] == "K-9-51"])
 
 
 def _k28(W):
