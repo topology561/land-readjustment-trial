@@ -800,6 +800,64 @@ def run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp_parcels, build_pa
     return temp3, build3
 
 
+def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+             *, snapshot, callbacks, winners, forced):
+    """🆕 `W-G.9-363`：規格步 4 甲（`K-9-53` ①·手冊先行）之 harness 入口（`ns["k953_manual_run"]`·單一真相源在
+    `app.py`）。回 `(temp_out, build_out)`；並寫 `ss['f3_k953_log']` ＝ 紀錄。
+    旗標（`ns["k953_enabled"]()` 與入池閘之 `ns["k929_6_enabled"]()`·二者皆呼·補令一 裁一）其一偽 ⇒ 紀錄 `[]`、
+    回輸入之同一物件；其值非法 ⇒ `RuntimeError` 上拋。
+    試算 ＝ 街角定案之試算：深拷貝宗地；`K917_DROPPED` 清之；`SS_END_BLOCK_MODE` ＝ `'trial'`；`run_step_g`（以所給之
+    `winners`／`forced`·⛔ 重跑街角選位）；`RuntimeError` ⇒ `err` ＝ 其首列之首 300 字；摘要 ＝ `ns["k953_alloc_summary"]`；
+    單元 ＝ `ns["k953_units_of"]`（入池閘之末態 build；無則試算之 build）。`a′` ＝ `callbacks['a_prime']`。
+    隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。"""
+    import copy as _cpk
+    import contextlib as _clk
+    import io as _iok
+    from stepg_pipeline import run_step_g
+    ss = fake_st.session_state
+    _on_k = ns["k953_enabled"]()            # 🔧 補令一（R-15′）：二旗標皆判（⛔ 短路）
+    _gate_k = ns["k929_6_enabled"]()
+    if not (_on_k and _gate_k):
+        ss['f3_k953_log'] = []
+        return temp_parcels, build_parcels
+    _cat_k = {b["label"]: b.get("category", "") for b in cb}
+    _front_k = {r["街廓"]: r for r in param_rows}
+
+    def _trial_k(temp, build):
+        _tk = _cpk.deepcopy(temp)
+        _byk = {x["暫編地號"]: x for x in _tk}
+        _bk = [_byk[b["暫編地號"]] for b in build]
+        ns["K917_DROPPED"].clear()
+        ss[ns["SS_END_BLOCK_MODE"]] = 'trial'
+        _errk, _rowsk, _finalk = None, [], None
+        with _clk.redirect_stdout(_iok.StringIO()):
+            try:
+                _sgk = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _bk, winners, forced, setback,
+                                  eff_min_build_by_blk={})
+                _rowsk = _sgk["g_rows"]
+                _finalk = (_sgk.get("k929_6") or {}).get("build")
+            except RuntimeError as _ek:
+                _errk = str(_ek).split("\n")[0][:300]
+        _sumk = ns["k953_alloc_summary"](_rowsk, _cat_k, _front_k)
+        _memk, _unik = ns["k953_units_of"](_finalk if _finalk is not None else _bk)
+        return dict(_sumk, err=_errk, members=_memk, units=_unik)
+
+    _ss_keep = _cpk.deepcopy(dict(ss))
+    _k917_keep = _cpk.deepcopy(ns["K917_DROPPED"])
+    try:
+        temp_out, build_out, log = ns["k953_manual_run"](
+            temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {},
+            {b["label"]: {"category": b.get("category", "")} for b in cb}, cad.get("centerlines", {}) or {},
+            callbacks['a_prime'], _trial_k)
+    finally:
+        ss.clear()
+        ss.update(_ss_keep)
+        ns["K917_DROPPED"].clear()
+        ns["K917_DROPPED"].update(_k917_keep)
+    ss['f3_k953_log'] = log
+    return temp_out, build_out
+
+
 def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
                       *, snapshot):
     """`W-G.9-344`：段三之 harness 入口。回傳七元組
@@ -817,6 +875,8 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
        `snapshot`／`cb`／`cad`（⛔ 依宗地），與最終之 `run_step_g` 所寫者同值 ⇒ ⛔ 回復（具名）。
     6. 🆕 `W-G.9-353`：段三（或其不辦）之後，辦末端塊之合併再試（`run_end_block_merge`）；宗地有變 ⇒
        再跑一次 `run_corner_pk`。回傳其五值 ＋ 末態之宗地。
+    7. 🆕 `W-G.9-363`：末端塊之合併再試（及其重跑之街角選位）之後，辦手冊先行（`run_k953`·`K-9-53` ①·以其時之
+       winners／forced 試算）；其後⛔ 重跑街角選位（`v3` §8 位相不變）。回傳之末態之宗地 ＝ 手冊先行之出。
     """
     import copy as _cp
     ss = fake_st.session_state
@@ -853,4 +913,7 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
                                         snapshot=snapshot, callbacks=_cbk)
     if temp3 is not temp2:
         res = run_corner_pk(ns, fake_st, cb, cad, param_rows, temp3, build3, setback, snapshot=snapshot)
+    # 🆕 `W-G.9-363`：手冊先行（`K-9-53` ①）——街角定案（以其時之 winners／forced）·其後⛔ 重跑街角選位
+    temp3, build3 = run_k953(ns, fake_st, cb, cad, param_rows, temp3, build3, setback,
+                             snapshot=snapshot, callbacks=_cbk, winners=res[3], forced=res[4])
     return (*res, temp3, build3)
