@@ -1,0 +1,89 @@
+diff --git a/app.py b/app.py
+index f032359..f271aee 100644
+--- a/app.py
++++ b/app.py
+@@ -14458,6 +14458,7 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+ #   🔒 單一真相源 ＝ `k953_manual_run`（純函式·⛔ 讀 `st`／session）；harness ＝ `verify/selection_pipeline.py` 之 `run_k953`；
+ #      畫面 ＝ `f3_screen_k953`。併入之結果沿用段三之三鍵標於宗地 ⇒ 其下游一字不改。
+ #   🔒 旗標 `WV_K953`：未設／`on` ⇒ 啟用；`off` ⇒ 逐位回到本批前之行為（唯 session 多一鍵 `f3_k953_log` ＝ `[]`）。
++#      入池閘之旗標 `WV_K929_6` ＝ `off` 亦不辦（手冊先行立於入池閘之上·二旗標皆判·補令一 裁一）。
+ K953_ENV = "WV_K953"
+ 
+ 
+@@ -14533,10 +14534,12 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+       log_print      留供呼叫端注入之印出函式（本函式之停機一律 `raise`）。
+     回傳 `(temp_out, build_out, log)`：無受詞 ⇒ 輸入之同一物件與 `[]`；否則 `temp_out` 為深拷貝（含入池閘之單元之取代），
+       受併宗之 `面積_m2` 增其量；併出之片帶段三之三鍵（`段三併出`／`段三部分併出`／`段三餘量`）；整筆併出之建地片已自
+-      `build_out` 去之。
++      `build_out` 去之。取代之單元於 temp 與 build 中為同一物件，其形 ＝ 入池閘之佔位成員之形（補令一 裁三·`GB-199`）。
+     停機（`RuntimeError`·訊息首 `🔴 [K-9-53 手冊先行]`）：build 片不在 temp；現態之配地中止或其回傳缺 `G`／`members`；
+       道路之中心線非二點、街廓之形或片之部落於中心線上；建地片與同街廓之已配得之宗相連（入池閘之射程）；
+-      應分配面積並列（【未裁】）；檢核之併入前配地中止；面積、折算或街廓之形無從定之。⛔ 以靜默略過代之。
++      應分配面積並列（【未裁】）；檢核之併入前配地中止；面積、折算或街廓之形無從定之；
++      `K-9-51` 之整筆之片併入其本街廓之已配得之宗而檢核不過（【未裁】·`K-9-55` 之前提不立·補令一 裁二）。
++      ⛔ 以靜默略過代之。
+     """
+     import copy as _cp953
+     from shapely.geometry import Polygon as _Pg953, LineString as _Ln953
+@@ -14994,6 +14997,9 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                                 距離=_dv, G=-_ng)
+                     _left = 0.0
+                     break
++                if str(_bk) == _blk953[_x]:     # 🔧 補令一（R-10′·K-9-55）：併入本街廓之宗而不過 ⇒ 前提不立
++                    raise RuntimeError(f"{_hdr953}【未裁】{_x}（{_blk953[_x]}）併入其本街廓之已配得之宗 {_h} 而檢核不過"
++                                       f"（{_why}）——K-9-55 之前提不立 ⇒ 停機（⛔ 改試他宗·⛔ 自裁）")
+                 _put_row953(**_base, 受併宗=_h, 結果='未成', 檢核='不過', 不過之由=_why, 距離=_dv, G=-_ng)
+             else:
+                 if not _pos953(_left):
+@@ -20933,7 +20939,8 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+     `run_k953`；單一真相源 ＝ `k953_manual_run`。呼叫端 ＝ `f3_screen_k6b_stage3` 之 `_end_merge`（末端塊合併再試之後）。
+     `pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名（其 `temp_parcels`／`build_parcels` ＝ 手冊先行之輸入）；`g_kwargs` ＝ 同段三之
+     畫面入口。回 `{'temp', 'build', 'log'}`（旗標 off 或無受詞 ⇒ `temp`／`build` 為輸入之同一物件）。
+-      ① 先去 `f3_k953_log`；旗標 off ⇒ 其 ＝ `[]`、回輸入。
++      ① 先去 `f3_k953_log`；二旗標（`k953_enabled` 與入池閘之 `k929_6_enabled`·二者皆呼）其一 off ⇒ 其 ＝ `[]`、
++         回輸入、⛔ 呼叫 `st`；其值非法（`RuntimeError`）⇒ 走 ④ 之停機（補令一 裁一／裁五）。
+       ② 試算 ＝ 街角定案之試算：深拷貝宗地；`K917_DROPPED` 清之；先去 `SS_ADJ_BUILD_FINAL`；代理 st；`SS_END_BLOCK_MODE` ＝
+          `'trial'`；以 `f3_screen_stepg_run` 跑配地（⛔ 重跑街角選位）；摘要 ＝ `k953_alloc_summary`；單元 ＝ `k953_units_of`
+          （入池閘之末態 build；無則試算之 build）。`a′` ＝ `k6b_screen_callbacks` 之 `a_prime`。
+@@ -20946,7 +20953,15 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+     _sst = st.session_state
+     temp_in, build_in = pk_kwargs['temp_parcels'], pk_kwargs['build_parcels']
+     _sst.pop('f3_k953_log', None)
+-    if not k953_enabled():
++    try:                                    # 🔧 補令一（R-16′）：二旗標皆判（⛔ 短路）；其停機走 ④ 之路
++        _on953s = k953_enabled()
++        _gate953s = k929_6_enabled()
++    except RuntimeError as _e953f:
++        _sst['f3_k6b_stage3_error'] = '（手冊先行）' + str(_e953f).split("\n")[0][:500]
++        st.error(str(_e953f))
++        st.stop()
++        raise
++    if not (_on953s and _gate953s):
+         _sst['f3_k953_log'] = []
+         return {'temp': temp_in, 'build': build_in, 'log': []}
+     _cat953s = {_cbk['label']: _cbk.get('category', '') for _cbk in g_kwargs['classified_blocks']}
+diff --git a/verify/selection_pipeline.py b/verify/selection_pipeline.py
+index 9d860b2..c5e9fb0 100644
+--- a/verify/selection_pipeline.py
++++ b/verify/selection_pipeline.py
+@@ -804,7 +804,8 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+              *, snapshot, callbacks, winners, forced):
+     """🆕 `W-G.9-363`：規格步 4 甲（`K-9-53` ①·手冊先行）之 harness 入口（`ns["k953_manual_run"]`·單一真相源在
+     `app.py`）。回 `(temp_out, build_out)`；並寫 `ss['f3_k953_log']` ＝ 紀錄。
+-    旗標（`ns["k953_enabled"]()`）偽 ⇒ 紀錄 `[]`、回輸入之同一物件。
++    旗標（`ns["k953_enabled"]()` 與入池閘之 `ns["k929_6_enabled"]()`·二者皆呼·補令一 裁一）其一偽 ⇒ 紀錄 `[]`、
++    回輸入之同一物件；其值非法 ⇒ `RuntimeError` 上拋。
+     試算 ＝ 街角定案之試算：深拷貝宗地；`K917_DROPPED` 清之；`SS_END_BLOCK_MODE` ＝ `'trial'`；`run_step_g`（以所給之
+     `winners`／`forced`·⛔ 重跑街角選位）；`RuntimeError` ⇒ `err` ＝ 其首列之首 300 字；摘要 ＝ `ns["k953_alloc_summary"]`；
+     單元 ＝ `ns["k953_units_of"]`（入池閘之末態 build；無則試算之 build）。`a′` ＝ `callbacks['a_prime']`。
+@@ -814,7 +815,9 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+     import io as _iok
+     from stepg_pipeline import run_step_g
+     ss = fake_st.session_state
+-    if not ns["k953_enabled"]():
++    _on_k = ns["k953_enabled"]()            # 🔧 補令一（R-15′）：二旗標皆判（⛔ 短路）
++    _gate_k = ns["k929_6_enabled"]()
++    if not (_on_k and _gate_k):
+         ss['f3_k953_log'] = []
+         return temp_parcels, build_parcels
+     _cat_k = {b["label"]: b.get("category", "") for b in cb}
