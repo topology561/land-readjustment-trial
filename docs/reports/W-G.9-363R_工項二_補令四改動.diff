@@ -1,0 +1,98 @@
+diff --git a/app.py b/app.py
+index 7b6c7dc..176f90c 100644
+--- a/app.py
++++ b/app.py
+@@ -14538,9 +14538,10 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     停機（`RuntimeError`·訊息首 `🔴 [K-9-53 手冊先行]`）：build 片不在 temp；現態之配地中止或其回傳缺 `G`／`members`；
+       道路之中心線非二點、街廓之形或片之部落於中心線上；建地片與同街廓之已配得之宗相連（入池閘之射程）；
+       應分配面積並列（【未裁】）；檢核之併入前配地中止；面積、折算或街廓之形無從定之；
+-      `K-9-51` 之整筆之片，於試任一候選之前依序全檢（成員取當下之試算·候選與其 G 取自同一試算）：當下之試算之
+-      `members` 非 dict；該片於當下之試算已自為已配得之宗或為其成員（`K-9-51` 之前提「剩餘土地」不成立）；本街廓之
+-      候選之成員與之相連（入池閘之射程·`K-9-55` 之前提「不相鄰」不成立）（補令二 裁二·補令三 裁一〜三）。
++      逐片之整筆之片，於其主併入之前依序全檢當下之試算（宗與其成員皆取之；其後之 `K-9-51` 用同一試算·⛔ 再查）：
++      配地中止；`members` 非 dict；該片已自為已配得之宗或為其成員（`K-9-53` ① 之前提「分不到」與 `K-9-51` 之前提
++      「剩餘土地」皆不成立）；同一地主於本街廓之已配得之宗之成員與之相連（入池閘之射程·`R-6` (a) 之同街廓之例·
++      `K-9-55` 之前提「不相鄰」不成立）（補令二 裁二·補令三 裁一〜三·補令四 裁一）。
+       （本街廓之候選之檢核不過 ⇒ 記未成、續試他宗·⛔ 停機——補令二 裁一·`K-9-55` 之二·代補令一之停機。）
+       ⛔ 以靜默略過代之。
+     """
+@@ -14985,29 +14986,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                 _list.append((_q953(_geo953[_x].distance(_ushape953(_bk))), 0 if str(_bk) == _blk953[_x] else 1,
+                               -float(_gc[_h]), _h, _bk))
+         _list.sort()
+-        if _whole:
+-            # 🔧 補令三（R-10‴ ②）：成員取當下之試算（候選、其 G 與其成員取自同一試算）；試任一候選之前依序全檢
+-            _sm953 = _cur.get('members')
+-            if not isinstance(_sm953, dict):
+-                raise RuntimeError(f"{_hdr953}·K-9-51 試算未回 members（dict）——當下之成員無從定之 ⇒ 停機")
+-
+-            def _memS953(_h):
+-                return [str(_m) for _m in (_sm953.get(_h) or [_h]) if str(_m) in _tin953]
+-            _own953 = sorted({str(_h) for _hs in (_cur.get("kept") or {}).values() for _h in _hs
+-                              if _x in _memS953(str(_h))})
+-            if _own953:
+-                raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）於當下之試算已為已配得之宗 {_own953}"
+-                                   "或其成員——K-9-51 之「剩餘土地」不立 ⇒ 停機")
+-            _nbr953 = {}
+-            for _dv, _hm, _ng, _h, _bk in _list:
+-                if _hm != 0:
+-                    continue
+-                _tc953 = [_m for _m in _memS953(_h) if _touch953(_x, _m)]
+-                if _tc953:
+-                    _nbr953[_h] = _tc953
+-            if _nbr953:
+-                raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）與其本街廓之候選之成員相連 {_nbr953}"
+-                                   "——入池閘之射程（K-9-55 之「不相鄰」不立）⇒ 停機")
++        # 🔧 補令四（R-10⁗）：整筆者之查（補令三 R-10‴ ② 之 (i)〜(iii)）⛔ 於此——由 R-9⁗ ③ 於主併入之前以同一試算為之
+         _left = _s
+         _base = dict(序='K-9-51', 歸戶=_gx, 街廓=_blk953[_x], 片=_x, 類=plan953[_x]['類'],
+                      依據='K-9-51（剩餘土地·距離近者先）')
+@@ -15041,6 +15020,40 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                         餘量=round(float(_amt953(_tin953[_x]) if _whole else _left), 4))
+         return _left
+ 
++    # ── R-9⁗ ③：逐片之整筆之主併入之前之查（補令四·當下之試算 S·其後之 χ 之前態與 `K-9-51` 皆同一試算·⛔ 再查）──
++    def _wpre953(_x):
++        _S953 = _sim953(state)
++        if _S953.get('err'):
++            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）之主併入之前，當下之配地中止（無從判定）："
++                               f"{_S953.get('err')!r} ⇒ 停機")
++        _sm953 = _S953.get('members')
++        if not isinstance(_sm953, dict):
++            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）之主併入之前，試算未回 members（dict）"
++                               "——當下之成員無從定之 ⇒ 停機")
++
++        def _memS953(_h):
++            return [str(_m) for _m in (_sm953.get(_h) or [_h]) if str(_m) in _tin953]
++        _kS953 = _S953.get("kept") or {}
++        _own953 = sorted({str(_h) for _hs in _kS953.values() for _h in _hs if _x in _memS953(str(_h))})
++        if _own953:
++            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）於當下之試算已為已配得之宗 {_own953}"
++                               "或其成員——K-9-53 ① 之「分不到」不立、K-9-51 之「剩餘土地」不立 ⇒ 停機")
++        _gx = _gown953(_tin953[_x])
++        _nbr953 = {}
++        for _bk in sorted(_kS953):
++            if str(_bk) != _blk953[_x]:
++                continue
++            for _h in sorted(_kS953[_bk]):
++                _h = str(_h)
++                if _h == _x or _h not in state["by"] or _gown953(state["by"][_h]) != _gx:
++                    continue
++                _tc953 = [_m for _m in _memS953(_h) if _touch953(_x, _m)]
++                if _tc953:
++                    _nbr953[_h] = _tc953
++        if _nbr953:
++            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）與同一地主於本街廓之已配得之宗（當下之試算）之成員"
++                               f"相連 {_nbr953}——入池閘之射程（R-6 (a) 之同街廓之查·K-9-55 之「不相鄰」不立）⇒ 停機")
++
+     # ── R-9：施（① 序 → ② 整批 → ③ 逐片）──
+     _rank953 = {'a': 0, 'b': 1, 'c': 2}
+     _order953 = sorted(X, key=lambda _x: (_rank953[plan953[_x]['類']], -float(_geo953[_x].area), _x))
+@@ -15087,6 +15100,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+             continue
+         if _pl['whole']:
+             _r, _qv = _pl['items'][0]
++            _wpre953(_x)
+             _cand_st = _dup953(state)
+             _inject953(_cand_st, _x, [(_r, _qv)], True)
+             _ok, _why = _chk953(state, _cand_st, {_home953[_r], _blk953[_x]}, {_x})
