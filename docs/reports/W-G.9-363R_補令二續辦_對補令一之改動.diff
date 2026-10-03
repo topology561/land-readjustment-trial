@@ -1,0 +1,45 @@
+diff --git a/app.py b/app.py
+index f271aee..b174843 100644
+--- a/app.py
++++ b/app.py
+@@ -14538,7 +14538,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     停機（`RuntimeError`·訊息首 `🔴 [K-9-53 手冊先行]`）：build 片不在 temp；現態之配地中止或其回傳缺 `G`／`members`；
+       道路之中心線非二點、街廓之形或片之部落於中心線上；建地片與同街廓之已配得之宗相連（入池閘之射程）；
+       應分配面積並列（【未裁】）；檢核之併入前配地中止；面積、折算或街廓之形無從定之；
+-      `K-9-51` 之整筆之片併入其本街廓之已配得之宗而檢核不過（【未裁】·`K-9-55` 之前提不立·補令一 裁二）。
++      `K-9-51` 之整筆之片與其本街廓之候選相連（入池閘之射程·`K-9-55` 之前提「不相鄰」不成立·補令二 裁二）。
++      （本街廓之候選之檢核不過 ⇒ 記未成、續試他宗·⛔ 停機——補令二 裁一·`K-9-55` 之二·代補令一之停機。）
+       ⛔ 以靜默略過代之。
+     """
+     import copy as _cp953
+@@ -14978,13 +14979,18 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                     continue
+                 if not isinstance(_gc, dict) or _h not in _gc:
+                     raise RuntimeError(f"{_hdr953}·K-9-51 試算未回 {_h} 之 G——應分配面積之序無從定之 ⇒ 停機")
+-                _list.append((_q953(_geo953[_x].distance(_ushape953(_bk))), -float(_gc[_h]), _h, _bk))
++                # 🔧 補令二（R-10″ ①·K-9-55 之二）：同距離者本街廓之宗居先（第二鍵 0／1）
++                _list.append((_q953(_geo953[_x].distance(_ushape953(_bk))), 0 if str(_bk) == _blk953[_x] else 1,
++                              -float(_gc[_h]), _h, _bk))
+         _list.sort()
+         _left = _s
+         _base = dict(序='K-9-51', 歸戶=_gx, 街廓=_blk953[_x], 片=_x, 類=plan953[_x]['類'],
+                      依據='K-9-51（剩餘土地·距離近者先）')
+-        for _dv, _ng, _h, _bk in _list:
++        for _dv, _hm, _ng, _h, _bk in _list:
+             if _whole:
++                if _hm == 0 and any(_touch953(_x, _m) for _m in _mem953(_h)):   # 🔧 補令二（R-10″ ②）
++                    raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）與其本街廓之候選 {_h} 相連"
++                                       "——入池閘之射程（K-9-55 之「不相鄰」不立）⇒ 停機")
+                 _qv = _ap953(_x, _h)
+                 _cand_st = _dup953(state)
+                 _inject953(_cand_st, _x, [(_h, _qv)], True)
+@@ -14997,9 +15003,6 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                                 距離=_dv, G=-_ng)
+                     _left = 0.0
+                     break
+-                if str(_bk) == _blk953[_x]:     # 🔧 補令一（R-10′·K-9-55）：併入本街廓之宗而不過 ⇒ 前提不立
+-                    raise RuntimeError(f"{_hdr953}【未裁】{_x}（{_blk953[_x]}）併入其本街廓之已配得之宗 {_h} 而檢核不過"
+-                                       f"（{_why}）——K-9-55 之前提不立 ⇒ 停機（⛔ 改試他宗·⛔ 自裁）")
+                 _put_row953(**_base, 受併宗=_h, 結果='未成', 檢核='不過', 不過之由=_why, 距離=_dv, G=-_ng)
+             else:
+                 if not _pos953(_left):
