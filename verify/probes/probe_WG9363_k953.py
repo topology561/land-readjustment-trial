@@ -20,6 +20,9 @@
            🔧 補令三（⛔ 上列一字不刪）：K34 ＝ 本街廓之候選之成員取當下之試算（其單元於 `C0` 之後始含與 x 相接之片 ⇒
            停機）；K35 ＝ 整筆者於候選之迴圈之前全檢本街廓之候選（G 較大而⛔ 相接之宗居先亦停機）；K36 ＝ x 於當下之試算
            已自為已配得之宗或為其成員 ⇒ 停機（`K-9-51` 之「剩餘土地」不立）。P0 隨之 36 項。
+           🔧 補令四（⛔ 上列一字不刪）：K37 ＝ 逐片之整筆之主併入（其檢核過）之前，x 於當下之試算已自為已配得之宗或為
+           其成員 ⇒ 停機（`K-9-53` ① 之「分不到」不立）；K38 ＝ 同時點，本街廓之已配得之宗（同歸戶·當下之試算）之成員
+           與 x 相連 ⇒ 停機（入池閘之射程·`R-6` (a) 之同街廓之例）——成員與宗皆取當下之試算、全檢、⛔ 取聯集。P0 隨之 38 項。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -365,6 +368,17 @@ def _cases(ns, sp):
     _run(out, "K36 x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機（K-9-51 之「剩餘土地」不立）；皆非 ⇒ 併入",
          lambda: _k36(),
          (("停機", True), ("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+    # 🔧 補令四（⛔ 上列一字不刪）
+    _run(out, "K37 逐片之整筆之主併入（其檢核過）之前：x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機"
+              "（K-9-53 ① 之「分不到」不立）；皆非 ⇒ 併入其計畫之受併宗",
+         lambda: _k37(),
+         (("停機", True), ("停機", True), [("手冊", "X(1)", "a", "B1(1)", (("B1(1)", 300.0),), "成")]))
+    _run(out, "K38 逐片之整筆之主併入（其檢核過）之前：本街廓之已配得之宗（同歸戶·當下之試算）之成員與 x 相連 ⇒ 停機"
+              "（入池閘之射程）——C0 之後始為已配得之宗（G 較小）、或已配得之宗之單元於 C0 之後始含與 x 相接之片，皆停機；"
+              "⛔ 相接 ⇒ 併入；C0 之 members 所載之舊單元含與 x 相接之片而當下之單元⛔ 含 ⇒ ⛔ 停機（⛔ 取聯集）",
+         lambda: _k38(),
+         (("停機", True), ("停機", True), [("手冊", "X(1)", "a", "B1(1)", (("B1(1)", 300.0),), "成")],
+          [("手冊", "X(1)", "a", "B1(1)", (("B1(1)", 300.0),), "成")]))
     return out
 
 
@@ -491,6 +505,66 @@ def _k36():
         return _go3((), after)
     return (_halt2(lambda: one("kept"), ("「剩餘土地」不立",)), _halt2(lambda: one("member"), ("「剩餘土地」不立",)),
             [x for x in _rows(one("none")) if x[0] == "K-9-51"])
+
+
+# 🔧 補令四（⛔ 上列一字不刪）
+def _go4(extra, after, before=None):
+    """世界三之變（K37／K38）：BB 之容量⛔ 設 ⇒ X(1) 之主併入（B1(1)）之檢核過。玩具之回呼：Y(1) 併出之前之試算以
+    before(r) 改之（缺 ⇒ 不改）；Y(1) 併出之後之試算，BB 之配餘地不合格一處（Y(1) 之檢核之 T ＝ {BD, BC} 不及之 ⇒ Y(1)
+    成；整批之 T 含 BB 而現態為 0 ⇒ 整批不過 ⇒ 逐片；X(1) 之主併入之前後皆 1 ⇒ ⛔ 增），再以 after(r) 改之（造
+    「C0 之後」之態）。"""
+    t, own, blocks = _w3(extra)
+    build = [x for x in t if x["暫編地號"] != "M1(1)"]
+    ap, st = _cbs(drop=("X(1)", "Y(1)", "H2(1)"))
+
+    def st5(temp, build_):
+        r = st(temp, build_)
+        if "Y(1)" in {b["暫編地號"] for b in build_}:
+            return before(r) if before else r
+        return after(dict(r, bad_pools=dict(r["bad_pools"], BB=1)))
+    return _NS["fn"](t, build, own, blocks, {}, ap, st5, log_print=lambda *x: None), t, build
+
+
+def _k37():
+    def one(mode):
+        def after(r):
+            if mode == "kept":
+                k = {b: set(v) for b, v in r["kept"].items()}
+                k.setdefault("BA", set()).add("X(1)")
+                return dict(r, kept=k, G=dict(r["G"], **{"X(1)": 300.0}), members=dict(r["members"], **{"X(1)": ["X(1)"]}))
+            if mode == "member":
+                return dict(r, members=dict(r["members"], **{"A1(1)": ["A1(1)", "X(1)"]}))
+            return r
+        return _go4((), after)
+    return (_halt2(lambda: one("kept"), ("「分不到」不立",)), _halt2(lambda: one("member"), ("「分不到」不立",)),
+            _sel(one("none"), "X(1)"))
+
+
+def _k38():
+    def h2(h2x):
+        def after(r):
+            k = {b: set(v) for b, v in r["kept"].items()}
+            k.setdefault("BA", set()).add("H2(1)")
+            return dict(r, kept=k, G=dict(r["G"], **{"H2(1)": 100.0}), members=dict(r["members"], **{"H2(1)": ["H2(1)"]}))
+        return _go4([_tp("H2(1)", "BA", H, _R(h2x[0], h2x[1], 30, 40), 100)], after)
+
+    def m1():
+        def after(r):
+            return dict(r, members=dict(r["members"], **{"A1(1)": ["A1(1)", "M1(1)"]}))
+        return _go4([_tp("M1(1)", "BA", H, _R(20, 30, 30, 40), 100)], after)
+
+    def old():
+        def before(r):
+            return dict(r, members=dict(r["members"], **{"H2(1)": ["H2(1)", "M1(1)"]}))
+
+        def after(r):
+            k = {b: set(v) for b, v in r["kept"].items()}
+            k.setdefault("BA", set()).add("H2(1)")
+            return dict(r, kept=k, G=dict(r["G"], **{"H2(1)": 100.0}), members=dict(r["members"], **{"H2(1)": ["H2(1)"]}))
+        return _go4([_tp("H2(1)", "BA", H, _R(10, 20, 30, 40), 100), _tp("M1(1)", "BA", H, _R(20, 30, 30, 40), 100)],
+                    after, before)
+    return (_halt2(lambda: h2((20, 30)), ("入池閘之射程", "R-6 (a)")), _halt2(m1, ("入池閘之射程", "R-6 (a)")),
+            _sel(h2((10, 20)), "X(1)"), _sel(old(), "X(1)"))
 
 
 def _k28(W):
