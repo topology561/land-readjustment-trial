@@ -3551,3 +3551,11 @@ for lbl in _blks:
 3. **索引之維護**：索引之更動須經施工單；凡施工單新增或取代常設規則者，同單須一併更新索引之對應條，否則新規則不會進入 CC 開工時之 context。索引之每個〔字樣〕須恰命中本檔一列；其檢查器與失敗考古之目錄之重生成器見 `docs/orders/W-G.9-365_輕量單.md` 之附錄午（塊 `CK`）與附錄巳（塊 `GF`），日後之單於本檔末端追加後須重跑之。
 4. **技能**：`failure-archaeology`（因其長）、`stop-conditions` 與 `wave-discipline`（因其過時）不自動叫用（`skillOverrides`·`user-invocable-only`），需要時以 `/` 選單手動叫用；新增 `failure-archaeology-index`（失敗考古之目錄）；七技能檔與 `README.md` 之失準處見各檔末之「失準之更正」「現況之補記」或「本技能已停止自動叫用」節；審查代理 `.claude/agents/redistribution-reviewer.md` 與 `AGENTS.md` 之過時處已逐處更正（二檔不在 `常規一 ②` 補款③ (2) 之正典檔之列）。
 5. **驗收**：KL 於新開之 CC 工作階段以 `/context` 核對其記憶檔之列：不含本檔與 `AGENTS.md`，而含 `.claude/rules/常設規則索引.md`。若本檔仍在其列（例：`claudeMdExcludes` 之樣式於該平台未命中），則本改制未生效，以施工單另處，不得自行改設定。
+
+## 🔧 開工自動對齊（`W-G.9-366`·KL `2026-10-04` 令·⛔ 上文一字不刪·純末端追加）
+
+1. **緣由**：`2026-10-04`，KL 於桌面版選分支 `wip/s1-endpart`（勾 worktree）新開工作階段，其工作區 `claude/context-770073` 建於 `0e0edb3`，而本機與遠端之 `wip/s1-endpart` 皆已為 `3c0c59c`（`git worktree list` 與 `git rev-parse` 之出艙·KL 所貼）⇒ 開工時讀不到 `W-G.9-365` 所立之 `.claude/rules/常設規則索引.md`。桌面版建工作區所據之版本非本倉所能左右。
+2. **機制**：KL 本機之使用者設定（`~/.claude/settings.json`）掛 SessionStart hook（`startup`／`clear`／`compact`），執行主 checkout 之 `verify/tools/wg9366_session_sync.py`。開工（`startup`／`clear`）時，工作區合於下列全部條件者，以 `git merge --ff-only` 快轉至 `origin/wip/s1-endpart`，並告知 Claude 以 Read 讀常設規則索引：遠端網址以 `land-readjustment-trial` 結尾；為 linked worktree；分支名以 `claude/` 起首；追蹤檔無變動；`HEAD` 為主線之端之祖先而不等於之；主線所新增之檔於工作區皆不存在。落後而不合後三條件者只出通知、不動；不落後者無聲。快轉而索引於開工時係舊版或缺者，記狀態於該工作區之 git 管理目錄，其後 context 壓縮（`compact`）時再提醒重讀，`/clear` 或新開工後解除。主 checkout、detached、他分支、他專案一律不動；⛔ push、⛔ 刪檔；本器之例外一律不擋開工。
+3. **掛於使用者設定之由**：依 Claude Code 之文件，專案之 `.claude/settings.json` 自工作階段之目錄讀取，工作區若建於本批以前之版本即無此 hook；使用者設定則每次皆讀，而其所指之器在主 checkout，各單收尾之主 checkout 同步使之恆為最新。故主 checkout 之同步不可省。
+4. **開關**：KL 欲停用時，自使用者設定之 `hooks.SessionStart` 刪該項即可（其 command 含 `wg9366_session_sync.py`）；不涉本倉。重新掛載之器見 `docs/orders/W-G.9-366_輕量單.md` 之塊 `US`（冪等·寫前先備份）。
+5. **驗收**：KL 於桌面版選 `wip/s1-endpart` 新開工作階段，請 CC 執行 `git log -1 --oneline`，其端 ＝ 主線之端。
