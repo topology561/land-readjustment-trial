@@ -124,3 +124,14 @@ K-6-A1 解除 F.0 後才曝出 F.4 之 3.5m E2 不可行（既有·早已上呈�
 `probe_ruling_K8_baseline_pairing`（配對輸出＋N-19′ 全精度靶）、
 `fixture_block_depth_n19p`（app 取值函式之 2dp 鏈／診斷欄／缺件 raise／`region_min`）
 **三者互為補集、無一取代另一**；三檔 docstring 已互相 cross-reference。
+
+---
+
+## 🔧 失準之更正（`W-G.9-365`·2026-10-04·上文一字不刪·純末端追加）
+
+本節取代上文之對應敘述，上文原句只作史料。各點經發單側窗六十八於 `0e0edb3` 自倉實查。
+
+- 驗收之判準：本分支為「准紅碼」，驗收＝與凍存之期望 FAIL 名單逐項相同（名目＋正規化原因；`verify/wv_reconcile.py` 於每次 `run_all` 對帳），不是全綠（`CLAUDE.md`「准紅碼」）。
+- UC9898 oracle 中之街角範圍值（例「R5左 300.52／R2左 309.05／R3右 308.93」）與全覆蓋錨係 K-8 以前之值，已隨 K-8 之範圍構造與 `data/V6_1.dxf` 改變；不以上文之數為期，以現行 harness 之期值與對帳名單為準。
+- 上文「現況清單」之「末端夾具 ×7」已過時：`verify/run_all.py` 現跑之夾具與探針較多，清單以 `verify/run_all.py` 之現碼為準。
+- `run_all` 會改寫已追蹤之 `verify/out/probe_ruling_*.log` 並新生 E 系列實測快照 CSV，一律於倉外之拋棄式 worktree 跑（`CLAUDE.md`「`run_all` 之副作用」）。

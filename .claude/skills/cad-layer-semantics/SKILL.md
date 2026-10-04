@@ -189,3 +189,14 @@ eps = max( _EPS_LEGAL , min( k · q · (L/ℓ) , _EPS_LEGAL_CEIL ) )
 
 夾具母體：`verify/fixture_n14_min_width.py`（②三格恆等長／①截角前後 8.00 vs 4.00 判別力反例／
 ①SIDE 傾 4.322° min 落深端／③街廓界外傾 min 落近端／不變量五格 loud raise）。
+
+---
+
+## 🔧 失準之更正（`W-G.9-365`·2026-10-04·上文一字不刪·純末端追加）
+
+本節取代上文之對應敘述，上文原句只作史料。各點經發單側窗六十八於 `0e0edb3` 自倉實查。
+
+- 上文「街角 side_mid ＝ SIDE 子段…之子段中點（非全線中點）」不再適用：補丁六（`docs/specs/W-G.4_規格v3補丁六_W正典_S1v3範圍.md`「W 正典」）定 mp ＝ SIDE_LINE 全段之中點，以之為準。
+- 上文「現況 (Ⅰ)(Ⅱ) 共用 `_build_corner_range_v2`」已不成立：該符號已刪除；(Ⅰ) 為 `_build_corner_range_v3`，(Ⅱ) 為 `_build_burden_range`，二者不再共用（K-6 典 K-8 §五）。
+- 上文「失敗考古 #38」：所指之教訓今在 `failure-archaeology` 第 28 則（該則之標題自載 `#38` 為其別稱）。
+- 上文「本案實測角度（claude.ai 由 `data/V6.dxf` 坐實）」：生產與驗證之圖資現為 `data/V6_1.dxf`（`K-9-20`），V6_1 改動了 R1／R4 之 FRONT／SIDE 線；上列角度如需引用，須於 V6_1 重量。

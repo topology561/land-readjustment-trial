@@ -30,3 +30,12 @@ W-D.1.3 全波收官後，由 claude.ai 將 W-A→W-D.1.3 累積之判斷蒸餾�
 - W-D §2 落地 → tiebreaker 改吃正典原位次（corner-selection-rules）。
 - W-D.2 §3 → `left/right_corner_min_area` 守恆接線（g-formula-rules）。
 - 未來案例聚合線（折線）→ 配對/量測通用化（cad-layer-semantics）。
+
+---
+
+## 🔧 現況之補記（`W-G.9-365`·2026-10-04·上文一字不刪·純末端追加）
+
+- 技能現有十一項：上表十項，加 `failure-archaeology-index`（失敗考古之目錄）。
+- 自 `W-G.9-365` 起，`failure-archaeology`（因其長）、`stop-conditions` 與 `wave-discipline`（因其過時）不自動叫用（`.claude/settings.json` 之 `skillOverrides`）；需要時以 `/` 選單手動叫用。失敗考古先讀其目錄；停機與流程之現行規則見 `.claude/rules/常設規則索引.md`。
+- 「已知後續 hook」之前二項皆已落地：tiebreaker 改吃原位次（`5d24519`）；`left/right_corner_min_area` 已接線（`f2dab43`）。
+- 各技能檔末之「失準之更正」節優先於其上文。

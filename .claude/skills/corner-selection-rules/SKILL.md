@@ -99,3 +99,16 @@ M-5 §七①（KL 2026-07-25）與 K-4 第 3 條是**同一操作的兩個版本
 **該類地之法定檢驗方式本來就是面積門檻**，且已於 winner 選拔時檢過。
 **機器閘**：`待判（截角）` 計數須恆為 **0**，非 0 即 loud（步驟 J ＋ `merge_subparcels_by_parent` 雙處）。
 **K-2(Ⅲ) 量測用虛擬範圍**：唯一消費者（街角寬深量測）已由 K-4 退役 ⇒ **無消費者·續留 backlog·不建**（禁死碼）。
+
+---
+
+## 🔧 失準之更正（`W-G.9-365`·2026-10-04·上文一字不刪·純末端追加）
+
+本節取代上文之對應敘述，上文原句只作史料。各點經發單側窗六十八於 `0e0edb3` 自倉實查。
+
+- 本技能之說明與上文所稱之 `_build_corner_range_v2` 已刪除（`CLAUDE.md` 載「舊符號 `_build_corner_range_v2` **已刪除**」）。街角規定範圍之構造以 `docs/rulings/K-6_街角地分配程序與可分配判準.md` 為準：K-8 §五 之「作廢」廢止上文之條帶構造，其後 `K-9-5-13` 改遠側界為 SIDELINE 平移 `S1`。現行之碼：(Ⅰ) `_build_corner_range_v3`，(Ⅱ) `_build_burden_range`。
+- 上文「Winner 判定」第 2 點之「G估 ≥ 門檻」改為真 G：真 G 由 `_corner_first_lot_G` 算，`_pk_one_side_v12(…, require_g_map=True)` 驅動資格閘（見 `g-formula-rules` 末節）。E-1.7 之 1.0㎡ 絕對地板仍適用。
+- 上文「Tiebreaker」之暫行實作與硬 hook 已落地：同分以重劃前原位次（`_pre_position_rank`）判之（`5d24519`）。
+- 回歸錨：圖 8 golden（`tests/test_corner_priority_golden.py`）仍為每波必跑。上文之 UC9898 實座標錨（0.5741、0.2427、全覆蓋 1.0 整等）與截角面積表係舊基線之值；K-8 之範圍構造與 `data/V6_1.dxf`（`K-9-20`）已使引擎現值改變（例：R4 右截角於 V6_1 為 6.28，見 K-6 典）。九份基線之重產時點由 KL 決；重產前以 `verify/run_verification.py` 之現行期值與對帳名單為準，不以上文之舊數為期。
+- 上文「第 3 條 vs M-5 ①」之停機已結：K-6 典載「K-4-3 整套街角救援作廢」（M-5 ①②③ 等），M-5 已歸檔於 `verify/archive/`；街角合併重試現依 K-6 §二 段三與 `K-9-48`（其落地狀態見 `CLAUDE.md` 之待落地清單）。上文之 `_fo_ends`、`ConsumedRegistry` 僅存於 `verify/archive/` 與註解。
+- 上文「K-2(Ⅲ) 量測用虛擬範圍…不建」：其後 `K-9-8` 之 `k98_virtual_measure_block` 已實作；本條是否仍成立，以 K-6 典之 `K-9-8` 與現碼為準。

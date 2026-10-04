@@ -1,4 +1,13 @@
 {
+  "claudeMdExcludes": [
+    "**/CLAUDE.md",
+    "**/AGENTS.md"
+  ],
+  "skillOverrides": {
+    "failure-archaeology": "user-invocable-only",
+    "stop-conditions": "user-invocable-only",
+    "wave-discipline": "user-invocable-only"
+  },
   "hooks": {
     "PreToolUse": [
       {
