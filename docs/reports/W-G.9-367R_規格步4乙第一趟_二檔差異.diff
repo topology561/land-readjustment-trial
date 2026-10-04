@@ -1,0 +1,707 @@
+diff --git a/app.py b/app.py
+index 176f90c..af2b8f3 100644
+--- a/app.py
++++ b/app.py
+@@ -14542,6 +14542,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+       配地中止；`members` 非 dict；該片已自為已配得之宗或為其成員（`K-9-53` ① 之前提「分不到」與 `K-9-51` 之前提
+       「剩餘土地」皆不成立）；同一地主於本街廓之已配得之宗之成員與之相連（入池閘之射程·`R-6` (a) 之同街廓之例·
+       `K-9-55` 之前提「不相鄰」不成立）（補令二 裁二·補令三 裁一〜三·補令四 裁一）。
++      🆕 `W-G.9-367`（`GB-201` 之防護）：逐片之整筆之主併入、與可拆分之片之最大面積之試（來源量 ＞ 0·含 `K-9-51` 之可拆分者）
++      之前，計畫之受併宗於當下之試算未保留（或當下之配地中止）⇒ 停機。
+       （本街廓之候選之檢核不過 ⇒ 記未成、續試他宗·⛔ 停機——補令二 裁一·`K-9-55` 之二·代補令一之停機。）
+       ⛔ 以靜默略過代之。
+     """
+@@ -14919,11 +14921,22 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+             raise RuntimeError(f"{_hdr953} {_x} → {_r} 之 a′ 折算 {_kv!r} ≤ 0 ⇒ 停機")
+         return _kv
+ 
++    def _gb201_953(_x, _r):
++        # 🆕 `W-G.9-367`（`GB-201` 之防護·R-16）：併入之前，計畫之受併宗須於當下之試算（同一態只試算一次）保留
++        _Sg953 = _sim953(state)
++        if _Sg953.get('err'):
++            raise RuntimeError(f"{_hdr953} {_x} 之併入（受併宗 {_r}）之前，當下之配地中止（無從判定）："
++                               f"{_Sg953.get('err')!r} ⇒ 停機")
++        if not any(str(_r) in {str(_h) for _h in _hs} for _hs in (_Sg953.get("kept") or {}).values()):
++            raise RuntimeError(f"{_hdr953} GB-201：{_x} 之計畫之受併宗 {_r} 於當下之試算未保留"
++                               "（⛔ 以已失保留之宗為受併宗而靜默併入）⇒ 停機")
++
+     def _fill953(_x, _r, _kv, _s):
+         # 最大面積（`K-9-48` 七項 3）：先試 s；不過 ⇒ 於 {n／100 < s} 二分（視為單調）；採其通過之態。回所併之來源面積
+         nonlocal state
+         if not _s > 0:
+             return 0.0
++        _gb201_953(_x, _r)              # 🆕 `W-G.9-367`（R-16）：可拆分之片之最大面積之試之前（含 `K-9-51` 之可拆分者）
+         _tb = {_home953.get(_r, _blk953.get(_r, ''))}
+ 
+         def _probe953(_v):
+@@ -15101,6 +15114,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+         if _pl['whole']:
+             _r, _qv = _pl['items'][0]
+             _wpre953(_x)
++            _gb201_953(_x, _r)          # 🆕 `W-G.9-367`（R-16）：整筆之主併入之前（R-9⁗ ③ 之查之後）
+             _cand_st = _dup953(state)
+             _inject953(_cand_st, _x, [(_r, _qv)], True)
+             _ok, _why = _chk953(state, _cand_st, {_home953[_r], _blk953[_x]}, {_x})
+@@ -15147,6 +15161,431 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     return state["temp"], state["build"], log
+ 
+ 
++# ══════════ 🆕 `W-G.9-367`：規格步 4 乙——第一趟（`K-9-53` ②·KL 裁 `2026-09-30`；`K-9-56`·KL 裁 `2026-10-04`）══════════
++#   正典：`grep -n "K-9-56" docs/rulings/K-6_街角地分配程序與可分配判準.md`；工程讀法 ＝ 同典「`K-9-56`」節之註。
++#   手冊先行之後（街角已定案），凡合併單位之地主另有已配得之宗者，沿其候選街廓名單，至第一個有其已配得之宗之街廓，
++#   將合併單位之土地（`a′` 折算）整體併入其已配得之宗之一；整體不過 ⇒ 於同一宗逐片（建地整筆、道路與公設地上之土地
++#   取最大面積），剩下者續沿名單；都不行者留於合併單位（規格步 5·另單）。
++#   🔒 單一真相源 ＝ `adj4_pass1_run`（純函式·⛔ 讀 `st`／session）；受詞與名單 ＝ `adj4_plan`（純函式）；
++#      harness ＝ `run_adj4`（selection 之 harness 檔）；畫面 ＝ `f3_screen_adj4`。併入之結果沿用段三之三鍵標於宗地。
++#   🔒 旗標 `WV_ADJ4`：未設／`on` ⇒ 啟用；`off` ⇒ 逐位回到本批前之行為（唯 session 多一鍵 `f3_adj4_log` ＝ `[]`）；
++#      手冊先行之 `WV_K953` 或入池閘之 `WV_K929_6` 為 `off` 亦不辦（第一趟立於手冊先行之上·三旗標皆判）。
++ADJ4_ENV = "WV_ADJ4"
++#: 公設軌之受詞之名單⛔ 用正面道路（名單依距離）⇒ 無識別符之可建築街廓以此佔位（唯受詞皆公設軌時·`adj4_plan`）
++ADJ4_IDENT_UNUSED = "〔第一趟·公設軌之名單不用正面道路〕"
++
++
++def adj4_enabled():
++    """規格步 4 乙（第一趟）之旗標：環境變數 `ADJ4_ENV` 未設、去空白後為空、或（不分大小寫）`on` ⇒ `True`；
++    `off` ⇒ `False`；其他值 ⇒ `RuntimeError`（⛔ 靜默退回預設）。"""
++    import os as _os_a4
++    _env_a4 = _os_a4.environ.get(ADJ4_ENV)
++    _txt_a4 = '' if _env_a4 is None else str(_env_a4).strip().lower()
++    if _txt_a4 in ('', 'on'):
++        return True
++    if _txt_a4 == 'off':
++        return False
++    raise RuntimeError(
++        f"🔴 [K-9-53 ② 第一趟] 環境變數 {ADJ4_ENV} ＝ {_env_a4!r}：只接受 on／off（或未設）——⛔ 靜默退回預設")
++
++
++def adj4_possible(temp_parcels, build_parcels, own_map):
++    """第一趟之先篩（純函式·⛔ 試算）：某歸戶非空、為 `build_parcels` 之某片之歸戶、且 `temp_parcels` 中
++    （殘料 `_is_ghost_sliver` 除外）其片 ≥ 2 ⇒ `True`；否則 `False`（受詞之地主須有已配得之宗與其他一片，皆在 temp）。"""
++    _om_a4 = own_map or {}
++
++    def _gw_a4(_t):
++        return str(_om_a4.get(str(_t.get('原地號', '') or ''), '') or '')
++    _cnt_a4 = {}
++    for _t in (temp_parcels or []):
++        if _t.get('_is_ghost_sliver'):
++            continue
++        _g = _gw_a4(_t)
++        if _g:
++            _cnt_a4[_g] = _cnt_a4.get(_g, 0) + 1
++    return any(_cnt_a4.get(_gw_a4(_b), 0) >= 2 for _b in (build_parcels or []) if _gw_a4(_b))
++
++
++def adj4_subject_units(intake):
++    """第一趟之受詞之單位（純函式）：`intake['units']` 中「同歸戶原位次配地之街廓」非空者（原序）；
++    `intake` 為 `None` 或無 `units` ⇒ `[]`。"""
++    if intake is None:
++        return []
++    return [_u for _u in (intake.get('units') or []) if _u.get('同歸戶原位次配地之街廓')]
++
++
++def adj4_subjects(intake, cand_lists):
++    """第一趟之受詞（純函式）：逐 `adj4_subject_units(intake)` 之單位，回
++    `{'歸戶', '軌', '錨點', '名單', '片', '原有面積合計'}`——名單 ＝ `cand_lists` 中同歸戶者之 `名單` 之街廓（依序）、
++    錨點 ＝ 其 `錨點`；片 ＝ 建築街廓內不能分配繼以共同負擔用地之暫編地號（相異·原序）。
++    序 ＝（建地軌先, 原有面積合計大者先, 歸戶）。停機：`cand_lists` 中同一歸戶二見；受詞之單位無名單。"""
++    _hd_a4 = "🔴 [K-9-53 ② 第一趟]"
++    _by_a4 = {}
++    for _c in (cand_lists or []):
++        _gc = str(_c.get('歸戶'))
++        if _gc in _by_a4:
++            raise RuntimeError(f"{_hd_a4} 歸戶 {_gc} 之候選街廓名單重複 ⇒ 停機")
++        _by_a4[_gc] = _c
++    _out = []
++    for _u in adj4_subject_units(intake):
++        _gu = str(_u.get('歸戶'))
++        if _gu not in _by_a4:
++            raise RuntimeError(f"{_hd_a4} 歸戶 {_gu} 無候選街廓名單 ⇒ 停機")
++        _pcs = []
++        for _r in list(_u.get('建築街廓內不能分配') or []) + list(_u.get('共同負擔用地') or []):
++            _pid = str(_r['暫編地號'])
++            if _pid not in _pcs:
++                _pcs.append(_pid)
++        _out.append({'歸戶': _u.get('歸戶'), '軌': _u.get('軌'), '錨點': str(_by_a4[_gu].get('錨點')),
++                     '名單': [str(_it['街廓']) for _it in (_by_a4[_gu].get('名單') or [])], '片': _pcs,
++                     '原有面積合計': float(_u['原有面積合計'])})
++    _out.sort(key=lambda _s: (0 if _s['軌'] == ADJ_TRACK_BUILD else 1, -_s['原有面積合計'], str(_s['歸戶'])))
++    return _out
++
++
++def adj4_depth_of(session):
++    """第一趟之名單所用之街廓深度（純函式·畫面與 harness 共用之一處讀）：回 session 之
++    `f3_alloc_depth_by_label`（缺 ⇒ 空）之新 `dict`。"""
++    return dict((session or {}).get('f3_alloc_depth_by_label', {}) or {})
++
++
++def adj4_trial_state(summary, err, build_used):
++    """第一趟之試算之回傳（純函式·畫面與 harness 共用）：`summary`（`k953_alloc_summary` 之回傳）＋ `err` ＋
++    `members`／`units`（`k953_units_of(build_used)`）。"""
++    _mem_a4, _uni_a4 = k953_units_of(build_used)
++    return dict(summary, err=err, members=_mem_a4, units=_uni_a4)
++
++
++def adj4_plan(intake, temp_parcels, g_rows, classified_blocks, eff_min_build_by, front_derive_by, front_name_by,
++              width_by, depth_by):
++    """第一趟之受詞與名單（純函式·`K-9-52` 之名單求一次·⛔ 隨併入而重算）。
++    `adj4_subject_units(intake)` 空 ⇒ `[]`（⛔ 呼叫他函式）。否則：可建築街廓 ＝ `classified_blocks` 中負擔屬性為
++    `ADJ_BURDEN_BUILD` 者（原序）；正面道路 ＝ `r3_front_road_identifier` 之識別符（受詞皆公設軌時，無識別符者以
++    `ADJ4_IDENT_UNUSED` 佔位）；街廓屬性 ＝ `adj_block_ctx`；名單 ＝ `adj_candidate_lists`（唯受詞之單位）；
++    回 `adj4_subjects`。所呼之函式之停機照拋。"""
++    _units_a4 = adj4_subject_units(intake)
++    if not _units_a4:
++        return []
++    _bb_a4 = [_b for _b in (classified_blocks or []) if F3_CATEGORY_BURDEN[_b['category']] == ADJ_BURDEN_BUILD]
++    _lb_a4 = [_b['label'] for _b in _bb_a4]
++    _ident_a4 = r3_front_road_identifier(_lb_a4, front_derive_by or {}, front_name_by or {})
++    _bld_a4 = any(_u.get('軌') == ADJ_TRACK_BUILD for _u in _units_a4)
++    _idm_a4 = {}
++    for _l in _lb_a4:
++        _i = _ident_a4[_l]['id']
++        if _i is None and not _bld_a4:
++            _i = ADJ4_IDENT_UNUSED
++        _idm_a4[_l] = _i
++    _wd_a4 = width_by or {}
++    _attr_a4 = adj_block_ctx(_lb_a4, {_b['label']: _b['category'] for _b in _bb_a4}, eff_min_build_by or {}, _idm_a4,
++                             {_l: _wd_a4.get(_l) for _l in _lb_a4}, depth_by or {})
++    _cl_a4 = adj_candidate_lists(dict(intake, units=_units_a4), _attr_a4, adj_pool_anchor(g_rows),
++                                 {str(_t['暫編地號']): _t.get('polygon_coords') for _t in (temp_parcels or [])})
++    return adj4_subjects(intake, _cl_a4)
++
++
++def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a_prime, alloc_state, *,
++                   log_print=print):
++    """規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）——`W-G.9-367`。合併單位之地主另有已配得之宗者，沿其候選街廓名單，
++    至第一個有其已配得之宗之街廓，將合併單位之土地（`a′` 折算·`K-9-45`（二））整體併入其已配得之宗之一；整體不過
++    「不影響原位次」之檢核（`K-9-48` 其三）⇒ 於同一宗逐片（建地整筆、道路與公設地上之土地取最大面積·`K-9-48` 七項 3），
++    剩下者續沿名單之次街廓（其處再自整體始）；名單盡而有剩下 ⇒ 留於合併單位（規格步 5）。
++
++    參數
++      temp_parcels   全部重劃前切片（手冊先行之出）·⛔ 改寫。
++      build_parcels  可建築宗地（`temp_parcels` 之子集·同 `暫編地號`）·⛔ 改寫。
++      own_map        `{原地號: 歸戶}`。
++      subjects       `adj4_plan` 之回傳（依其序逐受詞辦之）。
++      slice_geom     `{暫編地號: polygon_coords}`——重劃前之切片之原形（段三之前·`GB-199`）；錨點與受併宗之成員之形取之。
++      a_prime        `a_prime(src, dst) -> float`（`K-9-29 三`）。
++      alloc_state    `alloc_state(temp, build) -> {"kept", "bad_pools", "err", "G", "members", "units"}`（街角定案之試算）。
++      log_print      留供呼叫端注入之印出函式（本函式之停機一律 `raise`）。
++    回傳 `(temp_out, build_out, log)`：無受詞 ⇒ 輸入之同一物件與 `[]`（⛔ 試算）；否則為深拷貝之末態——受併宗之
++      `面積_m2` 增其量；整筆併出之建地片已自 build 去之；有正之併入之片帶段三之三鍵（既有者合之）。
++    停機（`RuntimeError`·訊息首 `🔴 [K-9-53 ② 第一趟]`）：build 片非 temp 之片；現態之配地中止或其回傳缺 `G`／`members`；
++      受詞之片非 temp 之片、為殘料、或為建地而不在當下之 build；片之面積 ≤ 0；片或錨點之原形缺；片之類無從定之；
++      建地片於當下之試算已為已配得之宗或其成員；候選之宗無 `G`；折算之比 ≤ 0；檢核之併入前配地中止。⛔ 以靜默略過代之。
++    """
++    import copy as _cp_a4
++    from shapely.geometry import Polygon as _Pg_a4
++    from shapely.ops import unary_union as _uu_a4
++    _hd_a4 = "🔴 [K-9-53 ② 第一趟]"
++    _om_a4 = own_map or {}
++
++    def _gw_a4(_t):
++        return str(_om_a4.get(str(_t.get('原地號', '') or ''), '') or '')
++
++    def _amt_a4(_t):
++        return float(_t.get('分攤登記面積_m2', 0) or 0) + float(_t.get('面積_m2', 0) or 0)
++
++    # ── R-6 ①：build ⊆ temp（同 暫編地號·先於 ②）──
++    _tin_a4 = {str(_t['暫編地號']): _t for _t in (temp_parcels or [])}
++    for _b in (build_parcels or []):
++        if str(_b.get('暫編地號')) not in _tin_a4:
++            raise RuntimeError(f"{_hd_a4} build 片 {_b.get('暫編地號')!r} 非 temp_parcels 之片 ⇒ 停機")
++    # ── R-6 ②：無受詞 ⇒ 輸入之同一物件（⛔ 試算）──
++    if not subjects:
++        return temp_parcels, build_parcels, []
++
++    def _mk_a4(_tl, _bids):
++        _by = {str(_t['暫編地號']): _t for _t in _tl}
++        return {"temp": _tl, "by": _by, "build": [_by[_bi] for _bi in _bids]}
++
++    def _dup_a4(_st):
++        return _mk_a4(_cp_a4.deepcopy(_st["temp"]), [str(_b['暫編地號']) for _b in _st["build"]])
++
++    _memo_a4 = {}
++
++    def _sim_a4(_st):
++        # 同一態之物件只試算一次（快取持其物件·⛔ 重用 id）
++        _hit = _memo_a4.get(id(_st))
++        if _hit is not None and _hit[0] is _st:
++            return _hit[1]
++        _res = alloc_state(_st["temp"], _st["build"])
++        _memo_a4[id(_st)] = (_st, _res)
++        return _res
++
++    # ── R-6 ③④：深拷貝之現態·試算一次 ──
++    state = _mk_a4(_cp_a4.deepcopy(temp_parcels), [str(_b['暫編地號']) for _b in (build_parcels or [])])
++    _S0_a4 = _sim_a4(state)
++    if _S0_a4.get('err'):
++        raise RuntimeError(f"{_hd_a4} 現態之配地中止（無從判定）：{_S0_a4.get('err')!r} ⇒ 停機")
++    if not isinstance(_S0_a4.get('G'), dict) or not isinstance(_S0_a4.get('members'), dict):
++        raise RuntimeError(f"{_hd_a4} 現態之試算未回 G／members（dict）⇒ 停機")
++
++    _geo_a4 = {}
++
++    def _orig_a4(_p, _what):
++        # 原形 O(p) ＝ Polygon(slice_geom[p]).buffer(0)（重劃前之切片·`GB-199`·⛔ 讀段三後之宗地之形）
++        if _p not in _geo_a4:
++            _cs = (slice_geom or {}).get(_p)
++            if not _cs or len(_cs) < 3:
++                raise RuntimeError(f"{_hd_a4} {_what} {_p} 之原形缺（重劃前之切片之頂點 < 3）⇒ 停機")
++            _pg = _Pg_a4(_cs).buffer(0)
++            if _pg.is_empty:
++                raise RuntimeError(f"{_hd_a4} {_what} {_p} 之原形缺（buffer(0) 後為空）⇒ 停機")
++            _geo_a4[_p] = _pg
++        return _geo_a4[_p]
++
++    def _sort_a4(_t):
++        _ct = str(_t.get('街廓分類', '') or '')
++        if _ct == '道路':
++            return '道路'
++        _bu = F3_CATEGORY_BURDEN.get(_ct, '')
++        if _bu == ADJ_BURDEN_COMMON:
++            return '公設地'
++        if _bu == ADJ_BURDEN_BUILD:
++            return '建地'
++        raise RuntimeError(f"{_hd_a4} 片 {_t.get('暫編地號')!r} 之類無從定之（街廓分類 {_ct!r}）⇒ 停機")
++
++    def _pos_a4(_v):
++        # 有剩下 ⇔ 四位四捨五入後 ＞ 0（判、寫、讀同一式）
++        return round(float(_v), 4) > 0.0
++
++    def _kap_a4(_x, _r):
++        # 折算之比 κ(x→r) ＝ a′(x→r) ÷ a(x)（輸入之 temp 中之 x·當下之態之 r）
++        _ax = _amt_a4(_tin_a4[_x])
++        _kv = float(a_prime(_tin_a4[_x], state["by"][_r])) / _ax
++        if not _kv > 0:
++            raise RuntimeError(f"{_hd_a4} {_x} → {_r} 之折算之比 {_kv!r} ≤ 0 ⇒ 停機")
++        return _kv
++
++    def _add_a4(_st, _r, _q):
++        _d = _st["by"][_r]
++        _d['面積_m2'] = float(_d.get('面積_m2', 0) or 0) + float(_q)
++
++    # ── R-12：「不影響原位次」之檢核 χ（`K-9-48` 其三·同手冊先行）──
++    def _chk_a4(_before, _after, _T, _R):
++        _sb = _sim_a4(_before)
++        if _sb.get('err') or not isinstance(_sb.get('G'), dict) or not isinstance(_sb.get('members'), dict):
++            raise RuntimeError(f"{_hd_a4} 「不影響原位次」無從判定：併入前之試算 {_sb.get('err')!r}"
++                               "（或未回 G／members）⇒ 停機")
++        _sa = _sim_a4(_after)
++        if _sa.get('err'):
++            return False, '併入後配地中止：' + str(_sa.get('err'))[:120]
++        _why = []
++        for _t in sorted(_T):
++            _lost = (set(_sb["kept"].get(_t, set())) - set(_R)) - set(_sa["kept"].get(_t, set()))
++            if _lost:
++                _why.append(f"{_t} 原保留之宗 {sorted(_lost)} 不保留")
++            if int(_sa["bad_pools"].get(_t, 0)) > int(_sb["bad_pools"].get(_t, 0)):
++                _why.append(f"{_t} 配餘地不合格")
++        return (not _why), '；'.join(_why)
++
++    log = []
++
++    def _put_a4(**_kw):
++        _rw = {'序': '—', '歸戶': '—', '軌': '—', '街廓': '—', '片': '—', '類': '—', '受併宗': '—',
++               '併入量': {}, '結果': '—', '檢核': '—'}
++        _rw.update(_kw)
++        log.append(_rw)
++
++    _marks_a4 = {}                      # 片 → 本函式之受併宗之集（正之併入）
++    _part_a4 = {}                       # 片 → {受併宗: 所併之來源量}
++    _left_a4 = {}                       # 片 → 末之剩下（來源量）
++
++    def _merge_a4(_x, _r, _src):
++        _marks_a4.setdefault(_x, set()).add(_r)
++        _part_a4.setdefault(_x, {})
++        _part_a4[_x][_r] = _part_a4[_x].get(_r, 0.0) + float(_src)
++
++    def _vmax_a4(_x, _r, _kv, _s, _bk):
++        # 最大面積（`K-9-48` 七項 3）：{s} ∪ {n／100 < s} 中通過者之最大（先試 s；不過 ⇒ 於 n 二分·視為單調）
++        def _probe_a4(_v):
++            _c = _dup_a4(state)
++            _add_a4(_c, _r, _kv * _v)
++            return _c if _chk_a4(state, _c, {_bk}, set())[0] else None
++        _whole_st = _probe_a4(_s)
++        if _whole_st is not None:
++            return _s, _whole_st
++        _n_hi = int(_s * 100.0)
++        while _n_hi > 0 and _n_hi / 100.0 >= _s:
++            _n_hi -= 1
++        while (_n_hi + 1) / 100.0 < _s:
++            _n_hi += 1
++        _n_lo, _won = 0, None
++        while _n_lo < _n_hi:
++            _n_md = (_n_lo + _n_hi + 1) // 2
++            _got = _probe_a4(_n_md / 100.0)
++            if _got is None:
++                _n_hi = _n_md - 1
++            else:
++                _n_lo, _won = _n_md, _got
++        return _n_lo / 100.0, _won
++
++    _rank_a4 = {'建地': 0, '道路': 1, '公設地': 2}
++    for _sj in subjects:
++        _gj, _tj = _sj['歸戶'], _sj['軌']
++        _g_str = str(_gj)
++        _pcs = [str(_x) for _x in (_sj.get('片') or [])]
++        # ── R-7：受詞之片 ──
++        _bnow = {str(_b['暫編地號']) for _b in state["build"]}
++        _cls, _L = {}, {}
++        for _x in _pcs:
++            if _x not in _tin_a4:
++                raise RuntimeError(f"{_hd_a4} 歸戶 {_g_str} 之片 {_x} 非 temp 之片 ⇒ 停機")
++            _tx = _tin_a4[_x]
++            if _tx.get('_is_ghost_sliver'):
++                raise RuntimeError(f"{_hd_a4} 歸戶 {_g_str} 之片 {_x} 為殘料（無地號）⇒ 停機")
++            _cls[_x] = _sort_a4(_tx)
++            if _cls[_x] == '建地' and _x not in _bnow:
++                raise RuntimeError(f"{_hd_a4} 歸戶 {_g_str} 之建地片 {_x} 不在當下之 build ⇒ 停機")
++            if not _amt_a4(_tx) > 0:
++                raise RuntimeError(f"{_hd_a4} 歸戶 {_g_str} 之片 {_x} 之面積 {_amt_a4(_tx)!r} ≤ 0"
++                                   "——折算無從定之 ⇒ 停機")
++            _orig_a4(_x, '片')
++            _L[_x] = (float(_tx['段三餘量']) if _cls[_x] in ('道路', '公設地') and '段三餘量' in _tx
++                      else _amt_a4(_tx))
++        _anc_a4 = _orig_a4(str(_sj['錨點']), '錨點').centroid
++        _lots_set = {str(_tin_a4[_x].get('原地號', '') or '') for _x in _pcs}
++        # ── R-8：沿名單 ──
++        for _bk in (_sj.get('名單') or []):
++            if not any(_pos_a4(_L[_x]) for _x in _pcs):
++                break
++            _S = _sim_a4(state)
++            if _S.get('err'):
++                raise RuntimeError(f"{_hd_a4} 歸戶 {_g_str}·街廓 {_bk} 之前，當下之配地中止（無從判定）："
++                                   f"{_S.get('err')!r} ⇒ 停機")
++            _Sm = _S.get('members')
++            if not isinstance(_Sm, dict) or not isinstance(_S.get('G'), dict):
++                raise RuntimeError(f"{_hd_a4} 歸戶 {_g_str}·街廓 {_bk} 之前，試算未回 G／members（dict）⇒ 停機")
++
++            def _mof_a4(_h):
++                return [str(_m) for _m in (_Sm.get(_h) or [_h])]
++            _kS = _S.get("kept") or {}
++            _inS = {_m for _hs in _kS.values() for _h in _hs for _m in _mof_a4(str(_h))}
++            for _x in _pcs:
++                if _cls[_x] == '建地' and _pos_a4(_L[_x]) and _x in _inS:
++                    raise RuntimeError(f"{_hd_a4} 建地片 {_x}（歸戶 {_g_str}）於當下之試算已為已配得之宗或其成員"
++                                       "——其分不到之前提不成立 ⇒ 停機")
++            _hs_a4 = sorted(str(_h) for _h in (_kS.get(_bk) or set())
++                            if str(_h) in state["by"] and _gw_a4(state["by"][str(_h)]) == _g_str)
++            if not _hs_a4:
++                continue
++            _noG = [_h for _h in _hs_a4 if _h not in _S['G']]
++            if _noG:
++                raise RuntimeError(f"{_hd_a4} 街廓 {_bk} 之候選之宗 {_noG} 無 G——受併宗之序無從定之 ⇒ 停機")
++
++            def _rkey_a4(_h):
++                _ms = _mof_a4(_h)
++                _same = any(_m in _tin_a4 and str(_tin_a4[_m].get('原地號', '') or '') in _lots_set for _m in _ms)
++                _cen = _uu_a4([_orig_a4(_m, '受併宗之成員') for _m in _ms]).centroid
++                return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)
++            _r = min(_hs_a4, key=_rkey_a4)
++            # ── R-9：整體 ──
++            _live = [_x for _x in _pcs if _pos_a4(_L[_x])]
++            _kv_a4 = {_x: _kap_a4(_x, _r) for _x in _live}
++            _q_all = sum(_kv_a4[_x] * _L[_x] for _x in _live)
++            _blds = [_x for _x in _live if _cls[_x] == '建地']
++            _c_all = _dup_a4(state)
++            _add_a4(_c_all, _r, _q_all)
++            _c_all["build"] = [_b for _b in _c_all["build"] if str(_b['暫編地號']) not in set(_blds)]
++            _ok, _why = _chk_a4(state, _c_all, {_bk} | {str(_tin_a4[_x].get('所屬街廓', '') or '') for _x in _blds},
++                                set(_blds))
++            _row_all = dict(序='整體', 歸戶=_gj, 軌=_tj, 街廓=_bk, 片=f"{len(_live)} 片", 受併宗=_r,
++                            併入量=({_r: round(_q_all, 4)} if _ok else {}), 結果=('成' if _ok else '未成'),
++                            檢核=('通過' if _ok else '不過'))
++            if not _ok:
++                _row_all['不過之由'] = _why
++            _put_a4(**_row_all)
++            if _ok:
++                state = _c_all
++                for _x in _live:
++                    _merge_a4(_x, _r, _L[_x])
++                    _L[_x] = 0.0
++                break
++            # ── R-10：逐片（同一街廓·同一受併宗）──
++            for _x in sorted(_live, key=lambda _y: (_rank_a4[_cls[_y]], -_L[_y], _y)):
++                _kv = _kap_a4(_x, _r)
++                _s = _L[_x]
++                _base_a4 = dict(序='逐片', 歸戶=_gj, 軌=_tj, 街廓=_bk, 片=_x, 類=_cls[_x], 受併宗=_r)
++                if _cls[_x] == '建地':
++                    _c1 = _dup_a4(state)
++                    _add_a4(_c1, _r, _kv * _s)
++                    _c1["build"] = [_b for _b in _c1["build"] if str(_b['暫編地號']) != _x]
++                    _ok1, _why1 = _chk_a4(state, _c1, {_bk, str(_tin_a4[_x].get('所屬街廓', '') or '')}, {_x})
++                    if _ok1:
++                        state = _c1
++                        _merge_a4(_x, _r, _s)
++                        _L[_x] = 0.0
++                        _put_a4(**_base_a4, 併入量={_r: round(_kv * _s, 4)}, 結果='成', 檢核='通過')
++                    else:
++                        _put_a4(**_base_a4, 結果='未成', 檢核='不過', 不過之由=_why1)
++                    continue
++                _v, _st_v = _vmax_a4(_x, _r, _kv, _s, _bk)
++                if _v > 0 and _st_v is not None:
++                    state = _st_v
++                    _merge_a4(_x, _r, _v)
++                    _L[_x] = _s - _v
++                _rem_v = round(_s - _v, 4)
++                _put_a4(**_base_a4, 併入量=({_r: round(_kv * _v, 4)} if _v > 0 else {}),
++                        結果=('成' if _rem_v == 0 else ('部分成' if _v > 0 else '未成')),
++                        檢核=('通過' if _rem_v == 0 else ('部分通過' if _v > 0 else '不過')))
++        # ── R-11：名單盡而有剩下 ⇒ 留於合併單位 ──
++        _rest = sorted(_x for _x in _pcs if _pos_a4(_L[_x]))
++        if _rest:
++            _put_a4(序='剩下', 歸戶=_gj, 軌=_tj, 片='、'.join(_rest), 結果='留於合併單位（規格步 5）',
++                    餘量={_x: round(_L[_x], 4) for _x in _rest})
++        for _x in _pcs:
++            _left_a4[_x] = _L[_x]
++
++    # ── R-13：輸出之鍵（沿用段三之三鍵·既有者合之）──
++    for _x in sorted(_marks_a4):
++        _d = state["by"][_x]
++        _d['段三併出'] = sorted(set(str(_y) for _y in (_d.get('段三併出') or [])) | _marks_a4[_x])
++        _rm_a4 = float(_left_a4.get(_x, 0.0))
++        if _pos_a4(_rm_a4):
++            _acc_a4 = {str(_k): float(_v) for _k, _v in (_d.get('段三部分併出') or {}).items()}
++            for _k, _v in _part_a4.get(_x, {}).items():
++                _acc_a4[_k] = _acc_a4.get(_k, 0.0) + _v
++            _d['段三部分併出'] = {_k: round(_v, 4) for _k, _v in sorted(_acc_a4.items()) if round(_v, 4) > 0}
++            _d['段三餘量'] = round(_rm_a4, 4)
++        else:
++            _d.pop('段三部分併出', None)
++            _d.pop('段三餘量', None)
++    return state["temp"], state["build"], log
++
++
+ def k6_step0_block_locked(side_lines_by_side, label):
+     # 🛑🛑 **經 `K-9-24 一` 取代·⛔ 再被呼叫**——**死碼**（`W-G.9-198R` `R2-1`·`W-G.9-208 §三` 授權）。
+     #   🔒 **本函式本體與其下之逐字說明一字未刪**（`R2-1` 明令「**死碼化而非刪除**」），保留為史料。
+@@ -21064,6 +21503,113 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+     return {'temp': temp_o, 'build': build_o, 'log': log953}
+ 
+ 
++def f3_screen_adj4(st, *, pk_kwargs, g_kwargs, slices):
++    """🆕 `W-G.9-367`：規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）之**畫面**入口——同 harness 之 `run_adj4`；
++    單一真相源 ＝ `adj4_pass1_run`（受詞與名單 ＝ `adj4_plan`）。呼叫端 ＝ `f3_screen_k6b_stage3` 之 `_end_merge`（手冊先行之後）。
++    `pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名（其 `temp_parcels`／`build_parcels` ＝ 手冊先行之出）；`g_kwargs` ＝ 同段三之
++    畫面入口；`slices` ＝ 重劃前之切片（段三之前·其形為錨點與受併宗之成員之原形·`GB-199`）。
++    回 `{'temp', 'build', 'log'}`（旗標 off、先篩不過或無受詞 ⇒ `temp`／`build` 為輸入之同一物件）。
++      ① 先去 `f3_adj4_log`；三旗標（`adj4_enabled`、`k953_enabled`、`k929_6_enabled`·皆呼）其一 off，或先篩
++         （`adj4_possible`）不過 ⇒ 其 ＝ `[]`、回輸入、⛔ 試算、⛔ 呼叫 `st`；其值非法 ⇒ 走 ④ 之停機。
++      ② 試算 ＝ 街角定案之試算（同 `f3_screen_k953`·⛔ 重跑街角選位）；對輸入試算一次以求調配之輸入（`adj_intake`）與名單
++         （`adj4_plan`·正面路寬取 `pk_kwargs['_corner_rows_init']`·同試算之摘要）；`a′` ＝ `k6b_screen_callbacks` 之 `a_prime`。
++      ③ 隔離 ＝ 試算前存 `K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`、試算後（含例外）復原。
++      ④ 停機（`RuntimeError`）⇒ `f3_k6b_stage3_error` ＝ `'（第一趟）'` ＋ 訊息之首列、`st.error` ＋ `st.stop()`、上拋；
++         ⛔ 寫 `f3_adj4_log`。
++      ⑤ 復原之後寫 `f3_adj4_log` ＝ 紀錄，並以 `st.expander` 示其表。"""
++    import copy as _cp_a4s
++    import contextlib as _cl_a4s
++    import io as _io_a4s
++    _ssa = st.session_state
++    temp_in, build_in = pk_kwargs['temp_parcels'], pk_kwargs['build_parcels']
++    _ssa.pop('f3_adj4_log', None)
++    try:                                    # 三旗標皆判（⛔ 短路）；其停機走 ④ 之路
++        _on_a4s = adj4_enabled()
++        _k953_a4s = k953_enabled()
++        _gate_a4s = k929_6_enabled()
++    except RuntimeError as _e_a4f:
++        _ssa['f3_k6b_stage3_error'] = '（第一趟）' + str(_e_a4f).split("\n")[0][:500]
++        st.error(str(_e_a4f))
++        st.stop()
++        raise
++    _own_a4s = _ssa.get('t8_ownership_map', {}) or {}
++    if not (_on_a4s and _k953_a4s and _gate_a4s) or not adj4_possible(temp_in, build_in, _own_a4s):
++        _ssa['f3_adj4_log'] = []
++        return {'temp': temp_in, 'build': build_in, 'log': []}
++    _cbl_a4s = g_kwargs['classified_blocks']
++    _cat_a4s = {_cb['label']: _cb.get('category', '') for _cb in _cbl_a4s}
++    _frt_a4s = {_cr['街廓']: _cr for _cr in pk_kwargs['_corner_rows_init']}
++    _kp_a4s = {}
++
++    def _trial_a4s(temp, build):
++        # 街角定案之試算（⛔ 重跑街角選位）：以所給之宗地跑配地（試算）；另存調配之輸入所需之量
++        _tt = _cp_a4s.deepcopy(temp)
++        _tby = {_xq['暫編地號']: _xq for _xq in _tt}
++        _tb = [_tby[_bq['暫編地號']] for _bq in build]
++        K917_DROPPED.clear()
++        _ssa.pop(SS_ADJ_BUILD_FINAL, None)
++        _pxy = _K6BTrialSt(st)
++        _er = None
++        try:
++            with _cl_a4s.redirect_stdout(_io_a4s.StringIO()):
++                _ssa[SS_END_BLOCK_MODE] = 'trial'
++                f3_screen_stepg_run(_pxy, **dict(
++                    g_kwargs, _auto_recalc=False, _btn_clicked=True, build_parcels=_tb,
++                    _new_params=dict(_ssa.get(g_kwargs['_param_key']) or {})))
++        except _K6BTrialDone:
++            pass
++        except _K6BTrialStop:
++            _er = f"試算中止（st.stop）：{_pxy.msgs[-1:]}"
++        except RuntimeError as _e_a4t:
++            _er = str(_e_a4t).split("\n")[0][:300]
++        _gr = [] if _er else list(_ssa.get('f3_G_values') or [])
++        _bfin = _ssa.get(SS_ADJ_BUILD_FINAL)
++        _kp_a4s.update(g_rows=_gr, build=_bfin, temp=_tt, err=_er, dropped=_cp_a4s.deepcopy(K917_DROPPED),
++                       depth=adj4_depth_of(_ssa))
++        return adj4_trial_state(k953_alloc_summary(_gr, _cat_a4s, _frt_a4s), _er, _bfin if _bfin is not None else _tb)
++
++    _a_a4s = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)['a_prime']
++    _keep_a4s = {_kk: _cp_a4s.deepcopy(_ssa[_kk]) for _kk in K6B_SCREEN_TRIAL_KEYS if _kk in _ssa}
++    _k917_keep_a4s = _cp_a4s.deepcopy(K917_DROPPED)
++    try:
++        _s0_a4s = _trial_a4s(temp_in, build_in)
++        if _s0_a4s.get('err'):
++            raise RuntimeError(f"🔴 [K-9-53 ② 第一趟] 對輸入之試算未成（調配之輸入無從定之）：{_s0_a4s.get('err')!r} ⇒ 停機")
++        if _kp_a4s['build'] is None:
++            raise RuntimeError("🔴 [K-9-53 ② 第一趟] 對輸入之試算無入池閘之末態 build（調配之輸入無從定之）⇒ 停機")
++        _it_a4s = adj_intake(_kp_a4s['temp'], _kp_a4s['build'], _kp_a4s['g_rows'], _kp_a4s['dropped'], _own_a4s,
++                             {_cb['label']: F3_CATEGORY_BURDEN.get(_cb.get('category', ''), '') for _cb in _cbl_a4s})
++        _nm_a4s = _ssa.get(SS_FRONT_ROAD_NAME, {}) or {}
++        _sj_a4s = adj4_plan(
++            _it_a4s, _kp_a4s['temp'], _kp_a4s['g_rows'], _cbl_a4s, _ssa.get(K91_SS_MBA_EFFECTIVE, {}) or {},
++            _ssa.get(SS_FRONT_ROAD_DERIVE, {}) or {}, {_cb['label']: _nm_a4s.get(_cb.get('id'), '') for _cb in _cbl_a4s},
++            {_cr['街廓']: _cr.get('正面路寬(m)') for _cr in pk_kwargs['_corner_rows_init']}, _kp_a4s['depth'])
++        temp_o, build_o, log_a4s = adj4_pass1_run(
++            temp_in, build_in, _own_a4s, _sj_a4s,
++            {str(_sq['暫編地號']): _sq.get('polygon_coords') for _sq in (slices or [])}, _a_a4s, _trial_a4s)
++    except RuntimeError as _e_a4s:
++        _ssa['f3_k6b_stage3_error'] = '（第一趟）' + str(_e_a4s).split("\n")[0][:500]
++        st.error(str(_e_a4s))
++        st.stop()
++        raise
++    finally:
++        for _kk in K6B_SCREEN_TRIAL_KEYS:
++            if _kk in _keep_a4s:
++                _ssa[_kk] = _keep_a4s[_kk]
++            else:
++                _ssa.pop(_kk, None)
++        K917_DROPPED.clear()
++        K917_DROPPED.update(_k917_keep_a4s)
++    _ssa['f3_adj4_log'] = log_a4s
++    with st.expander(f"🧭 規格步 4 乙（第一趟）之紀錄（{len(log_a4s)} 列）", expanded=False):
++        if log_a4s:
++            st.dataframe(pd.DataFrame([{_ck: str(_cv) for _ck, _cv in _lr.items()} for _lr in log_a4s]),
++                         use_container_width=True, hide_index=True)
++        else:
++            st.caption("（本次無受詞·無併入）")
++    return {'temp': temp_o, 'build': build_o, 'log': log_a4s}
++
++
+ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
+     """段三之畫面入口（`W-G.9-345 §三-2`）。`pk_kwargs` ＝ `f3_screen_corner_pk_run` 之 10 名；
+     `g_kwargs` ＝ `f3_screen_stepg_run` 之 13 名去 `build_parcels`／`_new_params`／`_btn_clicked`／`_auto_recalc`。
+@@ -21092,6 +21638,10 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
+         # 🆕 `W-G.9-363`（`K-9-53` ①）：手冊先行（末端塊合併再試之後·街角定案）；其回之宗地代合併再試者
+         _mf = f3_screen_k953(
+             st, pk_kwargs=dict(pk_kwargs, temp_parcels=_em['temp'], build_parcels=_em['build']), g_kwargs=g_kwargs)
++        # 🆕 `W-G.9-367`（`K-9-53` ②·`K-9-56`）：規格步 4 乙之第一趟（手冊先行之後·街角定案）；其回之宗地代手冊先行者
++        _mf = f3_screen_adj4(
++            st, pk_kwargs=dict(pk_kwargs, temp_parcels=_mf['temp'], build_parcels=_mf['build']), g_kwargs=g_kwargs,
++            slices=temp0)
+         _em = dict(_em, temp=_mf['temp'], build=_mf['build'])
+         if ran or _em['temp'] is not temp_x:
+             _ss['f3_k6b_stage3_temp'] = _em['temp']
+diff --git a/verify/selection_pipeline.py b/verify/selection_pipeline.py
+index c5e9fb0..9e189d5 100644
+--- a/verify/selection_pipeline.py
++++ b/verify/selection_pipeline.py
+@@ -858,6 +858,84 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+     return temp_out, build_out
+ 
+ 
++def run_adj4(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
++             *, snapshot, callbacks, winners, forced, slices):
++    """🆕 `W-G.9-367`：規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）之 harness 入口（單一真相源 ＝ app 之
++    `adj4_pass1_run`；受詞與名單 ＝ `adj4_plan`）。回 `(temp_out, build_out)`；並寫 ss 之 `f3_adj4_log`（紀錄）。
++    三旗標（`adj4_enabled`、`k953_enabled`、`k929_6_enabled`·皆呼·非法者上拋）其一偽，或先篩（`adj4_possible`）不過
++    ⇒ 紀錄為空、回輸入之同一物件（⛔ 試算）。
++    試算 ＝ 街角定案之試算（同 `run_k953`：深拷貝宗地、清 `K917_DROPPED`、`SS_END_BLOCK_MODE` 為 `'trial'`、以所給之
++    winners／forced 跑 `run_step_g`·⛔ 重跑街角選位）；對輸入試算一次以求調配之輸入（`adj_intake`·入池閘之末態 build）
++    與名單（`adj4_plan`·區外道路之名 ＝ `run_verification.load_front_road_names()`）。`slices` ＝ 重劃前之切片（原形之源）。
++    隔離同 `run_k953`（深拷貝 `session_state` 與 `K917_DROPPED`，於 `finally` 原地回復）。"""
++    import copy as _cpa4
++    import contextlib as _cla4
++    import io as _ioa4
++    from stepg_pipeline import run_step_g
++    ss = fake_st.session_state
++    _on_a4 = ns["adj4_enabled"]()               # 三旗標皆判（⛔ 短路）
++    _k953_a4 = ns["k953_enabled"]()
++    _gate_a4 = ns["k929_6_enabled"]()
++    if not (_on_a4 and _k953_a4 and _gate_a4) or not ns["adj4_possible"](
++            temp_parcels, build_parcels, ss["t8_ownership_map"]):
++        ss["f3_adj4_log"] = []
++        return temp_parcels, build_parcels
++    _cat_a4 = {b["label"]: b.get("category", "") for b in cb}
++    _row_a4 = {r["街廓"]: r for r in param_rows}
++    _got_a4 = {}
++
++    def _trial_a4(temp, build):
++        # 街角定案之試算（⛔ 重跑街角選位）；另存調配之輸入所需之量
++        _ta4 = _cpa4.deepcopy(temp)
++        _bya4 = {q["暫編地號"]: q for q in _ta4}
++        _ba4 = [_bya4[b["暫編地號"]] for b in build]
++        ns["K917_DROPPED"].clear()
++        ss[ns["SS_END_BLOCK_MODE"]] = 'trial'
++        _ea4, _rowsa4, _fina4 = None, [], None
++        with _cla4.redirect_stdout(_ioa4.StringIO()):
++            try:
++                _sga4 = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _ba4, winners, forced, setback,
++                                   eff_min_build_by_blk={})
++                _rowsa4 = _sga4["g_rows"]
++                _fina4 = (_sga4.get("k929_6") or {}).get("build")
++            except RuntimeError as _xa4:
++                _ea4 = str(_xa4).split("\n")[0][:300]
++        _got_a4.update(g_rows=_rowsa4, build=_fina4, temp=_ta4, err=_ea4,
++                       dropped=_cpa4.deepcopy(ns["K917_DROPPED"]), depth=ns["adj4_depth_of"](ss))
++        return ns["adj4_trial_state"](ns["k953_alloc_summary"](_rowsa4, _cat_a4, _row_a4), _ea4,
++                                      _fina4 if _fina4 is not None else _ba4)
++
++    _ssa4 = _cpa4.deepcopy(dict(ss))
++    _k917a4 = _cpa4.deepcopy(ns["K917_DROPPED"])
++    _own_a4 = ss["t8_ownership_map"]
++    try:
++        _s0a4 = _trial_a4(temp_parcels, build_parcels)
++        if _s0a4.get("err"):
++            raise RuntimeError(f"🔴 [K-9-53 ② 第一趟] 對輸入之試算未成（調配之輸入無從定之）：{_s0a4.get('err')!r}"
++                               " ⇒ 停機")
++        if _got_a4["build"] is None:
++            raise RuntimeError("🔴 [K-9-53 ② 第一趟] 對輸入之試算無入池閘之末態 build（調配之輸入無從定之）⇒ 停機")
++        _it_a4 = ns["adj_intake"](_got_a4["temp"], _got_a4["build"], _got_a4["g_rows"], _got_a4["dropped"], _own_a4,
++                                  {b["label"]: ns["F3_CATEGORY_BURDEN"].get(b.get("category", ""), "") for b in cb})
++        _sj_a4 = []
++        if ns["adj4_subject_units"](_it_a4):
++            import run_verification as _rva4
++            _sj_a4 = ns["adj4_plan"](
++                _it_a4, _got_a4["temp"], _got_a4["g_rows"], cb, {}, cad["front_road_derive"] or {},
++                _rva4.load_front_road_names(), {r["街廓"]: r.get("正面路寬(m)") for r in param_rows},
++                _got_a4["depth"])
++        temp_out, build_out, log = ns["adj4_pass1_run"](
++            temp_parcels, build_parcels, _own_a4, _sj_a4,
++            {str(t["暫編地號"]): t.get("polygon_coords") for t in slices}, callbacks["a_prime"], _trial_a4)
++    finally:
++        ss.clear()
++        ss.update(_ssa4)
++        ns["K917_DROPPED"].clear()
++        ns["K917_DROPPED"].update(_k917a4)
++    ss["f3_adj4_log"] = log
++    return temp_out, build_out
++
++
+ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+                       *, snapshot):
+     """`W-G.9-344`：段三之 harness 入口。回傳七元組
+@@ -877,6 +955,8 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
+        再跑一次 `run_corner_pk`。回傳其五值 ＋ 末態之宗地。
+     7. 🆕 `W-G.9-363`：末端塊之合併再試（及其重跑之街角選位）之後，辦手冊先行（`run_k953`·`K-9-53` ①·以其時之
+        winners／forced 試算）；其後⛔ 重跑街角選位（`v3` §8 位相不變）。回傳之末態之宗地 ＝ 手冊先行之出。
++    8. 🆕 `W-G.9-367`：手冊先行之後，辦規格步 4 乙之第一趟（`run_adj4`·`K-9-53` ②·以同一 winners／forced 試算·
++       原形取本函式之輸入 `temp_parcels`）；其後⛔ 重跑街角選位。回傳之末態之宗地 ＝ 第一趟之出。
+     """
+     import copy as _cp
+     ss = fake_st.session_state
+@@ -916,4 +996,7 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
+     # 🆕 `W-G.9-363`：手冊先行（`K-9-53` ①）——街角定案（以其時之 winners／forced）·其後⛔ 重跑街角選位
+     temp3, build3 = run_k953(ns, fake_st, cb, cad, param_rows, temp3, build3, setback,
+                              snapshot=snapshot, callbacks=_cbk, winners=res[3], forced=res[4])
++    # 🆕 `W-G.9-367`：規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）——手冊先行之後·街角定案；其後⛔ 重跑街角選位
++    temp3, build3 = run_adj4(ns, fake_st, cb, cad, param_rows, temp3, build3, setback,
++                             snapshot=snapshot, callbacks=_cbk, winners=res[3], forced=res[4], slices=temp_parcels)
+     return (*res, temp3, build3)
