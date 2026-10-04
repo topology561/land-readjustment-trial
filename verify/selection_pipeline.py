@@ -858,6 +858,84 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
     return temp_out, build_out
 
 
+def run_adj4(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+             *, snapshot, callbacks, winners, forced, slices):
+    """🆕 `W-G.9-367`：規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）之 harness 入口（單一真相源 ＝ app 之
+    `adj4_pass1_run`；受詞與名單 ＝ `adj4_plan`）。回 `(temp_out, build_out)`；並寫 ss 之 `f3_adj4_log`（紀錄）。
+    三旗標（`adj4_enabled`、`k953_enabled`、`k929_6_enabled`·皆呼·非法者上拋）其一偽，或先篩（`adj4_possible`）不過
+    ⇒ 紀錄為空、回輸入之同一物件（⛔ 試算）。
+    試算 ＝ 街角定案之試算（同 `run_k953`：深拷貝宗地、清 `K917_DROPPED`、`SS_END_BLOCK_MODE` 為 `'trial'`、以所給之
+    winners／forced 跑 `run_step_g`·⛔ 重跑街角選位）；對輸入試算一次以求調配之輸入（`adj_intake`·入池閘之末態 build）
+    與名單（`adj4_plan`·區外道路之名 ＝ `run_verification.load_front_road_names()`）。`slices` ＝ 重劃前之切片（原形之源）。
+    隔離同 `run_k953`（深拷貝 `session_state` 與 `K917_DROPPED`，於 `finally` 原地回復）。"""
+    import copy as _cpa4
+    import contextlib as _cla4
+    import io as _ioa4
+    from stepg_pipeline import run_step_g
+    ss = fake_st.session_state
+    _on_a4 = ns["adj4_enabled"]()               # 三旗標皆判（⛔ 短路）
+    _k953_a4 = ns["k953_enabled"]()
+    _gate_a4 = ns["k929_6_enabled"]()
+    if not (_on_a4 and _k953_a4 and _gate_a4) or not ns["adj4_possible"](
+            temp_parcels, build_parcels, ss["t8_ownership_map"]):
+        ss["f3_adj4_log"] = []
+        return temp_parcels, build_parcels
+    _cat_a4 = {b["label"]: b.get("category", "") for b in cb}
+    _row_a4 = {r["街廓"]: r for r in param_rows}
+    _got_a4 = {}
+
+    def _trial_a4(temp, build):
+        # 街角定案之試算（⛔ 重跑街角選位）；另存調配之輸入所需之量
+        _ta4 = _cpa4.deepcopy(temp)
+        _bya4 = {q["暫編地號"]: q for q in _ta4}
+        _ba4 = [_bya4[b["暫編地號"]] for b in build]
+        ns["K917_DROPPED"].clear()
+        ss[ns["SS_END_BLOCK_MODE"]] = 'trial'
+        _ea4, _rowsa4, _fina4 = None, [], None
+        with _cla4.redirect_stdout(_ioa4.StringIO()):
+            try:
+                _sga4 = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _ba4, winners, forced, setback,
+                                   eff_min_build_by_blk={})
+                _rowsa4 = _sga4["g_rows"]
+                _fina4 = (_sga4.get("k929_6") or {}).get("build")
+            except RuntimeError as _xa4:
+                _ea4 = str(_xa4).split("\n")[0][:300]
+        _got_a4.update(g_rows=_rowsa4, build=_fina4, temp=_ta4, err=_ea4,
+                       dropped=_cpa4.deepcopy(ns["K917_DROPPED"]), depth=ns["adj4_depth_of"](ss))
+        return ns["adj4_trial_state"](ns["k953_alloc_summary"](_rowsa4, _cat_a4, _row_a4), _ea4,
+                                      _fina4 if _fina4 is not None else _ba4)
+
+    _ssa4 = _cpa4.deepcopy(dict(ss))
+    _k917a4 = _cpa4.deepcopy(ns["K917_DROPPED"])
+    _own_a4 = ss["t8_ownership_map"]
+    try:
+        _s0a4 = _trial_a4(temp_parcels, build_parcels)
+        if _s0a4.get("err"):
+            raise RuntimeError(f"🔴 [K-9-53 ② 第一趟] 對輸入之試算未成（調配之輸入無從定之）：{_s0a4.get('err')!r}"
+                               " ⇒ 停機")
+        if _got_a4["build"] is None:
+            raise RuntimeError("🔴 [K-9-53 ② 第一趟] 對輸入之試算無入池閘之末態 build（調配之輸入無從定之）⇒ 停機")
+        _it_a4 = ns["adj_intake"](_got_a4["temp"], _got_a4["build"], _got_a4["g_rows"], _got_a4["dropped"], _own_a4,
+                                  {b["label"]: ns["F3_CATEGORY_BURDEN"].get(b.get("category", ""), "") for b in cb})
+        _sj_a4 = []
+        if ns["adj4_subject_units"](_it_a4):
+            import run_verification as _rva4
+            _sj_a4 = ns["adj4_plan"](
+                _it_a4, _got_a4["temp"], _got_a4["g_rows"], cb, {}, cad["front_road_derive"] or {},
+                _rva4.load_front_road_names(), {r["街廓"]: r.get("正面路寬(m)") for r in param_rows},
+                _got_a4["depth"])
+        temp_out, build_out, log = ns["adj4_pass1_run"](
+            temp_parcels, build_parcels, _own_a4, _sj_a4,
+            {str(t["暫編地號"]): t.get("polygon_coords") for t in slices}, callbacks["a_prime"], _trial_a4)
+    finally:
+        ss.clear()
+        ss.update(_ssa4)
+        ns["K917_DROPPED"].clear()
+        ns["K917_DROPPED"].update(_k917a4)
+    ss["f3_adj4_log"] = log
+    return temp_out, build_out
+
+
 def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
                       *, snapshot):
     """`W-G.9-344`：段三之 harness 入口。回傳七元組
@@ -877,6 +955,8 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
        再跑一次 `run_corner_pk`。回傳其五值 ＋ 末態之宗地。
     7. 🆕 `W-G.9-363`：末端塊之合併再試（及其重跑之街角選位）之後，辦手冊先行（`run_k953`·`K-9-53` ①·以其時之
        winners／forced 試算）；其後⛔ 重跑街角選位（`v3` §8 位相不變）。回傳之末態之宗地 ＝ 手冊先行之出。
+    8. 🆕 `W-G.9-367`：手冊先行之後，辦規格步 4 乙之第一趟（`run_adj4`·`K-9-53` ②·以同一 winners／forced 試算·
+       原形取本函式之輸入 `temp_parcels`）；其後⛔ 重跑街角選位。回傳之末態之宗地 ＝ 第一趟之出。
     """
     import copy as _cp
     ss = fake_st.session_state
@@ -916,4 +996,7 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
     # 🆕 `W-G.9-363`：手冊先行（`K-9-53` ①）——街角定案（以其時之 winners／forced）·其後⛔ 重跑街角選位
     temp3, build3 = run_k953(ns, fake_st, cb, cad, param_rows, temp3, build3, setback,
                              snapshot=snapshot, callbacks=_cbk, winners=res[3], forced=res[4])
+    # 🆕 `W-G.9-367`：規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）——手冊先行之後·街角定案；其後⛔ 重跑街角選位
+    temp3, build3 = run_adj4(ns, fake_st, cb, cad, param_rows, temp3, build3, setback,
+                             snapshot=snapshot, callbacks=_cbk, winners=res[3], forced=res[4], slices=temp_parcels)
     return (*res, temp3, build3)
