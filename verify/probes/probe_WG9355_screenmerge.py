@@ -243,6 +243,10 @@ def _rigged(ns, ss, cfg, env):
     saved = {k: ns[k] for k in STUBS}
     old_env = os.environ.get("WV_K6B_STAGE3")
     os.environ["WV_K6B_STAGE3"] = env
+    # 🔧 `W-G.9-367`（發單側窗六十八）：本器之樁世界⛔ 合調配之輸入（樁之 G 值列無推進側別）⇒ 規格步 4 乙於本器內 off
+    #   （其畫面入口之接線與停機另由 F24 量之）
+    old_a4 = os.environ.get("WV_ADJ4")
+    os.environ["WV_ADJ4"] = "off"
     ns["f3_screen_corner_pk_run"], ns["f3_screen_stepg_run"] = rig.pk, rig.g
     ns["k6b_stage3_run"], ns["end_block_merge_run"] = rig.s3, rig.merge
     try:
@@ -253,6 +257,10 @@ def _rigged(ns, ss, cfg, env):
             os.environ.pop("WV_K6B_STAGE3", None)
         else:
             os.environ["WV_K6B_STAGE3"] = old_env
+        if old_a4 is None:
+            os.environ.pop("WV_ADJ4", None)
+        else:
+            os.environ["WV_ADJ4"] = old_a4
 
 
 def _enter(ns, ss, pk, g):

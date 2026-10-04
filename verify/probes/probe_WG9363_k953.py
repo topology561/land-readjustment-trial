@@ -37,6 +37,8 @@
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：R1 手冊先行之紀錄逐列 ＝ 本器所載；R2 街角第 1 宗之宗 ＝ 旗標 off 之
            實跑（街角定案·`v3` §8）；R3 配地之全部（各宗之街廓·推進側·G）與各街廓之抵費地 ＝ 本器所載（容差 `0.01`）且
            Σ抵費地之減 ＝ ΣG 之增（容差 `0.1`）；R4 調配之輸入之類（切片數·原有面積）＝ 本器所載、待同歸戶併入 ＝ 空。
+           🔧 `W-G.9-367`（⛔ 上列一字不刪）：本子命令於行程內設 `WV_ADJ4=off`（本器量手冊先行之果；規格步 4 乙之果
+           另由 F24 之 run 量之）。
   offsnap  <repo> <out.json> [<退縮> …]
            於行程內設 WV_K953=off，harness 實跑本案（預設退縮 `3.5`、`0.0`），以 sha256 摘要其街角、宗地（暫編地號·
            段三之三鍵·面積二欄）、build、段三紀錄、末端塊紀錄、配地列、入池閘紀錄、不配地紀錄、調配之輸入，寫 out。
@@ -1004,6 +1006,10 @@ KEEP_SP = ("run_end_block_merge", "run_corner_pk", "_k6b_callbacks", "k6b_stage3
 APP_ALLOW = {"K953_ENV", "k953_enabled", "k953_alloc_summary", "k953_units_of", FN, "f3_screen_k953",
              "f3_screen_k6b_stage3"}
 SP_ALLOW = {"run_k953", "run_corner_pk_k6b"}
+# 🔧 `W-G.9-367`（發單側窗六十八）：規格步 4 乙之新名亦許（本批之頂層之限另由 F24 之 W5 量之）
+APP_ALLOW |= {"ADJ4_ENV", "ADJ4_IDENT_UNUSED", "adj4_enabled", "adj4_possible", "adj4_subject_units", "adj4_subjects",
+              "adj4_depth_of", "adj4_trial_state", "adj4_plan", "adj4_pass1_run", "f3_screen_adj4"}
+SP_ALLOW |= {"run_adj4"}
 
 
 def _top_dump(tree):
@@ -1194,6 +1200,7 @@ def run(repo, sbs):
         print("  🔴 受詞缺")
         print("⇒ 紅 ['受詞缺']；rc 1")
         return 1
+    os.environ["WV_ADJ4"] = "off"   # 🔧 `W-G.9-367`（發單側窗六十八）：本器量手冊先行之果 ⇒ 規格步 4 乙於行程內 off
     red = []
     for sb in sbs:
         env = os.environ.get("WV_K953")

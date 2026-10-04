@@ -11,7 +11,8 @@
            AST 查接線：W1 模組層之常數與二函式、二函式內⛔ 案件字面；W2 入池閘之畫面入口於復原之後寫末趟之不配地紀錄、
            配地本體同生命週期去／寫末態 build；W3 二鍵 ∈ `K6B_SCREEN_TRIAL_KEYS` 且其末項仍為 `f3_k929_6_log`；
            W4 消費端 ＝ 生產碼 `34` 檔中除 `app.py` 外命中 `0`、`app.py` 中只在許可之函式內（🔧 `W-G.9-363`：許可之函式
-           另含 `f3_screen_k953`〔手冊先行之畫面試算讀入池閘之末態 build〕）；W5 畫面路徑之合成案
+           另含 `f3_screen_k953`〔手冊先行之畫面試算讀入池閘之末態 build〕；🔧 `W-G.9-367`：另含 app.py 之 `f3_screen_adj4`／`adj4_plan`
+           與 harness 之 `run_adj4`〔規格步 4 乙以 `adj_intake` 定其受詞〕）；W5 畫面路徑之合成案
            （`自誤 517`：抽出 `main()` 之盤點區塊，以假 st 與合成資料實際執行）。另施四突變，每一突變須轉紅。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0` 二者）：以 `adj_intake` 盤點，並以本器**另寫之分類**（⛔ 呼叫
@@ -328,9 +329,12 @@ def _wiring_checks(app_src, others):
                 bool(keys) and all(k in keys for k in ADJ_KEYS) and keys[-1] == "f3_k929_6_log", ""))
     toks = ADJ_FUNCS + ["SS_ADJ_BUILD_FINAL", "SS_ADJ_DROPPED"] + ADJ_KEYS
     tok_re = re.compile("|".join(re.escape(t) for t in toks))
+    # 🔧 `W-G.9-367`（發單側窗六十八）：harness 之 `run_adj4`（規格步 4 乙之 harness 入口）許可——除其原文而後計他檔之命中
+    others = {p: (_drop_fn367(s, "run_adj4") if p == "verify/selection_pipeline.py" else s) for p, s in others.items()}
     other_hits = {p: len(tok_re.findall(s)) for p, s in sorted(others.items()) if tok_re.search(s)}
     allowed = set(ADJ_FUNCS) | {"main", "f3_screen_stepg_run", "_k929_6_screen_gate"}
     allowed |= {"f3_screen_k953"}   # 🔧 `W-G.9-363`（發單側窗六十四）：手冊先行之畫面試算讀入池閘之末態 build（其單元）
+    allowed |= {"f3_screen_adj4", "adj4_plan"}   # 🔧 `W-G.9-367`（發單側窗六十八）：規格步 4 乙之畫面試算以 `adj_intake` 定其受詞（其受詞之純函式讀之）
     bad = []
     for fname, node in top.items():
         if fname in allowed:
@@ -343,6 +347,16 @@ def _wiring_checks(app_src, others):
     ok5, note5 = _synth_screen(app_src, top.get("main"))
     res.append(("W5 畫面路徑之合成案：main() 之盤點區塊以假 st 實際執行", ok5, note5))
     return res
+
+
+def _drop_fn367(src, name):
+    """🔧 `W-G.9-367`（發單側窗六十八）：除去模組層函式 `name` 之原文（無之 ⇒ 原文不變）。"""
+    t = ast.parse(src)
+    ls = src.splitlines(keepends=True)
+    for n in t.body:
+        if isinstance(n, ast.FunctionDef) and n.name == name:
+            return "".join(ls[:n.lineno - 1] + ls[n.end_lineno:])
+    return src
 
 
 def _prod_others(repo):

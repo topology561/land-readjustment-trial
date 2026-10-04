@@ -10,7 +10,8 @@
   wiring   <repo>
            AST 查接線：W1 具名常數；W2 `parse_cad_precision_layers` 之初值鍵、折線頂點之留存、推導之呼叫與候選集
            （非可建築土地之補集）；W3 `main()` 之 session 寫入與二顯示函式之呼叫；W4 消費端 ＝ 生產碼 `34` 檔中
-           除 `app.py` 外命中 `0`、`app.py` 中只在許可之函式內；W5 畫面路徑之合成案（`自誤 517`：抽出 `main()`
+           除 `app.py` 外命中 `0`、`app.py` 中只在許可之函式內（🔧 `W-G.9-367`：許可另含 app.py 之 `f3_screen_adj4`／`adj4_plan`
+           與 harness 之 `run_adj4`〔規格步 4 乙之名單讀正面道路〕）；W5 畫面路徑之合成案（`自誤 517`：抽出 `main()`
            之一覽區塊與卡片說明句，以假 st 與合成資料實際執行）。另施四突變（刪推導之賦值、改 session 鍵、
            於 `verify/stepg_pipeline.py` 注入一消費者、一覽只出首列），每一突變須轉紅。
   run      <repo>
@@ -256,8 +257,11 @@ def _wiring_checks(app_src, others):
     res.append(("W3c main()：呼叫 r3_front_road_rows", rows_ok, ""))
     toks = R3_FUNCS + ["SS_FRONT_ROAD_DERIVE", "front_road_derive", "R3_FRONT_ROAD_MAJORITY"]
     tok_re = re.compile("|".join(re.escape(t) for t in toks))
+    # 🔧 `W-G.9-367`（發單側窗六十八）：harness 之 `run_adj4`（規格步 4 乙之 harness 入口）許可——除其原文而後計他檔之命中
+    others = {p: (_drop_fn367(s, "run_adj4") if p == "verify/selection_pipeline.py" else s) for p, s in others.items()}
     other_hits = {p: len(tok_re.findall(s)) for p, s in sorted(others.items()) if tok_re.search(s)}
     allowed = set(R3_FUNCS) | {"parse_cad_precision_layers", "main"}
+    allowed |= {"f3_screen_adj4", "adj4_plan"}   # 🔧 `W-G.9-367`（發單側窗六十八）：規格步 4 乙之畫面入口與受詞之純函式讀正面道路（名單之街廓屬性）
     bad = []
     for fname, node in top.items():
         if fname in allowed:
@@ -335,6 +339,16 @@ def _synth_screen(app_src, mn):
     }
     bad = [k for k, v in checks.items() if not v]
     return (not bad), f"不符 {bad}"
+
+
+def _drop_fn367(src, name):
+    """🔧 `W-G.9-367`（發單側窗六十八）：除去模組層函式 `name` 之原文（無之 ⇒ 原文不變）。"""
+    t = ast.parse(src)
+    ls = src.splitlines(keepends=True)
+    for n in t.body:
+        if isinstance(n, ast.FunctionDef) and n.name == name:
+            return "".join(ls[:n.lineno - 1] + ls[n.end_lineno:])
+    return src
 
 
 def _prod_others(repo):
