@@ -26,6 +26,8 @@
            🔧 `W-G.9-364`（⛔ 上列一字不刪）：K39 ＝ 同時點，x 於當下之試算為他街廓之已配得之宗（同歸戶、他歸戶）之成員
            ⇒ 停機；K40 ＝ 同時點，x 為本街廓之他歸戶之已配得之宗之成員 ⇒ 停機——K37 之 (ii) 之廣度（一切街廓·一切歸戶）。
            P0 隨之 40 項。
+           🔧 `W-G.9-370`（⛔ 上列一字不刪）：K36／K37／K39／K40 之停機之期改為 `S219` 之新訊息（`K-9-57` ⑧·程式自我檢查·
+           `S219_PH`）；項數⛔ 變。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -61,6 +63,8 @@ FN = "k953_manual_run"
 SIG = ["temp_parcels", "build_parcels", "own_map", "blocks", "centerlines", "a_prime", "alloc_state"]
 RK_SIG = ["ns", "fake_st", "cb", "cad", "param_rows", "temp_parcels", "build_parcels", "setback"]
 RK_KW = ["snapshot", "callbacks", "winners", "forced"]
+# 🆕 `W-G.9-370`（K-9-57 ⑧）：`S219`（`_wpre953`·整筆之主併入之前之查）之停機訊息之期（程式自我檢查）
+S219_PH = ("程式自我檢查", "依既定機制不會發生", "觸之即程式有錯")
 
 
 def _harvest(repo):
@@ -370,12 +374,12 @@ def _cases(ns, sp):
               "後者⛔ 與 x 相接 ⇒ 併入 G 較大者",
          lambda: _k35(),
          (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
-    _run(out, "K36 x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機（K-9-51 之「剩餘土地」不立）；皆非 ⇒ 併入",
+    _run(out, "K36 x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機（程式自我檢查·K-9-57 ⑧）；皆非 ⇒ 併入",
          lambda: _k36(),
          (("停機", True), ("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
     # 🔧 補令四（⛔ 上列一字不刪）
     _run(out, "K37 逐片之整筆之主併入（其檢核過）之前：x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機"
-              "（K-9-53 ① 之「分不到」不立）；皆非 ⇒ 併入其計畫之受併宗",
+              "（程式自我檢查·K-9-57 ⑧）；皆非 ⇒ 併入其計畫之受併宗",
          lambda: _k37(),
          (("停機", True), ("停機", True), [("手冊", "X(1)", "a", "B1(1)", (("B1(1)", 300.0),), "成")]))
     _run(out, "K38 逐片之整筆之主併入（其檢核過）之前：本街廓之已配得之宗（同歸戶·當下之試算）之成員與 x 相連 ⇒ 停機"
@@ -386,11 +390,11 @@ def _cases(ns, sp):
           [("手冊", "X(1)", "a", "B1(1)", (("B1(1)", 300.0),), "成")]))
     # 🔧 W-G.9-364（⛔ 上列一字不刪）
     _run(out, "K39 逐片之整筆之主併入（其檢核過）之前：x 於當下之試算為他街廓之已配得之宗之成員——同歸戶（BD 之 D1(1)）、"
-              "他歸戶（BD 之 D9(1)）⇒ 皆停機（K-9-53 ① 之「分不到」不立·K-9-51 之「剩餘土地」不立）",
+              "他歸戶（BD 之 D9(1)）⇒ 皆停機（程式自我檢查·K-9-57 ⑧）",
          lambda: _k39(),
          (("停機", True), ("停機", True)))
     _run(out, "K40 逐片之整筆之主併入（其檢核過）之前：x 於當下之試算為本街廓之他歸戶之已配得之宗（BA 之 O1(1)）之成員 ⇒ "
-              "停機（K-9-53 ① 之「分不到」不立·K-9-51 之「剩餘土地」不立）",
+              "停機（程式自我檢查·K-9-57 ⑧）",
          lambda: _k40(),
          ("停機", True))
     return out
@@ -517,7 +521,7 @@ def _k36():
                 return dict(r, members=dict(r["members"], **{"A1(1)": ["A1(1)", "X(1)"]}))
             return r
         return _go3((), after)
-    return (_halt2(lambda: one("kept"), ("「剩餘土地」不立",)), _halt2(lambda: one("member"), ("「剩餘土地」不立",)),
+    return (_halt2(lambda: one("kept"), S219_PH), _halt2(lambda: one("member"), S219_PH),
             [x for x in _rows(one("none")) if x[0] == "K-9-51"])
 
 
@@ -550,7 +554,7 @@ def _k37():
                 return dict(r, members=dict(r["members"], **{"A1(1)": ["A1(1)", "X(1)"]}))
             return r
         return _go4((), after)
-    return (_halt2(lambda: one("kept"), ("「分不到」不立",)), _halt2(lambda: one("member"), ("「分不到」不立",)),
+    return (_halt2(lambda: one("kept"), S219_PH), _halt2(lambda: one("member"), S219_PH),
             _sel(one("none"), "X(1)"))
 
 
@@ -590,12 +594,12 @@ def _mem4(host):
 
 
 def _k39():
-    ph = ("「分不到」不立", "「剩餘土地」不立")
+    ph = S219_PH
     return (_halt2(lambda: _mem4("D1(1)"), ph), _halt2(lambda: _mem4("D9(1)"), ph))
 
 
 def _k40():
-    return _halt2(lambda: _mem4("O1(1)"), ("「分不到」不立", "「剩餘土地」不立"))
+    return _halt2(lambda: _mem4("O1(1)"), S219_PH)
 
 
 def _k28(W):

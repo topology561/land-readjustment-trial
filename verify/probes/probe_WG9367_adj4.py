@@ -8,14 +8,19 @@
            合成對照（⛔ 讀本案資料·`harvest(app.py)` 取受詞；`verify/selection_pipeline.py` 取 `run_adj4`）。玩具之回呼：
            `alloc_state` 以 build 之全部（`drop` 除外）為保留；街廓內之 `面積_m2` 之和 `>` 該街廓之容量 ⇒ 該街廓之配餘地
            不合格一處；`err_cap` 逾者 ⇒ 配地中止；`lose` ＝ `{宗: (門檻, 失者)}`（該宗之 `面積_m2` `>` 門檻 ⇒ 失者不保留）；
-           `G` ＝ 分攤登記面積 ＋ 面積（`gmap` 覆寫）；`a_prime` ＝ a(src) × p(src 之街廓) ÷ p(dst 之街廓）。
-           K1〜K22 ＝ 各支（期值出自規格單 `§三`·⛔ 呼叫受測碼求期）；P0 ＝ 判式自驗（逐項擾動其期須恰該項紅）。
+           `G` ＝ 分攤登記面積 ＋ 面積（`gmap` 覆寫）；`a_prime` ＝ a(src) × p(src 之街廓) ÷ p(dst 之街廓）；
+           `tie` ＝ `{片: 失者}`（該片離 build ⇒ 失者不保留）；`bar` ＝ `{片: 受阻者}`（該片在 build ⇒ 受阻者不保留）
+           （二者皆 `W-G.9-370` 增）。
+           K1〜K27 ＝ 各支（K23〜K27 ＝ `W-G.9-370` 之增·以 CC 之碼之突變之判別力為據；K9 之期 ＝ `W-G.9-370` 之訊息）（期值出自規格單 `§三`·⛔ 呼叫受測碼求期）；P0 ＝ 判式自驗（逐項擾動其期須恰該項紅）。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_adj4`）與 `run_corner_pk_k6b`
            之序；W3 畫面之入口（`f3_screen_adj4`）與 `f3_screen_k6b_stage3` 之序；W4 新碼⛔ 案件字面；W5 既有函式對基準
            一字未動（本單所改之三函式除外）·頂層節點之相異 ⊆ 本單之許；W6 本單所改之三函式對基準唯增列（⛔ 改既有一列）；
            W7 既有量測器之錨（其字串常數〔長 ≥ 4〕於基準之 app.py／selection_pipeline.py 恰一見者）於工作樹仍恰一見；
            基準中恰一之函式名（含巢狀）於工作樹仍恰一。（以 CC 之碼之字樣為錨之接線與突變之判別力 ＝ 復驗時補寫·另單。）
+           🔧 `W-G.9-370`：W6 許 `k953_manual_run` 之 `S219` 之停機訊息之基準二列（`W6_REPL`·逐字）易之（`K-9-57` ⑧·
+           程式自我檢查），唯此二列；其新文由 F25 之 `X5` 量之。W7 之錨之母體⛔ 含 F25（`W7_SKIP`）：其突變之錨為函式之段內
+           之錨（其恰一之判於其函式之段內·F25 之 `mutate` 自量之），⛔ 為全檔之錨。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：同一行程先設 `WV_ADJ4=off`、再去之，各跑一次：R1 第一趟之紀錄逐列 ＝
            本器所載；R2 街角第 1 宗 ＝ off 之實跑；R3 配地之變（G 之差 ＞ 容差 `0.01` 之宗、各街廓之抵費地之差）＝ 本器所載，
@@ -86,9 +91,10 @@ def _a(t):
     return float(t.get("分攤登記面積_m2", 0) or 0) + float(t.get("面積_m2", 0) or 0)
 
 
-def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, lose=None, calls=None):
+def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, lose=None, calls=None, tie=None, bar=None):
     """玩具之回呼（`calls` ＝ list ⇒ 每次試算附一筆）。"""
     cap, price, gmap, err_cap, lose = cap or {}, price or {}, gmap or {}, err_cap or {}, lose or {}
+    tie, bar = tie or {}, bar or {}
 
     def a_prime(src, dst):
         return _a(src) * price.get(src["所屬街廓"], 1.0) / price.get(dst["所屬街廓"], 1.0)
@@ -107,6 +113,12 @@ def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, lose=None, call
         by = {b["暫編地號"]: b for b in build}
         for h, (thr, lost) in lose.items():
             if h in by and float(by[h].get("面積_m2", 0) or 0) > thr + 1e-9:
+                gone.add(lost)
+        for p, lost in tie.items():                 # 🆕 `W-G.9-370`：該片離 build ⇒ 失者不保留
+            if p not in by:
+                gone.add(lost)
+        for p, lost in bar.items():                 # 🆕 `W-G.9-370`：該片在 build ⇒ 受阻者不保留
+            if p in by:
                 gone.add(lost)
         kept, bad, G, mem = {}, {}, {}, {}
         for b in build:
@@ -144,7 +156,7 @@ _NS = {}
 
 
 def _go(*, sj=None, cap=None, price=None, drop=("X1(1)",), gmap=None, err_cap=None, lose=None, own_upd=None,
-        pre=None, lot_upd=None, temp_geom=None, geom_extra=None, geom_rm=(), calls=None, raw=False):
+        pre=None, lot_upd=None, temp_geom=None, geom_extra=None, geom_rm=(), calls=None, raw=False, tie=None, bar=None):
     t, own = _w()
     own = dict(own, **(own_upd or {}))
     by = {x["暫編地號"]: x for x in t}
@@ -160,7 +172,7 @@ def _go(*, sj=None, cap=None, price=None, drop=("X1(1)",), gmap=None, err_cap=No
     for pid, kv in (pre or {}).items():
         by[pid].update(copy.deepcopy(kv))
     build = [x for x in t if x["街廓分類"] == H]
-    ap, st = _cbs(cap, price, drop, gmap, err_cap, lose, calls)
+    ap, st = _cbs(cap, price, drop, gmap, err_cap, lose, calls, tie, bar)
     subj = [dict(SJ, **(sj or {}))] if sj is not False else []
     res = _NS["fn"](t, build, own, subj, geom, ap, st, log_print=lambda *x: None)
     return (res, t, build) if raw else res
@@ -514,8 +526,9 @@ def _cases(ns, sp):
            ("剩下", "g1", "R1(1)", REMAIN, (("R1(1)", 10.0),))],
           {"R1(1)": {"段三併出": ("Q9(1)", "X1(2)"), "段三部分併出": (("Q9(1)", 40.0), ("X1(2)", 50.0)),
                      "段三餘量": 10.0}}))
-    _run(out, "K9 建地片於當下之試算已為已配得之宗 ⇒ 停機（其分不到之前提不成立）", lambda: _halt(lambda: _go(drop=()),
-                                                                          ["X1(1)", "分不到之前提不成立"]), ("停機", True))
+    _run(out, "K9 建地片於當下之試算已為已配得之宗 ⇒ 停機（程式自我檢查·K-9-57 ⑧·`W-G.9-370` 之訊息）",
+         lambda: _halt(lambda: _go(drop=()), ["X1(1)", "程式自我檢查", "沿名單至街廓 BA", "依既定機制不會發生",
+                                              "觸之即程式有錯"]), ("停機", True))
     _run(out, "K10 現態之配地中止 ⇒ 停機", lambda: _halt(lambda: _go(err_cap={"BB": -1.0}), ["現態之配地中止"]),
          ("停機", True))
     _run(out, "K11 受詞：同歸戶原位次配地之街廓非空者；序 ＝ (建地軌先, 原有面積大, 歸戶)；片 ＝ 建築街廓內不能分配 ＋ "
@@ -575,6 +588,51 @@ def _cases(ns, sp):
          lambda: _k21(ns), (True, False, False, False, True, False, False))
     _run(out, "K22 三旗標皆 on 而先篩偽（歸戶表空）⇒ harness 與畫面皆回輸入（同物件）、紀錄 []、⛔ 試算、⛔ 呼叫 st",
          lambda: _k22(ns, sp), (True, True, [], True, True, [], [], []))
+    # ── 🆕 `W-G.9-370`（`W-G.9-367 §四-2`·以 CC 之碼之突變之判別力為據·期值出自規格單 `§三`·⛔ 呼叫受測碼求期）──
+    r23 = lambda: _go(lose={"X1(2)": (150.0, "Q1(1)")}, sj={"名單": ["BB", "BD"]})  # noqa: E731
+    _run(out, "K23 R-8 之止：整體不過（他街廓之原保留之宗失·非單調之玩具）而逐片皆成 ⇒ 諸片皆無剩下 ⇒ 止於本街廓"
+              "（⛔ 往名單之次街廓 BD）",
+         lambda: (_rows(r23()), _acc(r23())),
+         ([("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
+           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (("X1(2)", 60.0),), "成"),
+           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (("X1(2)", 100.0),), "成"),
+           ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (("X1(2)", 200.0),), "成")],
+          {"X1(2)": 360.0}))
+    r24 = lambda: _go(tie={"X1(1)": "Q1(1)"}, sj={"名單": ["BB"]})  # noqa: E731
+    _run(out, "K24 R-9／R-10 之 T 含建地片之所屬街廓：建地片去 build 使其所屬街廓 BA 之原保留之宗失 ⇒ 整體與該片之逐片"
+              "皆不過",
+         lambda: (_rows(r24()), r24()[2][0].get("不過之由"), r24()[2][1].get("不過之由")),
+         ([("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
+           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (), "未成"),
+           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (("X1(2)", 100.0),), "成"),
+           ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (("X1(2)", 200.0),), "成"),
+           ("剩下", "g1", "X1(1)", REMAIN, (("X1(1)", 60.0),))],
+          "BA 原保留之宗 ['Q1(1)'] 不保留", "BA 原保留之宗 ['Q1(1)'] 不保留"))
+    s25 = {"名單": ["BB"], "片": ["X1(1)", "R1(1)", "R9(1)"]}
+    r25 = lambda: _go(own_upd={"R9": "g1"}, cap={"BB": 250.0}, sj=s25)  # noqa: E731
+    _run(out, "K25 R-10 之序：同類之片依剩下大者先（R9(1) 200 先於 R1(1) 100）",
+         lambda: _rows(r25()),
+         [("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
+          ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (("X1(2)", 60.0),), "成"),
+          ("逐片", "g1", "BB", "R9(1)", "道路", "X1(2)", (("X1(2)", 190.0),), "部分成"),
+          ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (), "未成"),
+          ("剩下", "g1", "R1(1)、R9(1)", REMAIN, (("R1(1)", 100.0), ("R9(1)", 10.0)))])
+    r26 = lambda: _go(err_cap={"BB": 200.0}, sj={"名單": ["BB"]})  # noqa: E731
+    _run(out, "K26 R-12：併入後之配地中止 ⇒ 不過（記其由）；整體不過 ⇒ 逐片（公設片取最大面積）",
+         lambda: (_rows(r26()), r26()[2][0].get("不過之由")),
+         ([("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
+           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (("X1(2)", 60.0),), "成"),
+           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (("X1(2)", 100.0),), "成"),
+           ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (("X1(2)", 40.0),), "部分成"),
+           ("剩下", "g1", "P1(1)", REMAIN, (("P1(1)", 160.0),))],
+          "併入後配地中止：玩具之配地中止（BB）"))
+    s27 = {"名單": ["BB"], "片": ["Q1(1)", "X1(1)", "R1(1)"]}
+    _run(out, "K27 R-10′（K-9-57 ⑧·程式自我檢查）：逐片之建地片之整筆之試之前，以當下之試算查之——前一建地片併出後該片已"
+              "為已配得之宗（依既定機制不會發生·玩具以非單調之回呼造之）⇒ 停機（⛔ 靜默併出）",
+         lambda: _halt(lambda: _go(drop=("Q1(1)",), bar={"Q1(1)": "X1(1)"}, own_upd={"Q1": "g1"}, cap={"BB": 360.0},
+                                   sj=s27), ["X1(1)", "程式自我檢查", "逐片之整筆之試之前", "依既定機制不會發生",
+                                             "觸之即程式有錯"]),
+         ("停機", True))
     return out
 
 
@@ -646,6 +704,12 @@ CHG_APP = ("k953_manual_run", "f3_screen_k6b_stage3")
 RA_SIG = ["ns", "fake_st", "cb", "cad", "param_rows", "temp_parcels", "build_parcels", "setback"]
 RA_KW = ["snapshot", "callbacks", "winners", "forced", "slices"]
 CHG_SP = ("run_corner_pk_k6b",)
+# 🆕 `W-G.9-370`：W7 之錨之母體⛔ 含 F25（突變器·其錨為函式之段內之錨·由其 `mutate` 自量之）
+W7_SKIP = ("probe_WG9370_adj4mut.py",)
+# 🆕 `W-G.9-370`（K-9-57 ⑧）：W6 之許——`k953_manual_run` 之 `S219` 之停機訊息之基準二列（逐字）得易之（唯此二列）
+W6_REPL = {"k953_manual_run": (
+    '            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）於當下之試算已為已配得之宗 {_own953}"',
+    '                               "或其成員——K-9-53 ① 之「分不到」不立、K-9-51 之「剩餘土地」不立 ⇒ 停機")')}
 
 
 def _git_show(repo, rev, rel):
@@ -700,11 +764,13 @@ def _kw(call, name):
     return None
 
 
-def _insert_only(old, new):
-    """old → new 之差唯增列（⛔ 改、⛔ 刪既有一列）且增段 ≥ 1。回 (ok, 增段數, 說明)。"""
+def _insert_only(old, new, repl=()):
+    """old → new 之差唯增列（⛔ 改、⛔ 刪既有一列·`repl` 所列之基準之列除外〔`W-G.9-370`〕）且增段 ≥ 1。
+    回 (ok, 增段數, 說明)。"""
     a, b = old.splitlines(), new.splitlines()
     ops = difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes()
-    bad = [(t, i1 + 1, i2) for t, i1, i2, _j1, _j2 in ops if t not in ("equal", "insert")]
+    bad = [(t, i1 + 1, i2) for t, i1, i2, _j1, _j2 in ops
+           if t not in ("equal", "insert") and not (repl and set(a[i1:i2]) <= set(repl))]
     ins = [j2 - j1 for t, _i1, _i2, j1, j2 in ops if t == "insert"]
     return (not bad and len(ins) > 0), len(ins), f"非增之段（基準之列）{bad[:3]}"
 
@@ -818,16 +884,17 @@ def _wiring_checks(repo, base, app=None, spp=None):
         if cur is None or old is None:
             w6.append((nm, False, 0, "缺"))
             continue
-        ok_, k_, note_ = _insert_only(ast.get_source_segment(src_o, old), ast.get_source_segment(src_c, cur))
+        ok_, k_, note_ = _insert_only(ast.get_source_segment(src_o, old), ast.get_source_segment(src_c, cur),
+                                      W6_REPL.get(nm, ()))
         w6.append((nm, ok_, k_, note_))
     chk.append(("W6 本單所改之三函式（k953_manual_run／f3_screen_k6b_stage3／run_corner_pk_k6b）對基準唯增列"
-                "（⛔ 改、⛔ 刪既有一列）", all(x[1] for x in w6), "；".join(f"{a} {b}·增段 {c}" + ("" if b else f"（{d}）")
+                "（⛔ 改、⛔ 刪既有一列·`W6_REPL` 之列除外）", all(x[1] for x in w6), "；".join(f"{a} {b}·增段 {c}" + ("" if b else f"（{d}）")
                                                        for a, b, c, d in w6)))
     # W7 既有量測器之錨仍恰一見；基準中恰一之函式名仍恰一
     lits8 = set()
     pdir = os.path.join(repo, "verify", "probes")
     for p8 in sorted(os.listdir(pdir)):
-        if not p8.endswith(".py") or p8 == SELF_NAME:
+        if not p8.endswith(".py") or p8 == SELF_NAME or p8 in W7_SKIP:
             continue
         try:
             with warnings.catch_warnings():
