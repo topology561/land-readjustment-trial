@@ -877,7 +877,7 @@ def run_adj4(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
     _k953_a4 = ns["k953_enabled"]()
     _gate_a4 = ns["k929_6_enabled"]()
     if not (_on_a4 and _k953_a4 and _gate_a4) or not ns["adj4_possible"](
-            temp_parcels, build_parcels, ss["t8_ownership_map"]):
+            temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {}):
         ss["f3_adj4_log"] = []
         return temp_parcels, build_parcels
     _cat_a4 = {b["label"]: b.get("category", "") for b in cb}
@@ -907,7 +907,7 @@ def run_adj4(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
 
     _ssa4 = _cpa4.deepcopy(dict(ss))
     _k917a4 = _cpa4.deepcopy(ns["K917_DROPPED"])
-    _own_a4 = ss["t8_ownership_map"]
+    _own_a4 = ss.get("t8_ownership_map", {}) or {}
     try:
         _s0a4 = _trial_a4(temp_parcels, build_parcels)
         if _s0a4.get("err"):

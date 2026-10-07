@@ -15049,8 +15049,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
         _kS953 = _S953.get("kept") or {}
         _own953 = sorted({str(_h) for _hs in _kS953.values() for _h in _hs if _x in _memS953(str(_h))})
         if _own953:
-            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）於當下之試算已為已配得之宗 {_own953}"
-                               "或其成員——K-9-53 ① 之「分不到」不立、K-9-51 之「剩餘土地」不立 ⇒ 停機")
+            raise RuntimeError(f"{_hdr953} 程式自我檢查：建地片 {_x}（{_blk953[_x]}）於整筆之主併入之前，當下之試算已為已配得之宗"
+                               f" {_own953} 或其成員——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機")
         _gx = _gown953(_tin953[_x])
         _nbr953 = {}
         for _bk in sorted(_kS953):
@@ -15453,6 +15453,22 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
                 _n_lo, _won = _n_md, _got
         return _n_lo / 100.0, _won
 
+    # ── 🆕 `W-G.9-370` R-10′（`K-9-57` ⑧·程式自我檢查）：逐片之建地片之整筆之試之前，以當下之試算查之；
+    #    「已為已配得之宗或其成員」之判同 R-8 之 _inS（諸街廓之諸已配得之宗之成員之聯集·members 缺某宗者以 [該宗] 代之）──
+    def _bpre_a4(_x, _g):
+        _Sx = _sim_a4(state)
+        if _Sx.get('err'):
+            raise RuntimeError(f"{_hd_a4} 建地片 {_x}（歸戶 {_g}）於逐片之整筆之試之前，當下之試算之配地中止："
+                               f"{_Sx.get('err')!r} ⇒ 停機")
+        _Sxm = _Sx.get('members')
+        if not isinstance(_Sxm, dict):
+            raise RuntimeError(f"{_hd_a4} 建地片 {_x}（歸戶 {_g}）於逐片之整筆之試之前，當下之試算之 members 非 dict ⇒ 停機")
+        _inSx = {str(_m) for _hs in (_Sx.get("kept") or {}).values() for _h in _hs
+                 for _m in (_Sxm.get(str(_h)) or [str(_h)])}
+        if _x in _inSx:
+            raise RuntimeError(f"{_hd_a4} 程式自我檢查：建地片 {_x}（歸戶 {_g}）於逐片之整筆之試之前，"
+                               "當下之試算已為已配得之宗或其成員——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機")
+
     _rank_a4 = {'建地': 0, '道路': 1, '公設地': 2}
     for _sj in subjects:
         _gj, _tj = _sj['歸戶'], _sj['軌']
@@ -15496,8 +15512,8 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
             _inS = {_m for _hs in _kS.values() for _h in _hs for _m in _mof_a4(str(_h))}
             for _x in _pcs:
                 if _cls[_x] == '建地' and _pos_a4(_L[_x]) and _x in _inS:
-                    raise RuntimeError(f"{_hd_a4} 建地片 {_x}（歸戶 {_g_str}）於當下之試算已為已配得之宗或其成員"
-                                       "——其分不到之前提不成立 ⇒ 停機")
+                    raise RuntimeError(f"{_hd_a4} 程式自我檢查：建地片 {_x}（歸戶 {_g_str}）於第一趟沿名單至街廓 {_bk} 時，"
+                                       "當下之試算已為已配得之宗或其成員——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機")
             _hs_a4 = sorted(str(_h) for _h in (_kS.get(_bk) or set())
                             if str(_h) in state["by"] and _gw_a4(state["by"][str(_h)]) == _g_str)
             if not _hs_a4:
@@ -15540,6 +15556,7 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
                 _s = _L[_x]
                 _base_a4 = dict(序='逐片', 歸戶=_gj, 軌=_tj, 街廓=_bk, 片=_x, 類=_cls[_x], 受併宗=_r)
                 if _cls[_x] == '建地':
+                    _bpre_a4(_x, _g_str)
                     _c1 = _dup_a4(state)
                     _add_a4(_c1, _r, _kv * _s)
                     _c1["build"] = [_b for _b in _c1["build"] if str(_b['暫編地號']) != _x]
