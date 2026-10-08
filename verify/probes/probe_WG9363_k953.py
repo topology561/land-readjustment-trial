@@ -1033,6 +1033,8 @@ KEEP_SP = ("run_end_block_merge", "run_corner_pk", "_k6b_callbacks", "k6b_stage3
 # 🔧 `W-G.9-373`（`K-9-66`／`K-9-67`／`K-9-68`）：本單所改之六函式出 W6 之受詞（其接線另由 F27 量之）
 CHG373_APP = ("k6b_stage3_run", "k929_6_fixpoint", "adj_intake", "k6b_screen_callbacks", "k953_manual_run",
               "adj4_pass1_run")
+# 🔧 `W-G.9-373` 補令一：末端塊合併再試之除外之集（部分併出之剩下⛔ 除外·KL 甲案·其行為由 F28 之 E 項量之）⇒ `end_block_merge_run` 亦出 W6
+CHG373_APP += ("end_block_merge_run",)
 CHG373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
 NEW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k967_pre_area")
 KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG373_APP)

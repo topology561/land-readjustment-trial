@@ -734,6 +734,8 @@ W7_SKIP = ("probe_WG9370_adj4mut.py",)
 #   函式名之許（同 F23 之 W8）
 ALLOW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k967_pre_area", "k6b_stage3_run",
                 "k929_6_fixpoint", "adj_intake", "k6b_screen_callbacks")
+# 🔧 `W-G.9-373` 補令一：W5 之許增 `end_block_merge_run`（末端塊合併再試之除外之集·KL 甲案·其行為由 F28 量之）
+ALLOW373_APP += ("end_block_merge_run",)
 ALLOW373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
 W6_SKIP373 = ("k953_manual_run",)
 ANC_SKIP373 = ("_out.append(tp)", "member", "members")
