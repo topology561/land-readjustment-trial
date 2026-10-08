@@ -48,6 +48,13 @@ _k6b_callbacks 之巢狀 alloc_state。
         _split357(x, _qs, _lvl_name[_cl2], _extra)；continue）→ `if _batch_ok:` 依序；`if _ok:` 之 else ＝
         `_row(**_base, 結果='未成', 檢核='不過')`；`_k951(x, _a357(x), {…}, True)`。
     本部全綠時另施 29 種原始碼突變，每一突變須使其所指之項轉紅（器紅 ⇒ rc 1）。
+  🔧 `W-G.9-373`（`K-9-66`／`K-9-68`·⛔ 上列一字不刪）：`K-9-48` 七項 3／4／7 之逐片（`_max357`·`_k951`·`_split357`）由
+    `K-9-66`（逐受併之街廓之順序及比例）與 `K-9-68`（`K-9-51` 之逐輪）代之，其三巢狀 def 去之 ⇒ W0 之巢狀唯
+    `_has357`／`_res357`／`_dist357`／`_t14_357`；**W2、W3、W12 退**（其受詞已去·新碼之接線與突變之判別力由次單以 CC 之碼
+    之字樣為錨補寫）；W5 唯量 `R-7`／`R-7′` 之既有落點（舊 raise 去、`_r4 = None`、`_t14_357` 之一呼、`_t14_done`）；W7 唯
+    量 `_has357`／`_res357`／鍵之環；W8 之回傳之鍵增 `'members'`（`K-9-67`·第五鍵）；W11 之三支取鍵之環中測試為
+    `_has357(_rm) and _pid in marks` 之 if（建地之支另立於其前·⛔ 計）。突變去 M2〜M9、M14、M16、M19、M22、M28、M29
+    （其錨已去·M2 之錨之縮排隨步驟 10 之重排而異），餘 15 種。
 rc：0 相符／1 不符（含受詞缺、器紅）／2 用法錯。
 """
 import ast, contextlib, io, os, sys
@@ -61,6 +68,8 @@ FA, FS = "app.py", "verify/selection_pipeline.py"
 FN_S3, FN_AI, FN_CB = "k6b_stage3_run", "adj_intake", "k6b_screen_callbacks"
 FN_PT, FN_HCB = "k6b_stage3_pool_temp", "_k6b_callbacks"
 NEST = ("_has357", "_res357", "_max357", "_dist357", "_k951", "_split357", "_t14_357")
+# 🔧 `W-G.9-373`（`K-9-66`）：`_max357`／`_k951`／`_split357` 去之
+NEST = tuple(x for x in NEST if x not in ("_max357", "_k951", "_split357"))
 X4 = ("float(_r['應分配面積'])", "if _pool or (_cm and not _al):", "if '段三併出' in t:", "if len(_cands) != 1:")
 
 
@@ -176,81 +185,14 @@ def _w1(c):
     return ok, f"在 `if not _qs:` {in_body}；log_print {lp}；continue {cont}；舊字樣 {len(old)}（期 0）"
 
 
-def _div100(n):
-    return (isinstance(n, ast.BinOp) and isinstance(n.op, ast.Div) and isinstance(n.right, ast.Constant)
-            and n.right.value in (100, 100.0))
-
-
 def _w2(c):
-    mx = c.n["_max357"]
-    tr = _defs(mx, "_try")
-    if len(tr) != 1:
-        return False, f"_try {len(tr)}（期 1）"
-    tr = tr[0]
-    rets = [r for r in ast.walk(tr) if isinstance(r, ast.Return)]
-    r_ok = (len(rets) == 1 and isinstance(rets[0].value, ast.IfExp) and _is_call(rets[0].value.test, "_noaff")
-            and _u(rets[0].value.body) == "_t" and _u(rets[0].value.orelse) == "None")
-    tr_src = [_u(s) for s in tr.body]
-    clone = "_t = _clone(state)" in tr_src and any(s.startswith("_apply(_t, ") for s in tr_src)
-    par = _parents(mx)
-    own = list(_walk_own(mx))
-    sa = [a for a in own if isinstance(a, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "state" for t in a.targets)]
-    sa_ok = len(sa) == 2 and all(isinstance(a.value, ast.Name) and a.value.id in ("_t", "_best")
-                                 and isinstance(par.get(a), ast.If) and any(a is s for s in par[a].body)
-                                 and _u(par[a].test) == f"{a.value.id} is not None" for a in sa)
-    t_from = any(isinstance(a, ast.Assign) and _u(a) == "_t = _try(s)" for a in own)
-    tries = [n for n in own if _is_call(n, "_try")]
-    tm = [a for a in own if isinstance(a, ast.Assign) and _u(a.targets[0]) == "_tm"]
-    tm_ok = len(tm) == 1 and _is_call(tm[0].value, "_try") and len(tm[0].value.args) == 1 and _div100(tm[0].value.args[0])
-    best = []
-    for a in own:
-        if isinstance(a, ast.Assign):
-            for t in a.targets:
-                if isinstance(t, ast.Name) and t.id == "_best":
-                    best.append((a, _u(a.value)))
-                if isinstance(t, ast.Tuple) and isinstance(a.value, ast.Tuple):
-                    for te, ve in zip(t.elts, a.value.elts):
-                        if isinstance(te, ast.Name) and te.id == "_best":
-                            best.append((a, _u(ve)))
-    b_ok = bool(best) and all(v == "None" or (v == "_tm" and _in_branch(a, par, "_tm is not None", "body"))
-                              for a, v in best) and any(v == "_tm" for _, v in best)
-    last = mx.body[-1]
-    l_ok = (isinstance(last, ast.Return) and _div100(last.value) and _u(last.value.left) == "_lo")
-    ok = r_ok and clone and sa_ok and t_from and len(tries) == 2 and tm_ok and b_ok and l_ok
-    return ok, (f"_try 之 return {r_ok}；試算於拷貝 {clone}；state＝ {len(sa)}／受護 {sa_ok}；_t＝_try(s) {t_from}；"
-                f"_try 呼 {len(tries)}（期 2）；_tm＝_try(n/100) {tm_ok}；_best 唯取已通過者 {b_ok}；return _lo/100 {l_ok}")
+    # 🔧 `W-G.9-373`：退（`_max357` 去之·`K-9-66`）
+    return True, "退（W-G.9-373·K-9-66）"
 
 
 def _w3(c):
-    k = c.n["_k951"]
-    own = list(_walk_own(k))
-    par = _parents(k)
-    als = [n for n in own if _is_call(n, "alloc_state")]
-    al_ok = len(als) == 1 and [_u(a) for a in als[0].args] == ["state['temp']", "state['build']"]
-    err = any(isinstance(n, ast.If) and _u(n.test) == "_cur.get('err')" and isinstance(n.body[0], ast.Raise) for n in own)
-    want = {"_p == x", "_p in merged_out", "_b in F", "_p not in state['by']"}
-    flt = [n for n in own if isinstance(n, ast.If) and isinstance(n.test, ast.BoolOp) and isinstance(n.test.op, ast.Or)
-           and {_u(v) for v in n.test.values} == want and len(n.body) == 1 and isinstance(n.body[0], ast.Continue)]
-    gx = [n for n in own if isinstance(n, ast.If) and isinstance(n.test, ast.Compare)
-          and isinstance(n.test.ops[0], ast.NotEq) and _u(n.test.comparators[0]) == "_gx"
-          and len(n.body) == 1 and isinstance(n.body[0], ast.Continue)]
-    gets = [n for n in own if isinstance(n, ast.Assign) and _u(n) == "_G = _cur.get('G')"]
-    anyg = [n for n in own if isinstance(n, ast.Call) and _u(n.func) == "_cur.get" and n.args
-            and isinstance(n.args[0], ast.Constant) and n.args[0].value == "G"]
-    g_ok = len(gets) == 1 and len(anyg) == 1 and _in_branch(gets[0], par, "_pre", "body")
-    rz = [n for n in own if isinstance(n, ast.Raise) and any("未回 G" in s for s in _strs(n))]
-    rz_ok = len(rz) >= 2 and all(_in_branch(r, par, "_pre", "body") for r in rz)
-    ap = [n for n in own if isinstance(n, ast.Call) and _u(n.func) == "_cands.append"]
-    ap_ok = False
-    if len(ap) == 1 and len(ap[0].args) == 1 and isinstance(ap[0].args[0], ast.Tuple):
-        e = ap[0].args[0].elts
-        ap_ok = (len(e) >= 3 and _is_call(e[0], "_dist357") and _u(e[1]) == "-float(_G[_p])" and _u(e[2]) == "_p"
-                 and _in_branch(ap[0], par, "_pre", "body"))
-    so = [n for n in own if isinstance(n, ast.Call) and _u(n.func) == "_cands.sort"]
-    so_ok = len(so) == 1 and not so[0].args and not so[0].keywords
-    ok = al_ok and err and len(flt) == 1 and len(gx) == 1 and g_ok and rz_ok and ap_ok and so_ok
-    return ok, (f"alloc_state 一呼 {al_ok}；err ⇒ raise {err}；篩 {len(flt)}（期 1）；歸戶 {len(gx)}（期 1）；"
-                f"取 G 唯於 `if _pre:` {g_ok}；未回 G 之 raise {len(rz)}／皆於其內 {rz_ok}；序之鍵 {ap_ok}；sort 無 key {so_ok}")
+    # 🔧 `W-G.9-373`：退（`_k951` 去之·`K-9-68`）
+    return True, "退（W-G.9-373·K-9-68）"
 
 
 def _w4(c):
@@ -296,16 +238,10 @@ def _w5(c):
     add = [s for s in t.body if isinstance(s, ast.Expr) and _u(s) == "_t14_done.add(c)"]
     first_if = next((i for i, s in enumerate(t.body) if isinstance(s, ast.If)), len(t.body))
     add_ok = len(mut) == 1 and len(add) == 1 and t.body.index(add[0]) < first_if
-    tp = _parents(t)
-    kc = [n for n in ast.walk(t) if isinstance(n, ast.Call) and _u(n) == "_k951(c, _a357(c), {W['blk']}, True)"]
-    kc_ok = len(kc) == 1 and _in_branch(kc[0], tp, "_noaff(state, _t, {W['blk'], _blk_of[c]}, {c})", "orelse")
-    mx = [n for n in ast.walk(t) if isinstance(n, ast.Call) and _u(n) == "_max357(x, w, _s)"]
-    kx = [n for n in ast.walk(t) if isinstance(n, ast.Call) and _u(n) == "_k951(x, _rem, {W['blk']}, False)"]
-    kx_ok = len(kx) == 1 and _in_branch(kx[0], tp, "_has357(_rem)", "body")
-    ok = not old and r4_ok and cl_ok and asg_ok and add_ok and kc_ok and len(mx) == 1 and kx_ok
+    # 🔧 `W-G.9-373`：c 與其半之去處改依 `K-9-66`／`K-9-68`（`_k951`／`_max357` 去之）⇒ 該三判退
+    ok = not old and r4_ok and cl_ok and asg_ok and add_ok
     return ok, (f"舊 raise 之字樣 {len(old)}（期 0）；_r4＝None 於合併不過 {r4_ok}；_t14_357 一呼於其 else {cl_ok}；"
-                f"_t14_done 唯 set() {asg_ok}；唯 .add(c) 於頂層先於 if {add_ok}（方法呼 {len(mut)}）；"
-                f"c 不過 ⇒ 第 5 項 {kc_ok}；半之最大面積 {len(mx)}（期 1）；半之剩下 ⇒ 第 5 項 {kx_ok}")
+                f"_t14_done 唯 set() {asg_ok}；唯 .add(c) 於頂層先於 if {add_ok}（方法呼 {len(mut)}）")
 
 
 def _w6(c):
@@ -314,8 +250,7 @@ def _w6(c):
     return sorted(rs) == sorted(want), f"R 之賦值 {rs}"
 
 
-_R15 = {"_res357": {"not _has357(s - g)"}, "_split357": {"_has357(_s - _g)", "_has357(_rem)"},
-        "_k951": {"not _has357(_rem)", "_has357(_rem)"}, "_t14_357": {"_has357(_rem)"}}
+_R15 = {"_res357": {"not _has357(s - g)"}}     # 🔧 `W-G.9-373`：`_split357`／`_k951` 去之；`_t14_357` 之判移入 K-9-66
 
 
 def _keyloop(s3):
@@ -350,12 +285,8 @@ def _w7(c):
         lack = {_n(x) for x in need[nm]} - tests
         if lack:
             miss[nm] = sorted(lack)
-    sp = [n for n in ast.walk(c.n["_split357"]) if isinstance(n, ast.If) and _u(n.test) == "_has357(_s - _g)"]
-    sp_ok = len(sp) == 1 and any(_u(s).startswith("_F.add(") for s in sp[0].body) and \
-        any(_u(s) == "_rem += _s - _g" for s in sp[0].body)
-    ok = h_ok and not eps and len(kl) == 1 and not tiny and not miss and sp_ok
-    return ok, (f"_has357 之式 {h_ok}；_EPS357 {len(eps)}（期 0）；浮點小量之比較 {tiny}；缺判 {miss}；"
-                f"分之剩下始入已試之街廓 {sp_ok}")
+    ok = h_ok and not eps and len(kl) == 1 and not tiny and not miss      # 🔧 `W-G.9-373`：`_split357` 之判退
+    return ok, f"_has357 之式 {h_ok}；_EPS357 {len(eps)}（期 0）；浮點小量之比較 {tiny}；缺判 {miss}"
 
 
 def _alloc_parts(fn):
@@ -386,9 +317,12 @@ def _w8(c):
     need = {"_kept.setdefault(_blk, set()).add(_pid)", "_G[_pid] = float(_r.get('G(㎡)', 0) or 0)"}
     same = pa[0] is not None and pa[0] == ps[0]
     has = pa[1] is not None and need <= set(pa[1])
-    ok = same and has and pa[2] == "{}" and ps[2] == "{}" and pa[3] == want_ret and ps[3] == want_ret
+    # 🔧 `W-G.9-373`（`K-9-67`）：回傳之鍵 ＝ 前四鍵 ＋ 'members'（其值之式二處各異·⛔ 比）
+    ra = pa[3] is not None and pa[3][:4] == want_ret and [k for k, _ in pa[3][4:]] == ["'members'"]
+    rs = ps[3] is not None and ps[3][:4] == want_ret and [k for k, _ in ps[3][4:]] == ["'members'"]
+    ok = same and has and pa[2] == "{}" and ps[2] == "{}" and ra and rs
     return ok, (f"保留之支逐 AST 同 {same}；含 kept 與 G {has}；_G 之初值 {pa[2]}／{ps[2]}；"
-                f"回傳之鍵 app {pa[3] == want_ret}／harness {ps[3] == want_ret}")
+                f"回傳之鍵 app {ra}／harness {rs}")
 
 
 _R11 = ["_out = []", "_out.append(tp)", "_rem = float(tp.get('段三餘量', 0) or 0)",
@@ -444,9 +378,10 @@ def _w11(c):
     kl = kl[0]
     mk = [n for n in s3.body if isinstance(n, ast.For) and _u(n.iter) == "marks.items()"]
     order_ok = len(mk) == 1 and kl in s3.body and s3.body.index(mk[0]) < s3.body.index(kl)
-    ifs = [s for s in kl.body if isinstance(s, ast.If)]
+    # 🔧 `W-G.9-373`：取測試為 `_has357(_rm) and _pid in marks` 之 if（建地之支另立於其前·⛔ 計）
+    ifs = [s for s in kl.body if isinstance(s, ast.If) and _u(s.test) == "_has357(_rm) and _pid in marks"]
     ok3 = False
-    if len(ifs) == 1 and _u(ifs[0].test) == "_has357(_rm) and _pid in marks":
+    if len(ifs) == 1:
         a = [_u(s) for s in ifs[0].body]
         e = ifs[0].orelse
         if len(e) == 1 and isinstance(e[0], ast.If) and _u(e[0].test) == "_has357(_rm)":
@@ -459,22 +394,8 @@ def _w11(c):
 
 
 def _w12(c):
-    s3 = c.s3
-    lp = [n for n in _walk_own(s3) if isinstance(n, ast.For) and _u(n.target) == "p" and _u(n.iter) == "_plan"]
-    if len(lp) != 1:
-        return False, f"`for p in _plan:` {len(lp)}（期 1）"
-    body = lp[0].body
-    ix = {_u(s.test): i for i, s in enumerate(body) if isinstance(s, ast.If)}
-    i1, i2, i3 = ix.get(_n("not _qs")), ix.get(_n("not _batch_ok and not _whole")), ix.get(_n("_batch_ok"))
-    seq = None not in (i1, i2, i3) and i1 < i2 < i3
-    sp = seq and [_u(s) for s in body[i2].body] == ["_split357(x, _qs, _lvl_name[_cl2], _extra)", "continue"]
-    ko = [s for s in body if isinstance(s, ast.If) and _u(s.test) == "_ok"]
-    k_ok = False
-    if len(ko) == 1:
-        e = [_u(s) for s in ko[0].orelse]
-        k_ok = (len(e) == 2 and e[0] == "_row(**_base, 結果='未成', 檢核='不過')"
-                and e[1] == "_k951(x, _a357(x), {_blk_of[r] for r, _ in _qs}, True)")
-    return bool(seq and sp and k_ok), f"三 if 之序 {seq}；可拆分 ⇒ _split357 {bool(sp)}；整筆不過 ⇒ 第 5 項 {k_ok}"
+    # 🔧 `W-G.9-373`：退（步驟 10 之逐片之 `_split357`／`_k951` 去之·`K-9-66`）
+    return True, "退（W-G.9-373·K-9-66）"
 
 
 def _checks(sa, ss):
@@ -484,12 +405,12 @@ def _checks(sa, ss):
         return [("W0 可剖析", False, f"{e}")]
     res = []
     items = (("W0 受詞在", lambda: _w0(c)), ("W1 R-2 未處置不變", lambda: _w1(c)),
-             ("W2 R-5 所施者恆已通過", lambda: _w2(c)), ("W3 R-6 候選與序", lambda: _w3(c)),
+             ("W2 R-5 所施者恆已通過（退）", lambda: _w2(c)), ("W3 R-6 候選與序（退）", lambda: _w3(c)),
              ("W4 R-6′ 距離之取捨", lambda: _w4(c)), ("W5 R-7／R-7′ 題一 4", lambda: _w5(c)),
              ("W6 X-3′ 步驟 10 之 R", lambda: _w6(c)), ("W7 R-15 剩下之判準", lambda: _w7(c)),
              ("W8 R-10 二處同形", lambda: _w8(c)), ("W9 R-11 公設地調配之 temp", lambda: _w9(c)),
              ("W10 R-12 調配之輸入", lambda: _w10(c, sa)), ("W11 R-8 片之鍵", lambda: _w11(c)),
-             ("W12 R-3／R-4 步驟 10 之逐片", lambda: _w12(c)))
+             ("W12 R-3／R-4 步驟 10 之逐片（退）", lambda: _w12(c)))
     for name, fn in items:
         try:
             with contextlib.redirect_stdout(io.StringIO()):
@@ -502,27 +423,10 @@ def _checks(sa, ss):
 
 # ── 突變（每一須使其所指之項轉紅）── 各為 (名, 所指之項, [(檔, 錨, 代)])
 def _mut_list():
+    # 🔧 `W-G.9-373`：去 M2〜M9、M14、M16、M19、M22、M28、M29（其錨已去·`K-9-66`／`K-9-68`）
     return [
         ("M1 無受併宗之片改記未成", "W1",
          [(FA, "_row(**{**_base, '受併宗': '—'}, 結果='未處置', 檢核='—')", "_row(**{**_base, '受併宗': '—'}, 結果='未成', 檢核='—')")]),
-        ("M2 無受併宗之片⛔ continue", "W1",
-         [(FA, "（{_blk_of[x]}）未處置：二半片皆不鄰 B 內街廓\")\n                continue\n",
-           "（{_blk_of[x]}）未處置：二半片皆不鄰 B 內街廓\")\n")]),
-        ("M3 二分法取未通過之格", "W2",
-         [(FA, "            if _tm is not None:\n                _lo, _best = _mid, _tm",
-           "            if _tm is not None or _mid == _hi:\n                _lo, _best = _mid, _tm")]),
-        ("M4 所施者⛔ 受護", "W2",
-         [(FA, "        if _best is not None:\n            state = _best\n", "        state = _best or state\n")]),
-        ("M5 格值改 n × 0.01", "W2", [(FA, "_tm = _try(_mid / 100.0)", "_tm = _try(_mid * 0.01)")]),
-        ("M6 序之鍵以 G 先", "W3",
-         [(FA, "_cands.append((_dist357(x, _b), -float(_G[_p]), _p, _b))", "_cands.append((-float(_G[_p]), _dist357(x, _b), _p, _b))")]),
-        ("M7 候選⛔ 扣已試之街廓", "W3",
-         [(FA, "if _p == x or _p in merged_out or _b in F or _p not in state[\"by\"]:",
-           "if _p == x or _p in merged_out or _p not in state[\"by\"]:")]),
-        ("M8 候選為空亦取 G", "W3", [(FA, "        _cands = []\n        if _pre:\n", "        _cands = []\n        if True:\n")]),
-        ("M9 候選⛔ 扣已併出者", "W3",
-         [(FA, "if _p == x or _p in merged_out or _b in F or _p not in state[\"by\"]:",
-           "if _p == x or _b in F or _p not in state[\"by\"]:")]),
         ("M10 距離以 round", "W4",
          [(FA, "return float(_Dec357(repr(_d)).quantize(_Dec357('0.01'), rounding=_HU357))", "return round(_d, 2)")]),
         ("M11 距離以 Decimal(float)", "W4", [(FA, "_Dec357(repr(_d))", "_Dec357(_d)")]),
@@ -530,23 +434,15 @@ def _mut_list():
          [(FA, "from decimal import Decimal as _Dec357, ROUND_HALF_UP as _HU357",
            "from decimal import Decimal as _Dec357, ROUND_HALF_EVEN as _HU357")]),
         ("M13 R-7 之候選⛔ 入已處置之集", "W5", [(FA, "        _t14_done.add(c)    #", "        pass    #")]),
-        ("M14 R-7 之候選於第 5 項後出集", "W5",
-         [(FA, "            _k951(c, _a357(c), {W['blk']}, True)\n",
-           "            _k951(c, _a357(c), {W['blk']}, True)\n            _t14_done.discard(c)\n")]),
         ("M15 題一 4 之合併不過復停機", "W5",
          [(FA, "                    _r4 = None\n",
            "                    raise RuntimeError(\"🔴 [K-6-B 段三 K-9-50 題一] `K-9-48` 七項 3〜5 未落地（停機款 9）\")\n")]),
-        ("M16 候選之整筆不過⛔ 第 5 項", "W5", [(FA, "            _k951(c, _a357(c), {W['blk']}, True)\n", "            pass\n")]),
         ("M17 步驟 10 之 R ⛔ 扣已處置之候選", "W6",
          [(FA, "R = _mem - merged_out - set(_recv_by_blk.values()) - L - _t14_done", "R = _mem - merged_out - set(_recv_by_blk.values()) - L")]),
         ("M18 有剩下以 1e-6 判", "W7", [(FA, "return round(float(r), 4) > 0", "return float(r) > 1e-6")]),
-        ("M19 分之剩下以 g < s 判", "W7", [(FA, "            if _has357(_s - _g):\n", "            if _g < _s:\n")]),
         ("M20 鍵之環以 1e-6 判", "W7",
          [(FA, "        if _has357(_rm) and _pid in marks:\n", "        if _rm > 1e-6 and _pid in marks:\n")]),
         ("M21 畫面之 G 取他欄", "W8", [(FA, "_G[_pid] = float(_r.get('G(㎡)', 0) or 0)", "_G[_pid] = float(_r.get('G', 0) or 0)")]),
-        ("M22 harness 之 alloc_state ⛔ 回 G", "W8",
-         [(FS, "return {\"kept\": _kept, \"bad_pools\": _bad, \"err\": _err, \"G\": _G}",
-           "return {\"kept\": _kept, \"bad_pools\": _bad, \"err\": _err}")]),
         ("M23 公設地調配之 temp 改原物件", "W9", [(FS, "_tp = dict(tp)", "_tp = tp")]),
         ("M24 面積_m2 ⛔ 乘 ρ", "W9",
          [(FS, "_tp[\"面積_m2\"] = float(tp.get(\"面積_m2\", 0) or 0) * _rho", "_tp[\"面積_m2\"] = float(tp.get(\"面積_m2\", 0) or 0)")]),
@@ -557,10 +453,6 @@ def _mut_list():
         ("M27 剩下全收者⛔ 去 段三餘量", "W11",
          [(FA, "            _tp.pop('段三部分併出', None)\n            _tp.pop('段三餘量', None)\n",
            "            _tp.pop('段三部分併出', None)\n")]),
-        ("M28 可拆分者⛔ 經 _split357", "W12",
-         [(FA, "                _split357(x, _qs, _lvl_name[_cl2], _extra)\n                continue\n", "                pass\n")]),
-        ("M29 整筆不過⛔ 第 5 項", "W12",
-         [(FA, "                _k951(x, _a357(x), {_blk_of[r] for r, _ in _qs}, True)\n", "                pass\n")]),
     ]
 
 

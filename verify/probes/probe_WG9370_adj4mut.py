@@ -20,6 +20,12 @@
            `adj4_pass1_run` 之本體、`R-10′` ＝ 其巢狀之 `_bpre_a4`、`S219` ＝ `k953_manual_run` 之巢狀之 `_wpre953`）之 raise 之訊息
            恰一見，且二函式中訊息含 `TOK` 之 raise 皆屬之（舊訊息⛔ 存）。模板 ＝ 訊息之 f-string 之常數段逐字、其代入段
            以 `{` ＋ 式之 `ast.unparse` ＋ `}` 代之。
+  🔧 `W-G.9-373`（`K-9-66`／`K-9-67`／`K-9-68`·⛔ 上列一字不刪）：第一趟改依 `K-9-66`（同一輪到達同一街廓者一起·逐類全併、
+           不過之類按比例）與 `K-9-68`（輪）、受併宗之序之末改依 `K-9-67` ⇒ 其逐片之碼與序之鍵已去：`mutate` 唯留錨仍在之
+           M20／M21／M23〜M27／M30（檢核·輸出之鍵·`GB-201` 之判），餘退（新碼之突變由次單以 CC 之碼之字樣為錨補寫）。
+           `wiring`：X2 唯量頂層之相異 ⊆ {二函式} ∪ 本單之許（二函式之逐列之限退·本單重寫）；X3 改量 `_bpre_a4` 之新施點
+           （其呼叫恰一、與 `k966_block_merge` 之呼叫同在一 `for` 之內且先之）；X4 之差除本單所改之二函式（`_k6b_callbacks`、
+           `k6b_stage3_pool_temp`）之段；X5 之 `R-10′` 之模板改為新施點之文（「於第一趟併入街廓 {_bk} 之前」）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import ast, contextlib, difflib, io, json, os, re, subprocess, sys, tempfile, textwrap
@@ -33,56 +39,6 @@ except Exception:  # noqa: BLE001
 A4, K953 = "adj4_pass1_run", "k953_manual_run"
 # (號, 條, 述, 函式, 錨, 換, 所指之項)
 MUTS = [
-    ("M01", "R-8", "受併宗之鍵：同原地號居先去之", A4,
-     "return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)",
-     "return (0, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)", {"K7"}),
-    ("M02", "R-8", "受併宗之鍵：距離之序反之", A4,
-     "return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)",
-     "return (0 if _same else 1, -float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)", {"K7"}),
-    ("M03", "R-8", "受併宗之鍵：同距離之 G 序反之", A4,
-     "return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)",
-     "return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), float(_S['G'][_h]), _h)", {"K7"}),
-    ("M04", "R-8", "受併宗之鍵：末鍵（暫編地號）反之", A4,
-     "return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), _h)",
-     "return (0 if _same else 1, float(adj_q2(_anc_a4.distance(_cen))), -float(_S['G'][_h]), "
-     "[-ord(_c) for _c in _h])", {"K7"}),
-    ("M05", "R-8", "受併宗之候選⛔ 限同歸戶", A4,
-     "if str(_h) in state[\"by\"] and _gw_a4(state[\"by\"][str(_h)]) == _g_str)",
-     "if str(_h) in state[\"by\"])", {"K3"}),
-    ("M06", "R-8", "受併宗之成員之形改取當下之 temp 之形（GB-199）", A4,
-     "_cen = _uu_a4([_orig_a4(_m, '受併宗之成員') for _m in _ms]).centroid",
-     "_cen = _uu_a4([_Pg_a4(state['by'][_m]['polygon_coords']).buffer(0) for _m in _ms if _m in state['by']])"
-     ".centroid", {"K12"}),
-    ("M07", "R-8", "街廓之首之「建地片已為已配得」之查去之", A4,
-     "if _cls[_x] == '建地' and _pos_a4(_L[_x]) and _x in _inS:", "if False:", {"K9"}),
-    ("M08", "R-9", "整體成而⛔ 止", A4,
-     "                    _L[_x] = 0.0\n                break\n", "                    _L[_x] = 0.0\n", {"K3"}),
-    ("M09", "R-8", "街廓之首之止（諸片皆無剩下）去之", A4,
-     "            if not any(_pos_a4(_L[_x]) for _x in _pcs):\n                break\n",
-     "            if False:\n                break\n", {"K23"}),
-    ("M10", "R-9", "live 改為全部之片", A4,
-     "_live = [_x for _x in _pcs if _pos_a4(_L[_x])]", "_live = list(_pcs)", {"K4"}),
-    ("M11", "R-9", "整體之併入量改以原面積（⛔ 剩下）", A4,
-     "_q_all = sum(_kv_a4[_x] * _L[_x] for _x in _live)",
-     "_q_all = sum(_kv_a4[_x] * _amt_a4(_tin_a4[_x]) for _x in _live)", {"K4"}),
-    ("M12", "R-9", "整體之建地片⛔ 自 build 去", A4,
-     "_c_all[\"build\"] = [_b for _b in _c_all[\"build\"] if str(_b['暫編地號']) not in set(_blds)]", "pass",
-     {"K3", "K24"}),
-    ("M13", "R-9", "整體之檢核之 T 唯本街廓", A4,
-     "_ok, _why = _chk_a4(state, _c_all, {_bk} | {str(_tin_a4[_x].get('所屬街廓', '') or '') for _x in _blds},",
-     "_ok, _why = _chk_a4(state, _c_all, {_bk},", {"K24"}),
-    ("M14", "R-10", "逐片之類之序反之", A4,
-     "_rank_a4 = {'建地': 0, '道路': 1, '公設地': 2}", "_rank_a4 = {'建地': 2, '道路': 1, '公設地': 0}", {"K4"}),
-    ("M15", "R-10", "逐片之同類之序（剩下大者先）反之", A4,
-     "key=lambda _y: (_rank_a4[_cls[_y]], -_L[_y], _y)", "key=lambda _y: (_rank_a4[_cls[_y]], _L[_y], _y)", {"K25"}),
-    ("M16", "R-10", "最大面積之格改 0.1", A4,
-     "_got = _probe_a4(_n_md / 100.0)", "_got = _probe_a4(_n_md // 10 * 10 / 100.0)", {"K4"}),
-    ("M17", "R-10", "最大面積⛔ 先試全量", A4, "_whole_st = _probe_a4(_s)\n", "_whole_st = None\n", {"K13"}),
-    ("M18", "R-10", "逐片之建地之檢核之 T 唯本街廓", A4,
-     "_ok1, _why1 = _chk_a4(state, _c1, {_bk, str(_tin_a4[_x].get('所屬街廓', '') or '')}, {_x})",
-     "_ok1, _why1 = _chk_a4(state, _c1, {_bk}, {_x})", {"K24"}),
-    ("M19", "R-10", "逐片之建地片⛔ 自 build 去", A4,
-     "_c1[\"build\"] = [_b for _b in _c1[\"build\"] if str(_b['暫編地號']) != _x]", "pass", {"K24"}),
     ("M20", "R-12", "原保留之宗之判去之", A4,
      "            if _lost:\n                _why.append(", "            if False:\n                _why.append(", {"K14"}),
     ("M21", "R-12", "配餘地不合格之判去之", A4,
@@ -99,18 +55,11 @@ MUTS = [
      "            _d.pop('段三部分併出', None)\n            _d.pop('段三餘量', None)\n", "            pass\n", {"K8"}),
     ("M27", "R-13", "段三餘量之值誤", A4,
      "_d['段三餘量'] = round(_rm_a4, 4)", "_d['段三餘量'] = round(_rm_a4 + 0.01, 4)", {"K8"}),
-    ("M28", "R-16", "施點甲（可拆分之片之最大面積之試之前）去之", K953,
-     "        _gb201_953(_x, _r)              # 🆕 `W-G.9-367`（R-16）：可拆分之片",
-     "        pass                            # 🆕 `W-G.9-367`（R-16）：可拆分之片", {"K15"}),
-    ("M29", "R-16", "施點乙（整筆之主併入之前）去之", K953,
-     "            _gb201_953(_x, _r)          # 🆕 `W-G.9-367`（R-16）：整筆之主併入之前",
-     "            pass                        # 🆕 `W-G.9-367`（R-16）：整筆之主併入之前", {"K15"}),
     ("M30", "R-16", "GB-201 之判恆過", K953,
      "if not any(str(_r) in {str(_h) for _h in _hs} for _hs in (_Sg953.get(" + "\"kept\"" + ") or {}).values()):",
      "if False:", {"K15"}),
-    ("M31", "R-10′", "逐片之建地之整筆之試之前之查（K-9-57 ⑧·程式自我檢查）去之", A4,
-     "                    _bpre_a4(_x, _g_str)\n", "                    pass\n", {"K27"}),
 ]
+# 🔧 `W-G.9-373`：M01〜M19、M28、M29、M31 退（其錨隨 `K-9-66`／`K-9-67`／`K-9-68` 之重寫而去）
 
 
 # 🆕 `W-G.9-370`（K-9-57 ⑧）：三停機訊息之模板（逐字）。`TOK`（「已為已配得」）拆字書之，以免他器以全檔之錨（長 ≥ 4 之
@@ -120,13 +69,31 @@ MSGS = [
     ("S238", A4, None,
      "{_hd_a4} 程式自我檢查：建地片 {_x}（歸戶 {_g_str}）於第一趟沿名單至街廓 {_bk} 時，當下之試算已為已配得之宗或其成員"
      "——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機"),
+    # 🔧 `W-G.9-373`：`R-10′` 之施點改為「該輪併入街廓 _bk 之前」
     ("R-10′", A4, "_bpre_a4",
-     "{_hd_a4} 程式自我檢查：建地片 {_x}（歸戶 {_g}）於逐片之整筆之試之前，當下之試算已為已配得之宗或其成員"
+     "{_hd_a4} 程式自我檢查：建地片 {_x}（歸戶 {_g}）於第一趟併入街廓 {_bk} 之前，當下之試算已為已配得之宗或其成員"
      "——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機"),
     ("S219", K953, "_wpre953",
      "{_hdr953} 程式自我檢查：建地片 {_x}（{_blk953[_x]}）於整筆之主併入之前，當下之試算已為已配得之宗 {_own953} 或其成員"
      "——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機"),
 ]
+
+
+# 🔧 `W-G.9-373`：本單之許（頂層）與所改之 harness 二函式
+ALLOW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k967_pre_area", "k6b_stage3_run",
+                "k929_6_fixpoint", "adj_intake", "k6b_screen_callbacks")
+ALLOW373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
+
+
+def _strip_fns(src, names):
+    """🔧 `W-G.9-373`：除去模組層函式 `names` 之原文（含其裝飾之列·無之 ⇒ 不變）。"""
+    t = ast.parse(src)
+    ls = src.splitlines(keepends=True)
+    cut = sorted(((n.lineno - 1 - len(n.decorator_list), n.end_lineno, n.name) for n in t.body
+                  if isinstance(n, ast.FunctionDef) and n.name in names), reverse=True)
+    for a, b, nm in cut:
+        ls[a:b] = [f"# <{nm}>\n"]
+    return "".join(ls)
 
 
 def _span(src, fn):
@@ -270,8 +237,8 @@ def wiring(repo, base):
     a0, a1 = _git_show(repo, base, "app.py"), open(os.path.join(repo, "app.py"), encoding="utf-8").read()
     t0, t1 = _top(a0), _top(a1)
     dif = sorted(k for k in set(t0) | set(t1) if t0.get(k) != t1.get(k))
-    ok2, notes = set(dif) <= {A4, K953}, []
-    for fn in (A4, K953):
+    ok2, notes = set(dif) <= {A4, K953} | set(ALLOW373_APP), []
+    for fn in ():                   # 🔧 `W-G.9-373`：二函式之逐列之限退（本單重寫）
         src0 = _fn_src(a0, fn)
         f0, f1 = src0.splitlines(), _fn_src(a1, fn).splitlines()
         rl = _tok_raise_lines(src0)
@@ -282,23 +249,43 @@ def wiring(repo, base):
             bad = [o for o in ops if not (rl and min(rl) <= o[1] and o[2] <= max(rl) + 1)]
         ok2 = ok2 and not bad
         notes.append(f"{fn}：差之段 {len(ops)}、逾許者 {[(o[0], o[1] + 1, o[2]) for o in bad][:3]}、許易之列 {len(rl)}")
-    res.append(("X2", f"app.py 之頂層節點對基準相異者 ⊆ {{{A4}, {K953}}}（相異 {dif}）；" + "；".join(notes), ok2))
-    body = _fn_src(a1, A4)
-    lines = [x for x in body.splitlines() if x.strip()]
-    nd = sum(1 for x in lines if x.strip() == "def _bpre_a4(_x, _g):")
-    calls = [i for i, x in enumerate(lines) if x.strip() == "_bpre_a4(_x, _g_str)"]
-    pos = (len(calls) == 1 and lines[calls[0] - 1].strip() == "if _cls[_x] == '建地':"
-           and lines[calls[0] + 1].strip() == "_c1 = _dup_a4(state)")
-    res.append(("X3", f"_bpre_a4：定義 {nd} 見、呼叫 {len(calls)} 見、其位 ＝ 建地之支之首 {pos}",
-                nd == 1 and len(calls) == 1 and pos))
-    s0 = _git_show(repo, base, "verify/selection_pipeline.py").splitlines()
-    s1 = open(os.path.join(repo, "verify", "selection_pipeline.py"), encoding="utf-8").read().splitlines()
+    res.append(("X2", f"app.py 之頂層節點對基準相異者 ⊆ {{{A4}, {K953}}} ∪ 本單之許（相異 {dif}；逾 "
+                      f"{sorted(set(dif) - {A4, K953} - set(ALLOW373_APP))}）", ok2))
+    # 🔧 `W-G.9-373`：`_bpre_a4` 之新施點——定義恰一（於 adj4_pass1_run 內）、呼叫恰一，且與 `k966_block_merge` 之呼叫
+    #   （恰一）同在一 `for` 之內、先之
+    tops0 = {n.name: n for n in ast.parse(a1).body if isinstance(n, ast.FunctionDef)}
+    fa4 = tops0.get(A4)
+    nd = calls_n = 0
+    pos = False
+    if fa4 is not None:
+        par = {c: p for p in ast.walk(fa4) for c in ast.iter_child_nodes(p)}
+        nd = sum(1 for n in ast.walk(fa4) if isinstance(n, ast.FunctionDef) and n.name == "_bpre_a4")
+        bc = [n for n in ast.walk(fa4) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "_bpre_a4"]
+        kc = [n for n in ast.walk(fa4) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+              and n.func.id == "k966_block_merge"]
+        calls_n = len(bc)
+        if len(bc) == 1 and len(kc) == 1:
+            cur = kc[0]
+            loop = None
+            while cur in par:
+                cur = par[cur]
+                if isinstance(cur, ast.For):
+                    loop = cur
+                    break
+            pos = (loop is not None and any(n is bc[0] for n in ast.walk(loop))
+                   and (bc[0].lineno, bc[0].col_offset) < (kc[0].lineno, kc[0].col_offset))
+    res.append(("X3", f"_bpre_a4：定義 {nd} 見、呼叫 {calls_n} 見、其位 ＝ 與 k966_block_merge 同 for 之內且先之 {pos}",
+                nd == 1 and calls_n == 1 and pos))
+    s0 = _strip_fns(_git_show(repo, base, "verify/selection_pipeline.py"), ALLOW373_SP).splitlines()
+    s1 = _strip_fns(open(os.path.join(repo, "verify", "selection_pipeline.py"), encoding="utf-8").read(),
+                    ALLOW373_SP).splitlines()
     d = [x for x in difflib.unified_diff(s0, s1, n=0, lineterm="") if x[:1] in "+-" and x[:3] not in ("+++", "---")]
     want = ['-            temp_parcels, build_parcels, ss["t8_ownership_map"]):',
             '-    _own_a4 = ss["t8_ownership_map"]',
             '+            temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {}):',
             '+    _own_a4 = ss.get("t8_ownership_map", {}) or {}']
-    res.append(("X4", f"verify/selection_pipeline.py 對基準之差 ＝ run_adj4 之二列之 .get 化（差之列 {len(d)}）",
+    res.append(("X4", f"verify/selection_pipeline.py 對基準之差（本單所改之二函式之段除外）＝ run_adj4 之二列之 .get 化"
+                      f"（差之列 {len(d)}）",
                 sorted(d) == sorted(want)))
     tree = ast.parse(a1)
     tops = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}

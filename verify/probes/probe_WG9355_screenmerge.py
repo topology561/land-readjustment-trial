@@ -22,6 +22,8 @@
            （`verify/probes/probe_WG9354_endcontest.py`），以本器之畫面管線替其 `_pipeline`，逕用 F13 `run` 之全部判式
            （R1／C／F／X·外部錨由 F13 另寫·⛔ 呼叫受測函式）；注入（末端帶之寬、上鎖、假設跨占街角）同 F13。
            另 E1 試算旗標（`SS_END_BLOCK_MODE`）⛔ 外洩／E2 配地所用之宗地 ＝ 合併再試後／E3 正常出口無停機訊息。
+  🔧 `W-G.9-373`（`K-9-67`·⛔ 上列一字不刪）：段三之 `alloc_state` 之出增 `members`（保留宗之成員·入池閘之末態 build·
+           無之 ⇒ 試算之 build）——T3d／T9d／T6d 之期隨之（本器之樁⛔ 寫入池閘之末態 ⇒ 試算之 build 之各宗自為其成員）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import contextlib, copy, importlib.util, inspect, io, os, sys
@@ -119,6 +121,8 @@ EV = {"B1": {"left": {"觸發": True, "R_end(㎡)": 50.0, "候選": [], "當選"
 ORDER = [{"最終序位": 1, "街廓": "B1", "端": "左", "暫編地號": "A(1)"}]
 L3 = {"序": 1, "街廓": "B1", "端": "左", "候選": "A(1)", "結果": "成"}
 LOGM = [{"序": 1, "街廓": "B1", "端": "右", "候選": "B(1)", "結果": "成"}]
+# 🆕 `W-G.9-373`（`K-9-67`）：段三之 `alloc_state` 之出之 `members`（樁之試算之 build 之各宗自為其成員）
+MEM373 = {"A(1)": ["A(1)"], "B(1)": ["B(1)"], "C(1)": ["C(1)"]}
 RECM = {"標的": [["B1", "right"]], "皆未達": {}}
 
 
@@ -383,7 +387,7 @@ def _t3(ns, ss, merge):
             (f"{tag}b 段三本體與合併再試各恰一次", (rig.s3_n, rig.merge_n), (1, 1)),
             (f"{tag}c 段三之試算配地亦 'trial'", [c[1] for c in gs3], ["trial"]),
             (f"{tag}d 段三之 alloc_state 之出", rig.s3_state, {"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None,
-                                                           "G": {"A(1)": 0.0}}),
+                                                           "G": {"A(1)": 0.0}, "members": MEM373}),
             (f"{tag}e 合併再試之輸入 ＝ 段三之出（同一物件）；上鎖取自段三終趟之真 st 街角選位",
              (a.get("temp") is s3r[0], a.get("build") is s3r[1], a.get("locked")), (True, True, {"C(1)"})),
             (f"{tag}f 回傳之宗地 ＝ 末態（同一物件）", (ret is not None and ret["temp"] is fin[0], ret is not None and ret["build"] is fin[1]),
@@ -480,7 +484,8 @@ def _t6(ns, ss):
             stt = cb["alloc_state"](t0, b0)
         gs = [c for c in rig.calls[n0:] if c[0] == "g"]
         out.append(("T6d 試算配地（alloc_state）之出與其 'trial'", (stt, [c[1] for c in gs]),
-                    ({"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None, "G": {"A(1)": 0.0}}, ["trial"])))
+                    ({"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None, "G": {"A(1)": 0.0}, "members": MEM373},
+                     ["trial"])))
         n0 = len(rig.calls)
         with contextlib.redirect_stdout(io.StringIO()):
             ev = cb["alloc_eval"](t0, b0)

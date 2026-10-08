@@ -12,7 +12,8 @@
            配地本體同生命週期去／寫末態 build；W3 二鍵 ∈ `K6B_SCREEN_TRIAL_KEYS` 且其末項仍為 `f3_k929_6_log`；
            W4 消費端 ＝ 生產碼 `34` 檔中除 `app.py` 外命中 `0`、`app.py` 中只在許可之函式內（🔧 `W-G.9-363`：許可之函式
            另含 `f3_screen_k953`〔手冊先行之畫面試算讀入池閘之末態 build〕；🔧 `W-G.9-367`：另含 app.py 之 `f3_screen_adj4`／`adj4_plan`
-           與 harness 之 `run_adj4`〔規格步 4 乙以 `adj_intake` 定其受詞〕）；W5 畫面路徑之合成案
+           與 harness 之 `run_adj4`〔規格步 4 乙以 `adj_intake` 定其受詞〕；🔧 `W-G.9-373`：另含 `k6b_screen_callbacks`
+           〔段三之畫面試算以入池閘之末態 build 定保留宗之成員·`K-9-67` 之重劃前面積〕）；W5 畫面路徑之合成案
            （`自誤 517`：抽出 `main()` 之盤點區塊，以假 st 與合成資料實際執行）。另施四突變，每一突變須轉紅。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0` 二者）：以 `adj_intake` 盤點，並以本器**另寫之分類**（⛔ 呼叫
@@ -335,6 +336,7 @@ def _wiring_checks(app_src, others):
     allowed = set(ADJ_FUNCS) | {"main", "f3_screen_stepg_run", "_k929_6_screen_gate"}
     allowed |= {"f3_screen_k953"}   # 🔧 `W-G.9-363`（發單側窗六十四）：手冊先行之畫面試算讀入池閘之末態 build（其單元）
     allowed |= {"f3_screen_adj4", "adj4_plan"}   # 🔧 `W-G.9-367`（發單側窗六十八）：規格步 4 乙之畫面試算以 `adj_intake` 定其受詞（其受詞之純函式讀之）
+    allowed |= {"k6b_screen_callbacks"}   # 🔧 `W-G.9-373`：段三之畫面試算讀入池閘之末態 build（保留宗之成員·`K-9-67`）
     bad = []
     for fname, node in top.items():
         if fname in allowed:

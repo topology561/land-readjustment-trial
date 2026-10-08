@@ -21,6 +21,12 @@
            🔧 `W-G.9-370`：W6 許 `k953_manual_run` 之 `S219` 之停機訊息之基準二列（`W6_REPL`·逐字）易之（`K-9-57` ⑧·
            程式自我檢查），唯此二列；其新文由 F25 之 `X5` 量之。W7 之錨之母體⛔ 含 F25（`W7_SKIP`）：其突變之錨為函式之段內
            之錨（其恰一之判於其函式之段內·F25 之 `mutate` 自量之），⛔ 為全檔之錨。
+           🔧 `W-G.9-373`（`K-9-66`／`K-9-67`／`K-9-68`·⛔ 上列一字不刪）：K7 之 ④ 改依 `K-9-67`（同 G ⇒ 重劃前面積大者）、增 ⑤
+           （再同 ⇒ 暫編地號小）；K14／K24／K25 之期改依 `K-9-66`（整體不過 ⇒ 建地 → 道路 → 公設地逐類全併，不過之類按比例·
+           其後之類⛔ 併入；建地可部分併出、留 build）；K27 改量 `R-10′` 之新施點（諸受詞之同一輪中，併入某街廓之前·以當下
+           之試算·玩具：前一街廓之併入使次一街廓之建地片已為已配得）。`_go` 增 `subjs`（多受詞）。
+           wiring：W5 之許增本單之新名與所改者；W6 之受詞去 `k953_manual_run`（本單重寫其整批不過之後·其接線由 F27 量之）；
+           W7 之錨⛔ 計 `ANC_SKIP373`、函式名許 `FN_GONE373` 為 `0`（同 F23 之 W8）。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：同一行程先設 `WV_ADJ4=off`、再去之，各跑一次：R1 第一趟之紀錄逐列 ＝
            本器所載；R2 街角第 1 宗 ＝ off 之實跑；R3 配地之變（G 之差 ＞ 容差 `0.01` 之宗、各街廓之抵費地之差）＝ 本器所載，
@@ -156,7 +162,8 @@ _NS = {}
 
 
 def _go(*, sj=None, cap=None, price=None, drop=("X1(1)",), gmap=None, err_cap=None, lose=None, own_upd=None,
-        pre=None, lot_upd=None, temp_geom=None, geom_extra=None, geom_rm=(), calls=None, raw=False, tie=None, bar=None):
+        pre=None, lot_upd=None, temp_geom=None, geom_extra=None, geom_rm=(), calls=None, raw=False, tie=None, bar=None,
+        subjs=None):
     t, own = _w()
     own = dict(own, **(own_upd or {}))
     by = {x["暫編地號"]: x for x in t}
@@ -174,6 +181,8 @@ def _go(*, sj=None, cap=None, price=None, drop=("X1(1)",), gmap=None, err_cap=No
     build = [x for x in t if x["街廓分類"] == H]
     ap, st = _cbs(cap, price, drop, gmap, err_cap, lose, calls, tie, bar)
     subj = [dict(SJ, **(sj or {}))] if sj is not False else []
+    if subjs is not None:           # 🆕 `W-G.9-373`：多受詞（依序）
+        subj = [dict(SJ, **x) for x in subjs]
     res = _NS["fn"](t, build, own, subj, geom, ap, st, log_print=lambda *x: None)
     return (res, t, build) if raw else res
 
@@ -506,13 +515,17 @@ def _cases(ns, sp):
          (9, ["未成"] * 8, ("剩下", "g1", "P1(1)、R1(1)、X1(1)", REMAIN,
                             (("P1(1)", 200.0), ("R1(1)", 100.0), ("X1(1)", 60.0))), {}, {}, B_ALL))
     sq = {"A0(1)": _R(25, 35, 40, 50)}
-    _run(out, "K7 受併宗之序（同街廓有二宗）：① 同原地號居先（距離較遠亦然）② 距離近 ③ 同距離 ⇒ G 大 ④ 同 G ⇒ 暫編地號小",
+    # 🔧 `W-G.9-373`（`K-9-67`）：④ 同 G ⇒ 重劃前面積大者（X1(2) 300 ＞ W1(1) 200）；⑤ 再同（W1(1) 改 300）⇒ 暫編地號小
+    _run(out, "K7 受併宗之序（同街廓有二宗）：① 同原地號居先（距離較遠亦然）② 距離近 ③ 同距離 ⇒ G 大 ④ 同 G ⇒ 重劃前面積大"
+              "（K-9-67）⑤ 再同 ⇒ 暫編地號小",
          lambda: (_first_recv(sj={"錨點": "Q2(1)"}),
                   _first_recv(sj={"錨點": "Q2(1)"}, lot_upd={"X1(2)": "V1"}),
                   _first_recv(sj={"錨點": "A0(1)"}, lot_upd={"X1(2)": "V1"}, geom_extra=sq),
                   _first_recv(sj={"錨點": "A0(1)"}, lot_upd={"X1(2)": "V1"}, geom_extra=sq,
-                              gmap={"X1(2)": 250.0, "W1(1)": 250.0})),
-         ("X1(2)", "W1(1)", "X1(2)", "W1(1)"))
+                              gmap={"X1(2)": 250.0, "W1(1)": 250.0}),
+                  _first_recv(sj={"錨點": "A0(1)"}, lot_upd={"X1(2)": "V1"}, geom_extra=sq,
+                              gmap={"X1(2)": 250.0, "W1(1)": 250.0}, pre={"W1(1)": {"分攤登記面積_m2": 300.0}})),
+         ("X1(2)", "W1(1)", "X1(2)", "X1(2)", "W1(1)"))
     sr = {"軌": TP, "錨點": "R1(1)", "名單": ["BB"], "片": ["R1(1)"], "原有面積合計": 100.0}
     pre = {"R1(1)": {"段三併出": ["Q9(1)"], "段三部分併出": {"Q9(1)": 40.0}, "段三餘量": 60.0}}
     _run(out, "K8 前已有段三之三鍵之片：其剩下 ＝ 段三餘量；全併 ⇒ 段三併出合之、去部分二鍵；部分 ⇒ 段三部分併出合之、"
@@ -559,11 +572,12 @@ def _cases(ns, sp):
     r14 = lambda: _go(lose={"X1(2)": (50.0, "W1(1)")}, sj={"名單": ["BA", "BB"]})  # noqa: E731
     _run(out, "K14 「不影響原位次」：併入使同街廓原保留之宗不保留 ⇒ 不過（整體與逐片皆然）",
          lambda: (_rows(r14()), r14()[2][0].get("不過之由")),
+         # 🔧 `W-G.9-373`（`K-9-66`）：建地 X1 單類全併不過 ⇒ 按比例 50（50／60）；道路、公設地未試
          ([("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
-           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (), "未成"),
-           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (("X1(2)", 50.0),), "部分成"),
+           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (("X1(2)", 50.0),), "部分成"),
+           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (), "未成"),
            ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (), "未成"),
-           ("剩下", "g1", "P1(1)、R1(1)、X1(1)", REMAIN, (("P1(1)", 200.0), ("R1(1)", 50.0), ("X1(1)", 60.0)))],
+           ("剩下", "g1", "P1(1)、R1(1)、X1(1)", REMAIN, (("P1(1)", 200.0), ("R1(1)", 100.0), ("X1(1)", 10.0)))],
           "BB 原保留之宗 ['W1(1)'] 不保留"))
     _run(out, "K15 GB-201（手冊先行）：計畫之受併宗於當下之試算未保留 ⇒ 停機（可拆分之片／整筆之建地片）", lambda: _k15(ns),
          (("停機", True), ("停機", True)))
@@ -599,24 +613,27 @@ def _cases(ns, sp):
            ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (("X1(2)", 200.0),), "成")],
           {"X1(2)": 360.0}))
     r24 = lambda: _go(tie={"X1(1)": "Q1(1)"}, sj={"名單": ["BB"]})  # noqa: E731
-    _run(out, "K24 R-9／R-10 之 T 含建地片之所屬街廓：建地片去 build 使其所屬街廓 BA 之原保留之宗失 ⇒ 整體與該片之逐片"
-              "皆不過",
+    # 🔧 `W-G.9-373`（`K-9-66`）：建地全數併出（去 build）使 BA 之 Q1 失 ⇒ 整體與建地之全併皆不過；按比例之部分併出（X1 留
+    #   build）⇒ 過 ⇒ 59.99（類之合計 60 之格）；道路、公設地未試
+    _run(out, "K24 （K-9-66）T 含建地片之所屬街廓：全數併出使 BA 之 Q1 失 ⇒ 整體與建地之全併皆不過；按比例 59.99（留 build）"
+              "⇒ 過；道路、公設地未試",
          lambda: (_rows(r24()), r24()[2][0].get("不過之由"), r24()[2][1].get("不過之由")),
          ([("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
-           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (), "未成"),
-           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (("X1(2)", 100.0),), "成"),
-           ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (("X1(2)", 200.0),), "成"),
-           ("剩下", "g1", "X1(1)", REMAIN, (("X1(1)", 60.0),))],
-          "BA 原保留之宗 ['Q1(1)'] 不保留", "BA 原保留之宗 ['Q1(1)'] 不保留"))
+           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (("X1(2)", 59.99),), "部分成"),
+           ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (), "未成"),
+           ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (), "未成"),
+           ("剩下", "g1", "P1(1)、R1(1)、X1(1)", REMAIN, (("P1(1)", 200.0), ("R1(1)", 100.0), ("X1(1)", 0.01)))],
+          "BA 原保留之宗 ['Q1(1)'] 不保留", None))
     s25 = {"名單": ["BB"], "片": ["X1(1)", "R1(1)", "R9(1)"]}
     r25 = lambda: _go(own_upd={"R9": "g1"}, cap={"BB": 250.0}, sj=s25)  # noqa: E731
-    _run(out, "K25 R-10 之序：同類之片依剩下大者先（R9(1) 200 先於 R1(1) 100）",
+    # 🔧 `W-G.9-373`（`K-9-66`）：同類按比例——道路 R9（200）與 R1（100）各乘同一百分比（190／300）；列之序仍為剩下大者先
+    _run(out, "K25 （K-9-66）同類按比例：建地全入後道路容 190 ⇒ R9 126.67、R1 63.33（各乘 190／300）；列依剩下大者先",
          lambda: _rows(r25()),
          [("整體", "g1", "BB", "3 片", "—", "X1(2)", (), "未成"),
           ("逐片", "g1", "BB", "X1(1)", "建地", "X1(2)", (("X1(2)", 60.0),), "成"),
-          ("逐片", "g1", "BB", "R9(1)", "道路", "X1(2)", (("X1(2)", 190.0),), "部分成"),
-          ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (), "未成"),
-          ("剩下", "g1", "R1(1)、R9(1)", REMAIN, (("R1(1)", 100.0), ("R9(1)", 10.0)))])
+          ("逐片", "g1", "BB", "R9(1)", "道路", "X1(2)", (("X1(2)", 126.67),), "部分成"),
+          ("逐片", "g1", "BB", "R1(1)", "道路", "X1(2)", (("X1(2)", 63.33),), "部分成"),
+          ("剩下", "g1", "R1(1)、R9(1)", REMAIN, (("R1(1)", 36.67), ("R9(1)", 73.33)))])
     r26 = lambda: _go(err_cap={"BB": 200.0}, sj={"名單": ["BB"]})  # noqa: E731
     _run(out, "K26 R-12：併入後之配地中止 ⇒ 不過（記其由）；整體不過 ⇒ 逐片（公設片取最大面積）",
          lambda: (_rows(r26()), r26()[2][0].get("不過之由")),
@@ -626,13 +643,20 @@ def _cases(ns, sp):
            ("逐片", "g1", "BB", "P1(1)", "公設地", "X1(2)", (("X1(2)", 40.0),), "部分成"),
            ("剩下", "g1", "P1(1)", REMAIN, (("P1(1)", 160.0),))],
           "併入後配地中止：玩具之配地中止（BB）"))
-    s27 = {"名單": ["BB"], "片": ["Q1(1)", "X1(1)", "R1(1)"]}
-    _run(out, "K27 R-10′（K-9-57 ⑧·程式自我檢查）：逐片之建地片之整筆之試之前，以當下之試算查之——前一建地片併出後該片已"
-              "為已配得之宗（依既定機制不會發生·玩具以非單調之回呼造之）⇒ 停機（⛔ 靜默併出）",
-         lambda: _halt(lambda: _go(drop=("Q1(1)",), bar={"Q1(1)": "X1(1)"}, own_upd={"Q1": "g1"}, cap={"BB": 360.0},
-                                   sj=s27), ["X1(1)", "程式自我檢查", "逐片之整筆之試之前", "依既定機制不會發生",
-                                             "觸之即程式有錯"]),
-         ("停機", True))
+    # 🔧 `W-G.9-373`（`K-9-66`／`K-9-68`）：`R-10′` 之施點 ＝ 該輪併入某街廓之前（其所受之建地片逐一·當下之試算）。玩具：
+    #   受詞二（gQ 先·g1 次）同一輪各往 BD、BB；BD 之併入使 Q1 離 build ⇒ X1 已為已配得（`bar`）⇒ 併入 BB 之前停機；
+    #   對照（⛔ bar）⇒ 二街廓皆整體成
+    s27 = [{"歸戶": "gQ", "錨點": "Q1(1)", "名單": ["BD"], "片": ["Q1(1)"], "原有面積合計": 300.0},
+           {"名單": ["BB"], "片": ["X1(1)"], "原有面積合計": 60.0}]
+    k27 = dict(own_upd={"Q2": "gQ"}, subjs=s27)
+    _run(out, "K27 R-10′（K-9-57 ⑧·程式自我檢查）：同一輪中併入某街廓之前，以當下之試算查其所受之建地片——前一街廓之併入"
+              "使之已為已配得之宗（依既定機制不會發生·玩具以非單調之回呼造之）⇒ 停機（⛔ 靜默併出）；對照 ⇒ 二街廓皆整體成",
+         lambda: (_halt(lambda: _go(drop=("Q1(1)",), bar={"Q1(1)": "X1(1)"}, **k27),
+                        ["X1(1)", "程式自我檢查", "於第一趟併入街廓 BB 之前", "依既定機制不會發生", "觸之即程式有錯"]),
+                  _rows(_go(drop=("Q1(1)", "X1(1)"), **k27))),
+         (("停機", True),
+          [("整體", "gQ", "BD", "1 片", "—", "Q2(1)", (("Q2(1)", 300.0),), "成"),
+           ("整體", "g1", "BB", "1 片", "—", "X1(2)", (("X1(2)", 60.0),), "成")]))
     return out
 
 
@@ -706,6 +730,14 @@ RA_KW = ["snapshot", "callbacks", "winners", "forced", "slices"]
 CHG_SP = ("run_corner_pk_k6b",)
 # 🆕 `W-G.9-370`：W7 之錨之母體⛔ 含 F25（突變器·其錨為函式之段內之錨·由其 `mutate` 自量之）
 W7_SKIP = ("probe_WG9370_adj4mut.py",)
+# 🔧 `W-G.9-373`（`K-9-66`／`K-9-67`／`K-9-68`）：W5 之許增本單之新名與所改者；W6 去 `k953_manual_run`；W7 之錨之除外與
+#   函式名之許（同 F23 之 W8）
+ALLOW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k967_pre_area", "k6b_stage3_run",
+                "k929_6_fixpoint", "adj_intake", "k6b_screen_callbacks")
+ALLOW373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
+W6_SKIP373 = ("k953_manual_run",)
+ANC_SKIP373 = ("_out.append(tp)", "member", "members")
+FN_GONE373 = ("_k951", "_max357", "_split357", "_try", "_fill953", "_probe953", "_remain953")
 # 🆕 `W-G.9-370`（K-9-57 ⑧）：W6 之許——`k953_manual_run` 之 `S219` 之停機訊息之基準二列（逐字）得易之（唯此二列）
 W6_REPL = {"k953_manual_run": (
     '            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）於當下之試算已為已配得之宗 {_own953}"',
@@ -867,8 +899,8 @@ def _wiring_checks(repo, base, app=None, spp=None):
         chk.append(("W5 頂層之相異 ⊆ 本單之許", False, f"基準讀不到：{type(e).__name__}"))
         return chk
     # W5 頂層之相異 ⊆ 本單之許
-    allow_app = set(NEW_APP) | set(NEW_CONST) | set(CHG_APP)
-    allow_sp = {"run_adj4"} | set(CHG_SP)
+    allow_app = set(NEW_APP) | set(NEW_CONST) | set(CHG_APP) | set(ALLOW373_APP)
+    allow_sp = {"run_adj4"} | set(CHG_SP) | set(ALLOW373_SP)
     for nm_, cur_, old_, allow_ in (("app.py", atree, ast.parse(bapp), allow_app),
                                     ("verify/selection_pipeline.py", stree, ast.parse(bsp), allow_sp)):
         a_, b_ = _top_dump(cur_), _top_dump(old_)
@@ -879,7 +911,7 @@ def _wiring_checks(repo, base, app=None, spp=None):
     bd, _ = _defs(bapp)
     bsd, _ = _defs(bsp)
     w6 = []
-    for nm, cur, old, src_c, src_o in [(n, ad.get(n), bd.get(n), app, bapp) for n in CHG_APP] + \
+    for nm, cur, old, src_c, src_o in [(n, ad.get(n), bd.get(n), app, bapp) for n in CHG_APP if n not in W6_SKIP373] + \
                                       [(n, sd.get(n), bsd.get(n), spp, bsp) for n in CHG_SP]:
         if cur is None or old is None:
             w6.append((nm, False, 0, "缺"))
@@ -906,10 +938,11 @@ def _wiring_checks(repo, base, app=None, spp=None):
             if isinstance(x, ast.Constant) and isinstance(x.value, str) and len(x.value) >= 4:
                 lits8.add(x.value)
     for nm_, cur_s, old_s in (("app.py", app, bapp), ("verify/selection_pipeline.py", spp, bsp)):
-        anc = [x for x in lits8 if old_s.count(x) == 1]
+        anc = [x for x in lits8 if old_s.count(x) == 1 and x not in ANC_SKIP373]
         moved = sorted((x[:60], cur_s.count(x)) for x in anc if cur_s.count(x) != 1)
         fb, fc = _fn_names(old_s), _fn_names(cur_s)
-        dup = sorted((k, fc.get(k, 0)) for k, v in fb.items() if v == 1 and fc.get(k, 0) != 1)
+        dup = sorted((k, fc.get(k, 0)) for k, v in fb.items() if v == 1 and fc.get(k, 0) != 1
+                     and not (k in FN_GONE373 and fc.get(k, 0) == 0))
         chk.append((f"W7 {nm_}：既有量測器之錨（{len(anc)}）於工作樹皆恰一見；基準中恰一之函式名（含巢狀·"
                     f"{sum(1 for v in fb.values() if v == 1)}）仍恰一", not moved and not dup,
                     f"錨之異 {moved[:6]}；函式名之異 {dup[:8]}"))

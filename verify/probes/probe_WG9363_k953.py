@@ -28,6 +28,13 @@
            P0 隨之 40 項。
            🔧 `W-G.9-370`（⛔ 上列一字不刪）：K36／K37／K39／K40 之停機之期改為 `S219` 之新訊息（`K-9-57` ⑧·程式自我檢查·
            `S219_PH`）；項數⛔ 變。
+           🔧 `W-G.9-373`（⛔ 上列一字不刪）：K3 之期改依 `K-9-67`（應分配面積並列 ⇒ 重劃前面積大者 ⇒ 暫編地號小者·⛔ 停機）；
+           K14／K23／K28／K32〜K36 之期改依 `K-9-66`／`K-9-68`（整批不過 ⇒ 逐受併之街廓：建地可按比例部分併入〔留 build·
+           `面積_m2` 減其量〕；剩下依 `K-9-51` 逐輪、同一輪到達同一街廓者一起；剩下之列於諸輪之後）。玩具之受併之累加唯計
+           正之 `面積_m2`（建地之部分併出之負值⛔ 計）；K28／K32 之「本街廓之宗之檢核不過」改以其容量 `0` 造之。項數⛔ 變。
+           wiring：W6 之受詞去本單所改之六函式（`k6b_stage3_run`、`k929_6_fixpoint`、`adj_intake`、`k6b_screen_callbacks`、
+           `_k6b_callbacks`、`k6b_stage3_pool_temp`）；W7 之許增本單之新名與所改者；W8 之錨⛔ 計 `ANC_SKIP373`（本單之生產碼
+           必增其見者）、函式名許 `FN_GONE373`（本單所去之巢狀 def）為 `0`。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -122,7 +129,8 @@ def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, uni
         kept, bad, G, acc, mem, uu = {}, {}, {}, {}, {}, {}
         ids = {b["暫編地號"] for b in build}
         for b in build:
-            acc[b["所屬街廓"]] = acc.get(b["所屬街廓"], 0.0) + float(b.get("面積_m2", 0) or 0)
+            # 🔧 `W-G.9-373`：受併之累加唯計正之 面積_m2（建地之部分併出之負值⛔ 計）
+            acc[b["所屬街廓"]] = acc.get(b["所屬街廓"], 0.0) + max(0.0, float(b.get("面積_m2", 0) or 0))
         for blk, v in acc.items():
             if v > err_cap.get(blk, 1e18) + 1e-9:
                 return {"kept": {}, "bad_pools": {}, "err": f"玩具之配地中止（{blk}）", "G": {}, "members": {},
@@ -257,8 +265,12 @@ def _cases(ns, sp):
     _run(out, "K2 跨分配線（所鄰之已配得之宗分處二街廓）⇒ 併入應分配面積（G）較大者",
          lambda: _sel(_go(W, own_upd=dict(G1, E1="g1"), a_upd={"E1(1)": 500}, **BE), "X1(1)"),
          [("手冊", "X1(1)", "a", "E1(1)", (("E1(1)", 60.0),), "成")])
-    _run(out, "K3 二者之 G 並列 ⇒ 停機【未裁】（⛔ 自裁）",
-         lambda: _halt(lambda: _go(W, own_upd=dict(G1, E1="g1"), **BE), "並列"), ("停機", True))
+    # 🔧 `W-G.9-373`（`K-9-67`·KL 裁 `2026-10-08 04:47`）：並列 ⇒ 重劃前面積大者 ⇒ 暫編地號小者（⛔ 停機）
+    _run(out, "K3 （K-9-67）二者之 G 並列 ⇒ 重劃前面積同（300）⇒ 暫編地號小者 E1(1)；E1 之重劃前面積 250 ⇒ X1(2)",
+         lambda: (_sel(_go(W, own_upd=dict(G1, E1="g1"), **BE), "X1(1)"),
+                  _sel(_go(W, own_upd=dict(G1, E1="g1"), a_upd={"E1(1)": 250}, gmap={"E1(1)": 300.0}, **BE), "X1(1)")),
+         ([("手冊", "X1(1)", "a", "E1(1)", (("E1(1)", 60.0),), "成")],
+          [("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "成")]))
     _run(out, "K4 建地片與同街廓之已配得之宗相鄰 ⇒ 停機（入池閘之射程）",
          lambda: _halt(lambda: _go(W, own_upd={"Q1": "g1"}, rm=("X1(2)",)), "入池閘之射程"), ("停機", True))
     _run(out, "K5 道路·兩側皆有 ⇒ 依中心線切分、各半併入該側之宗（a′ × 半之面積比）",
@@ -294,10 +306,11 @@ def _cases(ns, sp):
            (("C1(1)", 100.0), ("X1(2)", 100.0), ("Z1(1)", 100.0)), "成")])
     _run(out, "K13 落點四層瀑布：① 同原地號者先於較近者；② 皆非同原地號 ⇒ 質心距近者；③ 等距 ⇒ G 大者；④ 皆同 ⇒ 暫編地號",
          lambda: _k13(W), ("C8(1)", "C1(1)", "C9(1)", "C8(1)"))
-    _run(out, "K14 整批不過 ⇒ 逐片；整筆之建地不過 ⇒ K-9-51（他街廓之已配得之宗·距離近者先）",
+    # 🔧 `W-G.9-373`（`K-9-66`）：建地整筆不過 ⇒ 按比例部分併入 10；剩下 50 依 K-9-51
+    _run(out, "K14 （K-9-66）整批不過 ⇒ 建地整筆不過 ⇒ 按比例部分併入 10；剩下 50 依 K-9-51（他街廓之已配得之宗·距離近者先）",
          lambda: _rows(_go(W, own_upd={"Z1": "g1"}, cap={"BB": 10.0}, rm=("R1(1)", "P1(1)"))),
-         [("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "未成"),
-          ("K-9-51", "X1(1)", "a", "C1(1)", (("C1(1)", 60.0),), "成")])
+         [("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 10.0),), "部分成"),
+          ("K-9-51", "X1(1)", "a", "C1(1)", (("C1(1)", 50.0),), "成")])
     _run(out, "K15 可拆分之片之最大面積（0.01 ㎡ 之格）；其餘 ⇒ K-9-51 皆無 ⇒ 入合併單位、帶 段三部分併出／段三餘量",
          lambda: (lambda r: (_rows(r), _keys(r).get("R1(1)")))(
              _go(W, own_upd=G1, rm=("X1(1)", "P1(1)"), drop=(), cap={"BB": 33.333})),
@@ -327,9 +340,10 @@ def _cases(ns, sp):
     _run(out, "K22 a′ 之折算（街廓之地價比）",
          lambda: _rows(_go(W, rm=("Z1(1)", "R1(1)", "P1(1)"), price={"BA": 2.0, "BB": 1.0}))[0][4],
          (("X1(2)", 120.0),))
-    _run(out, "K23 七項 7 之序：整批不過時，建地先於道路先於公設地；同類面積大者先",
+    # 🔧 `W-G.9-373`（`K-9-66`／`K-9-68`）：建地全入、道路按比例（1／100）、公設地未試；入合併單位之列於諸輪之後
+    _run(out, "K23 （K-9-66）整批不過時：建地先（全入）、道路次（按比例）、公設地未試；剩下之列於諸輪之後",
          lambda: [(r[1], r[5]) for r in _rows(_go(W, own_upd=G1, cap={"BB": 61.0}))],
-         [("X1(1)", "成"), ("R1(1)", "部分成"), ("R1(1)", "入合併單位"), ("P1(1)", "未成"), ("P1(1)", "入合併單位")])
+         [("X1(1)", "成"), ("R1(1)", "部分成"), ("P1(1)", "未成"), ("R1(1)", "入合併單位"), ("P1(1)", "入合併單位")])
     _run(out, "K24 旗標 WV_K953：未設／on ⇒ 真；off ⇒ 偽；他值 ⇒ 停機",
          lambda: _k24(ns), (True, True, False, "停機"))
     _run(out, "K25 可為受詞之片之歸戶於 build 皆無片（例：歸戶表為空）⇒ ⛔ 試算配地、回輸入之同一物件、紀錄 ＝ []",
@@ -342,9 +356,10 @@ def _cases(ns, sp):
     _run(out, "K28 K-9-51 之候選含 x 之本街廓之已配得之宗（與 x ⛔ 相連·距離 0）⇒ 先試併之、過 ⇒ 併入、出 build（K-9-55）；"
               "其檢核不過 ⇒ 記未成、續試他宗；皆不行 ⇒ 入合併單位（補令二·乙案）",
          lambda: _k28(W),
-         ([("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "未成"),
-           ("K-9-51", "X1(1)", "a", "Q1(1)", (("Q1(1)", 60.0),), "成")], False,
-          [("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "未成"), ("K-9-51", "X1(1)", "a", "Q1(1)", (), "未成"),
+         # 🔧 `W-G.9-373`（`K-9-66`）：X1(2) 按比例收 10；剩下 50 ⇒ Q1（本街廓）；Q1 不容（BA 之容量 0）⇒ 未成 ⇒ 入合併單位
+         ([("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 10.0),), "部分成"),
+           ("K-9-51", "X1(1)", "a", "Q1(1)", (("Q1(1)", 50.0),), "成")], False,
+          [("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 10.0),), "部分成"), ("K-9-51", "X1(1)", "a", "Q1(1)", (), "未成"),
            ("K-9-51", "X1(1)", "a", "—", (), "入合併單位")]))
     _run(out, "K29 入池閘之旗標 off（WV_K929_6）⇒ 手冊先行不辦（harness 與畫面皆回輸入之同一物件、紀錄 []、畫面⛔ 呼叫 st）；"
               "二旗標皆判（WV_K953 off 而 WV_K929_6 非法 ⇒ 停機）",
@@ -358,25 +373,30 @@ def _cases(ns, sp):
     _run(out, "K32 K-9-51 之候選同距離（0）：本街廓之宗居先於他街廓之宗（G 較大者亦然·K-9-55 之二）；本街廓無之、或其檢核不過 ⇒ "
               "他街廓之宗",
          lambda: _k32(W),
-         ([("K-9-51", "X1(1)", "a", "Q1(1)", (("Q1(1)", 60.0),), "成")],
-          [("K-9-51", "X1(1)", "a", "E1(1)", (("E1(1)", 60.0),), "成")],
-          [("K-9-51", "X1(1)", "a", "Q1(1)", (), "未成"), ("K-9-51", "X1(1)", "a", "E1(1)", (("E1(1)", 60.0),), "成")]))
+         # 🔧 `W-G.9-373`（`K-9-66`）：X1(2) 按比例收 10 ⇒ 剩下 50（本街廓之不容 ⇒ BA 之容量 0）
+         ([("K-9-51", "X1(1)", "a", "Q1(1)", (("Q1(1)", 50.0),), "成")],
+          [("K-9-51", "X1(1)", "a", "E1(1)", (("E1(1)", 50.0),), "成")],
+          [("K-9-51", "X1(1)", "a", "Q1(1)", (), "未成"), ("K-9-51", "X1(1)", "a", "E1(1)", (("E1(1)", 50.0),), "成")]))
     _run(out, "K33 K-9-51 之本街廓之候選與 x 相連（C0 之後始為已配得）⇒ 停機（入池閘之射程）；⛔ 相連 ⇒ 本街廓之宗居先、併入之",
+         # 🔧 `W-G.9-373`（`K-9-66`）：X(1) 先按比例併入 B1(1) 10 ⇒ 剩下 290
          lambda: _k33(),
-         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 290.0),), "成")]))
     # 🔧 補令三（⛔ 上列一字不刪）
     _run(out, "K34 K-9-51 之本街廓之候選之成員取當下之試算：其單元於 C0 之後始含與 x 相接之片 ⇒ 停機（入池閘之射程）；"
               "該片⛔ 與 x 相接 ⇒ 併入之；C0 之 members 所載之舊單元含與 x 相接之片而當下之單元⛔ 含 ⇒ ⛔ 停機（⛔ 取聯集）",
+         # 🔧 `W-G.9-373`（`K-9-66`）：X(1) 先按比例併入 B1(1) 10 ⇒ 剩下 290
          lambda: _k34(),
-         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")],
-          [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 290.0),), "成")],
+          [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 290.0),), "成")]))
     _run(out, "K35 整筆者於候選之迴圈之前全檢本街廓之候選：G 較大而⛔ 與 x 相接之宗居先、G 較小者與 x 相接 ⇒ 停機；"
               "後者⛔ 與 x 相接 ⇒ 併入 G 較大者",
+         # 🔧 `W-G.9-373`（`K-9-66`）：X(1) 先按比例併入 B1(1) 10 ⇒ 剩下 290
          lambda: _k35(),
-         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+         (("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 290.0),), "成")]))
     _run(out, "K36 x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機（程式自我檢查·K-9-57 ⑧）；皆非 ⇒ 併入",
+         # 🔧 `W-G.9-373`（`K-9-66`）：X(1) 先按比例併入 B1(1) 10 ⇒ 剩下 290
          lambda: _k36(),
-         (("停機", True), ("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 300.0),), "成")]))
+         (("停機", True), ("停機", True), [("K-9-51", "X(1)", "a", "A1(1)", (("A1(1)", 290.0),), "成")]))
     # 🔧 補令四（⛔ 上列一字不刪）
     _run(out, "K37 逐片之整筆之主併入（其檢核過）之前：x 於當下之試算已自為已配得之宗、或為已配得之宗之成員 ⇒ 停機"
               "（程式自我檢查·K-9-57 ⑧）；皆非 ⇒ 併入其計畫之受併宗",
@@ -406,7 +426,8 @@ def _k32(W):
                 cap=cap, rm=("R1(1)", "P1(1)"), blk_upd={"BE": H},
                 extra=[_tp("E9(1)", "BE", H, _R(10, 20, 30, 40), 100), _tp("E1(1)", "BE", H, _R(10, 20, 40, 50), 500)])
         return [x for x in _rows(r) if x[0] == "K-9-51"]
-    return one("g1", {"BB": 10.0}), one("gQ", {"BB": 10.0}), one("g1", {"BB": 10.0, "BA": 10.0})
+    # 🔧 `W-G.9-373`：本街廓之宗之不容以 BA 之容量 0 造之（受併之累加唯計正值）
+    return one("g1", {"BB": 10.0}), one("gQ", {"BB": 10.0}), one("g1", {"BB": 10.0, "BA": 0.0})
 
 
 def _w2(a1_adjacent=True):
@@ -605,7 +626,8 @@ def _k40():
 def _k28(W):
     kw = dict(own_upd={"Q1": "g1", "C1": "gC1"}, geom_upd={"Q1(1)": _R(0, 8, 0, 30)}, rm=("R1(1)", "P1(1)"))
     r = _go(W, cap={"BB": 10.0}, **kw)
-    return (_rows(r), "X1(1)" in [b["暫編地號"] for b in r[0][1]], _rows(_go(W, cap={"BB": 10.0, "BA": 10.0}, **kw)))
+    # 🔧 `W-G.9-373`：本街廓之宗之不容以 BA 之容量 0 造之（受併之累加唯計正值）
+    return (_rows(r), "X1(1)" in [b["暫編地號"] for b in r[0][1]], _rows(_go(W, cap={"BB": 10.0, "BA": 0.0}, **kw)))
 
 
 def _halt2(fn, phrases):
@@ -982,10 +1004,11 @@ def _wiring_checks(repo, base):
             if isinstance(x, ast.Constant) and isinstance(x.value, str) and len(x.value) >= 4:
                 lits8.add(x.value)
     for nm_, cur_s, old_s in (("app.py", app, bapp), ("verify/selection_pipeline.py", spp, bsp)):
-        anc = [x for x in lits8 if old_s.count(x) == 1]
+        anc = [x for x in lits8 if old_s.count(x) == 1 and x not in ANC_SKIP373]
         moved = sorted((x[:60], cur_s.count(x)) for x in anc if cur_s.count(x) != 1)
         fb, fc = _fn_names(old_s), _fn_names(cur_s)
-        dup = sorted((k, fc.get(k, 0)) for k, v in fb.items() if v == 1 and fc.get(k, 0) != 1)
+        dup = sorted((k, fc.get(k, 0)) for k, v in fb.items() if v == 1 and fc.get(k, 0) != 1
+                     and not (k in FN_GONE373 and fc.get(k, 0) == 0))
         chk.append((f"W8 {nm_}：既有量測器之錨（{len(anc)}）於工作樹皆恰一見；基準中恰一之函式名（含巢狀·"
                     f"{sum(1 for v in fb.values() if v == 1)}）仍恰一", not moved and not dup,
                     f"錨之異 {moved[:6]}；函式名之異 {dup[:8]}"))
@@ -1007,6 +1030,17 @@ KEEP_APP = ("k6b_stage3_run", "end_block_merge_run", "k6_shares_segment", "k6_me
             "adj_intake", "adj_candidate_lists", "adj_block_ctx", "adj_pool_anchor", "f3_screen_end_block_merge",
             "k6b_screen_callbacks", "f3_screen_stepg_run", "f3_screen_corner_pk_run", "_k929_6_screen_gate", "main")
 KEEP_SP = ("run_end_block_merge", "run_corner_pk", "_k6b_callbacks", "k6b_stage3_pool_temp")
+# 🔧 `W-G.9-373`（`K-9-66`／`K-9-67`／`K-9-68`）：本單所改之六函式出 W6 之受詞（其接線另由 F27 量之）
+CHG373_APP = ("k6b_stage3_run", "k929_6_fixpoint", "adj_intake", "k6b_screen_callbacks", "k953_manual_run",
+              "adj4_pass1_run")
+CHG373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
+NEW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k967_pre_area")
+KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG373_APP)
+KEEP_SP = tuple(x for x in KEEP_SP if x not in CHG373_SP)
+# 🔧 `W-G.9-373`：W8 之錨⛔ 計者（本單之生產碼必增其見：`k6b_stage3_pool_temp` 之建地之部分併出原樣入之、
+#   二 `alloc_state` 之回傳增 `members`）；W8 之函式名許為 0 者（本單所去之巢狀 def）
+ANC_SKIP373 = ("_out.append(tp)", "member", "members")
+FN_GONE373 = ("_k951", "_max357", "_split357", "_try", "_fill953", "_probe953", "_remain953")
 APP_ALLOW = {"K953_ENV", "k953_enabled", "k953_alloc_summary", "k953_units_of", FN, "f3_screen_k953",
              "f3_screen_k6b_stage3"}
 SP_ALLOW = {"run_k953", "run_corner_pk_k6b"}
@@ -1014,6 +1048,9 @@ SP_ALLOW = {"run_k953", "run_corner_pk_k6b"}
 APP_ALLOW |= {"ADJ4_ENV", "ADJ4_IDENT_UNUSED", "adj4_enabled", "adj4_possible", "adj4_subject_units", "adj4_subjects",
               "adj4_depth_of", "adj4_trial_state", "adj4_plan", "adj4_pass1_run", "f3_screen_adj4"}
 SP_ALLOW |= {"run_adj4"}
+# 🔧 `W-G.9-373`：本單之新名與所改者亦許（本單之頂層之限另由 F27 之 wiring 量之）
+APP_ALLOW |= set(NEW373_APP) | set(CHG373_APP)
+SP_ALLOW |= set(CHG373_SP)
 
 
 def _top_dump(tree):
