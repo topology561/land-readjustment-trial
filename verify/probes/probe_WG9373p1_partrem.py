@@ -11,7 +11,9 @@
 ③ 調配之輸入（`adj_intake`）：建地之部分併出之剩下 ＝ 分攤登記面積 − `段三部分併出` 之和（其後縱受他片併入亦⛔ 變）；
 ④ 手冊先行（`k953_manual_run`）：仍在 build 之建地片縱帶段三之鍵亦受理（其量 ＝ 剩下）；`段三併出` 取聯集；
 ⑤ `K-9-67` 之重劃前面積（入池閘 `k929_6_fixpoint` 之代表宗等四處）：部分併出之剩下 ＝ 分攤登記面積 − `段三部分併出` 之和
-   （剩下之部分所含之重劃前土地；已併出者⛔ 計·同「他處依地價折算併入的土地不計」）。
+   （剩下之部分所含之重劃前土地；已併出者⛔ 計·同「他處依地價折算併入的土地不計」）；
+⑥ 趟中之帳（補令二）：同一趟之內（段三、手冊先行、第一趟之各一呼），建地一經部分併出，其後之試算所見之該片即帶其帳
+   （`段三部分併出` 含本趟已併出之量）——其「面積_m2 ＋ 段三部分併出之和」恆等於其前受併入之量（玩具中為 `0`）。
 
 子命令（一律 python verify/probes/probe_WG9373p1_partrem.py <子命令> <repo>）：
   selftest <repo>
@@ -21,7 +23,9 @@
            I 用 `F27`（`probe_WG9373_k966.py`）之 `_w_world`（Y(1)·分攤 50·已部分併出 20）；
            M 用 `F23`（`probe_WG9363_k953.py`）之 `_go`／`_w1`（世界一·X1(1)·跨分配線併入 X1(2)）；
            Q 仿 `F27` 之 `_c`（入池閘·二宗同歸戶相鄰·G ＝ a × 0.6·a ＜ 150 ⇒ 不配地）。
-           E1〜E7 ＝ ①；S1〜S6 ＝ ②；I1〜I3 ＝ ③；M1〜M2 ＝ ④；Q1〜Q2 ＝ ⑤；P0 ＝ 判式自驗（逐項擾動其期須恰該項紅）。
+           L 用 `F16` 之 `_world4`（段三）、`F27` 之 `_cbs`／`_tp`／`_R`（手冊先行·`F27` `T1` 之形；第一趟·`F27` `V1` 之形），
+           其 `alloc_state` 包一層以記每次試算所見之受詞之片。
+           E1〜E7 ＝ ①；S1〜S6 ＝ ②；I1〜I3 ＝ ③；M1〜M2 ＝ ④；Q1〜Q2 ＝ ⑤；L1〜L3 ＝ ⑥；P0 ＝ 判式自驗（逐項擾動其期須恰該項紅）。
            期值出自 KL 之裁（甲案）、`K-9-49`、`K-9-66` 通知 `3` 與補令一 `§二`（發單側手算·⛔ 呼叫受測碼求期）；
            等面積之對照（⛔ 帶前帳而面積同其剩下·其配地之結果須同）：E1／E2、E3／E4、E6／E7、S3／S5、S4／S6、M1／M2、Q1／Q2；
            S2 ＝ ⛔ 帶前帳之同片（非等面積）、I2 ＝ ⛔ 其後受併入之同片（非等面積）。
@@ -192,6 +196,66 @@ def _q(ns, f27, y1):
     return [e["標的"] for e in log]
 
 
+# ── L：趟中之帳（補令二）──
+def _rec(st, ids, seen):
+    def wrapped(temp, build):
+        for b in build:
+            if b["暫編地號"] in ids and float(b.get("面積_m2", 0) or 0) < -1e-9:
+                seen.append(round(float(b.get("面積_m2", 0) or 0)
+                                  + sum(float(v) for v in (b.get("段三部分併出") or {}).values()), 4) + 0.0)
+        return st(temp, build)
+    return wrapped
+
+
+def _l1(ns, f16):
+    temp, own, blocks, cl = f16._world4()
+    build = [t for t in temp if t["街廓分類"] == f16.H]
+    ap, _tw, st = f16._cbs({"BX": 60.0, "BY": 1000.0, "B7": 50.0}, None, ("Y1(1)",))
+    seen = []
+    thr = {("BX", "左"): 130.0, ("BY", "左"): 200.0}
+
+    def tw(temp_, build_, blk, end, cand):
+        b_ = {b["暫編地號"]: b for b in build_}
+        g = f16._g(b_[cand]) if cand in b_ else 0.0
+        return (cand if g >= thr[(blk, end)] else None), round(g, 2), thr[(blk, end)]
+    order = [{"最終序位": 1, "街廓": "BX", "端": "左", "暫編地號": "X1(1)"},
+             {"最終序位": 2, "街廓": "BY", "端": "左", "暫編地號": "Y1(1)"}]
+    ct = [{"形": "一", "列": [("BX", "左", "X1(1)", 10.0), ("BY", "左", "Y1(1)", 10.0)]}]
+    ns["k6b_stage3_run"](order, set(), own, temp, build, blocks, cl, ap, tw, _rec(st, {"Y1(1)"}, seen),
+                         log_print=lambda *x: None, contests=ct)
+    return sorted(set(seen)), len(seen) > 0
+
+
+def _l2(ns, f27):
+    tp, R = f27._tp, f27._R
+    t = [tp("X(1)", "BA", f27.H, R(0, 10, 0, 30), 60), tp("Y(1)", "BA", f27.H, R(10, 20, 0, 30), 50),
+         tp("Z(1)", "BA", f27.H, R(20, 30, 0, 30), 40),
+         tp("A1(1)", "BB", f27.H, R(0, 10, 30, 60), 300), tp("B1(1)", "BB", f27.H, R(10, 20, 30, 60), 300),
+         tp("C1(1)", "BB", f27.H, R(20, 30, 30, 60), 300), tp("A2(1)", "BD", f27.H, R(40, 50, 0, 30), 300)]
+    own = {"X": "甲", "A1": "甲", "A2": "甲", "Y": "乙", "B1": "乙", "Z": "丙", "C1": "丙"}
+    blocks = {b: {"category": f27.H} for b in ("BA", "BB", "BD")}
+    ap, st = f27._cbs({"BB": 130.0}, drop=("X(1)", "Y(1)", "Z(1)"))
+    seen = []
+    ns["k953_manual_run"](t, list(t), own, blocks, {}, ap, _rec(st, {"X(1)", "Y(1)", "Z(1)"}, seen),
+                          log_print=lambda *x: None)
+    return sorted(set(seen)), len(seen) > 0
+
+
+def _l3(ns, f27):
+    tp, R = f27._tp, f27._R
+    t = [tp("X1(1)", "BA", f27.H, R(0, 10, 0, 30), 60.0), tp("Y1(1)", "BA", f27.H, R(10, 20, 0, 30), 40.0),
+         tp("X1(2)", "BB", f27.H, R(0, 10, 30, 60), 300), tp("Y2(1)", "BB", f27.H, R(10, 20, 30, 60), 300),
+         tp("Y3(1)", "BC", f27.H, R(20, 30, 0, 30), 300)]
+    own = {"X1": "g1", "Y1": "g2", "Y2": "g2", "Y3": "g2"}
+    geom = {x["暫編地號"]: [list(c) for c in x["polygon_coords"]] for x in t}
+    ap, st = f27._cbs({"BB": 50.0}, drop=("X1(1)", "Y1(1)"))
+    subj = [{"歸戶": "g1", "軌": "建地軌", "錨點": "X1(1)", "名單": ["BB"], "片": ["X1(1)"], "原有面積合計": 60.0},
+            {"歸戶": "g2", "軌": "建地軌", "錨點": "Y1(1)", "名單": ["BB"], "片": ["Y1(1)"], "原有面積合計": 40.0}]
+    seen = []
+    ns["adj4_pass1_run"](t, list(t), own, subj, geom, ap, _rec(st, {"X1(1)", "Y1(1)"}, seen), log_print=lambda *x: None)
+    return sorted(set(seen)), len(seen) > 0
+
+
 def _cases(ns, f12, f16, f27, f23):
     out = []
     # E（門檻 150）：C1(1)（a 100）以 ① 同街廓併 C1(2)；C1(2) 部分併出之剩下 50（分攤 60·已併出 10）≡ 一分未併而 a 50
@@ -291,6 +355,13 @@ def _cases(ns, f12, f16, f27, f23):
                               "段三部分併出": {"Q(1)": 40.0}}), ["Y2"])
     _run(out, "Q2 對照：Y1 一分未併而分攤 90、其後受併入 10 ⇒ 同 Q1",
          lambda: _q(ns, f27, {"分攤登記面積_m2": 90.0, "面積_m2": 10.0}), ["Y2"])
+    _run(out, "L1 趟中之帳·段三（F28 S2 之形）：Y1(1) 題一 4 部分併出 X1(1) 20 之後，其後之試算所見之 Y1(1) 皆帶其帳"
+              "（面積_m2 ＋ 段三部分併出之和 ＝ 0）",
+         lambda: _l1(ns, f16), ([0.0], True))
+    _run(out, "L2 趟中之帳·手冊先行（F27 T1 之形）：X／Y／Z 第 1 輪按比例部分併出之後，其後之試算所見者皆帶其帳",
+         lambda: _l2(ns, f27), ([0.0], True))
+    _run(out, "L3 趟中之帳·第一趟（F27 V1 之形）：X1(1)／Y1(1) 於 BB 按比例部分併出之試施，其試算所見者皆帶其帳",
+         lambda: _l3(ns, f27), ([0.0], True))
     return out
 
 
