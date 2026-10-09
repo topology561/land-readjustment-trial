@@ -1,0 +1,198 @@
+diff --git a/app.py b/app.py
+index 5ea2beb..cdfe1e7 100644
+--- a/app.py
++++ b/app.py
+@@ -13655,10 +13655,10 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       `order` 為空 ⇒ `(temp_parcels, build_parcels, [])`（同一物件·逐位同輸入）；
+       否則 `temp_out` 為深拷貝，被段三「成」所消耗之片加鍵 `段三併出`（受併宗之相異字典序列表·補令一 裁三）；
+       `build_out` ⊂ `temp_out`（同物件），整筆併出之建築片自其中移除；`log` 為逐列 `dict`。
+-      🆕 `W-G.9-357`（`K-9-48` 七項 `3`〜`6` ＋ `K-9-51`）：後處理之整批不過 ⇒ 逐片——不可拆分者整筆、不過 ⇒ 第 `5` 項；
+-      可拆分者逐受併宗以最大面積（`0.01 ㎡` 之格）併之、其餘 ⇒ 第 `5` 項（同一歸戶之保留宗，距離〔至其街廓〕近者先、
+-      同距離者 `G` 大者先；都不行 ⇒ 記「轉調配」）；`K-9-50` 題一 `4` 之合併不過者同之（⛔ 停機）。可拆分之片經此而
+-      仍有剩下者加鍵 `段三部分併出`（`{受併宗: 所併之來源面積}`·有併入者）與 `段三餘量`（剩下之來源面積）。
++      🆕 `W-G.9-357`（`K-9-48` 七項 `3`〜`6` ＋ `K-9-51`）：後處理之整批不過者（與 `K-9-50` 題一 `4` 之合併不過者）之處置
++      ——其逐片之法（整筆、逐受併宗之格）已為下文 `W-G.9-373` 之段所代（`K-9-66`／`K-9-68`·⛔ 停機）；諸輪畢仍有剩下者
++      記「轉調配」。非建地之片經此而仍有剩下者加鍵 `段三部分併出`（`{受併宗: 所併之來源面積}`·有併入者）與 `段三餘量`
++      （剩下之來源面積）；建地之部分併出見下文。
+     停機（`RuntimeError`）：步驟 9 之配地中止（無從判定）、後處理之未定情形（原單停機款 `9`）、
+       第 `5` 項之 `alloc_state` 未回 `G`。
+     🆕 `W-G.9-373`（`K-9-66`／`K-9-67`／`K-9-68`·KL 裁 `2026-10-07`／`2026-10-08`）：步驟 10 之諸合併群之計畫皆以其前之
+@@ -13672,6 +13672,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       ρ0 ＝ `段三餘量` ÷ a；折算比⛔ 受其影響）；本趟所觸之片而前帳非空者，`段三併出` 取前帳之集之聯集，仍有剩下者
+       `段三部分併出` ＝ 前帳 ⊕ 本趟之帳（逐受併宗相加），已全數併出者去之；本趟未觸者⛔ 動。第 `5` 項之重劃前面積之表之
+       各片 ＝ 分攤登記面積 − `段三部分併出` 之和。已併入他處之部分⛔ 動、⛔ 重分。
++    🔧 補令二（R-17″／R-19″）：趟中之帳——同一趟之內，建地一經部分併出（仍留 build），即於試施之拷貝中寫其帳（`段三部分併出`
++      之受併宗加其量·`段三併出` 加受併宗），其後之試算（含入池閘）所見之該片即帶之；趟末之帳之合照舊（以本趟之帳覆寫後加
++      前帳·⛔ 重加）。第 `5` 項之重劃前面積之表取與其 `G`／`members` 同一試算之態。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -14263,6 +14266,11 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                 _dx = _tt["by"][x]
+                 if _has357(float(_dx.get('分攤登記面積_m2', 0) or 0) + float(_dx.get('面積_m2', 0) or 0) - float(v)):
+                     _dx['面積_m2'] = float(_dx.get('面積_m2', 0) or 0) - float(v)
++                    # 🔧 補令二（R-17″）：趟中之帳——同時於拷貝之該片寫其帳（段三部分併出 之 r 加 v·段三併出 加 r），其後之
++                    #   試算所見之該片即帶之；趟末之帳之合照舊（以本趟之 _part／marks 覆寫後加前帳·⛔ 重加）
++                    _lg373 = dict(_dx.get('段三部分併出') or {})
++                    _lg373[e['r']] = float(_lg373.get(e['r'], 0.0)) + float(v)
++                    _dx.update({'段三部分併出': _lg373, '段三併出': sorted(set(_dx.get('段三併出') or ()) | {e['r']})})
+                 else:
+                     _dx['面積_m2'] = float(_by0[x].get('面積_m2', 0) or 0)
+                     _tt["build"] = [b for b in _tt["build"] if b['暫編地號'] != x]
+@@ -14327,8 +14335,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         _own = own_map or {}
+         _cm = _cur.get("members") if isinstance(_cur.get("members"), dict) else {}
+         # 🔧 `W-G.9-373` 補令一（R-16′）：重劃前面積 ＝ 分攤登記面積 − 段三部分併出之和（部分併出之剩下所含者唯其剩下）
++        # 🔧 補令二（R-19″）：取與 _cur 同一試算之態（state·其建地之部分併出帶趟中之帳·R-17″）
+         _pa = {p: float(t.get('分攤登記面積_m2', 0) or 0) - sum(float(_v) for _v in (t.get('段三部分併出') or {}).values())
+-               for p, t in _by0.items()}
++               for p, t in state["by"].items()}
+         _seq = {}
+         for x in xs:
+             _gx = str(_own.get(str(_by0[x].get('原地號', '') or ''), '') or '')
+@@ -14375,8 +14384,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                      併入量={}, 餘量=round(float(rem[x]), 4))
+ 
+     def _t14_357(W, Lo, X, frac_lo, frac_w, note):
+-        # `K-9-50` 題一 4 之合併不過 ⇒ ① 未取得之一端之候選整筆試併入已取得之一端之受併宗（七項 4），不過 ⇒ 第 5 項；
+-        #   ② 其半之每一片以最大面積併入之（七項 3·已取得之一端先前所併之半計入其帳），其餘 ⇒ 第 5 項（七項 6）
++        # `K-9-50` 題一 4 之合併不過 ⇒ 未取得之一端之候選與其半之每一片各為一要求，於已取得之一端之受併宗之街廓一次處置
++        #   （`K-9-66`·已取得之一端先前所併之半計入其帳），其剩下 ⇒ 第 5 項之輪（`K-9-51`／`K-9-68`）
+         nonlocal state
+         c, w = Lo['c'], W['c']
+         _t14_done.add(c)    # 補令一 `R-7′`：`c` 依此處置畢即為其終局（① 之結果不論）——步驟 10 ⛔ 再處置之
+@@ -14631,8 +14640,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+ 
+     for _pid, _rs in marks.items():
+         state["by"][_pid]['段三併出'] = sorted(_rs)
+-    # 🆕 `W-G.9-357`：可拆分之片之部分併出與剩下——仍有剩下者：有併入 ⇒ `段三部分併出`（來源面積）＋ `段三餘量`，
+-    #   全無併入 ⇒ 唯 `段三餘量` ＝ a(x)；本趟全收或有併入而無剩下者 ⇒ 去此二鍵；本趟未觸者⛔ 動
++    # 🆕 `W-G.9-357`：非建地之片之部分併出與剩下（建地之支在前·`W-G.9-373`）——仍有剩下者：有併入 ⇒ `段三部分併出`
++    #   （本趟之來源面積）＋ `段三餘量`，全無併入 ⇒ 唯 `段三餘量` ＝ a(x)·ρ0（`_a357`·補令一）；本趟全收或有併入而無剩下者
++    #   ⇒ 去此二鍵；本趟未觸者⛔ 動（前帳之合在其後·補令一 R-14′ ②）
+     for _pid in sorted(set(marks) | set(_left)):
+         _tp = state["by"][_pid]
+         if _kind(_pid) == 'bld' and _part.get(_pid) and _pid not in merged_out:
+@@ -14772,6 +14782,9 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     🔧 補令一（R-15′／R-16′·KL 裁 `2026-10-08 20:18` 甲案）：候選——仍在 build 之建地片縱帶段三之鍵（部分併入他處後剩下之
+       土地）亦受理（其量 ＝ 該片之 a·已減其所併出），與一分未併者同；他片帶 `段三併出` 或 `段三餘量` 者略（照舊）。輸出之
+       `段三併出` ＝ 該片之既有之集 ∪ 本趟之受併宗。重劃前面積之表之各片 ＝ 分攤登記面積 − `段三部分併出` 之和。
++    🔧 補令二（R-17″〜R-19″）：趟中之帳——同一趟之內，建地一經部分併出（仍留 build），即於試施之拷貝中寫其帳（`段三部分併出`
++      之受併宗加其量·`段三併出` 加受併宗），其後之試算所見之該片即帶之；趟末之帳之合，其既有者取輸入之態之該片（⛔ 重加）。
++      `K-9-51` 之重劃前面積之表取與其 `G`／`members` 同一試算之態（受併宗之擇與道路片之落點之擇照舊取首次之試算）。
+     """
+     import copy as _cp953
+     from shapely.geometry import Polygon as _Pg953, LineString as _Ln953
+@@ -14873,6 +14886,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+ 
+     # 🆕 `W-G.9-373`（`K-9-67`）：重劃前面積之表 ＝ 輸入之 temp 之各片之分攤登記面積（未經地價折算）
+     # 🔧 `W-G.9-373` 補令一（R-16′）：減其 段三部分併出之和（部分併出之剩下所含者唯其剩下）
++    #   補令二（R-19″）：本表唯受併宗之擇與道路片之落點之擇用之（首次之試算 C0·其態 ＝ 輸入之態）；K-9-51 之表另取之
+     _pre953 = {_pk953: float(_tq.get('分攤登記面積_m2', 0) or 0)
+                - sum(float(_v) for _v in (_tq.get('段三部分併出') or {}).values()) for _pk953, _tq in _tin953.items()}
+ 
+@@ -15229,6 +15243,10 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                 _dx = _cand_st["by"][_x]
+                 if _pos953(_amt953(_dx) - float(_v)):
+                     _dx['面積_m2'] = float(_dx.get('面積_m2', 0) or 0) - float(_v)
++                    # 🔧 補令二（R-17″）：趟中之帳——同時於拷貝之該片寫其帳（段三部分併出 之受併宗加 v·段三併出 加受併宗）
++                    _lg953 = dict(_dx.get('段三部分併出') or {})
++                    _lg953[_e953['r']] = float(_lg953.get(_e953['r'], 0.0)) + float(_v)
++                    _dx.update({'段三部分併出': _lg953, '段三併出': sorted(set(_dx.get('段三併出') or ()) | {_e953['r']})})
+                 else:
+                     _dx['面積_m2'] = float(_tin953[_x].get('面積_m2', 0) or 0)
+                     _inject953(_cand_st, _x, [], True)
+@@ -15314,6 +15332,10 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                 raise RuntimeError(f"{_hdr953}·K-9-51 現態之配地中止：{_cur.get('err')!r} ⇒ 停機")
+             _gc = _cur.get('G')
+             _cmem953 = _cur.get('members') if isinstance(_cur.get('members'), dict) else {}
++            # 🔧 補令二（R-19″）：K-9-51 之重劃前面積之表取與 _cur 同一試算之態（state·其建地之部分併出帶趟中之帳）
++            _pre951 = {_pk953: float(_tq.get('分攤登記面積_m2', 0) or 0)
++                       - sum(float(_v) for _v in (_tq.get('段三部分併出') or {}).values())
++                       for _pk953, _tq in state["by"].items()}
+             for _x in _xs953:
+                 _gx = _gown953(_tin953[_x])
+                 _list = []
+@@ -15328,7 +15350,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                             raise RuntimeError(f"{_hdr953}·K-9-51 試算未回 {_h} 之 G——應分配面積之序無從定之 ⇒ 停機")
+                         _dv = _q953(_geo953[_x].distance(_ushape953(_bk)))
+                         _list.append(((_dv, 0 if str(_bk) == _blk953[_x] else 1,
+-                                       k967_rank(_gc[_h], k967_pre_area(_h, _cmem953.get(_h), _pre953), _h)),
++                                       k967_rank(_gc[_h], k967_pre_area(_h, _cmem953.get(_h), _pre951), _h)),
+                                       _h, str(_bk), _dv, float(_gc[_h])))
+                 _list.sort(key=lambda _t: _t[0])
+                 _seq953[_x] = _list
+@@ -15388,7 +15410,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+             _d.update({'段三併出': sorted(set(_d.get('段三併出') or ()) | _marks953[_x])})
+         if _x in _bnow953 and _sort953(_tin953[_x]) == 'bld':
+             # 🆕 `W-G.9-373`（`K-9-66`·R-5 (d)）：建地之部分併出（仍留 build）⇒ 段三部分併出（既有者合之）·⛔ 段三餘量
+-            _pp953 = dict((str(_k), float(_v)) for _k, _v in (_d.get('段三部分併出') or {}).items())
++            # 🔧 補令二（R-18″）：既有者（前帳）取輸入之態之該片（_tin953）——當下之物件已含本趟之趟中之帳（R-17″）
++            _pp953 = dict((str(_k), float(_v)) for _k, _v in (_tin953[_x].get('段三部分併出') or {}).items())
+             for _r, _v in sorted(_part953.get(_x, {}).items()):
+                 _pp953[_r] = _pp953.get(_r, 0.0) + _v
+             _d.update({'段三部分併出': {_r: round(_v, 4) for _r, _v in sorted(_pp953.items()) if round(_v, 4) > 0}})
+@@ -15535,8 +15558,8 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+                    log_print=print):
+     """規格步 4 乙之第一趟（`K-9-53` ②·`K-9-56`）——`W-G.9-367`。合併單位之地主另有已配得之宗者，沿其候選街廓名單，
+     至第一個有其已配得之宗之街廓，將合併單位之土地（`a′` 折算·`K-9-45`（二））整體併入其已配得之宗之一；整體不過
+-    「不影響原位次」之檢核（`K-9-48` 其三）⇒ 於同一宗逐片（建地整筆、道路與公設地上之土地取最大面積·`K-9-48` 七項 3），
+-    剩下者續沿名單之次街廓（其處再自整體始）；名單盡而有剩下 ⇒ 留於合併單位（規格步 5）。
++    「不影響原位次」之檢核（`K-9-48` 其三）⇒ 依 `K-9-66` 逐類（`k966_block_merge`·`W-G.9-373`·見下文），
++    剩下者續沿名單之次街廓（`K-9-68` 之輪）；名單盡而有剩下 ⇒ 留於合併單位（規格步 5）。
+ 
+     參數
+       temp_parcels   全部重劃前切片（手冊先行之出）·⛔ 改寫。
+@@ -15560,6 +15583,9 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+       按比例·建地可拆分〔部分併出者留 build、`面積_m2` 減其量、帶 `段三部分併出`〕；同一輪到達同一街廓者一起·先到者⛔ 重分）；
+       受併宗之序之末鍵改依 `k967_rank`。同一街廓有二位以上地主之土地而整體不過者，於其諸列之首記 `K-9-66` 之列。
+       🔧 補令一（R-16′）：`k967_rank` 之重劃前面積之表之各片 ＝ 分攤登記面積 − `段三部分併出` 之和。
++      🔧 補令二（R-17″〜R-19″）：趟中之帳——同一趟之內，建地一經部分併出（仍留 build），即於試施之拷貝中寫其帳
++      （`段三部分併出` 之受併宗加其量·`段三併出` 加受併宗），其後之試算所見之該片即帶之；趟末之帳之合，其既有者取輸入之態
++      之該片（⛔ 重加）。受併宗之擇之重劃前面積之表取每輪之試算之態。
+     """
+     import copy as _cp_a4
+     from shapely.geometry import Polygon as _Pg_a4
+@@ -15715,6 +15741,10 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+                 _dx = _c["by"][_x]
+                 if _pos_a4(_amt_a4(_dx) - float(_v)):
+                     _dx['面積_m2'] = float(_dx.get('面積_m2', 0) or 0) - float(_v)
++                    # 🔧 補令二（R-17″）：趟中之帳——同時於拷貝之該片寫其帳（段三部分併出 之受併宗加 v·段三併出 加受併宗）
++                    _lg_a4 = dict(_dx.get('段三部分併出') or {})
++                    _lg_a4[_e['r']] = float(_lg_a4.get(_e['r'], 0.0)) + float(_v)
++                    _dx.update({'段三部分併出': _lg_a4, '段三併出': sorted(set(_dx.get('段三併出') or ()) | {_e['r']})})
+                 else:
+                     _dx['面積_m2'] = float(_tin_a4[_x].get('面積_m2', 0) or 0)
+                     _c["build"] = [_b for _b in _c["build"] if str(_b['暫編地號']) != _x]
+@@ -15723,10 +15753,6 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+         return (_c, _why) if _ok else (None, _why)
+ 
+     _rank_a4 = {'建地': 0, '道路': 1, '公設地': 2}
+-    # 🆕 `W-G.9-373`（`K-9-67`）：重劃前面積之表 ＝ 輸入之 temp 之各片之分攤登記面積（未經地價折算）
+-    # 🔧 `W-G.9-373` 補令一（R-16′）：減其 段三部分併出之和（部分併出之剩下所含者唯其剩下）
+-    _pre_a4 = {_p: float(_t.get('分攤登記面積_m2', 0) or 0)
+-               - sum(float(_v) for _v in (_t.get('段三部分併出') or {}).values()) for _p, _t in _tin_a4.items()}
+     # 🔧 `W-G.9-373`（`K-9-68`）：諸受詞先備（R-7·其序 ＝ 受詞之序），其後逐輪辦之（R-8）
+     _SJ_a4 = []
+     for _sj in subjects:
+@@ -15763,6 +15789,10 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+         if not _act_a4:
+             break
+         _S = _sim_a4(state)
++        # 🔧 `W-G.9-373`（`K-9-67`）：重劃前面積之表（未經地價折算）·補令一（R-16′）：分攤登記面積 − 段三部分併出之和；
++        #   補令二（R-19″）：取與 _S 同一試算之態（每輪之 state·其建地之部分併出帶趟中之帳·R-17″）
++        _pre_a4 = {_p: float(_t.get('分攤登記面積_m2', 0) or 0)
++                   - sum(float(_v) for _v in (_t.get('段三部分併出') or {}).values()) for _p, _t in state["by"].items()}
+         _rq_a4 = []
+         for _u in _act_a4:
+             _g_str, _pcs, _cls, _L = _u['gs'], _u['pcs'], _u['cls'], _u['L']
+@@ -15867,7 +15897,8 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+         _d['段三併出'] = sorted(set(str(_y) for _y in (_d.get('段三併出') or [])) | _marks_a4[_x])
+         if _x in _bnow_a4 and _sort_a4(_tin_a4[_x]) == '建地':
+             # 🆕 `W-G.9-373`（`K-9-66`·R-5 (d)）：建地之部分併出（仍留 build）⇒ 段三部分併出（既有者合之）·⛔ 段三餘量
+-            _pp_a4 = dict((str(_k), float(_v)) for _k, _v in (_d.get('段三部分併出') or {}).items())
++            # 🔧 補令二（R-18″）：既有者（前帳）取輸入之態之該片（_tin_a4）——當下之物件已含本趟之趟中之帳（R-17″）
++            _pp_a4 = dict((str(_k), float(_v)) for _k, _v in (_tin_a4[_x].get('段三部分併出') or {}).items())
+             for _k, _v in sorted(_part_a4.get(_x, {}).items()):
+                 _pp_a4[_k] = _pp_a4.get(_k, 0.0) + _v
+             _d.update({'段三部分併出': {_k: round(_v, 4) for _k, _v in sorted(_pp_a4.items()) if round(_v, 4) > 0}})
