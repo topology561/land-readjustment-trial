@@ -634,10 +634,15 @@ def k6b_stage3_pool_temp(temp_parcels):
     """`W-G.9-344` 補令一 裁三：交予公設地調配（F.3／F.4）之 temp——去除段三所併出之片
     （帶鍵 `段三併出` 者）。回傳**新 list**；⛔ 改其元素。段三不動（無標記）⇒ 元素全同。
     🆕 `W-G.9-357`（`K-9-48` 七項 3〜6）：帶 `段三併出` 且其 `段三餘量` ＞ 0 之片（部分併出）⇒ 以新 dict（淺拷貝）入之，
-    其 `分攤登記面積_m2`、`面積_m2` 各乘 ρ ＝ `段三餘量` ÷（分攤登記面積 ＋ 面積）；其餘同上。"""
+    其 `分攤登記面積_m2`、`面積_m2` 各乘 ρ ＝ `段三餘量` ÷（分攤登記面積 ＋ 面積）；其餘同上。
+    🆕 `W-G.9-373`（`K-9-66`）：帶 `段三併出` 與 `段三部分併出` 而⛔ 帶 `段三餘量` 之片（建地之部分併出·其面積已為剩下）
+    ⇒ 原物件入之。"""
     _out = []
     for tp in (temp_parcels or []):
         if "段三併出" not in tp:
+            _out.append(tp)
+            continue
+        if "段三部分併出" in tp and "段三餘量" not in tp:
             _out.append(tp)
             continue
         _rem = float(tp.get("段三餘量", 0) or 0)
@@ -666,7 +671,9 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
     抽出以供二者共用；本體唯 `_p_of` 之快照查找改於呼叫時為之〔段三不辦時亦須建回呼·⛔ 預取〕，餘逐字未改）。
     回 `{'a_prime', 'trial_winner', 'alloc_state', 'alloc_eval'}`。
     🆕 `W-G.9-353`：`alloc_state`／`alloc_eval` 之配地一律為**試算**（`SS_END_BLOCK_MODE` ＝ `'trial'`·
-    各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。"""
+    各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。
+    🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（入池閘之末態 build；
+    `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。"""
     import copy as _cp
     import contextlib as _cl
     import io as _io
@@ -719,6 +726,7 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
         _t, _b = _copy_pair(temp, build)
         ns["K917_DROPPED"].clear()
         _err = None
+        _bf373 = None   # 🆕 `W-G.9-373`（`K-9-67`）：入池閘之末態 build（保留宗之成員·run_step_g 拋出者⛔ 取）
         with _cl.redirect_stdout(_io.StringIO()):
             _d, _s, _o, _w, _f = run_corner_pk(ns, fake_st, cb, cad, param_rows, _t, _b, setback,
                                                snapshot=snapshot)
@@ -727,6 +735,7 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
                 _sg = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _b, _w, _f, setback,
                                  eff_min_build_by_blk={})
                 _rows = _sg["g_rows"]
+                _bf373 = (_sg.get("k929_6") or {}).get("build")
             except RuntimeError as _e:
                 _err = str(_e).split("\n")[0][:300]
                 _rows = (getattr(_e, "partial", None) or {}).get("g_rows") or []
@@ -747,7 +756,8 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
             elif _r.get("驗_總判") == "保留":
                 _kept.setdefault(_blk, set()).add(_pid)
                 _G[_pid] = float(_r.get("G(㎡)", 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
-        return {"kept": _kept, "bad_pools": _bad, "err": _err, "G": _G}
+        return {"kept": _kept, "bad_pools": _bad, "err": _err, "G": _G,
+                "members": ns["k953_units_of"](_bf373 if _bf373 is not None else _b)[0]}
 
     def alloc_eval(temp, build):
         """🆕 `W-G.9-353`：以所給之宗地試算街角選位與配地，回配地首趟之末端塊評選（深拷貝）；
