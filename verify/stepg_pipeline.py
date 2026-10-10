@@ -278,7 +278,10 @@ def run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
         try:
             _bf, _last, _log9 = ns["k929_6_fixpoint"](
                 build_parcels, _trial, _ss9.get("t8_ownership_map", {}) or {}, _pre,
-                _ss9.get("f3_cad_front_lines", {}) or {})
+                _ss9.get("f3_cad_front_lines", {}) or {},
+                temp_parcels=_ss9.get("f3_k965_temp"),
+                cat_of={b["label"]: b.get("category", "") for b in cb},
+                front_rows={r["街廓"]: r for r in param_rows})
         finally:
             _fin_drops = _cp_k9296.deepcopy(dict(_k917))
             _k917.clear()

@@ -256,6 +256,7 @@ def build_build_parcels(ns, fake_st, v6_bytes, cb, snapshot):
     build_parcels = [tp for tp in temp_parcels
                      if fcb.get(tp["街廓分類"], "") == "可建築土地"
                      and not tp.get("_merged_into_g", False)]
+    fake_st.session_state["f3_k965_temp"] = temp_parcels
     return temp_parcels, build_parcels, swaps
 
 
