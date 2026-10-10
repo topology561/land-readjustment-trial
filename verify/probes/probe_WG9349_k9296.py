@@ -178,11 +178,12 @@ def selftest(repo):
     chk("F7 跨左右推進 ⇒ 併向應分配面積較大者之側（K-9-58 ②）",
         [(L.get("步"), L.get("標的"), L.get("佔位"), L.get("推進側"), L.get("結果")) for L in log7],
         [("第1步", "X1", "X1", "right", "留置")])
-    # F8：含原位可配者之合併單元反不配地 ⇒ 回原狀、改併入原可配之宗之原位；其亦不配地 ⇒ 再回原狀（`K-9-58` ③）
+    # F8：含原位可配者之合併單元反不配地 ⇒ 回原狀、分不到之宗逐宗併入原可配之宗之原位（`K-9-58` ③·`W-G.9-375` 補令一）：
+    #     X2 併入 X1（配地·留置）；X3 其後併入 X1 則不配地 ⇒ 唯 X3 之併入回原狀（X2 之併入⛔ 連帶）
     bf8, _, log8 = FP(copy.deepcopy(b1), mk_trial(lambda b: small(b) | {"X1"} if len(b) == 1 else small(b)),
                       own, PRICE, FL, **KW)
     chk("F8 合併後反不能配 ⇒ 回原狀（K-9-58 ③）", ([L.get("結果") for L in log8], sorted(t["暫編地號"] for t in bf8)),
-        (["回原狀（K-9-58 ③）", "回原狀（併入後不配地）"], ["X1", "X2", "X3"]))
+        (["回原狀（K-9-58 ③）", "留置", "回原狀（併入後不配地）"], ["X1", "X3"]))
     # F9：輪數上限
     chk_raise("F9 逾輪", lambda: FP(copy.deepcopy(b1), mk_trial(small), own, PRICE, FL, max_rounds=1), "未收斂")
     # 判別力：無不配地 ⇒ 無合併、build 原物件
