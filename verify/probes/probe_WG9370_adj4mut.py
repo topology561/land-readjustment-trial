@@ -85,6 +85,11 @@ ALLOW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k
 # 🔧 `W-G.9-373` 補令一：X2 之許增 `end_block_merge_run`（末端塊合併再試之除外之集·KL 甲案·其行為由 F28 量之）
 ALLOW373_APP += ("end_block_merge_run",)
 ALLOW373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
+# 🔧 `W-G.9-375`（`K-9-65`）：X1 之許增 `verify/stepg_pipeline.py`（`run_step_g` 之注入）；X2 之許增入池閘之畫面入口；X4 之除外增
+#   `build_build_parcels`（session 鍵）——本單之接線另由 F29 之 wiring 量之
+ALLOW375_FILES = ("verify/stepg_pipeline.py",)
+ALLOW373_APP += ("_k929_6_screen_gate",)
+ALLOW373_SP += ("build_build_parcels",)
 
 
 def _strip_fns(src, names):
@@ -235,7 +240,7 @@ def wiring(repo, base):
                        capture_output=True, text=True, encoding="utf-8")
     chg = sorted(x for x in r.stdout.split() if x)
     res.append(("X1", f"生產碼 34 檔對基準相異者 ⊆ {{app.py, verify/selection_pipeline.py}}（相異 {chg}）",
-                r.returncode == 0 and set(chg) <= {"app.py", "verify/selection_pipeline.py"}))
+                r.returncode == 0 and set(chg) <= {"app.py", "verify/selection_pipeline.py"} | set(ALLOW375_FILES)))
     a0, a1 = _git_show(repo, base, "app.py"), open(os.path.join(repo, "app.py"), encoding="utf-8").read()
     t0, t1 = _top(a0), _top(a1)
     dif = sorted(k for k in set(t0) | set(t1) if t0.get(k) != t1.get(k))

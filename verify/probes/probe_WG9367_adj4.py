@@ -738,6 +738,9 @@ ALLOW373_APP = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k
 ALLOW373_APP += ("end_block_merge_run",)
 ALLOW373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
 W6_SKIP373 = ("k953_manual_run",)
+# 🔧 `W-G.9-375`（`K-9-65`）：W5 之許增入池閘之畫面入口（注入）與 harness 之 `build_build_parcels`（session 鍵）
+ALLOW375_APP = ("_k929_6_screen_gate",)
+ALLOW375_SP = ("build_build_parcels",)
 ANC_SKIP373 = ("_out.append(tp)", "member", "members")
 FN_GONE373 = ("_k951", "_max357", "_split357", "_try", "_fill953", "_probe953", "_remain953")
 # 🆕 `W-G.9-370`（K-9-57 ⑧）：W6 之許——`k953_manual_run` 之 `S219` 之停機訊息之基準二列（逐字）得易之（唯此二列）
@@ -901,8 +904,8 @@ def _wiring_checks(repo, base, app=None, spp=None):
         chk.append(("W5 頂層之相異 ⊆ 本單之許", False, f"基準讀不到：{type(e).__name__}"))
         return chk
     # W5 頂層之相異 ⊆ 本單之許
-    allow_app = set(NEW_APP) | set(NEW_CONST) | set(CHG_APP) | set(ALLOW373_APP)
-    allow_sp = {"run_adj4"} | set(CHG_SP) | set(ALLOW373_SP)
+    allow_app = set(NEW_APP) | set(NEW_CONST) | set(CHG_APP) | set(ALLOW373_APP) | set(ALLOW375_APP)
+    allow_sp = {"run_adj4"} | set(CHG_SP) | set(ALLOW373_SP) | set(ALLOW375_SP)
     for nm_, cur_, old_, allow_ in (("app.py", atree, ast.parse(bapp), allow_app),
                                     ("verify/selection_pipeline.py", stree, ast.parse(bsp), allow_sp)):
         a_, b_ = _top_dump(cur_), _top_dump(old_)

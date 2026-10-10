@@ -431,6 +431,7 @@ def _screen_inputs(ns, fst, snap, cb, cad, params, tp, bp, sb):
     ss["f3L_corner_min_table"] = params
     ss["f3_manual_baseline"] = cad.get("baselines")
     ss["f3_manual_road_centerlines"] = dict(cad.get("centerlines", {}) or {})   # main() 讀 CAD 後所存（同 _build_wf_ctx 之源）
+    ss["f3_temp_parcels"] = tp   # 🆕 W-G.9-375：main() 於配地之前所存（入池閘〔K-9-65〕之成員之形與道路片之源）
     bmeta = {}
     for b in cb:
         m = dict(b)

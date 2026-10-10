@@ -1,0 +1,901 @@
+# -*- coding: utf-8 -*-
+"""W-G.9-375 量測器（發單側窗七十七擬·檔 F29·⛔ 由受單側改一字）：`K-9-65`（同一地主分不到之宗之處理程序）
+＋ `K-9-58` ①②③（入池閘之三款）之落地——`app.py` 之 `k929_6_fixpoint`、`adj_intake` 與其二入口之注入。
+
+子命令（一律 python verify/probes/probe_WG9375_k965.py <子命令> …）：
+  selftest <repo>
+           合成對照（⛔ 讀本案資料·`harvest(app.py)` 取 `k929_6_fixpoint`、`adj_intake`；`get_min_lot_size` 與
+           `_rect_fits_free_pose` 以玩具代之：最小寬 `3`、配餘地之寬 ≥ `3` 即合格）。玩具之試算：各街廓以投影（x）分左右，
+           左由小而大、右由大而小推進；G ＝ a × 0.6，各側之首宗減側街負擔（街角第 1 宗免·恆配地）；G ＜ 最小分配面積
+           或命中「指定之單元於指定之形必不配地」（`late` 者：build 含某單元其成員 ⊇ 所指者時始命中·他處之合併使之配不到
+           之代用）⇒ 不配地（依推進序記之）；各街廓出一配餘地列（寬 ＝（容量 − ΣG）÷ 深）。
+           K1〜K43 ＝ 各例（期值出自本器之手算·⛔ 呼叫受測碼求期；所據 ＝ `K-9-65`、`K-9-58`、`K-9-57` ④、`K-9-61` ⑤、
+           `K-9-64`、`K-9-66`、`K-9-67`、`K-9-69` 與 `K-6` 典之 `W-G.9-375` 之讀法一〜十三）；P0 ＝ 判式自驗（逐項擾動其期須恰
+           該項紅）。
+  wiring   <repo>
+           接線（AST·字樣）：Y1 `k929_6_fixpoint` 之簽名；Y2 harness 之注入（`run_step_g`）；Y3 畫面之注入
+           （`_k929_6_screen_gate`）；Y4 harness 之 session 鍵（`build_build_parcels`）；Y5 `k929_6_fixpoint` 內之呼叫
+           （`k966_block_merge` 恰一、`k953_alloc_summary` ≥ 1、`k967_rank` ≥ 1、`_projection_order` ≥ 1）；Y6 `adj_intake`
+           讀「入池閘部分併出」與「入池閘成員部分併出」；Y7 `k929_6_fixpoint` 之字串常數⛔ 含案件字面；Y8 三【未裁】之停機已去、未收斂之停機仍在；
+           Y9 畫面對拍器之畫面之 session 有 `f3_temp_parcels`（同 `main()`）。
+  run      <repo> [<退縮> …]
+           harness 實跑本案（預設退縮 `3.5`、`0.0`）之首次 step G（`run_corner_pk` 之後·含入池閘）：R1 入池閘之末態 build
+           （暫編地號·成員·`面積_m2`）＝ 本器所載；R2 配地列（暫編地號·街廓·推進側·G）與不配地紀錄（依推進序）＝ 本器所載；
+           R3 入池閘之紀錄（輪·步·街廓·推進側·歸戶·成員·標的·佔位·併入量·結果）＝ 本器所載。本器所載 ＝ 開工態 `981f143`
+           之同量（配地與其紀錄⛔ 變；唯紀錄增「輪」之逐側逐宗與「步」）。
+  cmp8     <施前.json> <施後.json>
+           `probe_WG9349_k9296.py run` 之二出艙：`rows`、`dropped` 逐項同；入池閘之紀錄（`k929_6`）之各列去鍵「步」後逐項同、
+           施後各列之「步」皆屬本器所列之值。
+rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
+"""
+import ast, contextlib, copy, io, os, re, sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:  # noqa: BLE001
+    pass
+
+FN = "k929_6_fixpoint"
+RHO = 0.6
+
+
+def _harvest(repo):
+    sys.path.insert(0, os.path.join(repo, "verify"))
+    from app_harvest import harvest
+    with contextlib.redirect_stdout(io.StringIO()):
+        ns, fake_st = harvest(os.path.join(repo, "app.py"))
+    return ns, fake_st
+
+
+def rect(x0, x1, y0, y1):
+    return [(x0, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0)]
+
+
+def mk(pid, orig, blk, a, x0, x1, y0=0.0, y1=20.0, cat="住宅區"):
+    return {"暫編地號": pid, "原地號": orig, "所屬街廓": blk, "街廓分類": cat, "分攤登記面積_m2": float(a),
+            "面積_m2": 0.0, "重劃前地價區段": "z1", "polygon_coords": rect(x0, x1, y0, y1)}
+
+
+def BLK(**kw):
+    return dict(dict(split_x=1000.0, m=100.0, burden=9.0, cap=10000.0, depth=20.0, corner=set()), **kw)
+
+
+class Toy:
+    def __init__(self, blocks, fail_first=()):
+        self.blocks = blocks
+        self.fail = {(frozenset(m), float(x0)) for m, x0 in fail_first}
+        self.n = 0
+
+    def trial(self, build):
+        from shapely.geometry import Polygon
+        self.n += 1
+        rows, dropped = [], {}
+        for blk, P in self.blocks.items():
+            ps = [t for t in build if t["所屬街廓"] == blk]
+            cx = {t["暫編地號"]: Polygon(t["polygon_coords"]).representative_point().x for t in ps}
+            left = sorted([t for t in ps if cx[t["暫編地號"]] < P["split_x"]], key=lambda t: cx[t["暫編地號"]])
+            right = sorted([t for t in ps if cx[t["暫編地號"]] >= P["split_x"]], key=lambda t: -cx[t["暫編地號"]])
+            sumg = 0.0
+            for side, grp in (("left", left), ("right", right)):
+                p = 0
+                for t in grp:
+                    k = t["暫編地號"]
+                    a = float(t["分攤登記面積_m2"]) + float(t["面積_m2"])
+                    corner = k in P["corner"]
+                    g = a * RHO - (P["burden"] if (p == 0 and not corner) else 0.0)
+                    mem = frozenset(t.get("入池閘併入") or [k])
+                    x0 = min(c[0] for c in t["polygon_coords"])
+                    if not corner and (g < P["m"] or (mem, float(x0)) in self.fail):
+                        dropped.setdefault((blk, side), []).append({"暫編地號": k, "G(㎡)": round(g, 4)})
+                        continue
+                    rows.append({"暫編地號": k, "所屬街廓": blk, "推進側別": side, "G(㎡)": round(g, 4),
+                                 "驗_宗序": "街角第1宗" if corner else "其後", "驗_總判": "保留"})
+                    sumg += g
+                    p += 1
+            w = max(0.01, (P["cap"] - sumg) / P["depth"])
+            rows.append({"暫編地號": f"{blk}-抵費地", "所屬街廓": blk, "推進側別": "抵費地", "G(㎡)": 0,
+                         "cut_coords": rect(0, w, 0, P["depth"])})
+        return rows, dropped, None
+
+
+class ToyLate(Toy):
+    """Toy 之外：`late` 之 (成員, 形之 x0, 條件之成員) ——build 含某單元之成員 ⊇ 條件之成員者，該單元於該形必不配地
+    （他處之合併使之配不到·重排之代用）。"""
+
+    def __init__(self, blocks, fail_first=(), late=()):
+        super().__init__(blocks, fail_first)
+        self.late = [(frozenset(m), float(x0), frozenset(c)) for m, x0, c in late]
+
+    def trial(self, build):
+        base = self.fail
+        self.fail = base | {(m, x0) for m, x0, c in self.late
+                            if any(frozenset(t.get("入池閘併入") or [t["暫編地號"]]) >= c for t in build)}
+        try:
+            return super().trial(build)
+        finally:
+            self.fail = base
+
+
+def _fx_raw(ns, build, own, blocks, temp="same", fail_first=(), cat=True, max_rounds=None, late=()):
+    toy = ToyLate(blocks, fail_first, late)
+    fl = {b: {"p1": (0.0, 0.0), "p2": (1000.0, 0.0)} for b in blocks}
+    kw = dict(temp_parcels=(build if temp == "same" else temp))
+    if cat:
+        kw.update(cat_of={b: "住宅區" for b in blocks}, front_rows={b: {"正面路寬(m)": 8} for b in blocks})
+    if max_rounds:
+        kw["max_rounds"] = max_rounds
+    return ns[FN](build, toy.trial, own, {"z1": 1.0}, fl, **kw)
+
+
+def _summ(bf, out, log):
+    alloc = {r["暫編地號"]: round(r["G(㎡)"], 2) for r in out[0] if r.get("推進側別") in ("left", "right")}
+    units = {t["暫編地號"]: sorted(t.get("入池閘併入") or []) for t in bf if t.get("入池閘併入")}
+    drops = sorted(e["暫編地號"] for v in out[1].values() for e in v)
+    steps = [(r.get("步"), r.get("標的"), r.get("佔位"), r.get("結果")) for r in log]
+    return {"alloc": alloc, "units": units, "drops": drops, "steps": steps}
+
+
+def _fx(ns, build, own, blocks, **k):
+    return _summ(*_fx_raw(ns, build, own, blocks, **k))
+
+
+def _fxs(*a, **k):
+    """同 _fx；執行中止 ⇒ 回 {'執行中止': 訊息之首列}（該例轉紅·⛔ 波及他例）。"""
+    try:
+        return _fx(*a, **k)
+    except Exception as e:  # noqa: BLE001
+        return {"執行中止": f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}"}
+
+
+def _raise_frag(fn):
+    try:
+        fn()
+    except RuntimeError as e:
+        return str(e)
+    return None
+
+
+def cases(ns):
+    """回 [(名, 得, 期)]。期值出自本器之玩具之手算（⛔ 呼叫受測碼求期）。"""
+    C = []
+    O2 = {"o1": "GA", "o2": "GB", "o3": "GA", "o4": "GB"}
+
+    # K1 弱弱聯合·大者在前（KL 10/07 22:04 第 2 點）：X 150／乙 175／X2 80·最小 100·側街 9
+    b = [mk("X", "o1", "A", 150, 0, 10), mk("乙", "o2", "A", 175, 10, 20), mk("X2", "o3", "A", 80, 20, 30)]
+    C.append(("K1 弱弱聯合·大者在前 ⇒ X2 併入 X、於 X 之位；乙照原位", _fxs(ns, b, O2, {"A": BLK()}),
+              {"alloc": {"X": 129.0, "乙": 105.0}, "units": {"X": ["X", "X2"]}, "drops": [],
+               "steps": [("第4步（弱弱聯合）", "X", "X", "留置")]}))
+    # K2 弱弱聯合·大者在後：X 空出、乙遞補而配不到；X2＋X 於 X2 之位
+    b = [mk("X", "o1", "A", 80, 0, 10), mk("乙", "o2", "A", 175, 10, 20), mk("X2", "o3", "A", 150, 20, 30)]
+    C.append(("K2 弱弱聯合·大者在後 ⇒ X 併入 X2；乙遞補而不配地", _fxs(ns, b, O2, {"A": BLK()}),
+              {"alloc": {"X2": 129.0}, "units": {"X2": ["X", "X2"]}, "drops": ["乙"],
+               "steps": [("第4步（弱弱聯合）", "X2", "X2", "留置")]}))
+    # K3 讀法 2（K-9-64 ②）：X 最大在前；X2 與他街廓已配得之 A-1 相連 ⇒ X2 先依手冊併入；X 單獨⛔ 弱弱聯合
+    b = [mk("X", "o1", "A", 150, 0, 10), mk("乙", "o2", "A", 175, 10, 20), mk("X2", "o3", "A", 80, 20, 30),
+         mk("A-1", "o5", "B", 300, 15, 45, 20, 40)]
+    C.append(("K3 弱弱聯合之前先依手冊併入他街廓（K-9-64）", _fxs(ns, b, dict(O2, o5="GA"), {"A": BLK(), "B": BLK()}),
+              {"alloc": {"A-1": 219.0}, "units": {"A-1": ["A-1", "X2"]}, "drops": ["X", "乙"],
+               "steps": [("第2步（依手冊·他街廓）", "A-1", None, "成")]}))
+    # K4 讀法 3（K-9-66）：P 60／Q 50／R 40 皆配不到，各與 B 街廓之己宗相連；B 唯容 130 ⇒ 52／43.33／34.67
+    b = [mk("P", "p", "A", 60, 0, 10), mk("Q", "q", "A", 50, 10, 20), mk("Rr", "r", "A", 40, 20, 30),
+         mk("P1", "p1", "B", 400, 0, 10, 20, 40), mk("Q1", "q1", "B", 400, 10, 20, 20, 40),
+         mk("R1", "r1", "B", 400, 20, 30, 20, 40)]
+    own = {"p": "GP", "q": "GQ", "r": "GR", "p1": "GP", "q1": "GQ", "r1": "GR"}
+    got = _fxs(ns, b, own, {"A": BLK(m=200.0), "B": BLK(cap=711.0 + 60.0 + 78.0)})
+    C.append(("K4 多位地主同時依手冊併入同一街廓而容不下 ⇒ 按比例（K-9-66·KL 10/07 例一）", got,
+              {"alloc": {"P1": 262.2, "Q1": 266.0, "R1": 260.8}, "units": {}, "drops": ["P", "Q", "Rr"],
+               "steps": [("第2步（依手冊·他街廓）", "P1", None, "部分成"), ("第2步（依手冊·他街廓）", "Q1", None, "部分成"),
+                         ("第2步（依手冊·他街廓）", "R1", None, "部分成")]}))
+    # K5 K-9-58 ③：X（不配地）與 Y（可配）相連；合併於 X 之位反不配地 ⇒ 回原狀、X 併入 Y 之原位
+    b = [mk("X", "o1", "A", 100, 0, 10), mk("Y", "o1b", "A", 190, 10, 20), mk("Z", "o9", "A", 400, 20, 30)]
+    C.append(("K5 合併後反不能配 ⇒ 回原狀、併入原可配之宗之原位（K-9-58 ③）",
+              _fxs(ns, b, {"o1": "GA", "o1b": "GA", "o9": "GZ"}, {"A": BLK()}, fail_first=[(["X", "Y"], 0.0)]),
+              {"alloc": {"Y": 165.0, "Z": 240.0}, "units": {"Y": ["X", "Y"]}, "drops": [],
+               "steps": [("第1步", "Y", "X", "回原狀（K-9-58 ③）"),
+                         ("第1步之回原狀後併入原可配之宗（K-9-58 ③）", "Y", "Y", "留置")]}))
+    # K6 K-9-58 ①：X 與同地主之街角第 1 宗 C 相連 ⇒ ⛔ 合併；依手冊併入 C（檢核）
+    b = [mk("C", "oc", "A", 300, 0, 10), mk("X", "o1", "A", 60, 10, 20), mk("Z", "o9", "A", 400, 20, 30)]
+    C.append(("K6 街角第 1 宗⛔ 合併、依手冊併入（K-9-58 ①）",
+              _fxs(ns, b, {"oc": "GA", "o1": "GA", "o9": "GZ"}, {"A": BLK(corner={"C"})}),
+              {"alloc": {"C": 216.0, "Z": 240.0}, "units": {"C": ["C", "X"]}, "drops": [],
+               "steps": [("街角第1宗（K-9-58 ①）", "C", None, "成")]}))
+    # K7 K-9-58 ②：同地主相連二宗分屬左右推進、皆配不到 ⇒ 向 G 大者之側
+    b = [mk("L1", "l1", "A", 400, 0, 10), mk("X", "ox", "A", 120, 10, 20), mk("Y", "oy", "A", 140, 20, 30),
+         mk("R1", "r1", "A", 400, 30, 40)]
+    C.append(("K7 跨左右推進 ⇒ 併向應分配面積較大之一側（K-9-58 ②）",
+              _fxs(ns, b, {"l1": "G1", "ox": "GA", "oy": "GA", "r1": "G2"}, {"A": BLK(split_x=20.0, m=150.0)}),
+              {"alloc": {"L1": 231.0, "Y": 156.0, "R1": 231.0}, "units": {"Y": ["X", "Y"]}, "drops": [],
+               "steps": [("第4步（相連）", "Y", "Y", "留置")]}))
+    # K8 第 3 步：同街廓同地主之 Z 已配得而不相連 ⇒ 併入 Z（其位）
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("乙", "o2", "A", 300, 10, 20), mk("Z", "o3", "A", 300, 20, 30)]
+    C.append(("K8 第 3 步：併入同街廓不相連之已配得之宗（其位）", _fxs(ns, b, O2, {"A": BLK()}),
+              {"alloc": {"乙": 171.0, "Z": 216.0}, "units": {"Z": ["X", "Z"]}, "drops": [],
+               "steps": [("第3步", "Z", "Z", "留置")]}))
+    # K9 N0-9 之片（同原地號另有一片在他街廓）⇒ ⛔ 第 2、3 步與弱弱聯合
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("乙", "o2", "A", 300, 10, 20), mk("Z", "o3", "A", 300, 20, 30),
+         mk("X'", "o1", "B", 400, 0, 10, 20, 40)]
+    C.append(("K9 N0-9 之片⛔ 第 2、3 步（K-9-64 ③）", _fxs(ns, b, O2, {"A": BLK(), "B": BLK()}),
+              {"alloc": {"乙": 171.0, "Z": 180.0, "X'": 231.0}, "units": {}, "drops": ["X"], "steps": []}))
+    # K10 重排：X 併入在後之 X2 ⇒ 乙遞補至側街而配不到 ⇒ 乙從第 1 步起（與同地主之 Z 相連 ⇒ 第 1 步）
+    b = [mk("X", "o1", "A", 80, 0, 10), mk("乙", "o2", "A", 175, 10, 20), mk("Z", "o4", "A", 300, 20, 30),
+         mk("X2", "o3", "A", 150, 30, 40)]
+    C.append(("K10 重排後遞補者從第 1 步起處理", _fxs(ns, b, O2, {"A": BLK()}),
+              {"alloc": {"Z": 276.0, "X2": 138.0}, "units": {"X2": ["X", "X2"], "Z": ["Z", "乙"]}, "drops": [],
+               "steps": [("第4步（弱弱聯合）", "X2", "X2", "留置"), ("第1步", "Z", "乙", "留置")]}))
+    # K11 弱弱聯合之宗其後因遞補而配不到 ⇒ ⛔ 再弱弱聯合（無第 1〜3 步 ⇒ 空出）
+    b = [mk("X", "o1", "A", 80, 0, 10), mk("乙", "o2", "A", 175, 10, 20), mk("X2", "o3", "A", 95, 20, 30),
+         mk("Z", "o4", "A", 300, 30, 40)]
+    C.append(("K11 弱弱聯合之宗其後配不到 ⇒ ⛔ 再弱弱聯合", _fxs(ns, b, O2, {"A": BLK()}),
+              {"alloc": {"Z": 276.0}, "units": {"X2": ["X", "X2"], "Z": ["Z", "乙"]}, "drops": ["X2"],
+               "steps": [("第4步（弱弱聯合）", "X2", "X2", "入池"), ("第3步", "Z", "Z", "留置")]}))
+    # K12 第 3 步之合併後反不配地 ⇒ 回原狀（X 空出）
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("乙", "o2", "A", 300, 10, 20), mk("Z", "o3", "A", 300, 20, 30)]
+    C.append(("K12 第 3 步併入後反不配地 ⇒ 回原狀",
+              _fxs(ns, b, O2, {"A": BLK()}, fail_first=[(["X", "Z"], 20.0)]),
+              {"alloc": {"乙": 171.0, "Z": 180.0}, "units": {}, "drops": ["X"],
+               "steps": [("第3步", "Z", "Z", "回原狀（併入後不配地）")]}))
+    # K13 經同地主之道路片而相連（第 2 步）：X ─ 道路片 R（同地主）─ B 街廓之 A-1
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("Z9", "o9", "A", 400, 10, 20), mk("A-1", "o5", "B", 300, 0, 10, 30, 50)]
+    road = mk("R", "o6", "RD", 30, 0, 10, 20, 30, cat="道路")
+    C.append(("K13 第 2 步：經同地主之道路片相連",
+              _fxs(ns, b, {"o1": "GA", "o9": "GZ", "o5": "GA", "o6": "GA"}, {"A": BLK(), "B": BLK()},
+                  temp=b + [road]),
+              {"alloc": {"Z9": 231.0, "A-1": 207.0}, "units": {"A-1": ["A-1", "X"]}, "drops": [],
+               "steps": [("第2步（依手冊·他街廓）", "A-1", None, "成")]}))
+    # K14 NOTE 5：輸入之單元（入池閘併入 [U, W]）之成員 W 之形與 X 相連 ⇒ 第 1 步；成員之列⛔ 失
+    u = mk("U", "ou", "A", 300, 10, 20)
+    u["入池閘併入"] = ["U", "W"]
+    w = mk("W", "ow", "A", 50, 20, 30)
+    b = [u, mk("X", "ox", "A", 60, 30, 40), mk("Z9", "o9", "A", 400, 0, 10)]
+    C.append(("K14 輸入之單元之成員之形與成員之列（NOTE 5）",
+              _fxs(ns, b, {"ou": "GA", "ow": "GA", "ox": "GA", "o9": "GZ"}, {"A": BLK()}, temp=b + [w]),
+              {"alloc": {"Z9": 231.0, "U": 216.0}, "units": {"U": ["U", "W", "X"]}, "drops": [],
+               "steps": [("第1步", "U", "U", "留置")]}))
+    # K15 單元之成員之切片取不到 ⇒ 停機
+    msg = _raise_frag(lambda: _fx(ns, [u, mk("X", "ox", "A", 60, 30, 40)], {"ou": "GA", "ox": "GA"}, {"A": BLK()},
+                                  temp=[u]))
+    C.append(("K15 單元之成員之切片取不到 ⇒ 停機", bool(msg and "之切片取不到" in msg), True))
+    # K16 第 2 步須經道路片判相連而切片未給 ⇒ 停機
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("Z9", "o9", "A", 400, 10, 20), mk("A-1", "o5", "B", 300, 0, 10, 30, 50)]
+    msg = _raise_frag(lambda: _fx(ns, b, {"o1": "GA", "o9": "GZ", "o5": "GA"}, {"A": BLK(), "B": BLK()}, temp=None))
+    C.append(("K16 第 2 步須經道路片判相連而切片未給 ⇒ 停機", bool(msg and "temp_parcels" in msg), True))
+    # K17 檢核須街廓分類與正面路寬而未給 ⇒ 停機
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("Z9", "o9", "A", 400, 10, 20), mk("A-1", "o5", "B", 300, 0, 10, 20, 40)]
+    msg = _raise_frag(lambda: _fx(ns, b, {"o1": "GA", "o9": "GZ", "o5": "GA"}, {"A": BLK(), "B": BLK()}, cat=False))
+    C.append(("K17 檢核之輸入未給 ⇒ 停機", bool(msg and "cat_of" in msg), True))
+    # K18 調配之輸入：宿主在他街廓之成員 ⇒ 原位次配地、配地街廓 ＝ 宿主之街廓
+    AI = ns["adj_intake"]
+    BB = {"A": "可建築土地", "B": "可建築土地"}
+    t_x = mk("X", "o1", "A", 60, 0, 10)
+    t_r = mk("A-1", "o5", "B", 300, 0, 10, 20, 40)
+    r_u = dict(t_r, 入池閘併入=["A-1", "X"])
+    try:
+        it = AI([t_x, t_r], [r_u], [{"暫編地號": "A-1", "推進側別": "left", "G(㎡)": 200.0}], {}, {"o1": "GA", "o5": "GA"},
+                BB)
+        row = next(r for r in it["slices"] if r["暫編地號"] == "X")
+        got = (row["類"], row["配地街廓"], row["所屬單元"])
+    except Exception as e:  # noqa: BLE001
+        got = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K18 調配之輸入：宿主在他街廓 ⇒ 配地街廓 ＝ 宿主之街廓", got, (ns["ADJ_DISP_ALLOC"], ["B"], "A-1")))
+    # K19 調配之輸入：排配地時部分併入他宗（入池閘之帳）⇒ 剩下 ＝ 原有面積 × ρ、已併出計入原位次配地
+    x_part = dict(t_x, 面積_m2=-20.0, 入池閘部分併出={"A-1": 20.0})
+    try:
+        it = AI([t_x, t_r], [x_part, dict(t_r, 面積_m2=20.0)],
+                [{"暫編地號": "A-1", "推進側別": "left", "G(㎡)": 200.0}],
+                {("A", "left"): [{"暫編地號": "X", "G(㎡)": 24.0, "不配地由": "臨正街寬"}]}, {"o1": "GA", "o5": "GA"}, BB)
+        row = next(r for r in it["slices"] if r["暫編地號"] == "X")
+        got = (row["類"], round(row["原有面積"], 4), round(row.get("段三併出面積", -1), 4), row["應分配面積"])
+    except Exception as e:  # noqa: BLE001
+        got = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K19 調配之輸入：入池閘之帳之部分併出", got, (ns["ADJ_DISP_POOL"], 40.0, 20.0, 24.0)))
+    # K20 K-9-67 之重劃前面積取輸入之 build 之帳（段三部分併出·切片〔temp〕為起始之態而無其帳）：
+    #   X（分攤 120·已部分併出 20·受併 25 ⇒ a 145·重劃前 100）與 Y（分攤 110·受併 20 ⇒ a 130·重劃前 110）
+    #   應分配面積皆 78（X 於側街之位）⇒ 弱弱聯合之標的 ＝ 重劃前面積大之 Y
+    bx = dict(mk("X", "o1", "A", 120, 0, 10), 面積_m2=25.0, 段三部分併出={"Q": 20.0})
+    by_ = dict(mk("Y", "o3", "A", 110, 20, 30), 面積_m2=20.0)
+    b = [bx, mk("乙", "o2", "A", 200, 10, 20), by_]
+    tp = [mk("X", "o1", "A", 120, 0, 10), mk("乙", "o2", "A", 200, 10, 20), mk("Y", "o3", "A", 110, 20, 30)]
+    C.append(("K20 重劃前面積取輸入之 build 之帳（K-9-67·補令一 R-16′）", _fxs(ns, b, O2, {"A": BLK()}, temp=tp),
+              {"alloc": {"乙": 111.0, "Y": 165.0}, "units": {"Y": ["X", "Y"]}, "drops": [],
+               "steps": [("第4步（弱弱聯合）", "Y", "Y", "留置")]}))
+    # K21 K-9-67 之重劃前面積減本程序之部分併出（入池閘部分併出）：X（150）依手冊部分併入 B 街廓之 r（容 30）後剩 120；
+    #   Y（135·側街之位）與 X 之應分配面積皆 72 ⇒ 弱弱聯合之標的 ＝ 重劃前面積大之 Y（X 之剩下 120 ＜ 135）
+    b = [mk("Y", "o3", "A", 135, 0, 10), mk("乙", "o2", "A", 200, 10, 20), mk("X", "o1", "A", 150, 20, 30),
+         mk("r", "o5", "B", 300, 20, 30, 20, 40)]
+    C.append(("K21 重劃前面積減本程序之部分併出（入池閘部分併出）",
+              _fxs(ns, b, dict(O2, o5="GA"), {"A": BLK(), "B": BLK(cap=249.003)}),
+              {"alloc": {"Y": 144.0, "乙": 120.0, "r": 189.0}, "units": {"Y": ["X", "Y"]}, "drops": [],
+               "steps": [("第2步（依手冊·他街廓）", "r", None, "部分成"), ("第4步（弱弱聯合）", "Y", "Y", "留置")]}))
+    S1R = "第1步之回原狀後併入原可配之宗（K-9-58 ③）"
+    # K22 第 1 步之合併與其回原狀後之併入皆不配地 ⇒ 其後第 2 步（他街廓）照行、收斂
+    b = [mk("X", "o1", "A", 100, 0, 10), mk("Y", "o1b", "A", 190, 10, 20), mk("Z", "o9", "A", 400, 20, 30),
+         mk("R", "o5", "B", 300, 0, 10, 20, 40)]
+    C.append(("K22 K-9-58 ③ 二次皆不配地 ⇒ 續第 2 步（⛔ 空轉）",
+              _fxs(ns, b, {"o1": "GA", "o1b": "GA", "o9": "GZ", "o5": "GA"}, {"A": BLK(), "B": BLK()},
+                   fail_first=[(["X", "Y"], 0.0), (["X", "Y"], 10.0)]),
+              {"alloc": {"Y": 105.0, "Z": 240.0, "R": 231.0}, "units": {"R": ["R", "X"]}, "drops": [],
+               "steps": [("第1步", "Y", "X", "回原狀（K-9-58 ③）"), (S1R, "Y", "Y", "回原狀（併入後不配地）"),
+                         ("第2步（依手冊·他街廓）", "R", None, "成")]}))
+    # K23 部分併出之帳隨剩下入弱弱聯合之單元；單元不配地 ⇒ 調配之輸入：剩下 120 入建築街廓內不能分配、已併出 30
+    b = [mk("Y", "o3", "A", 135, 0, 10), mk("乙", "o2", "A", 200, 10, 20), mk("X", "o1", "A", 150, 20, 30),
+         mk("r", "o5", "B", 300, 20, 30, 20, 40)]
+    tp = [dict(t) for t in b]
+    try:
+        bf, out, lg = _fx_raw(ns, b, dict(O2, o5="GA"), {"A": BLK(), "B": BLK(cap=249.003)}, temp=tp,
+                              fail_first=[(["X", "Y"], 0.0)])
+        it = ns["adj_intake"](tp, bf, out[0], out[1], dict(O2, o5="GA"),
+                              {"A": "可建築土地", "B": "可建築土地"})
+        row = next(r for r in it["slices"] if r["暫編地號"] == "X")
+        got = (_summ(bf, out, lg), (row["類"], round(row["原有面積"], 4), round(row.get("段三併出面積", -1), 4)))
+    except Exception as e:  # noqa: BLE001
+        got = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K23 部分併出之帳隨剩下入單元（調配之輸入⛔ 重計）", got,
+              ({"alloc": {"乙": 111.0, "r": 189.0}, "units": {"Y": ["X", "Y"]}, "drops": ["Y"],
+                "steps": [("第2步（依手冊·他街廓）", "r", None, "部分成"), ("第4步（弱弱聯合）", "Y", "Y", "入池")]},
+               (ns["ADJ_DISP_POOL"], 120.0, 30.0))))
+    # K24 第 1 步之相連以宗之自身之地：u 唯與 r 所受之他街廓之片 x 相鄰 ⇒ ⛔ 與 r 合併（u 為 N0-9 之片 ⇒ 空出）
+    b = [mk("x", "ox", "A", 100, 5, 25, 0, 20), mk("f", "of", "A", 400, 25, 40, 0, 20),
+         mk("u", "ou", "B", 100, 0, 10, 20, 40), mk("s", "os", "B", 400, 10, 20, 20, 40),
+         mk("r", "or", "B", 300, 20, 30, 20, 40), mk("u2", "ou", "C", 400, 100, 110, 40, 60)]
+    own = {"ox": "GA", "of": "GF", "ou": "GA", "os": "GS", "or": "GA"}
+    try:
+        bf, out, lg = _fx_raw(ns, b, own, {"A": BLK(), "B": BLK(), "C": BLK()},
+                              fail_first=[(["r", "u", "x"], 0.0), (["r", "u"], 20.0)])
+        ns["adj_intake"](b, bf, out[0], out[1], own, {"A": "可建築土地", "B": "可建築土地", "C": "可建築土地"})
+        got = (_summ(bf, out, lg), "調配之輸入 ok")
+    except Exception as e:  # noqa: BLE001
+        got = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K24 第 1 步之相連以其自身之地（他街廓併入之片⛔ 計）", got,
+              ({"alloc": {"f": 231.0, "s": 231.0, "r": 240.0, "u2": 231.0}, "units": {"r": ["r", "x"]},
+                "drops": ["u"], "steps": [("第2步（依手冊·他街廓）", "r", None, "成")]}, "調配之輸入 ok")))
+    # K25 K-9-61 ⑤：受併宗其後因他處之合併而不配地 ⇒ 已併入者回原狀（復至其併入之前）、其後重排
+    b = [mk("x", "ox", "A", 60, 0, 10), mk("r", "or", "B", 300, 0, 10, 20, 40),
+         mk("c1", "oc1", "C", 80, 0, 10, 100, 120), mk("cz", "oz", "C", 400, 10, 20, 100, 120),
+         mk("c2", "oc2", "C", 100, 20, 30, 100, 120), mk("d", "od", "D", 300, 20, 30, 120, 140)]
+    C.append(("K25 受併宗最後不配地 ⇒ 已併入者回原狀（K-9-61 ⑤）",
+              _fxs(ns, b, {"ox": "GA", "or": "GA", "oc1": "GC", "oc2": "GC", "od": "GC", "oz": "GZ"},
+                   {"A": BLK(), "B": BLK(), "C": BLK(), "D": BLK(cap=231.003)},
+                   late=[(["r", "x"], 0.0, ["c1", "c2"])]),
+              {"alloc": {"r": 171.0, "cz": 231.0, "c2": 108.0, "d": 171.0}, "units": {"c2": ["c1", "c2"]},
+               "drops": ["x"],
+               "steps": [("第2步（依手冊·他街廓）", "r", None, "回原狀（受併宗不配地·K-9-61 ⑤）"),
+                         ("受併宗不配地（K-9-61 ⑤）", "r", None, "已併入者回原狀"),
+                         ("第2步（依手冊·他街廓）", "d", None, "未成"), ("第4步（弱弱聯合）", "c2", "c2", "留置")]}))
+    # K26 調配之輸入：部分併出之受併宗已為他單元之成員 ⇒ 以其單元判配地
+    t_x = mk("X", "o1", "A", 150, 0, 10)
+    t_r = mk("r", "or", "B", 300, 0, 10, 20, 40)
+    t_t = mk("t", "ot", "B", 400, 10, 20, 20, 40)
+    try:
+        it = AI([t_x, t_r, t_t], [dict(t_x, 面積_m2=-30.0, 入池閘部分併出={"r": 30.0}),
+                                  dict(t_t, 入池閘併入=["r", "t"], 面積_m2=330.0)],
+                [{"暫編地號": "t", "推進側別": "left", "G(㎡)": 400.0}],
+                {("A", "left"): [{"暫編地號": "X", "G(㎡)": 63.0, "不配地由": "臨正街寬"}]},
+                {"o1": "GA", "or": "GA", "ot": "GA"}, BB)
+        row = next(r for r in it["slices"] if r["暫編地號"] == "X")
+        got = (row["類"], round(row["原有面積"], 4), round(row.get("段三併出面積", -1), 4), row["應分配面積"])
+    except Exception as e:  # noqa: BLE001
+        got = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K26 調配之輸入：受併宗為他單元之成員", got, (ns["ADJ_DISP_POOL"], 120.0, 30.0, 63.0)))
+    # K27 第 2 步：經同地主之連續二道路片相連
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("Z9", "o9", "A", 400, 10, 20), mk("A-1", "o5", "B", 300, 0, 10, 40, 60)]
+    rds = [mk("R1", "o6", "RD", 30, 0, 10, 20, 30, cat="道路"), mk("R2", "o7", "RD", 30, 0, 10, 30, 40, cat="道路")]
+    C.append(("K27 第 2 步：經同地主之連續道路片相連",
+              _fxs(ns, b, {"o1": "GA", "o9": "GZ", "o5": "GA", "o6": "GA", "o7": "GA"}, {"A": BLK(), "B": BLK()},
+                   temp=b + rds),
+              {"alloc": {"Z9": 231.0, "A-1": 207.0}, "units": {"A-1": ["A-1", "X"]}, "drops": [],
+               "steps": [("第2步（依手冊·他街廓）", "A-1", None, "成")]}))
+    # K28 第 2 步部分併入後之剩下續第 3 步起（【工】甲）：⛔ 再試他街廓之已配得之宗
+    b = [mk("X", "o1", "A", 150, 0, 10), mk("r1", "o5", "B", 400, 0, 10, 20, 40), mk("r2", "o6", "C", 300, 0, 10, -20, 0)]
+    C.append(("K28 部分併入後之剩下⛔ 再試他街廓（續第 3 步起）",
+              _fxs(ns, b, {"o1": "GA", "o5": "GA", "o6": "GA"}, {"A": BLK(), "B": BLK(cap=309.003), "C": BLK()}),
+              {"alloc": {"r1": 249.0, "r2": 171.0}, "units": {}, "drops": ["X"],
+               "steps": [("第2步（依手冊·他街廓）", "r1", None, "部分成")]}))
+    # K29 K-9-57 ④：地主於本街廓已有配得之宗（第 3 步皆回原狀）⇒ ⛔ 弱弱聯合
+    b = [mk("X", "o1", "A", 60, 0, 10), mk("乙", "o2", "A", 200, 10, 20), mk("Z", "o3", "A", 300, 20, 30),
+         mk("丙", "o4", "A", 300, 30, 40), mk("X2", "o5", "A", 80, 40, 50)]
+    C.append(("K29 地主於本街廓已有配得之宗 ⇒ ⛔ 弱弱聯合（K-9-57 ④）",
+              _fxs(ns, b, {"o1": "GA", "o2": "GB", "o3": "GA", "o4": "GD", "o5": "GA"}, {"A": BLK()},
+                   fail_first=[(["X", "Z"], 20.0), (["X2", "Z"], 20.0)]),
+              {"alloc": {"乙": 111.0, "Z": 180.0, "丙": 180.0}, "units": {}, "drops": ["X", "X2"],
+               "steps": [("第3步", "Z", "Z", "回原狀（併入後不配地）"), ("第3步", "Z", "Z", "回原狀（併入後不配地）")]}))
+    # K30 N0-9 之片與同地主之街角第 1 宗相連 ⇒ ⛔ 併入（交手冊先行·讀法 5）
+    b = [mk("C", "oc", "A", 300, 0, 10), mk("X", "o1", "A", 60, 10, 20), mk("Z", "o9", "A", 400, 20, 30),
+         mk("X'", "o1", "B", 400, 0, 10, 20, 40)]
+    C.append(("K30 N0-9 之片⛔ 併入街角第 1 宗",
+              _fxs(ns, b, {"oc": "GA", "o1": "GA", "o9": "GZ"}, {"A": BLK(corner={"C"}), "B": BLK()}),
+              {"alloc": {"C": 180.0, "Z": 240.0, "X'": 231.0}, "units": {}, "drops": ["X"], "steps": []}))
+    # K31 第 3 步之已配得之宗為街角第 1 宗（不相連）⇒ 依手冊併入（檢核）
+    b = [mk("C", "oc", "A", 300, 0, 10), mk("乙", "o2", "A", 300, 10, 20), mk("X", "o1", "A", 60, 20, 30)]
+    C.append(("K31 第 3 步：街角第 1 宗依手冊併入",
+              _fxs(ns, b, {"oc": "GA", "o2": "GB", "o1": "GA"}, {"A": BLK(corner={"C"})}),
+              {"alloc": {"C": 216.0, "乙": 180.0}, "units": {"C": ["C", "X"]}, "drops": [],
+               "steps": [("第3步（街角第1宗·依手冊·K-9-58 ①）", "C", None, "成")]}))
+    # K32 K-9-58 ③ 之回原狀後：分不到之宗各併入與之相鄰之原可配之宗（K-9-61 ①）
+    b = [mk("u1", "a1", "A", 60, 0, 10), mk("r1", "a2", "A", 300, 10, 20), mk("r2", "a3", "A", 250, 20, 30),
+         mk("u2", "a4", "A", 60, 30, 40)]
+    C.append(("K32 回原狀後各併入相鄰之原可配之宗",
+              _fxs(ns, b, {"a1": "GA", "a2": "GA", "a3": "GA", "a4": "GA"}, {"A": BLK()},
+                   fail_first=[(["r1", "r2", "u1", "u2"], 0.0)]),
+              {"alloc": {"r1": 207.0, "r2": 186.0}, "units": {"r1": ["r1", "u1"], "r2": ["r2", "u2"]}, "drops": [],
+               "steps": [("第1步", "r1", "u1", "回原狀（K-9-58 ③）"), (S1R, "r1", "r1", "留置"),
+                         (S1R, "r2", "r2", "留置")]}))
+    # K33 合併之單元須部分併入他街廓（K-9-66）而其帳未支援 ⇒ 停機（⛔ 靜默）
+    u3 = dict(mk("U", "ou", "A", 60, 0, 10), 面積_m2=60.0, 入池閘併入=["U", "W"])
+    b = [u3, mk("Z9", "o9", "A", 400, 20, 30), mk("r", "o5", "B", 300, 0, 20, 20, 40)]
+    msg = _raise_frag(lambda: _fx(ns, b, {"ou": "GA", "ow": "GA", "o9": "GZ", "o5": "GA"},
+                                  {"A": BLK(), "B": BLK(cap=260.003)}, temp=b + [mk("W", "ow", "A", 60, 10, 20)]))
+    C.append(("K33 單元之部分併入 ⇒ 停機", bool(msg and "程式未支援" in msg), True))
+    M2 = "第2步（依手冊·他街廓）"
+    # K34 K-9-58 ③ 之「合併後反不能配」含其後因他處之合併而終不配地者 ⇒ 回原狀（收斂時·逐次回溯）
+    b = [mk("X", "ox", "A", 100, 0, 10), mk("Y", "oy", "A", 190, 10, 20), mk("W", "ow", "A", 100, 20, 30),
+         mk("V", "ov", "A", 300, 30, 40), mk("Z", "oz", "A", 400, 40, 50)]
+    C.append(("K34 合併之宗終不配地 ⇒ 回原狀（K-9-58 ③·收斂時）",
+              _fxs(ns, b, {"ox": "GA", "oy": "GA", "ow": "GW", "ov": "GW", "oz": "GZ"}, {"A": BLK()},
+                   late=[(["X", "Y"], 0.0, ["V", "W"])]),
+              {"alloc": {"Y": 165.0, "V": 240.0, "Z": 240.0}, "units": {"Y": ["X", "Y"], "V": ["V", "W"]}, "drops": [],
+               "steps": [("第1步", "Y", "X", "回原狀（K-9-58 ③）"), (S1R, "Y", "Y", "留置"), ("第1步", "V", "W", "留置")]}))
+    # K35 已試之帳以宗之成員為準（⛔ 以暫編地號）：二宗相連合併後之單元得續第 2 步（不論單元之名取何宗）
+    got = []
+    for ax, ax2 in ((80, 60), (60, 80)):
+        b = [mk("x", "ox", "A", ax, 0, 10), mk("x2", "ox2", "A", ax2, 10, 20), mk("Z9", "oz", "A", 400, 20, 30),
+             mk("r", "or", "B", 300, 0, 10, 20, 40), mk("r2", "or2", "C", 320, 10, 20, -20, 0)]
+        got.append(_fxs(ns, b, {"ox": "GA", "ox2": "GA", "or": "GA", "or2": "GA", "oz": "GZ"},
+                        {"A": BLK(), "B": BLK(cap=231.003), "C": BLK()}))
+    C.append(("K35 已試之帳以成員為準", got,
+              [{"alloc": {"Z9": 231.0, "r": 171.0, "r2": 267.0}, "units": {"r2": ["r2", "x", "x2"]}, "drops": [],
+                "steps": [(M2, "r", None, "未成"), ("第4步（相連）", "x", "x", "續併"), (M2, "r2", None, "成")]},
+               {"alloc": {"Z9": 231.0, "r": 171.0, "r2": 267.0}, "units": {"r2": ["r2", "x", "x2"]}, "drops": [],
+                "steps": [(M2, "r", None, "未成"), ("第4步（相連）", "x2", "x", "續併"), (M2, "r2", None, "成")]}]))
+    # K36 調配之輸入：段三部分併出之片其剩下排配地時整筆併入他街廓之宗 ⇒ 配地街廓 ＝ 段三之受併宗之街廓 ∪ 宿主之街廓
+    x6 = dict(mk("x", "ox", "A", 100, 0, 10), 面積_m2=-10.0, 段三部分併出={"q": 10.0}, 段三併出=["q"])
+    q6 = dict(mk("q", "oq", "A", 400, 10, 20), 面積_m2=10.0)
+    r6 = mk("r", "or", "B", 300, 0, 10, 20, 40)
+    own6 = {"ox": "GA", "oq": "GQ", "or": "GA"}
+    try:
+        bf, out, lg = _fx_raw(ns, [x6, q6, r6], own6, {"A": BLK(), "B": BLK()})
+        tp6 = [dict(mk("x", "ox", "A", 100, 0, 10), 段三部分併出={"q": 10.0}, 段三併出=["q"]),
+               mk("q", "oq", "A", 400, 10, 20), r6]
+        it = AI(tp6, bf, out[0], out[1], own6, BB)
+        row = next(r for r in it["slices"] if r["暫編地號"] == "x")
+        got = (row["類"], row["配地街廓"], round(row["原有面積"], 4), round(row.get("段三併出面積", -1), 4))
+    except Exception as e:  # noqa: BLE001
+        got = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K36 調配之輸入：配地街廓含宿主之街廓", got, (ns["ADJ_DISP_ALLOC"], ["A", "B"], 90.0, 10.0)))
+    # K37 紀錄之「結果」：合併之宗其後受他街廓之土地併入 ⇒ 其合併之列仍為「留置」
+    b = [mk("X", "ox", "A", 100, 0, 10), mk("Y", "oy", "A", 190, 10, 20), mk("Z", "oz", "A", 400, 20, 30),
+         mk("w", "ow", "B", 60, 10, 20, 20, 40), mk("zb", "ozb", "B", 400, 0, 10, 20, 40)]
+    C.append(("K37 合併之列之結果⛔ 為他街廓之併入所掩",
+              _fxs(ns, b, {"ox": "GA", "oy": "GA", "ow": "GA", "oz": "GZ", "ozb": "GZB"}, {"A": BLK(), "B": BLK()}),
+              {"alloc": {"Y": 201.0, "Z": 240.0, "zb": 231.0}, "units": {"Y": ["X", "Y", "w"]}, "drops": [],
+               "steps": [("第1步", "Y", "X", "留置"), (M2, "Y", None, "成")]}))
+    # K38 不配地之宗之相連以其自身之地（他街廓併入之片⛔ 計）⇒ 受併宗其後不配地者⛔ 藉其所受之片續第 2 步（K-9-61 ⑤）
+    b = [mk("x", "ox", "A", 60, 0, 10), mk("Z9", "oz", "A", 400, 10, 20),
+         mk("r", "or", "B", 320, 0, 10, 20, 40), mk("r2", "or2", "C", 300, 0, 10, -20, 0),
+         mk("K", "ok", "E", 300, 0, 10, 200, 220), mk("y", "oy", "E", 60, 10, 20, 200, 220),
+         mk("d", "od", "D", 300, 10, 20, 220, 240)]
+    C.append(("K38 受併宗之相連⛔ 藉他街廓併入之片",
+              _fxs(ns, b, {"ox": "GA", "or": "GA", "or2": "GA", "oz": "GZ", "ok": "GY", "oy": "GY", "od": "GY"},
+                   {"A": BLK(), "B": BLK(), "C": BLK(), "D": BLK(), "E": BLK(corner={"K"}, cap=240.003)},
+                   late=[(["r", "x"], 0.0, ["d", "y"])]),
+              {"alloc": {"Z9": 231.0, "r": 183.0, "r2": 171.0, "d": 207.0, "K": 180.0}, "units": {"d": ["d", "y"]},
+               "drops": ["x"],
+               "steps": [(M2, "r", None, "回原狀（受併宗不配地·K-9-61 ⑤）"), ("受併宗不配地（K-9-61 ⑤）", "r", None, "已併入者回原狀"),
+                         ("街角第1宗（K-9-58 ①）", "K", None, "未成"), (M2, "d", None, "成")]}))
+    # K39 回原狀之回溯由最近之一次施起：X＋Y（第 1 步）其後併入 w（第 3 步）而終不配地 ⇒ 先回 w 之併入；X＋Y 仍配地則止
+    b = [mk("X", "ox", "A", 100, 0, 10), mk("Y", "oy", "A", 190, 10, 20), mk("Z", "oz", "A", 400, 20, 30),
+         mk("w", "ow", "A", 60, 30, 40), mk("W", "oW", "A", 100, 40, 50), mk("V", "oV", "A", 300, 50, 60)]
+    C.append(("K39 回溯由最近之一次施起",
+              _fxs(ns, b, {"ox": "GA", "oy": "GA", "ow": "GA", "oz": "GZ", "oW": "GW", "oV": "GW"}, {"A": BLK()},
+                   late=[(["X", "Y", "w"], 0.0, ["V", "W"])]),
+              {"alloc": {"Y": 165.0, "Z": 240.0, "V": 240.0}, "units": {"Y": ["X", "Y"], "V": ["V", "W"]}, "drops": ["w"],
+               "steps": [("第1步", "Y", "X", "留置"), ("第3步", "Y", "Y", "回原狀（併入後不配地）"), ("第1步", "V", "W", "留置")]}))
+    # K40 第 3 步併入之片（不相連）⛔ 使受併宗與其鄰相連：z 唯與 r 所併入之 w 相鄰 ⇒ 第 3 步於 r 之位（⛔ 第 1 步而移位）
+    b = [mk("w", "ow", "A", 60, 0, 10), mk("z", "oz", "A", 300, 10, 20), mk("p", "op", "A", 400, 20, 30),
+         mk("r", "or", "A", 300, 30, 40), mk("q", "oq", "A", 400, 40, 50)]
+    C.append(("K40 不相連而併入之片⛔ 為相連",
+              _fxs(ns, b, {"ow": "GA", "oz": "GA", "or": "GA", "op": "GP", "oq": "GQ"}, {"A": BLK()},
+                   fail_first=[(["w", "z"], 0.0), (["w", "z"], 10.0)], late=[(["z"], 10.0, ["r", "w"])]),
+              {"alloc": {"p": 231.0, "r": 396.0, "q": 240.0}, "units": {"r": ["r", "w", "z"]}, "drops": [],
+               "steps": [("第1步", "z", "w", "回原狀（K-9-58 ③）"), (S1R, "z", "z", "回原狀（併入後不配地）"),
+                         ("第3步", "r", "r", "續併"), ("第3步", "r", "r", "留置")]}))
+    # K41 K-9-61 ⑤ 之回溯由最近之一次收受起：x1→r1（第 1 輪）、x2→r2（第 2 輪）其後二受併宗皆不配地 ⇒ 先回 x2→r2；
+    #     r1 復配地則止（⛔ 先回最早之一次）
+    b = [mk("x1", "ox1", "A", 60, 0, 10), mk("r1", "or1", "B", 300, 0, 10, 20, 40),
+         mk("x2", "ox2", "C", 300, 0, 10, 100, 120), mk("r2", "or2", "D", 300, 0, 10, 120, 140),
+         mk("e1", "oe1", "E", 200, 0, 10, 200, 220), mk("e2", "oe2", "E", 300, 10, 20, 200, 220)]
+    C.append(("K41 他街廓之併入之回溯由最近之一次起（K-9-61 ⑤）",
+              _fxs(ns, b, {"ox1": "GA", "or1": "GA", "ox2": "GC", "or2": "GC", "oe1": "GE", "oe2": "GE"},
+                   {"A": BLK(), "B": BLK(), "C": BLK(), "D": BLK(), "E": BLK()},
+                   late=[(["x2"], 0.0, ["r1", "x1"]), (["e1"], 0.0, ["r2", "x2"]),
+                         (["r1", "x1"], 0.0, ["e1", "e2"]), (["r2", "x2"], 0.0, ["e1", "e2"])]),
+              {"alloc": {"r1": 207.0, "r2": 171.0, "e1": 111.0, "e2": 180.0}, "units": {"r1": ["r1", "x1"]},
+               "drops": ["x2"],
+               "steps": [(M2, "r1", None, "成"), (M2, "r2", None, "回原狀（受併宗不配地·K-9-61 ⑤）"),
+                         ("受併宗不配地（K-9-61 ⑤）", "r2", None, "已併入者回原狀")]}))
+    # K42 回原狀之組合⛔ 再施（跨回溯而存）：w→V（第 3 步）回原狀後 w→V2；其後第 1 步之合併回原狀（回至 w→V 之前）
+    #     ⇒ w→V ⛔ 再試（雖今可配）·仍 w→V2
+    b = [mk("u1", "a1", "A", 60, 0, 10), mk("r1", "a2", "A", 300, 10, 20), mk("r2", "a3", "A", 250, 20, 30),
+         mk("u2", "a4", "A", 60, 30, 40), mk("Z", "z1", "A", 400, 40, 50), mk("w", "w1", "A", 60, 50, 60),
+         mk("Z2", "z2", "A", 400, 60, 70), mk("V", "w2", "A", 300, 70, 80), mk("Z3", "z3", "A", 400, 80, 90),
+         mk("V2", "w3", "A", 300, 90, 100)]
+    C.append(("K42 回原狀之組合⛔ 再施（跨回溯）",
+              _fxs(ns, b, {"a1": "GA", "a2": "GA", "a3": "GA", "a4": "GA", "z1": "GZ", "z2": "GZ2", "z3": "GZ3",
+                           "w1": "GW", "w2": "GW", "w3": "GW"}, {"A": BLK()},
+                   late=[(["V", "w"], 70.0, ["r1", "r2", "u1", "u2"]), (["r1", "r2", "u1", "u2"], 0.0, ["V2", "w"])]),
+              {"alloc": {"r1": 207.0, "r2": 186.0, "Z": 240.0, "Z2": 240.0, "V": 180.0, "Z3": 240.0, "V2": 216.0},
+               "units": {"r1": ["r1", "u1"], "r2": ["r2", "u2"], "V2": ["V2", "w"]}, "drops": [],
+               "steps": [("第1步", "r1", "u1", "回原狀（K-9-58 ③）"), (S1R, "r1", "r1", "留置"), (S1R, "r2", "r2", "留置"),
+                         ("第3步", "V2", "V2", "留置")]}))
+    # K43 K-9-58 ③ 之回原狀後之併入⛔ 取已試之組合：u→r1 已回原狀 ⇒ 其後之回原狀 u 併入 r2（⛔ 再併 r1·雖相鄰）
+    b = [mk("u", "a1", "A", 60, 0, 10), mk("r1", "a2", "A", 300, 10, 20), mk("r2", "a3", "A", 300, 20, 30),
+         mk("Z", "z1", "A", 400, 30, 40), mk("v", "a4", "A", 60, 40, 50), mk("Z2", "z2", "A", 400, 50, 60)]
+    C.append(("K43 回原狀後之併入⛔ 取已試之組合",
+              _fxs(ns, b, {"a1": "GA", "a2": "GA", "a3": "GA", "a4": "GA", "z1": "GZ", "z2": "GZ2"}, {"A": BLK()},
+                   fail_first=[(["r1", "r2", "u"], 0.0), (["r1", "u"], 10.0), (["r1", "r2", "u", "v"], 0.0)]),
+              {"alloc": {"r1": 171.0, "r2": 252.0, "Z": 240.0, "Z2": 240.0}, "units": {"r2": ["r2", "u", "v"]},
+               "drops": [],
+               "steps": [("第1步", "r2", "u", "回原狀（K-9-58 ③）"), (S1R, "r1", "r1", "回原狀（併入後不配地）"),
+                         ("第3步", "r2", "r2", "續併"), ("第1步", "r2", "u", "回原狀（K-9-58 ③）"),
+                         (S1R, "r2", "r2", "留置")]}))
+    return C
+
+
+def selftest(repo):
+    ns, _ = _harvest(repo)
+    if FN not in ns or "adj_intake" not in ns:
+        print("  🔴 受詞缺")
+        print("⇒ 紅 ['受詞缺']；rc 1")
+        return 1
+    ns["get_min_lot_size"] = lambda cat, w: {"min_width": 3.0, "min_depth": 10.0}
+    ns["_rect_fits_free_pose"] = lambda P, W, D, *a, **k: (P.bounds[2] - P.bounds[0]) >= W - 1e-9
+    red = []
+    try:
+        C = cases(ns)
+    except Exception as e:  # noqa: BLE001
+        print(f"  🔴 玩具執行中止：{type(e).__name__}：{str(e).splitlines()[0][:300] if str(e) else ''}")
+        print("⇒ 紅 ['執行中止']；rc 1")
+        return 1
+    for name, got, exp in C:
+        ok = got == exp
+        print(("  ✅ " if ok else "  🔴 ") + name)
+        if not ok:
+            print(f"       得 {got!r}")
+            print(f"       期 {exp!r}")
+            red.append(name.split()[0])
+    # P0：判式自驗——逐項擾動其期，須恰該項轉紅（其餘之項之判⛔ 變）
+    base = {j for j, (_, g2, e2) in enumerate(C) if g2 != e2}
+    p0 = 0
+    for i in range(len(C)):
+        bad = {j for j, (_, g2, e2) in enumerate(C) if g2 != (("擾動", e2) if j == i else e2)}
+        if bad == base | {i}:
+            p0 += 1
+    ok0 = p0 == len(C)
+    print(("  ✅ " if ok0 else "  🔴 ") + f"P0 判式自驗 {p0}／{len(C)}")
+    if not ok0:
+        red.append("P0")
+    print(f"⇒ 紅 {red}；rc {1 if red else 0}")
+    return 1 if red else 0
+
+
+def _fn(tree, name):
+    return next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name), None)
+
+
+def _calls(node, name):
+    out = []
+    for n in ast.walk(node):
+        if isinstance(n, ast.Call):
+            f = n.func
+            if (isinstance(f, ast.Name) and f.id == name) or \
+                    (isinstance(f, ast.Subscript) and isinstance(f.slice, ast.Constant) and f.slice.value == name):
+                out.append(n)
+    return out
+
+
+def wiring(repo):
+    src = {p: open(os.path.join(repo, p), encoding="utf-8").read()
+           for p in ("app.py", "verify/stepg_pipeline.py", "verify/selection_pipeline.py",
+                     "verify/probes/probe_WG9345_screen.py")}
+    A = ast.parse(src["app.py"])
+    S = ast.parse(src["verify/stepg_pipeline.py"])
+    P = ast.parse(src["verify/selection_pipeline.py"])
+    Q = ast.parse(src["verify/probes/probe_WG9345_screen.py"])
+    chk = []
+    f = _fn(A, FN)
+    kw = [a.arg for a in f.args.kwonlyargs] if f else []
+    pos = [a.arg for a in f.args.args] if f else []
+    dft = dict(zip(kw, f.args.kw_defaults)) if f else {}
+    ok1 = (pos == ["build_parcels", "trial", "own_map", "pre_price_by_zone", "front_lines"]
+           and all(k in dft and isinstance(dft[k], ast.Constant) and dft[k].value is None
+                   for k in ("max_rounds", "temp_parcels", "cat_of", "front_rows")))
+    chk.append(("Y1 簽名：五位置參數 ＋ 關鍵字 max_rounds／temp_parcels／cat_of／front_rows（預設 None）", ok1))
+    rs = _fn(S, "run_step_g")
+    cs = _calls(rs, FN) if rs else []
+    ok2 = (len(cs) == 1 and {k.arg for k in cs[0].keywords} >= {"temp_parcels", "cat_of", "front_rows"}
+           and "f3_k965_temp" in (ast.get_source_segment(src["verify/stepg_pipeline.py"], cs[0]) or ""))
+    chk.append(("Y2 harness 之 run_step_g：入池閘之呼叫恰一、注入三參數、切片取 session 之 f3_k965_temp", ok2))
+    sg = _fn(A, "_k929_6_screen_gate")
+    cg = _calls(sg, FN) if sg else []
+    seg = ast.get_source_segment(src["app.py"], cg[0]) if cg else ""
+    ok3 = (len(cg) == 1 and {k.arg for k in cg[0].keywords} >= {"temp_parcels", "cat_of", "front_rows"}
+           and all(s in (seg or "") for s in ("f3_temp_parcels", "classified_blocks", "sb_rows_by_label")))
+    chk.append(("Y3 畫面之 _k929_6_screen_gate：注入三參數（f3_temp_parcels·classified_blocks·sb_rows_by_label）", ok3))
+    bb = _fn(P, "build_build_parcels")
+    ok4 = bool(bb) and '"f3_k965_temp"' in (ast.get_source_segment(src["verify/selection_pipeline.py"], bb) or "")
+    chk.append(("Y4 harness 之 build_build_parcels 寫 session 之 f3_k965_temp", ok4))
+    n966 = len(_calls(f, "k966_block_merge")) if f else -1
+    ok5 = (n966 == 1 and len(_calls(f, "k953_alloc_summary")) >= 1 and len(_calls(f, "k967_rank")) >= 1
+           and len(_calls(f, "_projection_order")) >= 1)
+    chk.append((f"Y5 k929_6_fixpoint 內：k966_block_merge 恰一（得 {n966}）·k953_alloc_summary／k967_rank／"
+                "_projection_order 皆呼", ok5))
+    ai = _fn(A, "adj_intake")
+    seg_ai = ast.get_source_segment(src["app.py"], ai) or "" if ai else ""
+    ok6 = bool(ai) and "入池閘部分併出" in seg_ai and "入池閘成員部分併出" in seg_ai
+    chk.append(("Y6 adj_intake 讀「入池閘部分併出」與「入池閘成員部分併出」", ok6))
+    lits = [n.value for n in ast.walk(f)] if False else \
+        [n.value for n in ast.walk(f) if isinstance(n, ast.Constant) and isinstance(n.value, str)] if f else []
+    hit = [s for s in lits if re.search(r"(?<![A-Za-z])R[1-6](?![0-9])|628|G0[0-3][0-9]|UC9898", s)]
+    chk.append((f"Y7 k929_6_fixpoint 之字串常數⛔ 含案件字面（命中 {hit[:3]}）", f is not None and not hit))
+    body = (ast.get_source_segment(src["app.py"], f) or "") if f else ""
+    ok8 = f is not None and "【未裁】" not in body and "未收斂" in body
+    chk.append(("Y8 三【未裁】之停機已去（K-9-58 ①②③）·未收斂之停機仍在", ok8))
+    si = _fn(Q, "_screen_inputs")
+    ok9 = bool(si) and 'ss["f3_temp_parcels"] = tp' in (ast.get_source_segment(src["verify/probes/probe_WG9345_screen.py"], si) or "")
+    chk.append(("Y9 畫面對拍器之畫面之 session 寫 f3_temp_parcels（同 main()）", ok9))
+    red = []
+    for name, ok in chk:
+        print(("  ✅ " if ok else "  🔴 ") + name)
+        if not ok:
+            red.append(name.split()[0])
+    print(f"⇒ 紅 {red}；rc {1 if red else 0}")
+    return 1 if red else 0
+
+
+# ── run：本案之期（開工態 981f143 之同量·入池閘之首次 step G）──
+EXP = {
+    3.5: {
+        "n": (51, 28, 21),
+        "units": [
+            ["628-1(2)", ["628(2)", "628-1(2)"], 11.49],
+            ["628-20(2)", ["628-20(2)", "628-30(1)", "628-45(1)"], 119.7],
+            ["628-21(1)", ["628-21(1)", "628-22(1)", "628-23(1)"], 372.32],
+            ["628-28(1)", ["628-28(1)", "628-29(1)"], 114.0],
+            ["628-30(3)", ["628-30(3)", "628-45(2)"], 362.38],
+            ["628-40(1)", ["628-40(1)", "628-43(1)"], 0.45],
+            ["628-47(1)", ["628-47(1)", "628-48(1)", "628-49(2)"], 381.61],
+        ],
+        "log": [
+            [1, "第1步", "R2", "left", "G010", ["628-40(1)", "628-43(1)"], "628-40(1)", "628-40(1)", 0.45, "留置"],
+            [1, "第4步（相連）", "R3", "left", "G006", ["628-47(1)", "628-48(1)", "628-49(2)"], "628-47(1)", "628-47(1)",
+             381.61, "留置"],
+            [1, "第4步（相連）", "R3", "right", "G014", ["628-28(1)", "628-29(1)"], "628-28(1)", "628-28(1)", 114.0, "入池"],
+            [1, "第1步", "R5", "left", "G007", ["628-20(2)", "628-30(1)", "628-45(1)"], "628-20(2)", "628-45(1)", 119.7,
+             "留置"],
+            [1, "第4步（相連）", "R6", "left", "G009", ["628(2)", "628-1(2)"], "628-1(2)", "628(2)", 11.49, "入池"],
+            [2, "第1步", "R3", "right", "G007", ["628-30(3)", "628-45(2)"], "628-30(3)", "628-45(2)", 362.38, "留置"],
+            [2, "第1步", "R6", "left", "G017", ["628-21(1)", "628-22(1)", "628-23(1)"], "628-21(1)", "628-23(1)",
+             372.32, "留置"],
+        ],
+    },
+    0.0: {
+        "n": (52, 29, 21),
+        "units": [
+            ["628-1(2)", ["628(2)", "628-1(2)"], 11.49],
+            ["628-20(2)", ["628-20(2)", "628-30(1)", "628-45(1)"], 119.7],
+            ["628-21(1)", ["628-21(1)", "628-22(1)", "628-23(1)"], 372.32],
+            ["628-28(1)", ["628-28(1)", "628-29(1)"], 114.0],
+            ["628-40(1)", ["628-40(1)", "628-43(1)"], 0.45],
+            ["628-47(1)", ["628-47(1)", "628-48(1)", "628-49(2)"], 381.61],
+        ],
+        "log": [
+            [1, "第1步", "R2", "left", "G010", ["628-40(1)", "628-43(1)"], "628-40(1)", "628-40(1)", 0.45, "留置"],
+            [1, "第4步（相連）", "R3", "left", "G006", ["628-47(1)", "628-48(1)", "628-49(2)"], "628-47(1)", "628-47(1)",
+             381.61, "留置"],
+            [1, "第4步（相連）", "R3", "right", "G014", ["628-28(1)", "628-29(1)"], "628-28(1)", "628-28(1)", 114.0, "入池"],
+            [1, "第1步", "R5", "left", "G007", ["628-20(2)", "628-30(1)", "628-45(1)"], "628-20(2)", "628-45(1)", 119.7,
+             "留置"],
+            [1, "第4步（相連）", "R6", "left", "G009", ["628(2)", "628-1(2)"], "628-1(2)", "628(2)", 11.49, "入池"],
+            [2, "第1步", "R6", "left", "G017", ["628-21(1)", "628-22(1)", "628-23(1)"], "628-21(1)", "628-23(1)",
+             372.32, "留置"],
+        ],
+    },
+}
+EXP_ALLOC_DROPS = {}   # 由本器之末段載入（配地列與不配地紀錄·見下）
+
+
+def _pipeline(ns, fst, sb):
+    import run_verification as rv
+    import selection_pipeline as sp
+    from stepg_pipeline import run_step_g
+    with contextlib.redirect_stdout(io.StringIO()):
+        snap = rv.load_snapshot()
+        cb_by, cad = rv.build_pipeline(ns, fst, snap)
+        rv.build_ownership(ns, fst, rv.ANON_XLSX)
+        v6 = open(rv.V6DXF, "rb").read()
+        tp, bp, _ = rv.build_build_parcels(ns, fst, v6, list(cb_by.values()), snap)
+        params = rv.build_param_table(ns, fst, cb_by, cad, snap, sb)
+        pk = sp.run_corner_pk(ns, fst, list(cb_by.values()), cad, params, tp, bp, sb, snapshot=snap)
+        ns["K917_DROPPED"].clear()
+        sg = run_step_g(ns, fst, list(cb_by.values()), cad, snap, params, copy.deepcopy(bp), pk[3], pk[4], sb,
+                        eff_min_build_by_blk={})
+    bf = sg["k929_6"]["build"]
+    units = sorted([str(t["暫編地號"]), sorted(str(m) for m in (t.get("入池閘併入") or [])),
+                    round(float(t.get("面積_m2", 0) or 0), 2)] for t in bf if t.get("入池閘併入"))
+    alloc = sorted([str(r["暫編地號"]), str(r.get("所屬街廓")), str(r.get("推進側別")), round(float(r.get("G(㎡)") or 0), 2)]
+                   for r in sg["g_rows"] if r.get("推進側別") in ("left", "right"))
+    drops = sorted([f"{k[0]}|{k[1]}", [str(e.get("暫編地號")) for e in v]] for k, v in ns["K917_DROPPED"].items())
+    log = [[r.get("輪"), r.get("步"), r.get("街廓"), r.get("推進側"), r.get("歸戶"), list(r.get("成員") or []),
+            r.get("標的"), r.get("佔位"), round(float(r.get("併入量(a′)") or 0), 2), r.get("結果")]
+           for r in sg["k929_6"]["log"]]
+    return len(bf), units, alloc, drops, log
+
+
+def run(repo, sbs):
+    ns, fst = _harvest(repo)
+    red = []
+    for sb in sbs:
+        try:
+            nb, units, alloc, drops, log = _pipeline(ns, fst, sb)
+        except Exception as e:  # noqa: BLE001
+            print(f"  ⚠️ {sb}：執行中止 {type(e).__name__}：{str(e).splitlines()[0][:200] if str(e) else ''}")
+            print("⇒ 無從判定；rc 3")
+            return 3
+        E = EXP[sb]
+        ea, ed = EXP_ALLOC_DROPS[sb]
+        n = (nb, len(alloc), sum(len(v) for _, v in drops))
+        r1 = (n == E["n"] and units == E["units"])
+        r2 = (alloc == ea and drops == ed)
+        r3 = (log == E["log"])
+        for nm, ok, info in (("R1", r1, f"build {n[0]} 宗·單元 {len(units)}"),
+                             ("R2", r2, f"配地 {n[1]} 宗·不配地 {n[2]} 宗"),
+                             ("R3", r3, f"入池閘之紀錄 {len(log)} 列")):
+            print(("  ✅ " if ok else "  🔴 ") + f"{nm}@{sb}：{info} ＝ 本器所載 {ok}")
+            if not ok:
+                red.append(f"{nm}@{sb}")
+        if not r3:
+            for row in log:
+                print(f"       {row}")
+    print(f"⇒ 紅 {red}；rc {1 if red else 0}")
+    return 1 if red else 0
+
+
+STEP_LABELS = ("第1步", "第4步（相連）", "第3步", "第4步（弱弱聯合）", "第1步之回原狀後併入原可配之宗（K-9-58 ③）",
+               "第2步（依手冊·他街廓）", "街角第1宗（K-9-58 ①）", "第3步（街角第1宗·依手冊·K-9-58 ①）",
+               "受併宗不配地（K-9-61 ⑤）")
+
+
+def cmp8(pre, post):
+    """`probe_WG9349_k9296.py run` 之二 JSON（施前／施後）：`rows`、`dropped` 逐項同；`k929_6`（入池閘之紀錄）之各列去鍵「步」
+    後逐項同，且施後各列之「步」皆屬本器所列之值。"""
+    import json
+    a = json.load(open(pre, encoding="utf-8"))
+    b = json.load(open(post, encoding="utf-8"))
+    diff = []
+    if sorted(a) != sorted(b):
+        diff.append(f"鍵 {sorted(a)} ≠ {sorted(b)}")
+    for k in ("rows", "dropped"):
+        if a.get(k) != b.get(k):
+            diff.append(k)
+    la, lb = list(a.get("k929_6") or []), list(b.get("k929_6") or [])
+    if len(la) != len(lb):
+        diff.append(f"k929_6 列數 {len(la)} ≠ {len(lb)}")
+    else:
+        for i, (ra, rb) in enumerate(zip(la, lb)):
+            if "步" in ra or rb.get("步") not in STEP_LABELS:
+                diff.append(f"k929_6[{i}] 之「步」{ra.get('步')!r}／{rb.get('步')!r}")
+            elif {k: v for k, v in rb.items() if k != "步"} != ra:
+                diff.append(f"k929_6[{i}]")
+    print(f"  rows {len(a.get('rows') or [])}／{len(b.get('rows') or [])}；入池閘之紀錄 {len(la)}／{len(lb)} 列"
+          f"（施後之「步」{[r.get('步') for r in lb]}）")
+    print(f"相異 {len(diff)} 項" + (f"：{diff}" if diff else "") + (" ⇒ ✅ 同（入池閘之紀錄唯增「步」）" if not diff else " ⇒ 🔴"))
+    return 0 if not diff else 1
+
+
+def main(argv):
+    if len(argv) >= 3 and argv[1] == "selftest":
+        return selftest(argv[2])
+    if len(argv) >= 3 and argv[1] == "wiring":
+        return wiring(argv[2])
+    if len(argv) == 4 and argv[1] == "cmp8":
+        return cmp8(argv[2], argv[3])
+    if len(argv) >= 3 and argv[1] == "run":
+        sbs = [float(x) for x in argv[3:]] or [3.5, 0.0]
+        if any(sb not in EXP for sb in sbs):
+            print("用法錯：退縮唯 3.5／0.0")
+            return 2
+        return run(argv[2], sbs)
+    print(__doc__)
+    return 2
+
+# ── 本案之配地列（暫編地號·街廓·推進側·G）與不配地紀錄（依推進序）——開工態 981f143 之同量 ──
+EXP_ALLOC_DROPS[3.5] = (
+    [
+        ["628(1)", "R4", "left", 1521.05],
+        ["628(5)", "R1", "right", 227.73],
+        ["628-1(1)", "R4", "right", 457.73],
+        ["628-18(1)", "R6", "right", 307.78],
+        ["628-18(2)", "R5", "left", 206.86],
+        ["628-20(1)", "R6", "right", 336.56],
+        ["628-20(2)", "R5", "left", 361.78],
+        ["628-21(1)", "R6", "left", 433.77],
+        ["628-21(2)", "R5", "right", 471.39],
+        ["628-22(2)", "R5", "right", 520.42],
+        ["628-23(2)", "R5", "right", 423.6],
+        ["628-30(3)", "R3", "right", 657.36],
+        ["628-31(2)", "R2", "left", 391.67],
+        ["628-31(3)", "R3", "right", 380.8],
+        ["628-32(2)", "R2", "right", 436.98],
+        ["628-32(3)", "R3", "left", 421.4],
+        ["628-34(1)", "R2", "right", 432.1],
+        ["628-34(2)", "R3", "left", 250.24],
+        ["628-35(2)", "R1", "right", 609.95],
+        ["628-36(1)", "R1", "left", 575.73],
+        ["628-37(1)", "R1", "right", 214.97],
+        ["628-39(1)", "R2", "left", 236.09],
+        ["628-4(1)", "R6", "left", 695.38],
+        ["628-40(1)", "R2", "left", 298.43],
+        ["628-41(1)", "R2", "left", 176.6],
+        ["628-47(1)", "R3", "left", 365.82],
+        ["628-7(1)", "R6", "right", 300.97],
+        ["628-7(2)", "R5", "left", 254.69],
+    ],
+    [
+        ["R1|right", ["628-34(3)"]],
+        ["R2|left", ["628-42(1)", "628-27(1)", "628-30(2)"]],
+        ["R2|right", ["628-35(1)", "628-49(1)", "628-50(1)", "628-51(1)", "628-52(1)"]],
+        ["R3|left", ["628(4)", "628-46(1)"]],
+        ["R3|right", ["628-42(2)", "628-27(2)", "628-28(1)"]],
+        ["R5|left", ["628-53(2)"]],
+        ["R5|right", ["628(3)", "628-32(1)", "628-31(1)"]],
+        ["R6|left", ["628-1(2)"]],
+        ["R6|right", ["628-53(1)", "628-38(1)"]],
+    ],
+)
+EXP_ALLOC_DROPS[0.0] = (
+    [
+        ["628(1)", "R4", "left", 1521.05],
+        ["628(5)", "R1", "right", 227.73],
+        ["628-1(1)", "R4", "right", 457.73],
+        ["628-18(1)", "R6", "right", 307.78],
+        ["628-18(2)", "R5", "left", 205.49],
+        ["628-20(1)", "R6", "right", 336.56],
+        ["628-20(2)", "R5", "left", 351.63],
+        ["628-21(1)", "R6", "left", 433.77],
+        ["628-21(2)", "R5", "right", 471.39],
+        ["628-22(2)", "R5", "right", 520.43],
+        ["628-23(2)", "R5", "right", 423.6],
+        ["628-30(3)", "R3", "right", 441.1],
+        ["628-31(2)", "R2", "left", 389.01],
+        ["628-31(3)", "R3", "right", 376.43],
+        ["628-32(2)", "R2", "right", 436.98],
+        ["628-32(3)", "R3", "left", 421.4],
+        ["628-34(1)", "R2", "right", 432.1],
+        ["628-34(2)", "R3", "left", 250.24],
+        ["628-35(2)", "R1", "left", 599.91],
+        ["628-36(1)", "R1", "right", 592.2],
+        ["628-37(1)", "R1", "left", 208.16],
+        ["628-39(1)", "R2", "left", 228.83],
+        ["628-4(1)", "R6", "left", 695.38],
+        ["628-40(1)", "R2", "left", 290.88],
+        ["628-41(1)", "R2", "left", 175.95],
+        ["628-45(2)", "R3", "right", 195.17],
+        ["628-47(1)", "R3", "left", 365.82],
+        ["628-7(1)", "R6", "right", 300.97],
+        ["628-7(2)", "R5", "left", 248.27],
+    ],
+    [
+        ["R1|right", ["628-34(3)"]],
+        ["R2|left", ["628-42(1)", "628-27(1)", "628-30(2)"]],
+        ["R2|right", ["628-35(1)", "628-49(1)", "628-50(1)", "628-51(1)", "628-52(1)"]],
+        ["R3|left", ["628(4)", "628-46(1)"]],
+        ["R3|right", ["628-42(2)", "628-27(2)", "628-28(1)"]],
+        ["R5|left", ["628-53(2)"]],
+        ["R5|right", ["628(3)", "628-32(1)", "628-31(1)"]],
+        ["R6|left", ["628-1(2)"]],
+        ["R6|right", ["628-53(1)", "628-38(1)"]],
+    ],
+)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

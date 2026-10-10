@@ -1053,6 +1053,13 @@ SP_ALLOW |= {"run_adj4"}
 # 🔧 `W-G.9-373`：本單之新名與所改者亦許（本單之頂層之限另由 F27 之 wiring 量之）
 APP_ALLOW |= set(NEW373_APP) | set(CHG373_APP)
 SP_ALLOW |= set(CHG373_SP)
+# 🔧 `W-G.9-375`（`K-9-65`）：入池閘之畫面入口（注入）出 W6 之受詞；W7 之許增其與 harness 之 `build_build_parcels`（session 鍵）
+#   （本單之接線另由 F29 之 wiring 量之）
+CHG375_APP = ("_k929_6_screen_gate",)
+CHG375_SP = ("build_build_parcels",)
+KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG375_APP)
+APP_ALLOW |= set(CHG375_APP)
+SP_ALLOW |= set(CHG375_SP)
 
 
 def _top_dump(tree):

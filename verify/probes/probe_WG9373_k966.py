@@ -570,6 +570,8 @@ CASE_LIT_RE = re.compile(r"^(R\d+|RD\d+|G\d+|G0\d\d|\d{3}(-\d+)?(\(\d+\))?|left|
 SIGS = {"k966_block_merge": (["state", "claims", "try_apply"], ["grid"]), "k967_rank": (["g", "pre_area", "pid"], []),
         "k967_pre_area": (["pid", "members", "area_of"], [])}
 PLACES = ("k953_manual_run", "k6b_stage3_run", "adj4_pass1_run")
+# 🔧 `W-G.9-375`（`K-9-65`·`K-9-64`）：排配地時之第 2 步（依手冊併入他街廓·`K-9-66`）亦以之 ⇒ Y2 之處增入池閘
+PLACES += ("k929_6_fixpoint",)
 GONE = ("_max357", "_k951", "_split357", "_fill953", "_remain953", "_vmax_a4")
 
 
@@ -608,8 +610,8 @@ def _wiring_checks(app):
                 f"簽名之異 {sig_bad}；K966_CLASSES {consts.get('K966_CLASSES')!r}；K966_GRID {consts.get('K966_GRID')!r}"))
     per = {nm: len(_calls(top[nm], "k966_block_merge")) if nm in top else None for nm in PLACES}
     tot = len(_calls(tree, "k966_block_merge"))
-    chk.append(("Y2 k966_block_merge 之呼叫恰在三處各一", all(v == 1 for v in per.values()) and tot == 3,
-                f"三處 {per}；全檔 {tot}"))
+    chk.append(("Y2 k966_block_merge 之呼叫恰在四處各一（三處 ＋ 入池閘·W-G.9-375）",
+                all(v == 1 for v in per.values()) and tot == len(PLACES), f"四處 {per}；全檔 {tot}"))
     rk = {nm: len(_calls(top[nm], "k967_rank")) if nm in top else None
           for nm in ("k929_6_fixpoint", "k953_manual_run", "k6b_stage3_run", "adj4_pass1_run")}
     rk_ok = (rk["k929_6_fixpoint"] or 0) >= 1 and (rk["k953_manual_run"] or 0) >= 3 and \

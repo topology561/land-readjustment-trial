@@ -5,6 +5,9 @@
   selftest <repo>
            合成對照（⛔ 讀本案資料·只 harvest `app.py`）：`k929_6_enabled` 之解析、`k929_6_unbuildable` 之四項、
            `k917_should_drop` 之旗標二態、`k929_6_fixpoint` 之九例（合併·標的·佔位·a′·入池·三停機·不收斂·判別力）。
+           🔧 `W-G.9-375`（`K-9-65`·`K-9-58` ①②③·⛔ 上列一字不刪）：F5 之同歸戶不相連而已配得者改依第 3 步併入；F6／F7／F8
+           之三停機改為依 `K-9-58` ①②③ 處理（街角第 1 宗依手冊併入·跨左右向 G 大者之側·合併後反不配地者回原狀）；
+           入池閘之呼叫增 `temp_parcels`／`cat_of`／`front_rows`。R3 之「結果」增 `K-9-65` 之諸值。
   run      <repo> <退縮> [<out.json>]
            harness 生產入口（`run_corner_pk_k6b` → `run_step_g`）跑一情境；旗標取自環境（`WV_K929_6`）。出艙：
            合併紀錄、不配地（含其由）、逐街廓之配地宗數與 ΣG；並驗：
@@ -124,6 +127,8 @@ def selftest(repo):
         return trial
 
     own = {"L1": "G1", "L2": "G1", "L3": "G1", "L4": "G2", "L5": "G1"}
+    # 🔧 `W-G.9-375`：入池閘之注入（切片 ＝ 各例之 build 自身〔⛔ 道路片〕；檢核之街廓分類與正面路寬）
+    KW = dict(cat_of={"B": "住宅區"}, front_rows={"B": {"正面路寬(m)": 8.0}})
     small = lambda b: {t["暫編地號"] for t in b if float(t["分攤登記面積_m2"]) + float(t["面積_m2"]) < 150}
 
     # F1：X1(300·過)｜X2(60·不過)｜X3(40·不過) 同歸戶相鄰（左推進）⇒ 併入 X1、佔 X1 之位（投影最小）、留置
@@ -149,13 +154,16 @@ def selftest(repo):
     b4 = [P("Y1", 0, 2, 60, lot="L1"), P("Y2", 2, 4, 50, zone="z2", lot="L2")]
     _, _, log4 = FP(b4, mk_trial(small), own, PRICE, FL)
     chk("F4 併入量 a′", log4[0]["併入量(a′)"] if log4 else None, 100.0)
-    # F5：異歸戶相鄰（L4）與同歸戶不相鄰（L5）⇒ 皆⛔ 合併
+    # F5：異歸戶相鄰（L4）⇒ ⛔ 合併；同歸戶不相鄰而已配得（L5）⇒ 依第 3 步併入（`W-G.9-375`·`K-9-65`）
     b5 = [P("Z1", 0, 2, 60, lot="L1"), P("Z2", 2, 4, 300, lot="L4"), P("Z3", 20, 22, 300, lot="L5")]
-    _, _, log5 = FP(b5, mk_trial(small), own, PRICE, FL)
-    chk("F5 無合併", len(log5), 0)
-    # F6：合併組含街角第 1 宗 ⇒ 停機
-    chk_raise("F6 含街角第 1 宗", lambda: FP(copy.deepcopy(b1), mk_trial(small, corner=("X1",)), own, PRICE, FL),
-              "含街角第 1 宗")
+    _, _, log5 = FP(b5, mk_trial(small), own, PRICE, FL, **KW)
+    chk("F5 異歸戶相鄰⛔ 合併·同歸戶不相鄰而已配得 ⇒ 第 3 步",
+        [(L.get("步"), L.get("標的"), L.get("成員")) for L in log5], [("第3步", "Z3", ["Z1", "Z3"])])
+    # F6：街角第 1 宗⛔ 入合併組；相連之分不到之宗依手冊併入之（檢核·`K-9-58` ①）
+    bf6, _, log6 = FP(copy.deepcopy(b1), mk_trial(small, corner=("X1",)), own, PRICE, FL, **KW)
+    chk("F6 街角第 1 宗（K-9-58 ①）", ([(L.get("步"), L.get("標的"), L.get("結果")) for L in log6],
+                                  [(t["暫編地號"], t.get("入池閘併入")) for t in bf6]),
+        ([("街角第1宗（K-9-58 ①）", "X1", "成")] * 2, [("X1", ["X1", "X2", "X3"])]))
     # F7：跨左右推進 ⇒ 停機
     def trial7(b):
         rows, dl = [], []
@@ -166,11 +174,15 @@ def selftest(repo):
             else:
                 rows.append({"暫編地號": t["暫編地號"], "推進側別": "right", "G(㎡)": a * 0.6, "驗_宗序": "其後"})
         return rows, {("B", "left"): dl}, None
-    chk_raise("F7 跨左右推進", lambda: FP(copy.deepcopy(b1), trial7, own, PRICE, FL), "非單一")
-    # F8：含原位可配者之合併單元終不配地 ⇒ 停機
-    chk_raise("F8 一達一未達之反例",
-              lambda: FP(copy.deepcopy(b1), mk_trial(lambda b: small(b) | {"X1"} if len(b) == 1 else small(b)),
-                         own, PRICE, FL), "一達一未達")
+    _, _, log7 = FP(copy.deepcopy(b1), trial7, own, PRICE, FL, **KW)
+    chk("F7 跨左右推進 ⇒ 併向應分配面積較大者之側（K-9-58 ②）",
+        [(L.get("步"), L.get("標的"), L.get("佔位"), L.get("推進側"), L.get("結果")) for L in log7],
+        [("第1步", "X1", "X1", "right", "留置")])
+    # F8：含原位可配者之合併單元反不配地 ⇒ 回原狀、改併入原可配之宗之原位；其亦不配地 ⇒ 再回原狀（`K-9-58` ③）
+    bf8, _, log8 = FP(copy.deepcopy(b1), mk_trial(lambda b: small(b) | {"X1"} if len(b) == 1 else small(b)),
+                      own, PRICE, FL, **KW)
+    chk("F8 合併後反不能配 ⇒ 回原狀（K-9-58 ③）", ([L.get("結果") for L in log8], sorted(t["暫編地號"] for t in bf8)),
+        (["回原狀（K-9-58 ③）", "回原狀（併入後不配地）"], ["X1", "X2", "X3"]))
     # F9：輪數上限
     chk_raise("F9 逾輪", lambda: FP(copy.deepcopy(b1), mk_trial(small), own, PRICE, FL, max_rounds=1), "未收斂")
     # 判別力：無不配地 ⇒ 無合併、build 原物件
@@ -257,7 +269,8 @@ def run(repo, sb, out=None):
         rowby = {str(r.get("暫編地號")): r for r in rows}
         for L in (k or {}).get("log", []):
             print(f"     合併 {L}")
-            if L.get("結果") not in ("留置", "入池", "續併"):
+            if L.get("結果") not in ("留置", "入池", "續併", "成", "部分成", "未成", "回原狀（K-9-58 ③）",
+                                     "回原狀（併入後不配地）", "已併入者回原狀"):
                 ok3 = False
             if L.get("結果") == "留置":
                 r = rowby.get(L["標的"])
