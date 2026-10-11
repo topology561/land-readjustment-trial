@@ -1,0 +1,215 @@
+diff --git a/app.py b/app.py
+index d621827..81eb7cc 100644
+--- a/app.py
++++ b/app.py
+@@ -14135,6 +14135,44 @@ def k967_pre_area(pid, members, area_of):
+     return _tot967
+ 
+ 
++def k967_pool_out(build_final):
++    """`GB-204` ①：入池閘之帳之各片已部分併出之量——`W-G.9-378`。回 `{片: 已併出之量}`：`build_final`（入池閘之末態
++    build）為 `None` 或空 ⇒ `{}`；其每一宗（依序），自身之 `入池閘部分併出`（`{受併宗: 來源量}`）非空者，該宗之暫編地號之片
++    之量 ＝ 其值之和；其 `入池閘成員部分併出`（`{片: {受併宗: 來源量}}`·缺 ⇒ 空）之每一片，帳非空者，該片之量 ＝ 帳之值之和
++    （帳缺或空者⛔ 列·同調配之輸入之帳之表）。⛔ 改其輸入。
++    停機（`RuntimeError`）：同一片之帳見於二處（二宗，或一宗之自身與其成員）；任一片之量非大於 0。"""
++    _po967 = {}
++    for _u967 in (build_final or []):
++        _ent967 = []
++        if _u967.get('入池閘部分併出'):
++            _ent967.append((str(_u967['暫編地號']), _u967['入池閘部分併出']))
++        for _p967, _l967 in (_u967.get('入池閘成員部分併出') or {}).items():
++            if _l967:
++                _ent967.append((str(_p967), _l967))
++        for _p967, _l967 in _ent967:
++            if _p967 in _po967:
++                raise RuntimeError(f"🔴 [GB-204] 片 {_p967!r} 之入池閘之帳見於二處 ⇒ 停機")
++            _q967 = sum(float(_v967) for _v967 in _l967.values())
++            if not _q967 > 0:
++                raise RuntimeError(f"🔴 [GB-204] 片 {_p967!r} 之入池閘之帳之量 {_q967!r} ≤ 0 ⇒ 停機")
++            _po967[_p967] = _q967
++    return _po967
++
++
++def k967_pool_less(area_of, pool_out):
++    """`GB-204` ①：重劃前面積之表減入池閘之帳——`W-G.9-378`。回**新** `dict`：鍵與其序同 `area_of`，各片之值 ＝
++    `area_of` 之值 − `pool_out`（`k967_pool_out` 之回傳·`None` 視為空）之該片之量（無 ⇒ 0）；⛔ 改 `area_of`。
++    停機（`RuntimeError`）：`pool_out` 非 dict；其片不在重劃前面積之表。"""
++    if pool_out is None:
++        pool_out = {}
++    if not isinstance(pool_out, dict):
++        raise RuntimeError(f"🔴 [GB-204] pool_out 非 dict（{type(pool_out).__name__}）⇒ 停機")
++    _miss967 = sorted(str(_p967) for _p967 in pool_out if _p967 not in area_of)
++    if _miss967:
++        raise RuntimeError(f"🔴 [GB-204] 入池閘之帳之片 {_miss967} 不在重劃前面積之表 ⇒ 停機")
++    return {_p967: float(area_of[_p967]) - float(pool_out.get(_p967, 0)) for _p967 in area_of}
++
++
+ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, centerlines,
+                    a_prime, trial_winner, alloc_state, *, log_print=print, contests=None):
+     """`K-6 §二 段三`（逐一嘗試）＋ `K-9-48`（街角合併重試·後處理）——`W-G.9-344`。
+@@ -14183,6 +14221,7 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+     🔧 補令二（R-17″／R-19″）：趟中之帳——同一趟之內，建地一經部分併出（仍留 build），即於試施之拷貝中寫其帳（`段三部分併出`
+       之受併宗加其量·`段三併出` 加受併宗），其後之試算（含入池閘）所見之該片即帶之；趟末之帳之合照舊（以本趟之帳覆寫後加
+       前帳·⛔ 重加）。第 `5` 項之重劃前面積之表取與其 `G`／`members` 同一試算之態。
++    🔧 `W-G.9-378`（`GB-204`）：第 `5` 項之重劃前面積之表再減與 `_cur` 同一試算之入池閘之帳（`alloc_state` 之回傳另含 `pool_out`·以 `k967_pool_less` 減之）。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -14846,6 +14885,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         # 🔧 補令二（R-19″）：取與 _cur 同一試算之態（state·其建地之部分併出帶趟中之帳·R-17″）
+         _pa = {p: float(t.get('分攤登記面積_m2', 0) or 0) - sum(float(_v) for _v in (t.get('段三部分併出') or {}).values())
+                for p, t in state["by"].items()}
++        # 🔧 `W-G.9-378`（`GB-204`）：再減與 _cur 同一試算之入池閘之帳（其回傳之 pool_out）
++        _pa = k967_pool_less(_pa, _cur.get("pool_out"))
+         _seq = {}
+         for x in xs:
+             _gx = str(_own.get(str(_by0[x].get('原地號', '') or ''), '') or '')
+@@ -15293,6 +15334,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     🔧 補令二（R-17″〜R-19″）：趟中之帳——同一趟之內，建地一經部分併出（仍留 build），即於試施之拷貝中寫其帳（`段三部分併出`
+       之受併宗加其量·`段三併出` 加受併宗），其後之試算所見之該片即帶之；趟末之帳之合，其既有者取輸入之態之該片（⛔ 重加）。
+       `K-9-51` 之重劃前面積之表取與其 `G`／`members` 同一試算之態（受併宗之擇與道路片之落點之擇照舊取首次之試算）。
++    🔧 `W-G.9-378`（`GB-204`）：計畫時之表（首次之試算 `C0`）與 `K-9-51` 之表（`_cur`）各再減其同一試算之入池閘之帳（`alloc_state` 之回傳之 `pool_out`·以 `k967_pool_less` 減之）。
+     """
+     import copy as _cp953
+     from shapely.geometry import Polygon as _Pg953, LineString as _Ln953
+@@ -15397,6 +15439,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     #   補令二（R-19″）：本表唯受併宗之擇與道路片之落點之擇用之（首次之試算 C0·其態 ＝ 輸入之態）；K-9-51 之表另取之
+     _pre953 = {_pk953: float(_tq.get('分攤登記面積_m2', 0) or 0)
+                - sum(float(_v) for _v in (_tq.get('段三部分併出') or {}).values()) for _pk953, _tq in _tin953.items()}
++    # 🔧 `W-G.9-378`（`GB-204`）：再減與 C0 同一試算之入池閘之帳（其回傳之 pool_out）
++    _pre953 = k967_pool_less(_pre953, C0.get('pool_out'))
+ 
+     _lots_of953 = {}                    # 歸戶 → 其已配得之宗（字典序）
+     for _h953 in sorted(_home953):
+@@ -15844,6 +15888,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+             _pre951 = {_pk953: float(_tq.get('分攤登記面積_m2', 0) or 0)
+                        - sum(float(_v) for _v in (_tq.get('段三部分併出') or {}).values())
+                        for _pk953, _tq in state["by"].items()}
++            # 🔧 `W-G.9-378`（`GB-204`）：再減與 _cur 同一試算之入池閘之帳（其回傳之 pool_out）
++            _pre951 = k967_pool_less(_pre951, _cur.get('pool_out'))
+             for _x in _xs953:
+                 _gx = _gown953(_tin953[_x])
+                 _list = []
+@@ -16029,9 +16075,11 @@ def adj4_depth_of(session):
+ 
+ def adj4_trial_state(summary, err, build_used):
+     """第一趟之試算之回傳（純函式·畫面與 harness 共用）：`summary`（`k953_alloc_summary` 之回傳）＋ `err` ＋
+-    `members`／`units`（`k953_units_of(build_used)`）。"""
++    `members`／`units`（`k953_units_of(build_used)`）。
++    🔧 `W-G.9-378`（`GB-204`）：回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
+     _mem_a4, _uni_a4 = k953_units_of(build_used)
+-    return dict(summary, err=err, members=_mem_a4, units=_uni_a4)
++    # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
++    return dict(summary, err=err, members=_mem_a4, units=_uni_a4, pool_out=k967_pool_out(build_used))
+ 
+ 
+ def adj4_plan(intake, temp_parcels, g_rows, classified_blocks, eff_min_build_by, front_derive_by, front_name_by,
+@@ -16094,6 +16142,7 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+       🔧 補令二（R-17″〜R-19″）：趟中之帳——同一趟之內，建地一經部分併出（仍留 build），即於試施之拷貝中寫其帳
+       （`段三部分併出` 之受併宗加其量·`段三併出` 加受併宗），其後之試算所見之該片即帶之；趟末之帳之合，其既有者取輸入之態
+       之該片（⛔ 重加）。受併宗之擇之重劃前面積之表取每輪之試算之態。
++    🔧 `W-G.9-378`（`GB-204`）：各輪之重劃前面積之表再減該輪之試算（`_S`）之入池閘之帳（`alloc_state` 之回傳之 `pool_out`·以 `k967_pool_less` 減之）。
+     """
+     import copy as _cp_a4
+     from shapely.geometry import Polygon as _Pg_a4
+@@ -16301,6 +16350,8 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+         #   補令二（R-19″）：取與 _S 同一試算之態（每輪之 state·其建地之部分併出帶趟中之帳·R-17″）
+         _pre_a4 = {_p: float(_t.get('分攤登記面積_m2', 0) or 0)
+                    - sum(float(_v) for _v in (_t.get('段三部分併出') or {}).values()) for _p, _t in state["by"].items()}
++        # 🔧 `W-G.9-378`（`GB-204`）：再減與 _S 同一試算之入池閘之帳（其回傳之 pool_out）
++        _pre_a4 = k967_pool_less(_pre_a4, _S.get('pool_out'))
+         _rq_a4 = []
+         for _u in _act_a4:
+             _g_str, _pcs, _cls, _L = _u['gs'], _u['pcs'], _u['cls'], _u['L']
+@@ -16331,8 +16382,9 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
+                 if _noG:
+                     raise RuntimeError(f"{_hd_a4} 街廓 {_bk} 之候選之宗 {_noG} 無 G——受併宗之序無從定之 ⇒ 停機")
+ 
+-                # 🔧 `W-G.9-373`（`K-9-67`）：同距離者之序改為 `k967_rank`（G 大 → 重劃前面積〔成員之輸入之分攤登記面積〕
+-                #   大 → 暫編地號小）；補令一（R-16′）：各片之重劃前面積 ＝ 分攤登記面積 − 段三部分併出之和
++                # 🔧 `W-G.9-373`（`K-9-67`）：同距離者之序改為 `k967_rank`（G 大 → 重劃前面積〔本輪之表 `_pre_a4`（分攤登記面積
++                #   − `段三部分併出` 之和 − 同一試算之入池閘之帳）之成員之和〕大 → 暫編地號小）；補令一（R-16′）：各片之重劃前面積
++                #   ＝ 分攤登記面積 − 段三部分併出之和；🔧 `W-G.9-378`（`GB-204`）：再減同一試算（_S）之入池閘之帳
+                 def _rkey_a4(_h):
+                     _ms = _mof_a4(_h)
+                     _same = any(_m in _tin_a4 and str(_tin_a4[_m].get('原地號', '') or '') in _lots_set for _m in _ms)
+@@ -22064,7 +22116,8 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+     餘逐字未改。`alloc_state`／`alloc_eval` 所寫之 session 鍵（含 `SS_END_BLOCK_MODE`）由呼叫端之隔離
+     （`K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`·試算前存、試算後復）去之。
+     🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（試算畢之 session 之
+-    `SS_ADJ_BUILD_FINAL`·試算中止者⛔ 取；無 ⇒ 該次試算所給之 build）之成員；每次試算之前先自 session 去 `SS_ADJ_BUILD_FINAL`。"""
++    `SS_ADJ_BUILD_FINAL`·試算中止者⛔ 取；無 ⇒ 該次試算所給之 build）之成員；每次試算之前先自 session 去 `SS_ADJ_BUILD_FINAL`。
++    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
+     import copy as _cp_s3
+     import contextlib as _cl_s3
+     import io as _io_s3
+@@ -22161,8 +22214,10 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+                 _kept.setdefault(_blk, set()).add(_pid)
+                 _G[_pid] = float(_r.get('G(㎡)', 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
+         _bf373 = None if _err else _ss.get(SS_ADJ_BUILD_FINAL)
++        # 🔧 `W-G.9-378`（`GB-204`）：第六鍵 pool_out 與 members 取同一 build
+         return {'kept': _kept, 'bad_pools': _bad, 'err': _err, 'G': _G,
+-                'members': k953_units_of(_bf373 if _bf373 is not None else _b)[0]}
++                'members': k953_units_of(_bf373 if _bf373 is not None else _b)[0],
++                'pool_out': k967_pool_out(_bf373 if _bf373 is not None else _b)}
+ 
+     def alloc_eval(temp, build):
+         """🆕 `W-G.9-355`：以所給之宗地試算街角選位與配地（`SS_END_BLOCK_MODE` ＝ `'trial'`），回配地首趟之
+@@ -22316,7 +22371,9 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+         _summ = k953_alloc_summary(_gr, _cat953s, _frt953s)
+         _bfin = _sst.get(SS_ADJ_BUILD_FINAL)
+         _mm, _uu = k953_units_of(_bfin if _bfin is not None else _tb)
+-        return dict(_summ, err=_er, members=_mm, units=_uu)
++        # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
++        return dict(_summ, err=_er, members=_mm, units=_uu,
++                    pool_out=k967_pool_out(_bfin if _bfin is not None else _tb))
+ 
+     _a953s = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)['a_prime']
+     _keep953s = {_kk: _cp953s.deepcopy(_sst[_kk]) for _kk in K6B_SCREEN_TRIAL_KEYS if _kk in _sst}
+diff --git a/verify/selection_pipeline.py b/verify/selection_pipeline.py
+index 96cbf3f..cff92d1 100644
+--- a/verify/selection_pipeline.py
++++ b/verify/selection_pipeline.py
+@@ -674,7 +674,8 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+     🆕 `W-G.9-353`：`alloc_state`／`alloc_eval` 之配地一律為**試算**（`SS_END_BLOCK_MODE` ＝ `'trial'`·
+     各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。
+     🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（入池閘之末態 build；
+-    `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。"""
++    `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。
++    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
+     import copy as _cp
+     import contextlib as _cl
+     import io as _io
+@@ -757,8 +758,10 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+             elif _r.get("驗_總判") == "保留":
+                 _kept.setdefault(_blk, set()).add(_pid)
+                 _G[_pid] = float(_r.get("G(㎡)", 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
++        # 🔧 `W-G.9-378`（`GB-204`）：第六鍵 pool_out 與 members 取同一 build
+         return {"kept": _kept, "bad_pools": _bad, "err": _err, "G": _G,
+-                "members": ns["k953_units_of"](_bf373 if _bf373 is not None else _b)[0]}
++                "members": ns["k953_units_of"](_bf373 if _bf373 is not None else _b)[0],
++                "pool_out": ns["k967_pool_out"](_bf373 if _bf373 is not None else _b)}
+ 
+     def alloc_eval(temp, build):
+         """🆕 `W-G.9-353`：以所給之宗地試算街角選位與配地，回配地首趟之末端塊評選（深拷貝）；
+@@ -820,7 +823,8 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+     試算 ＝ 街角定案之試算：深拷貝宗地；`K917_DROPPED` 清之；`SS_END_BLOCK_MODE` ＝ `'trial'`；`run_step_g`（以所給之
+     `winners`／`forced`·⛔ 重跑街角選位）；`RuntimeError` ⇒ `err` ＝ 其首列之首 300 字；摘要 ＝ `ns["k953_alloc_summary"]`；
+     單元 ＝ `ns["k953_units_of"]`（入池閘之末態 build；無則試算之 build）。`a′` ＝ `callbacks['a_prime']`。
+-    隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。"""
++    隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。
++    🔧 `W-G.9-378`（`GB-204`）：試算之回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
+     import copy as _cpk
+     import contextlib as _clk
+     import io as _iok
+@@ -851,7 +855,9 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+                 _errk = str(_ek).split("\n")[0][:300]
+         _sumk = ns["k953_alloc_summary"](_rowsk, _cat_k, _front_k)
+         _memk, _unik = ns["k953_units_of"](_finalk if _finalk is not None else _bk)
+-        return dict(_sumk, err=_errk, members=_memk, units=_unik)
++        # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
++        return dict(_sumk, err=_errk, members=_memk, units=_unik,
++                    pool_out=ns["k967_pool_out"](_finalk if _finalk is not None else _bk))
+ 
+     _ss_keep = _cpk.deepcopy(dict(ss))
+     _k917_keep = _cpk.deepcopy(ns["K917_DROPPED"])
