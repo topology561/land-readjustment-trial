@@ -674,7 +674,8 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
     🆕 `W-G.9-353`：`alloc_state`／`alloc_eval` 之配地一律為**試算**（`SS_END_BLOCK_MODE` ＝ `'trial'`·
     各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。
     🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（入池閘之末態 build；
-    `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。"""
+    `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。
+    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
     import copy as _cp
     import contextlib as _cl
     import io as _io
@@ -757,8 +758,10 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
             elif _r.get("驗_總判") == "保留":
                 _kept.setdefault(_blk, set()).add(_pid)
                 _G[_pid] = float(_r.get("G(㎡)", 0) or 0)   # 🆕 `W-G.9-357`：保留宗之應分配面積（`K-9-51` 之序）
+        # 🔧 `W-G.9-378`（`GB-204`）：第六鍵 pool_out 與 members 取同一 build
         return {"kept": _kept, "bad_pools": _bad, "err": _err, "G": _G,
-                "members": ns["k953_units_of"](_bf373 if _bf373 is not None else _b)[0]}
+                "members": ns["k953_units_of"](_bf373 if _bf373 is not None else _b)[0],
+                "pool_out": ns["k967_pool_out"](_bf373 if _bf373 is not None else _b)}
 
     def alloc_eval(temp, build):
         """🆕 `W-G.9-353`：以所給之宗地試算街角選位與配地，回配地首趟之末端塊評選（深拷貝）；
@@ -820,7 +823,8 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
     試算 ＝ 街角定案之試算：深拷貝宗地；`K917_DROPPED` 清之；`SS_END_BLOCK_MODE` ＝ `'trial'`；`run_step_g`（以所給之
     `winners`／`forced`·⛔ 重跑街角選位）；`RuntimeError` ⇒ `err` ＝ 其首列之首 300 字；摘要 ＝ `ns["k953_alloc_summary"]`；
     單元 ＝ `ns["k953_units_of"]`（入池閘之末態 build；無則試算之 build）。`a′` ＝ `callbacks['a_prime']`。
-    隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。"""
+    隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。
+    🔧 `W-G.9-378`（`GB-204`）：試算之回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
     import copy as _cpk
     import contextlib as _clk
     import io as _iok
@@ -851,7 +855,9 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
                 _errk = str(_ek).split("\n")[0][:300]
         _sumk = ns["k953_alloc_summary"](_rowsk, _cat_k, _front_k)
         _memk, _unik = ns["k953_units_of"](_finalk if _finalk is not None else _bk)
-        return dict(_sumk, err=_errk, members=_memk, units=_unik)
+        # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
+        return dict(_sumk, err=_errk, members=_memk, units=_unik,
+                    pool_out=ns["k967_pool_out"](_finalk if _finalk is not None else _bk))
 
     _ss_keep = _cpk.deepcopy(dict(ss))
     _k917_keep = _cpk.deepcopy(ns["K917_DROPPED"])
