@@ -596,7 +596,7 @@ def _cases(ns, sp):
          lambda: (lambda r: (sorted(r), r["kept"], r["err"], r["members"], sorted(r["units"]),
                              r["units"]["u(1)"] is not bu[0]))(
              ns["adj4_trial_state"]({"kept": {"B1": {"u(1)"}}, "bad_pools": {}, "G": {"u(1)": 1.0}}, None, bu)),
-         (["G", "bad_pools", "err", "kept", "members", "units"], {"B1": {"u(1)"}}, None,
+         (["G", "bad_pools", "err", "kept", "members", "pool_out", "units"], {"B1": {"u(1)"}}, None,   # 🔧 `W-G.9-378`
           {"u(1)": ["u(1)", "u(2)"], "v(1)": ["v(1)"]}, ["u(1)"], True))
     _run(out, "K21 adj4_possible（先篩）：歸戶非空、為 build 之某宗之歸戶、temp 中（殘料除外）其片 ≥ 2 者存在 ⇒ True",
          lambda: _k21(ns), (True, False, False, False, True, False, False))
@@ -741,6 +741,9 @@ W6_SKIP373 = ("k953_manual_run",)
 # 🔧 `W-G.9-375`（`K-9-65`）：W5 之許增入池閘之畫面入口（注入）與 harness 之 `build_build_parcels`（session 鍵）
 ALLOW375_APP = ("_k929_6_screen_gate",)
 ALLOW375_SP = ("build_build_parcels",)
+# 🔧 `W-G.9-378`（`GB-204`）：W5 之許增重劃前面積之表減入池閘之帳之二函式與五處之試算之所改（其接線由 F27 之 Y8 量之）
+ALLOW375_APP += ("k967_pool_out", "k967_pool_less", "f3_screen_k953")
+ALLOW375_SP += ("run_k953",)
 ANC_SKIP373 = ("_out.append(tp)", "member", "members")
 FN_GONE373 = ("_k951", "_max357", "_split357", "_try", "_fill953", "_probe953", "_remain953")
 # 🆕 `W-G.9-370`（K-9-57 ⑧）：W6 之許——`k953_manual_run` 之 `S219` 之停機訊息之基準二列（逐字）得易之（唯此二列）

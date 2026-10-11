@@ -1060,6 +1060,9 @@ CHG375_SP = ("build_build_parcels",)
 KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG375_APP)
 APP_ALLOW |= set(CHG375_APP)
 SP_ALLOW |= set(CHG375_SP)
+# 🔧 `W-G.9-378`（`GB-204`）：W7 之許增 `k967_pool_out`、`k967_pool_less`（重劃前面積之表減入池閘之帳·其行為由 F27 之 B4〜B6、
+#   F28 之 D1〜D3 量之、其接線由 F27 之 Y8 量之）
+APP_ALLOW |= {"k967_pool_out", "k967_pool_less"}
 
 
 def _top_dump(tree):

@@ -55,6 +55,8 @@ _k6b_callbacks 之巢狀 alloc_state。
     量 `_has357`／`_res357`／鍵之環；W8 之回傳之鍵增 `'members'`（`K-9-67`·第五鍵）；W11 之三支取鍵之環中測試為
     `_has357(_rm) and _pid in marks` 之 if（建地之支另立於其前·⛔ 計）。突變去 M2〜M9、M14、M16、M19、M22、M28、M29
     （其錨已去·M2 之錨之縮排隨步驟 10 之重排而異），餘 15 種。
+  🔧 `W-G.9-378`（`GB-204`·⛔ 上列一字不刪）：W8 之回傳之鍵於 `'members'` 之後增 `'pool_out'`（入池閘之帳·第六鍵·其值與
+    `members` 取同一 build·F27 之 Y8 量之）。
 rc：0 相符／1 不符（含受詞缺、器紅）／2 用法錯。
 """
 import ast, contextlib, io, os, sys
@@ -318,8 +320,9 @@ def _w8(c):
     same = pa[0] is not None and pa[0] == ps[0]
     has = pa[1] is not None and need <= set(pa[1])
     # 🔧 `W-G.9-373`（`K-9-67`）：回傳之鍵 ＝ 前四鍵 ＋ 'members'（其值之式二處各異·⛔ 比）
-    ra = pa[3] is not None and pa[3][:4] == want_ret and [k for k, _ in pa[3][4:]] == ["'members'"]
-    rs = ps[3] is not None and ps[3][:4] == want_ret and [k for k, _ in ps[3][4:]] == ["'members'"]
+    # 🔧 `W-G.9-378`（`GB-204`）：其後增 'pool_out'（入池閘之帳·與 members 取同一 build·F27 之 Y8 量之）
+    ra = pa[3] is not None and pa[3][:4] == want_ret and [k for k, _ in pa[3][4:]] == ["'members'", "'pool_out'"]
+    rs = ps[3] is not None and ps[3][:4] == want_ret and [k for k, _ in ps[3][4:]] == ["'members'", "'pool_out'"]
     ok = same and has and pa[2] == "{}" and ps[2] == "{}" and ra and rs
     return ok, (f"保留之支逐 AST 同 {same}；含 kept 與 G {has}；_G 之初值 {pa[2]}／{ps[2]}；"
                 f"回傳之鍵 app {ra}／harness {rs}")

@@ -38,6 +38,16 @@
            之 selftest 之項，其「所指之項」皆須紅；另跑基準一（⛔ 突變·五器之項皆綠）。受測碼之該段改寫者其錨隨之更新（另單）。
            ⛔ 列者（明書之）：手冊先行之 K-9-51 之候選之序「距離 → 本街廓者先」之對調——距離取片至街廓之形（該街廓之片之
            聯集）之距離，本街廓者恆為 0 ⇒ 對調為等價之突變（行為⛔ 異）。
+  🔧 `W-G.9-378`（`GB-204`·`自誤 605`·⛔ 上列一字不刪）：
+  selftest 增 B4〜B6（`k967_pool_out`：入池閘之末態 build 之各片已部分併出之量〔帳缺或空者⛔ 列〕；`k967_pool_less`：重劃前面積之表減之·
+           其停機）；NEED 增此二名；P0 隨之 31 項。
+  wiring   增 Y8（五處之試算〔段三·手冊先行之 harness 與畫面、第一趟之共用之 `adj4_trial_state`〕皆以同一 build 回
+           `members` 與 `pool_out`·`k967_pool_out` 之呼叫須直書為該函式之 return 之鍵 `pool_out` 之值〔關鍵字引數或字面 dict〕）、Y9（單趟之管線
+           之序：末次之調配之輸入之 build ＝ 末次入池閘之出——`SS_ADJ_BUILD_FINAL` 恰一寫於 `f3_screen_stepg_run` 之入池閘
+           之後；畫面之 `main` 與 harness 之 `main` 之段三〔含手冊先行·第一趟〕皆先於 step G·harness 之 step G 之 build ＝
+           段三之出——`GB-204` ② 之不可達所繫·以源碼之序量之·⛔ 量控制流）。
+  mutate   之出艙碼：突變未被捕 ⇒ 1；錨數 ≠ 1、子程序逾時或例外、基準⛔ 全綠 ⇒ 3（無從判定·⛔ 與 1 共用·`CLAUDE.md`
+           之「無從判定與判定為偽⛔ 共用同一出艙碼」）；二者並見 ⇒ 1；末列 `⇒ 突變 N（另基準一）；紅 […]；無從判定 […]；rc …`。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, importlib.util, io, os, re, sys, warnings
@@ -154,6 +164,41 @@ def _b3(ns):
     pa = ns["k967_pre_area"]
     return (pa("u", ["a", "b"], {"a": 10.0, "b": 20.5}), pa("a", None, {"a": 10.0}),
             _halt(lambda: pa("u", ["a", "z"], {"a": 10.0}), ["z"]))
+
+
+# 🆕 `W-G.9-378`（`GB-204`）：入池閘之帳（`k967_pool_out`）與重劃前面積之表之減（`k967_pool_less`）
+def _pb(pid, own=None, mem=None, ms=None):
+    b = {"暫編地號": pid, "入池閘併入": ms or [pid]}
+    if own is not None:
+        b["入池閘部分併出"] = own
+    if mem is not None:
+        b["入池閘成員部分併出"] = mem
+    return b
+
+
+def _b4(ns):
+    po = ns["k967_pool_out"]
+    bf = [_pb("A(1)", {"R(1)": 3.0, "S(1)": 2.0}, {"B(1)": {"R(1)": 4.0}}, ["A(1)", "B(1)"]), _pb("C(1)"),
+          _pb("D(1)", None, {"E(1)": {"S(1)": 1.5, "T(1)": 0.5}}, ["D(1)", "E(1)"])]
+    return (po(bf), po([]), po(None), po([_pb("C(1)", {}, {})]), po([_pb("F(1)", {}, {"G(1)": {}}, ["F(1)", "G(1)"])]))
+
+
+def _b5(ns):
+    po = ns["k967_pool_out"]
+    return (_halt(lambda: po([_pb("A(1)", None, {"B(1)": {"R(1)": 1.0}}), _pb("C(1)", None, {"B(1)": {"S(1)": 1.0}})]),
+                  ["GB-204", "二處"]),
+            _halt(lambda: po([_pb("A(1)", {"R(1)": 2.0}, {"A(1)": {"S(1)": 1.0}})]), ["GB-204", "二處"]),
+            _halt(lambda: po([_pb("A(1)", {"R(1)": 0.0})]), ["GB-204", "≤ 0"]),
+            _halt(lambda: po([_pb("A(1)", None, {"B(1)": {"R(1)": -1.0}})]), ["GB-204", "≤ 0"]))
+
+
+def _b6(ns):
+    pl = ns["k967_pool_less"]
+    t = {"A(1)": 10.0, "B(1)": 5.0}
+    r = pl(t, {"A(1)": 3.0})
+    return (r, t == {"A(1)": 10.0, "B(1)": 5.0}, pl(t, None), pl(t, {}),
+            _halt(lambda: pl(t, {"Z(1)": 1.0}), ["GB-204", "不在重劃前面積之表"]),
+            _halt(lambda: pl(t, [("A(1)", 1.0)]), ["GB-204", "pool_out"]))
 
 
 # ── C：入池閘之代表宗（`K-9-67`）──
@@ -440,6 +485,14 @@ def _cases(ns, sp):
          lambda: _b2(ns), ["A(1)", "A(2)", "B(1)"])
     _run(out, "B3 k967_pre_area：成員之分攤登記面積之和；成員缺 ⇒ 自身；取不到 ⇒ 停機",
          lambda: _b3(ns), (30.5, 10.0, ("停機", True)))
+    # 🆕 `W-G.9-378`（`GB-204`）
+    _run(out, "B4 k967_pool_out：單元自身之片取入池閘部分併出之和、他成員之片取入池閘成員部分併出［片］之和；無帳者（缺或空）⛔ 列",
+         lambda: _b4(ns), ({"A(1)": 5.0, "B(1)": 4.0, "E(1)": 2.0}, {}, {}, {}, {}))
+    _run(out, "B5 k967_pool_out：同一片之帳見於二處（二單元·或自身與成員）⇒ 停機；量 ≤ 0 ⇒ 停機",
+         lambda: _b5(ns), (("停機", True), ("停機", True), ("停機", True), ("停機", True)))
+    _run(out, "B6 k967_pool_less：表減其量（新表·原表⛔ 動）；None／空 ⇒ 同值；表外之片 ⇒ 停機；非 dict ⇒ 停機",
+         lambda: _b6(ns), ({"A(1)": 7.0, "B(1)": 5.0}, True, {"A(1)": 10.0, "B(1)": 5.0}, {"A(1)": 10.0, "B(1)": 5.0},
+                           ("停機", True), ("停機", True)))
     # ── C ──
     _run(out, "C1 入池閘之代表宗：G 並列（60.00）⇒ 重劃前面積大者 Y2（100 ＞ 80）",
          lambda: _c(ns, 80.0, 20.0), ["Y2"])
@@ -579,6 +632,7 @@ def _perturb(v):
 
 NEED = ("K966_CLASSES", "K966_GRID", "k966_block_merge", "k967_rank", "k967_pre_area", "k929_6_fixpoint",
         "k953_manual_run", "k6b_stage3_run", "adj4_pass1_run", "adj_intake", "F3_CATEGORY_BURDEN")
+NEED += ("k967_pool_out", "k967_pool_less")                        # 🆕 `W-G.9-378`（`GB-204`）
 
 
 def selftest(repo):
@@ -691,8 +745,100 @@ def _wiring_checks(app):
     return chk
 
 
+# 🆕 `W-G.9-378`（`GB-204`）：Y8 五處之試算之 pool_out；Y9 調配之輸入之 build 為末次入池閘之出（`GB-204` ② 之不可達）
+def _call_name(n):
+    f = n.func
+    if isinstance(f, ast.Name):
+        return f.id
+    if isinstance(f, ast.Subscript) and isinstance(f.slice, ast.Constant) and isinstance(f.slice.value, str):
+        return f.slice.value
+    return None
+
+
+def _inner_fns(tree):
+    """{呼叫節點之 id: 其最內之 FunctionDef}。"""
+    out = {}
+
+    def walk(node, fn):
+        for ch in ast.iter_child_nodes(node):
+            nf = ch if isinstance(ch, ast.FunctionDef) else fn
+            if isinstance(ch, ast.Call):
+                out[id(ch)] = fn
+            walk(ch, nf)
+    walk(tree, None)
+    return out
+
+
+def _wiring378(repo):
+    chk = []
+    srcs = {"app.py": _read(repo, "app.py"), "verify/selection_pipeline.py": _read(repo, "verify/selection_pipeline.py")}
+    pairs, n_po = [], 0
+    for rel, src in srcs.items():
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            tree = ast.parse(src)
+        fns = _inner_fns(tree)
+        calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call)]
+        n_po += sum(1 for c in calls if _call_name(c) == "k967_pool_out")
+        # 其值須為該函式之 return 之式之鍵 pool_out 之值（dict(…, pool_out=…) 或字面 dict 之鍵 'pool_out'·直書於 return）
+        #   ——⛔ 唯呼叫而⛔ 回之、⛔ 置於他處之 dict
+        def _keyed(fn):
+            out = set()
+            for r in ast.walk(fn):
+                v = r.value if isinstance(r, ast.Return) else None
+                if isinstance(v, ast.Call):
+                    out |= {id(k.value) for k in v.keywords if k.arg == "pool_out"}
+                elif isinstance(v, ast.Dict):
+                    out |= {id(x) for kk, x in zip(v.keys, v.values) if isinstance(kk, ast.Constant) and kk.value == "pool_out"}
+            return out
+        for c in calls:
+            if _call_name(c) != "k953_units_of":
+                continue
+            fn = fns.get(id(c))
+            arg = ast.dump(c.args[0]) if c.args else None
+            kf = _keyed(fn) if fn is not None else set()
+            ok = fn is not None and any(_call_name(d) == "k967_pool_out" and d.args and ast.dump(d.args[0]) == arg
+                                        and id(d) in kf for d in ast.walk(fn) if isinstance(d, ast.Call))
+            pairs.append((rel, fn.name if fn else None, c.lineno, ok))
+    chk.append(("Y8 五處之試算（段三·手冊先行之 harness 與畫面、第一趟之共用）皆以同一 build 回 members 與 pool_out"
+                "（k967_pool_out 之呼叫直書為 return 之鍵 pool_out 之值）",
+                len(pairs) == 5 and all(p[3] for p in pairs) and n_po == 5,
+                f"k953_units_of 之呼叫 {[(p[0].split('/')[-1], p[1], p[3]) for p in pairs]}；k967_pool_out 之呼叫 {n_po}"))
+    app = srcs["app.py"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        at = ast.parse(app)
+    top = {n.name: n for n in at.body if isinstance(n, ast.FunctionDef)}
+    st_fn = top.get("f3_screen_stepg_run")
+    asg = [(n.lineno, fnm) for fnm, f in top.items() for n in ast.walk(f)
+           if isinstance(n, ast.Assign) and any(isinstance(t, ast.Subscript) and isinstance(t.slice, ast.Name)
+                                                and t.slice.id == "SS_ADJ_BUILD_FINAL" for t in n.targets)]
+    gate = [n.lineno for n in ast.walk(st_fn) if isinstance(n, ast.Call) and _call_name(n) == "_k929_6_screen_gate"] \
+        if st_fn else []
+    ok_a = len(asg) == 1 and asg[0][1] == "f3_screen_stepg_run" and bool(gate) and min(gate) < asg[0][0]
+    mn = top.get("main")
+    l_s3 = [n.lineno for n in ast.walk(mn) if isinstance(n, ast.Call) and _call_name(n) == "f3_screen_k6b_stage3"] if mn else []
+    l_g = [n.lineno for n in ast.walk(mn) if isinstance(n, ast.Call) and _call_name(n) == "f3_screen_stepg_run"] if mn else []
+    ok_b = bool(l_s3) and bool(l_g) and min(l_s3) < min(l_g)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        rt = ast.parse(_read(repo, "verify/run_verification.py"))
+    rmain = next((n for n in rt.body if isinstance(n, ast.FunctionDef) and n.name == "main"), None)
+    r_pk = [n for n in ast.walk(rmain) if isinstance(n, ast.Call) and _call_name(n) == "run_corner_pk_k6b"] if rmain else []
+    r_g = [n for n in ast.walk(rmain) if isinstance(n, ast.Call) and _call_name(n) == "run_step_g"] if rmain else []
+    g1 = min(r_g, key=lambda n: n.lineno) if r_g else None
+    ok_c = bool(r_pk) and g1 is not None and min(n.lineno for n in r_pk) < g1.lineno and len(g1.args) >= 7 \
+        and ast.unparse(g1.args[6]) == "s3_by_tag[tag]['build']"
+    chk.append(("Y9 調配之輸入之 build ＝ 末次入池閘之出：SS_ADJ_BUILD_FINAL 恰一寫於 f3_screen_stepg_run 之入池閘之後；"
+                "畫面與 harness 之段三（含手冊先行·第一趟）皆先於 step G", ok_a and ok_b and ok_c,
+                f"寫 {asg}·入池閘 {gate[:1]}；畫面 段三 {l_s3[:1]} ＜ step G {l_g[:1]}；harness run_corner_pk_k6b "
+                f"{[n.lineno for n in r_pk][:1]} ＜ run_step_g {g1.lineno if g1 else None}"
+                f"（build ＝ {ast.unparse(g1.args[6]) if g1 is not None and len(g1.args) >= 7 else None}）"))
+    return chk
+
+
 def wiring(repo):
-    chk = _wiring_checks(_read(repo, "app.py"))
+    chk = _wiring_checks(_read(repo, "app.py")) + _wiring378(repo)
     red = []
     for name, ok, note in chk:
         print(("  ✅ " if ok else "  🔴 ") + name + (f"（{note}）" if note else ""))
@@ -942,19 +1088,25 @@ def mutate(repo):
             res = list(ex.map(one, todo))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)          # 暫存之 app_*.py（每份約 1.8 MB）⛔ 遺留
+    und = []                    # 🔧 `W-G.9-378`（`自誤 605`）：無從判定 ⛔ 與「未捕」共用出艙碼
     for m, n, red in res:
         mid, cl, desc, fn, old, new, want = m
         got = {f"{k}:{i}" for k, v in red.items() for i in v} if isinstance(red, dict) else None
         if mid == "N00":
-            ok = got == set()
+            ok, nd = got == set(), got != set()
         else:
-            ok = n == 1 and got is not None and bool(want) and want <= got
-        if not ok:
+            nd = n != 1 or got is None
+            ok = not nd and bool(want) and want <= got
+        if nd:
+            und.append(mid)
+        elif not ok:
             bad.append(mid)
         shown = sorted(got) if got is not None else red
-        print(f"  {'✅' if ok else '🔴'} {mid} {cl}·{desc}：錨 {n} 見；所指 {sorted(want)}；紅 {shown}")
-    print(f"⇒ 突變 {len(MUT377)}（另基準一）；紅 {bad}；rc {1 if bad else 0}")
-    return 1 if bad else 0
+        mark = "✅" if ok else ("⚠️" if nd else "🔴")
+        print(f"  {mark} {mid} {cl}·{desc}：錨 {n} 見；所指 {sorted(want)}；紅 {shown}")
+    rc = 1 if bad else (3 if und else 0)
+    print(f"⇒ 突變 {len(MUT377)}（另基準一）；紅 {bad}；無從判定 {und}；rc {rc}")
+    return rc
 
 
 # ── run：本案 ──

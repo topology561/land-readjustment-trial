@@ -90,6 +90,10 @@ ALLOW373_SP = ("_k6b_callbacks", "k6b_stage3_pool_temp")
 ALLOW375_FILES = ("verify/stepg_pipeline.py",)
 ALLOW373_APP += ("_k929_6_screen_gate",)
 ALLOW373_SP += ("build_build_parcels",)
+# 🔧 `W-G.9-378`（`GB-204`）：X2 之許增重劃前面積之表減入池閘之帳之二函式與五處之試算之所改；X4 之除外增 `run_k953`
+#   （其試算之回傳增 pool_out）——本單之接線另由 F27 之 Y8 量之
+ALLOW373_APP += ("k967_pool_out", "k967_pool_less", "adj4_trial_state", "f3_screen_k953")
+ALLOW373_SP += ("run_k953",)
 
 
 def _strip_fns(src, names):

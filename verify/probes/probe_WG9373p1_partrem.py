@@ -34,6 +34,9 @@
            「面積_m2 ＋ 段三部分併出之和」恆 ＝ 0·⛔ 以「最末一次」或「輸入之帳 ＋ 最末一次」代之）；⑧ `R-19″` 之重劃前面積之表之
            **取態**（受測碼呼叫 `k967_pre_area` 時所傳之表，其受詞之片之值 ＝ 分攤登記面積 − 當下之帳之和·⛔ 取輸入之態）——以
            包一層之 `k967_pre_area`（`ns` 即受測碼之 globals）記每次所傳之表之受詞之值。期值手算（各例之註）。
+           🔧 `W-G.9-378`（`GB-204` ①·⛔ 上列一字不刪）：增 D1〜D3（三處各一·L4〜L6 之形）——試算包一層而回 `pool_out`
+           （入池閘之帳之代用·其值隨受詞之片當下是否已再部分併出而異 ⇒ 表若取他次之試算之帳其值必異），量 ⑨ 重劃前面積之
+           表減其**同一試算**之入池閘之帳（`k967_pool_less`）；其試算⛔ 回 `pool_out` 者（L4〜L6 等）⇒ 表⛔ 減（同值）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import contextlib, copy, importlib.util, io, os, sys
@@ -343,6 +346,74 @@ def _l6(ns, f16):
                                                                       log_print=lambda *a: None, contests=ct))
 
 
+# 🆕 `W-G.9-378`（`GB-204` ①）：重劃前面積之表減同一試算之入池閘之帳（pool_out）
+def _pool(st, pid, thr):
+    """試算包一層：其回傳增 pool_out（入池閘之帳之代用）——當下 build 之 pid 之 面積_m2 ＜ thr ⇒ {pid: 2.0}，否則 {pid: 1.0}
+    （同一受詞於受測碼之各次試算之值相異 ⇒ 表若取他次之試算之帳，其值必異）。"""
+    def wrapped(temp, build):
+        r = dict(st(temp, build))
+        a = next((float(b.get("面積_m2", 0) or 0) for b in build if b["暫編地號"] == pid), 0.0)
+        r["pool_out"] = {pid: 2.0 if a < thr else 1.0}
+        return r
+    return wrapped
+
+
+def _d1(ns, f27):
+    """手冊先行（L4 之形）：首次之試算（C0·X(1) 之 面積_m2 ＝ −5）之 pool_out {X(1): 1}；K-9-51 之試算（X(1) 已再部分併出）
+    之 pool_out {X(1): 2} ⇒ 計畫時之表 X 55 − 1 ＝ 54、K-9-51 之表 X 5.6897 − 2 ＝ 3.6897；Y／Z 無帳 ⇒ 同 L4。"""
+    tp, R, H = f27._tp, f27._R, f27.H
+    x = tp("X(1)", "BA", H, R(0, 10, 0, 30), 60)
+    x.update({"面積_m2": -5.0, "段三併出": ["A1(1)"], "段三部分併出": {"A1(1)": 5.0}})
+    t = [x, tp("Y(1)", "BA", H, R(10, 20, 0, 30), 50), tp("Z(1)", "BA", H, R(20, 30, 0, 30), 40),
+         tp("A1(1)", "BB", H, R(0, 10, 30, 60), 300), tp("B1(1)", "BB", H, R(10, 20, 30, 60), 300),
+         tp("C1(1)", "BB", H, R(20, 30, 30, 60), 300), tp("A2(1)", "BD", H, R(40, 50, 0, 30), 300)]
+    own = {"X": "甲", "A1": "甲", "A2": "甲", "Y": "乙", "B1": "乙", "Z": "丙", "C1": "丙"}
+    blocks = {b: {"category": H} for b in ("BA", "BB", "BD")}
+    ap, st = f27._cbs({"BB": 130.0, "BD": 5.0}, drop=("X(1)", "Y(1)", "Z(1)"))
+    st = _pool(st, "X(1)", -5.5)
+    return _with_spy(ns, {"X(1)", "Y(1)", "Z(1)"},
+                     lambda seen: ns["k953_manual_run"](t, list(t), own, blocks, {}, ap, _rec(st, {"X(1)"}, seen),
+                                                        log_print=lambda *a: None))[1]
+
+
+def _d2(ns, f27):
+    """第一趟（L5 之形）：第 1 輪之試算之 pool_out {X1(1): 1}、第 2 輪（X1(1) 已部分併出）{X1(1): 2} ⇒ 表 ＝ 55 − 1 ＝ 54、25 − 2 ＝ 23。"""
+    tp, R, H = f27._tp, f27._R, f27.H
+    x = tp("X1(1)", "BA", H, R(0, 10, 0, 30), 60.0)
+    x.update({"面積_m2": -5.0, "段三併出": ["X1(2)"], "段三部分併出": {"X1(2)": 5.0}})
+    t = [x, tp("X1(2)", "BB", H, R(0, 10, 30, 60), 300), tp("X1(3)", "BC", H, R(20, 30, 0, 30), 300)]
+    geom = {q["暫編地號"]: [list(c) for c in q["polygon_coords"]] for q in t}
+    ap, st = f27._cbs({"BB": 30.0, "BC": 10.0}, drop=("X1(1)",))
+    st = _pool(st, "X1(1)", -5.5)
+    subj = [{"歸戶": "g1", "軌": "建地軌", "錨點": "X1(1)", "名單": ["BB", "BC"], "片": ["X1(1)"], "原有面積合計": 60.0}]
+    return _with_spy(ns, {"X1(1)"}, lambda seen: ns["adj4_pass1_run"](t, list(t), {"X1": "g1"}, subj, geom, ap,
+                                                                      _rec(st, {"X1(1)"}, seen),
+                                                                      log_print=lambda *a: None))[1]
+
+
+def _d3(ns, f16):
+    """段三（L6 之形）：第 5 項之試算（題一 4 之後·Y1(1) 已再部分併出）之 pool_out {Y1(1): 2} ⇒ 表 ＝ 65 − 2 ＝ 63。"""
+    temp, own, blocks, cl = f16._world4()
+    for q in temp:
+        if q["暫編地號"] == "Y1(1)":
+            q.update({"面積_m2": -5.0, "段三併出": ["X1(1)"], "段三部分併出": {"X1(1)": 5.0}})
+    build = [q for q in temp if q["街廓分類"] == f16.H]
+    ap, _tw, st = f16._cbs({"BX": 60.0, "BY": 1000.0, "B7": 50.0}, None, ("Y1(1)",))
+    st = _pool(st, "Y1(1)", -5.5)
+    thr = {("BX", "左"): 130.0, ("BY", "左"): 200.0}
+
+    def tw(temp_, build_, blk, end, cand):
+        b_ = {b["暫編地號"]: b for b in build_}
+        g = f16._g(b_[cand]) if cand in b_ else 0.0
+        return (cand if g >= thr[(blk, end)] else None), round(g, 2), thr[(blk, end)]
+    order = [{"最終序位": 1, "街廓": "BX", "端": "左", "暫編地號": "X1(1)"},
+             {"最終序位": 2, "街廓": "BY", "端": "左", "暫編地號": "Y1(1)"}]
+    ct = [{"形": "一", "列": [("BX", "左", "X1(1)", 10.0), ("BY", "左", "Y1(1)", 10.0)]}]
+    return _with_spy(ns, {"Y1(1)"}, lambda seen: ns["k6b_stage3_run"](order, set(), own, temp, build, blocks, cl, ap,
+                                                                      tw, _rec(st, {"Y1(1)"}, seen),
+                                                                      log_print=lambda *a: None, contests=ct))[1]
+
+
 def _cases(ns, f12, f16, f27, f23):
     out = []
     # E（門檻 150）：C1(1)（a 100）以 ① 同街廓併 C1(2)；C1(2) 部分併出之剩下 50（分攤 60·已併出 10）≡ 一分未併而 a 50
@@ -459,6 +530,14 @@ def _cases(ns, f12, f16, f27, f23):
          lambda: _l5(ns, f27), ([0.0], [(("X1(1)", 25.0),), (("X1(1)", 55.0),)], True))
     _run(out, "L6 趟中之帳之累加與第 5 項之表之取態·段三：Y1(1) 帶前帳、題一 4 再併入同一受併宗 ⇒ 所見恆 0；表 ＝ 65",
          lambda: _l6(ns, f16), ([0.0], [(("Y1(1)", 65.0),)], True))
+    # 🆕 `W-G.9-378`（`GB-204` ①）
+    _run(out, "D1 手冊先行：二表各減其同一試算之入池閘之帳 ⇒ 計畫時 54／50／40、K-9-51 時 3.6897／5.1724／4.1379",
+         lambda: _d1(ns, f27), [(("X(1)", 3.6897), ("Y(1)", 5.1724), ("Z(1)", 4.1379)),
+                                (("X(1)", 54.0), ("Y(1)", 50.0), ("Z(1)", 40.0))])
+    _run(out, "D2 第一趟：各輪之表減該輪之試算之入池閘之帳 ⇒ 54、23",
+         lambda: _d2(ns, f27), [(("X1(1)", 23.0),), (("X1(1)", 54.0),)])
+    _run(out, "D3 段三：第 5 項之表減其試算之入池閘之帳 ⇒ 63",
+         lambda: _d3(ns, f16), [(("Y1(1)", 63.0),)])
     return out
 
 

@@ -24,6 +24,8 @@
            另 E1 試算旗標（`SS_END_BLOCK_MODE`）⛔ 外洩／E2 配地所用之宗地 ＝ 合併再試後／E3 正常出口無停機訊息。
   🔧 `W-G.9-373`（`K-9-67`·⛔ 上列一字不刪）：段三之 `alloc_state` 之出增 `members`（保留宗之成員·入池閘之末態 build·
            無之 ⇒ 試算之 build）——T3d／T9d／T6d 之期隨之（本器之樁⛔ 寫入池閘之末態 ⇒ 試算之 build 之各宗自為其成員）。
+  🔧 `W-G.9-378`（`GB-204`·⛔ 上列一字不刪）：段三之 `alloc_state` 之出另增 `pool_out`（入池閘之帳·與 `members` 取同一 build）
+           ——T3d／T9d／T6d 之期隨之（本器之樁⛔ 帶入池閘之帳 ⇒ `{}`）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import contextlib, copy, importlib.util, inspect, io, os, sys
@@ -387,7 +389,8 @@ def _t3(ns, ss, merge):
             (f"{tag}b 段三本體與合併再試各恰一次", (rig.s3_n, rig.merge_n), (1, 1)),
             (f"{tag}c 段三之試算配地亦 'trial'", [c[1] for c in gs3], ["trial"]),
             (f"{tag}d 段三之 alloc_state 之出", rig.s3_state, {"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None,
-                                                           "G": {"A(1)": 0.0}, "members": MEM373}),
+                                                           "G": {"A(1)": 0.0}, "members": MEM373,
+                                                           "pool_out": {}}),     # 🔧 `W-G.9-378`
             (f"{tag}e 合併再試之輸入 ＝ 段三之出（同一物件）；上鎖取自段三終趟之真 st 街角選位",
              (a.get("temp") is s3r[0], a.get("build") is s3r[1], a.get("locked")), (True, True, {"C(1)"})),
             (f"{tag}f 回傳之宗地 ＝ 末態（同一物件）", (ret is not None and ret["temp"] is fin[0], ret is not None and ret["build"] is fin[1]),
@@ -484,7 +487,8 @@ def _t6(ns, ss):
             stt = cb["alloc_state"](t0, b0)
         gs = [c for c in rig.calls[n0:] if c[0] == "g"]
         out.append(("T6d 試算配地（alloc_state）之出與其 'trial'", (stt, [c[1] for c in gs]),
-                    ({"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None, "G": {"A(1)": 0.0}, "members": MEM373},
+                    ({"kept": {"B1": {"A(1)"}}, "bad_pools": {}, "err": None, "G": {"A(1)": 0.0}, "members": MEM373,
+                      "pool_out": {}},                                          # 🔧 `W-G.9-378`
                      ["trial"])))
         n0 = len(rig.calls)
         with contextlib.redirect_stdout(io.StringIO()):
