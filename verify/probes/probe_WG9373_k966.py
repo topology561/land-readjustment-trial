@@ -28,9 +28,21 @@
            `G014`）之 `628-28(1)`／`628-29(1)` 應分配面積並列（`0.01 ㎡`），其重劃前面積亦同（`114.00`）⇒ 取暫編地號小者
            `628-28(1)`（＝ 現行）；`R6` 之代表宗 ＝ `628-21(1)`（G 最大·非並列）；R3 段三之試算（harness 與畫面·同一宗地）
            之 `members` 相同，且含入池閘之單元之成員。
+  🔧 `W-G.9-377`（⛔ 上列一字不刪）：
+  selftest 增 T5（手冊先行之第 1 輪之來源量 ＝ 計畫之量 ÷ κ·玩具之地價 BB 為 BA 之半）；P0 隨之 28 項。
+  wiring   增 Y7（三處之 `k966_block_merge` 皆以 `state` 為前態、以其回傳之態承接·`F17` 之 W2 之代）。
+  mutate   <repo>
+           以受測碼之字樣為錨之突變 N01〜N57（`MUT377`·`F17` 之 W2／W3／W12 與 `F25` 之 M01〜M19／M28／M29／M31 之代·
+           `k966_block_merge`、`k967_rank`／`k967_pre_area`、三處之試施·輪·候選·趟中之帳·表之取態·段三步驟 10、調配之輸入）：
+           每一突變於 `app.py` 之所指函式之區間錨恰一見，施之於倉外之暫存之 `app.py`，以子程序跑本器、F28、F23、F24、F16
+           之 selftest 之項，其「所指之項」皆須紅；另跑基準一（⛔ 突變·五器之項皆綠）。受測碼之該段改寫者其錨隨之更新（另單）。
+           ⛔ 列者（明書之）：手冊先行之 K-9-51 之候選之序「距離 → 本街廓者先」之對調——距離取片至街廓之形（該街廓之片之
+           聯集）之距離，本街廓者恆為 0 ⇒ 對調為等價之突變（行為⛔ 異）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, importlib.util, io, os, re, sys, warnings
+import json, shutil, subprocess, tempfile                            # 🆕 `W-G.9-377`（mutate）
+from concurrent.futures import ThreadPoolExecutor                    # 🆕 `W-G.9-377`（mutate）
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -272,6 +284,23 @@ def _t3(ns):
     return ns["k953_manual_run"](t, list(t), own, blocks, {}, ap, st, log_print=lambda *x: None)
 
 
+def _t5(ns):
+    """🆕 `W-G.9-377`：`T1` 之形而 BB 之地價為 BA 之半（併入 BB 者 a′ ＝ 2a·κ ＝ 2）：第 1 輪之要求之來源量 ＝ 計畫之量 ÷ κ
+    （X 60／Y 50／Z 40）；BB 之容量 130 ⇒ 2 × Σv ≤ 130 ⇒ 比例 130 ÷ 300 ＝ 0.433333：X 26（A1 得 52）、Y 21.67（B1 得 43.33）、
+    Z 17.33（C1 得 34.67）；甲之剩下 34 依距離全入 BD 之 A2（κ ＝ 1）；乙丙之剩下入合併單位。"""
+    t = [_tp("X(1)", "BA", H, _R(0, 10, 0, 30), 60), _tp("Y(1)", "BA", H, _R(10, 20, 0, 30), 50),
+         _tp("Z(1)", "BA", H, _R(20, 30, 0, 30), 40),
+         _tp("A1(1)", "BB", H, _R(0, 10, 30, 60), 300), _tp("B1(1)", "BB", H, _R(10, 20, 30, 60), 300),
+         _tp("C1(1)", "BB", H, _R(20, 30, 30, 60), 300), _tp("A2(1)", "BD", H, _R(40, 50, 0, 30), 300)]
+    own = {"X": "甲", "A1": "甲", "A2": "甲", "Y": "乙", "B1": "乙", "Z": "丙", "C1": "丙"}
+    blocks = {b: {"category": H} for b in ("BA", "BB", "BD")}
+    _ap, st = _cbs({"BB": 130.0}, drop=("X(1)", "Y(1)", "Z(1)"))
+
+    def ap(src, dst):
+        return _a(src) * (2.0 if dst.get("所屬街廓") == "BB" else 1.0)
+    return ns["k953_manual_run"](t, list(t), own, blocks, {}, ap, st, log_print=lambda *x: None)
+
+
 def _rows953(res):
     return [(r.get("序"), r.get("片"), r.get("受併宗") if isinstance(r.get("受併宗"), str) else tuple(r.get("受併宗")),
              _q(r), r.get("結果")) for r in res[2] if r.get("序") in ("K-9-66", "手冊", "K-9-51")]
@@ -456,6 +485,21 @@ def _cases(ns, sp):
           {"X(1)": {"段三併出": ("A1(1)", "A2(1)"), "段三部分併出": (("A1(1)", 30.0), ("A2(1)", 15.0))},
            "Y(1)": {"段三併出": ("B1(1)", "B2(1)"), "段三部分併出": (("B1(1)", 20.0), ("B2(1)", 10.0))}},
           {"A1(1)": 30.0, "A2(1)": 15.0, "B1(1)": 20.0, "B2(1)": 10.0, "X(1)": -45.0, "Y(1)": -30.0}))
+    # 🆕 `W-G.9-377`
+    _run(out, "T5 手冊先行·第 1 輪之來源量 ＝ 計畫之量 ÷ κ（BB 之 κ ＝ 2）⇒ 比例 0.433333：A1 52／B1 43.33／C1 34.67；"
+              "甲之剩下 34 全入 A2；帳以來源量計（Y 21.67／Z 17.33）",
+         lambda: (lambda r: (_rows953(r), _keys(r[0]), _acc(r[0])))(_t5(ns)),
+         ([("K-9-66", "3 片", "—", (), "整體未成；建地部分成（0.433333）"),
+           ("手冊", "X(1)", "A1(1)", (("A1(1)", 52.0),), "部分成"),
+           ("手冊", "Y(1)", "B1(1)", (("B1(1)", 43.33),), "部分成"),
+           ("手冊", "Z(1)", "C1(1)", (("C1(1)", 34.67),), "部分成"),
+           ("K-9-51", "X(1)", "A2(1)", (("A2(1)", 34.0),), "成"),
+           ("K-9-51", "Y(1)", "—", (), "入合併單位"),
+           ("K-9-51", "Z(1)", "—", (), "入合併單位")],
+          {"X(1)": {"段三併出": ("A1(1)", "A2(1)")},
+           "Y(1)": {"段三併出": ("B1(1)",), "段三部分併出": (("B1(1)", 21.67),)},
+           "Z(1)": {"段三併出": ("C1(1)",), "段三部分併出": (("C1(1)", 17.33),)}},
+          {"A1(1)": 52.0, "A2(1)": 34.0, "B1(1)": 43.33, "C1(1)": 34.67, "Y(1)": -21.67, "Z(1)": -17.33}))
     # ── U ──
     _run(out, "U0 段三後處理·對照：整批即過 ⇒ 二列皆成（⛔ K-9-66 之列）",
          lambda: _u(ns, {"B3": 1000.0})[0],
@@ -631,6 +675,19 @@ def _wiring_checks(app):
             if isinstance(x, ast.Constant) and isinstance(x.value, str) and "應分配面積並列" in x.value:
                 old.append(nm)
     chk.append(("Y6 擇宗⛔ 以「並列 ⇒ 停機」", not old, f"{old}"))
+    # 🆕 `W-G.9-377`（`F17` 之 W2 之代·所施者 ＝ 末次通過之試所回之態）：三處之 k966_block_merge 之呼叫皆為
+    #   `state, … = k966_block_merge(state, …)`（以其前態為輸入、以其回傳之態承接）
+    thr = {}
+    for nm in PLACES[:3]:
+        f = top.get(nm)
+        asg = [a for a in ast.walk(f) if isinstance(a, ast.Assign) and isinstance(a.value, ast.Call)
+               and isinstance(a.value.func, ast.Name) and a.value.func.id == "k966_block_merge"] if f else []
+        thr[nm] = [len(a.targets) == 1 and isinstance(a.targets[0], ast.Tuple) and len(a.targets[0].elts) == 3
+                   and isinstance(a.targets[0].elts[0], ast.Name) and a.targets[0].elts[0].id == "state"
+                   and bool(a.value.args) and isinstance(a.value.args[0], ast.Name) and a.value.args[0].id == "state"
+                   for a in asg]
+    chk.append(("Y7 三處之 k966_block_merge 皆以 state 為前態、以其回傳之態承接（state, … ＝ …(state, …)）",
+                all(v == [True] for v in thr.values()), f"{thr}"))
     return chk
 
 
@@ -643,6 +700,261 @@ def wiring(repo):
             red.append(name.split()[0])
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
+
+
+# ── 🆕 `W-G.9-377` mutate：以受測碼之字樣為錨之突變（`F17` 之 W2／W3／W12 與 `F25` 之 M01〜M19／M28／M29／M31 之代）──
+#   各為 (號, 條, 述, 函式, 錨, 換, 所指之項)；錨須於該函式之區間恰一見；所指之項 ＝ 「器:項」（F27 本器、F28、F23、F24、F16
+#   之 selftest 之項），施突變後其皆須紅。受測碼之該段改寫者，其錨隨之更新（另單）。
+_BM, _RK, _PA = "k966_block_merge", "k967_rank", "k967_pre_area"
+_S3, _MN, _A4, _AI = "k6b_stage3_run", "k953_manual_run", "adj4_pass1_run", "adj_intake"
+MUT377 = [
+    ("N01", "K-9-66 ①", "整體成而⛔ 回", _BM,
+     "    if _new966 is not None:\n        return _new966, list(_s966)",
+     "    if False:\n        return _new966, list(_s966)",
+     {"F27:A3"}),
+    ("N02", "K-9-66 ②", "唯一類者亦以該類之全量再試", _BM, "        if len(_have966) > 1:\n", "        if len(_have966) >= 1:\n",
+     {"F27:A4"}),
+    ("N03", "K-9-66 ②", "類之序反之", _BM, "    for _j966, _k966 in enumerate(_have966):",
+     "    for _j966, _k966 in enumerate(_have966[::-1]):", {"F27:A2", "F27:A6"}),
+    ("N04", "K-9-66 通知 2", "格改 0.1", _BM, "def k966_block_merge(state, claims, try_apply, *, grid=K966_GRID):",
+     "def k966_block_merge(state, claims, try_apply, *, grid=K966_GRID * 10):", {"F27:A5"}),
+    ("N05", "K-9-66 ②", "按比例之後仍試次類", _BM,
+     "'由': f'{_k966}未全入（K-9-66）'})\n        break\n", "'由': f'{_k966}未全入（K-9-66）'})\n", {"F27:A1", "F27:A7"}),
+    ("N06", "K-9-66", "回傳輸入之態（⛔ 末次通過之態）", _BM, "    return _cur966, _got966, _steps966",
+     "    return state, _got966, _steps966", {"F27:A9"}),
+    ("N07", "K-9-66 ②", "二分法之支反之", _BM, "            if _new966 is None:\n                _hi966",
+     "            if _new966 is not None:\n                _hi966", {"F27:A1"}),
+    ("N08", "K-9-66", "要求之類之停機去之", _BM, "        if _c966.get('cls') not in K966_CLASSES:", "        if False:",
+     {"F27:A8"}),
+    ("N09", "K-9-66 ②", "二分法⛔ 記通過之態", _BM, "                _lo966, _win966 = _md966, _new966",
+     "                _lo966 = _md966", {"F27:A9"}),
+    ("N10", "K-9-66 ②", "試之量與所記之量不一", _BM, "_s966[_i966] * (_md966 * grid) / _sum966)",
+     "_s966[_i966] * (_md966 * grid) / _sum966 * 1.0001)", {"F27:A1"}),
+    ("N11", "K-9-66 ②", "類之全量成而⛔ 承接其態", _BM, "                _cur966 = _new966\n                for _i966 in _ix966:",
+     "                for _i966 in _ix966:", {"F27:A2", "F27:A6"}),
+    ("N12", "K-9-67", "去重劃前面積之鍵", _RK, "return (-adj_q2(g), -adj_q2(pre_area), str(pid))",
+     "return (-adj_q2(g), str(pid))", {"F27:C1"}),
+    ("N13", "K-9-67", "應分配面積⛔ 以 0.01 ㎡ 量化", _RK, "return (-adj_q2(g), -adj_q2(pre_area), str(pid))",
+     "return (-float(g), -adj_q2(pre_area), str(pid))", {"F27:C2"}),
+    ("N14", "K-9-67", "重劃前面積之序反之", _RK, "return (-adj_q2(g), -adj_q2(pre_area), str(pid))",
+     "return (-adj_q2(g), adj_q2(pre_area), str(pid))", {"F27:B1", "F27:C1"}),
+    ("N15", "K-9-67", "重劃前面積先於應分配面積", _RK, "return (-adj_q2(g), -adj_q2(pre_area), str(pid))",
+     "return (-adj_q2(pre_area), -adj_q2(g), str(pid))", {"F27:B1"}),
+    ("N16", "K-9-67", "成員缺⛔ 取自身", _PA, "    for _m967 in (members or [pid]):", "    for _m967 in (members or []):",
+     {"F27:B3"}),
+    ("N17", "K-9-68", "段三：一輪之要求⛔ 依受併之街廓分組", _S3,
+     "            _b = _blk_of[e['r']]\n            if _b not in _bg:",
+     "            _b = _blk_of[e['r']]\n            _bg.pop(_b, None)\n            if _b not in _bg:", {"F27:U1"}),
+    ("N18", "K-9-51", "段三：第 5 項之候選⛔ 扣已試而未全收之街廓", _S3,
+     "if _p == x or _p in merged_out or _b in F.get(x, set()) or _p not in state[\"by\"]:",
+     "if _p == x or _p in merged_out or _p not in state[\"by\"]:", {"F27:U2"}),
+    ("N19", "K-9-51", "段三：第 5 項之候選之序以 k967_rank 先於距離", _S3,
+     "_cands.append(((_d, k967_rank(_G[_p], k967_pre_area(_p, _cm.get(_p), _pa), _p)), _p, _d,",
+     "_cands.append(((k967_rank(_G[_p], k967_pre_area(_p, _cm.get(_p), _pa), _p), _d), _p, _d,", {"F16:K3"}),
+    ("N20", "K-9-66", "段三：K-9-66 之列⛔ 記", _S3,
+     "for e in _cs}) >= 2 and not (", "for e in _cs}) >= 9 and not (", {"F27:U1"}),
+    ("N21", "K-9-68", "段三：第 5 項之輪之剩下⛔ 減其所併", _S3,
+     "                if F is None:\n                    rem[x] -= g",
+     "                if F is None:\n                    pass",
+     {"F16:K2"}),
+    ("N22", "R-17″", "段三：趟中之帳同一受併宗⛔ 累加（覆寫）", _S3,
+     "                    _lg373[e['r']] = float(_lg373.get(e['r'], 0.0)) + float(v)",
+     "                    _lg373[e['r']] = float(v)", {"F28:L6"}),
+    ("N23", "R-17″", "段三：趟中之帳取輸入之帳 ＋ 最末一次", _S3,
+     "                    _lg373 = dict(_dx.get('段三部分併出') or {})",
+     "                    _lg373 = dict(_by0[x].get('段三部分併出') or {})", {"F28:L1", "F28:L6"}),
+    ("N24", "R-17″", "段三：趟中之帳⛔ 寫", _S3,
+     "                    _dx.update({'段三部分併出': _lg373, '段三併出': sorted(set(_dx.get('段三併出') or ()) | {e['r']})})",
+     "                    pass", {"F28:L1"}),
+    ("N25", "R-19″", "段三：第 5 項之重劃前面積之表取輸入之態", _S3,
+     "               for p, t in state[\"by\"].items()}", "               for p, t in _by0.items()}", {"F28:L6"}),
+    ("N26", "K-9-66", "段三：試施之受併宗之量⛔ 乘 κ", _S3,
+     "            _apply(_tt, e['r'], [(x, e['k'] * float(v), False)])",
+     "            _apply(_tt, e['r'], [(x, float(v), False)])", {"F16:K10"}),
+    ("N27", "K-9-68", "段三：第 1 輪⛔ 記已試而未全收之街廓", _S3,
+     "                elif _has357(e['s'] - g):\n                    F.setdefault(x, set()).add(_b)",
+     "                elif _has357(e['s'] - g):\n                    pass", {"F27:U2"}),
+    ("N28", "R-7 ③", "段三：題一 4 之半之片⛔ 入第 5 項之輪", _S3,
+     "        _rnd373(_rq, _rem, _F)\n        _p5_373([c] + _hv, _rem, _F)",
+     "        _rnd373(_rq, _rem, _F)\n        _p5_373([c], _rem, _F)",
+     {"F16:K17"}),
+    ("N29", "K-9-66", "段三：⛔ 以 k966_block_merge 之回傳之態承接", _S3,
+     "            state, _gs, _steps = k966_block_merge(state, _cs, _try373)",
+     "            _s0, _gs, _steps = k966_block_merge(state, _cs, _try373)", {"F27:U1"}),
+    ("N30", "R-7 ②", "段三步驟 10：第 1 輪之來源量⛔ 除 κ", _S3,
+     "            _rq10.append({'cls': _cls373[_kind(x)], 's': float(_q) / _kq,",
+     "            _rq10.append({'cls': _cls373[_kind(x)], 's': float(_q),", {"F16:K10"}),
+    ("N31", "R-7 ②", "段三步驟 10：非建地之片之剩下⛔ 記", _S3,
+     "                _left[x] = max(0.0, _rem10.get(x, 0.0))", "                pass", {"F27:U1"}),
+    ("N32", "R-7 ②", "段三步驟 10：剩下⛔ 入第 5 項之輪", _S3, "        _p5_373(_xs10, _rem10, _F10)", "        pass",
+     {"F27:U2"}),
+    ("N33", "K-9-66 R-5 (a)", "段三：建地之部分併出⛔ 留 build", _S3,
+     "                if _has357(float(_dx.get('分攤登記面積_m2', 0) or 0) + float(_dx.get('面積_m2', 0) or 0) - float(v)):",
+     "                if False:", {"F16:K7", "F16:K19"}),
+    ("N34", "K-9-68", "手冊先行：一輪之要求⛔ 依受併之街廓分組", _MN,
+     "            if _e953['bk'] not in _bg953:\n",
+     "            _bg953.pop(_e953['bk'], None)\n            if _e953['bk'] not in _bg953:\n",
+     {"F27:T1"}),
+    ("N35", "K-9-51", "手冊先行：候選⛔ 扣已試而未全收之街廓", _MN,
+     "                    if str(_bk) in _F953.get(_x, set()):\n                        continue\n",
+     "                    if False:\n                        continue\n", {"F27:T2"}),
+    ("N36", "K-9-66", "手冊先行：K-9-66 之列⛔ 記", _MN,
+     "for _e953 in _cs953}) >= 2 and not (", "for _e953 in _cs953}) >= 9 and not (", {"F27:T1"}),
+    ("N37", "K-9-68", "手冊先行：K-9-51 之輪之剩下⛔ 減其所併", _MN,
+     "                if not _first:\n                    _rem953[_x] -= _gv",
+     "                if not _first:\n                    pass",
+     {"F27:T1"}),
+    ("N38", "R-17″", "手冊先行：趟中之帳同一受併宗⛔ 累加（覆寫）", _MN,
+     "                    _lg953[_e953['r']] = float(_lg953.get(_e953['r'], 0.0)) + float(_v)",
+     "                    _lg953[_e953['r']] = float(_v)", {"F28:L4"}),
+    ("N39", "R-17″", "手冊先行：趟中之帳取輸入之帳 ＋ 最末一次", _MN,
+     "                    _lg953 = dict(_dx.get('段三部分併出') or {})",
+     "                    _lg953 = dict(_tin953[_x].get('段三部分併出') or {})", {"F28:L4"}),
+    ("N40", "R-17″", "手冊先行：趟中之帳⛔ 寫", _MN,
+     "                    _dx.update({'段三部分併出': _lg953, '段三併出': sorted(set(_dx.get('段三併出') or ()) | {_e953['r']})})",
+     "                    pass", {"F28:L2"}),
+    ("N41", "R-19″", "手冊先行：K-9-51 之重劃前面積之表取輸入之態", _MN,
+     "                       for _pk953, _tq in state[\"by\"].items()}",
+     "                       for _pk953, _tq in _tin953.items()}",
+     {"F28:L4"}),
+    ("N42", "K-9-66 R-5", "手冊先行：第 1 輪之來源量⛔ 除 κ", _MN,
+     "                _rq953.append({'cls': _kind953[_sort953(_tin953[_x])], 's': float(_qv) / _kv,",
+     "                _rq953.append({'cls': _kind953[_sort953(_tin953[_x])], 's': float(_qv),", {"F27:T5"}),
+    ("N43", "R-18″", "手冊先行：趟末之前帳取當下之態", _MN,
+     "            _pp953 = dict((str(_k), float(_v)) for _k, _v in (_tin953[_x].get('段三部分併出') or {}).items())",
+     "            _pp953 = dict((str(_k), float(_v)) for _k, _v in (_d.get('段三部分併出') or {}).items())", {"F27:T1"}),
+    ("N44", "K-9-66", "手冊先行：⛔ 以 k966_block_merge 之回傳之態承接", _MN,
+     "            state, _gs953, _stp953 = k966_block_merge(state, _cs953, _try953k)",
+     "            _s0, _gs953, _stp953 = k966_block_merge(state, _cs953, _try953k)", {"F27:T1"}),
+    ("N45", "K-9-68", "第一趟：一輪之要求⛔ 依受併之街廓分組", _A4,
+     "            if _e['bk'] not in _bg_a4:\n",
+     "            _bg_a4.pop(_e['bk'], None)\n            if _e['bk'] not in _bg_a4:\n",
+     {"F27:V1"}),
+    ("N46", "R-17″", "第一趟：趟中之帳同一受併宗⛔ 累加（覆寫）", _A4,
+     "                    _lg_a4[_e['r']] = float(_lg_a4.get(_e['r'], 0.0)) + float(_v)",
+     "                    _lg_a4[_e['r']] = float(_v)", {"F28:L5"}),
+    ("N47", "R-17″", "第一趟：趟中之帳取輸入之帳 ＋ 最末一次", _A4,
+     "                    _lg_a4 = dict(_dx.get('段三部分併出') or {})",
+     "                    _lg_a4 = dict(_tin_a4[_x].get('段三部分併出') or {})", {"F28:L5"}),
+    ("N48", "R-17″", "第一趟：趟中之帳⛔ 寫", _A4,
+     "                    _dx.update({'段三部分併出': _lg_a4, '段三併出': sorted(set(_dx.get('段三併出') or ()) | {_e['r']})})",
+     "                    pass", {"F28:L3"}),
+    ("N49", "R-19″", "第一趟：各輪之重劃前面積之表取輸入之態", _A4,
+     "- sum(float(_v) for _v in (_t.get('段三部分併出') or {}).values()) for _p, _t in state[\"by\"].items()}",
+     "- sum(float(_v) for _v in (_t.get('段三部分併出') or {}).values()) for _p, _t in _tin_a4.items()}", {"F28:L5"}),
+    ("N50", "K-9-66", "第一趟：K-9-66 之列⛔ 記", _A4,
+     "for _e in _cs_a4}) >= 2 and not _all_ok:", "for _e in _cs_a4}) >= 9 and not _all_ok:", {"F27:V1"}),
+    ("N51", "K-9-68", "第一趟：剩下⛔ 減其所併（記為 0）", _A4, "                    _L[_x] = _e['s'] - _g",
+     "                    _L[_x] = 0.0", {"F27:V1"}),
+    ("N52", "K-9-68", "第一趟：受詞每輪沿名單⛔ 止於首一有其宗之街廓", _A4,
+     "                break\n        _bo_a4, _bg_a4 = [], {}", "\n        _bo_a4, _bg_a4 = [], {}", {"F27:V2"}),
+    ("N53", "K-9-66", "第一趟：同類之片之序（剩下大者先）反之", _A4,
+     "key=lambda _y: (_rank_a4[_cls[_y]], -_L[_y], _y)):", "key=lambda _y: (_rank_a4[_cls[_y]], _L[_y], _y)):",
+     {"F24:K25"}),
+    ("N54", "K-9-67", "第一趟：受併宗之序去 k967_rank", _A4,
+     "            k967_rank(_S['G'][_h], k967_pre_area(_h, _ms, _pre_a4), _h))", "            _h)", {"F24:K7"}),
+    ("N55", "R-18″", "第一趟：趟末之前帳取當下之態", _A4,
+     "            _pp_a4 = dict((str(_k), float(_v)) for _k, _v in (_tin_a4[_x].get('段三部分併出') or {}).items())",
+     "            _pp_a4 = dict((str(_k), float(_v)) for _k, _v in (_d.get('段三部分併出') or {}).items())", {"F27:V1"}),
+    ("N56", "K-9-66", "第一趟：⛔ 以 k966_block_merge 之回傳之態承接", _A4,
+     "            state, _gs_a4, _st_a4 = k966_block_merge(state, _cs_a4, _try_a4k)",
+     "            _s0, _gs_a4, _st_a4 = k966_block_merge(state, _cs_a4, _try_a4k)", {"F27:V1"}),
+    ("N57", "K-9-66 通知 3", "調配之輸入：建地之部分併出之原有面積⛔ 依剩下之比", _AI,
+     "            _row.update(所屬單元=_up, 原有面積=_a(t) * _rho_b, 段三併出面積=_a(t) * (1.0 - _rho_b))",
+     "            _row.update(所屬單元=_up, 原有面積=_a(t), 段三併出面積=0.0)", {"F27:W1", "F27:W2"}),
+]
+
+
+def _fn_spans(src):
+    ls = src.splitlines(keepends=True)
+    out = {}
+    for n in ast.parse(src).body:
+        if isinstance(n, ast.FunctionDef):
+            out[n.name] = (sum(len(x) for x in ls[:n.lineno - 1 - len(n.decorator_list)]),
+                           sum(len(x) for x in ls[:n.end_lineno]))
+    return out
+
+
+def _child(repo, app):
+    """（內部）以 `app` 取受詞，跑 F27／F28／F23／F24／F16 之 selftest 之項，印 {器: 紅項} 之 JSON（末列）。"""
+    sys.path.insert(0, os.path.join(repo, "verify"))
+    from app_harvest import harvest
+    import selection_pipeline as sp
+    with contextlib.redirect_stdout(io.StringIO()):
+        ns, _ = harvest(app)
+    me = sys.modules[__name__]
+    P = "verify/probes/"
+    f12 = _load(repo, P + "probe_WG9353_endmerge.py", "f12_377")
+    f16 = _load(repo, P + "probe_WG9357_k948.py", "f16_377")
+    f23 = _load(repo, P + "probe_WG9363_k953.py", "f23_377")
+    f24 = _load(repo, P + "probe_WG9367_adj4.py", "f24_377")
+    f28 = _load(repo, P + "probe_WG9373p1_partrem.py", "f28_377")
+    out = {}
+    for k, fn in (("F27", lambda: _cases(ns, sp)), ("F28", lambda: f28._cases(ns, f12, f16, me, f23)),
+                  ("F23", lambda: f23._cases(ns, sp)), ("F24", lambda: f24._cases(ns, sp)),
+                  ("F16", lambda: f16._cases(ns, sp))):
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                cs = fn()
+            out[k] = _report(cs, verbose=False)
+        except Exception as ex:  # noqa: BLE001
+            out[k] = ["執行中止", type(ex).__name__]
+    print(json.dumps(out, ensure_ascii=False))
+    return 0
+
+
+def mutate(repo):
+    src = _read(repo, "app.py")
+    spans = _fn_spans(src)
+    tmp = tempfile.mkdtemp(prefix="wg9377mut_")
+    env = dict(os.environ, PYTHONIOENCODING="utf-8", PYTHONUTF8="1", PYTHONDONTWRITEBYTECODE="1")
+
+    def one(m):
+        mid, cl, desc, fn, old, new, want = m
+        if mid == "N00":
+            n, text = 1, src
+        else:
+            a, b = spans.get(fn, (0, 0))
+            n = src[a:b].count(old)
+            if n != 1:
+                return m, n, None
+            text = src[:a] + src[a:b].replace(old, new, 1) + src[b:]
+        p = os.path.join(tmp, f"app_{mid}.py")
+        with open(p, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        try:
+            r = subprocess.run([sys.executable, os.path.abspath(__file__), "_child", repo, p], capture_output=True,
+                               text=True, encoding="utf-8", env=env, timeout=600)
+        except subprocess.TimeoutExpired:
+            return m, n, ("逾時",)
+        try:
+            red = json.loads((r.stdout.strip().splitlines() or ["null"])[-1])
+        except Exception:  # noqa: BLE001
+            red = None
+        if r.returncode != 0 or not isinstance(red, dict):
+            return m, n, ("例外", (r.stderr.strip().splitlines() or ["?"])[-1][:200])
+        return m, n, red
+
+    todo = [("N00", "—", "基準（⛔ 突變）", None, None, None, set())] + MUT377
+    bad = []
+    try:
+        with ThreadPoolExecutor(2) as ex:
+            res = list(ex.map(one, todo))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)          # 暫存之 app_*.py（每份約 1.8 MB）⛔ 遺留
+    for m, n, red in res:
+        mid, cl, desc, fn, old, new, want = m
+        got = {f"{k}:{i}" for k, v in red.items() for i in v} if isinstance(red, dict) else None
+        if mid == "N00":
+            ok = got == set()
+        else:
+            ok = n == 1 and got is not None and bool(want) and want <= got
+        if not ok:
+            bad.append(mid)
+        shown = sorted(got) if got is not None else red
+        print(f"  {'✅' if ok else '🔴'} {mid} {cl}·{desc}：錨 {n} 見；所指 {sorted(want)}；紅 {shown}")
+    print(f"⇒ 突變 {len(MUT377)}（另基準一）；紅 {bad}；rc {1 if bad else 0}")
+    return 1 if bad else 0
 
 
 # ── run：本案 ──
@@ -766,6 +1078,10 @@ def main(argv):
         print(__doc__)
         return 2
     cmd, repo = argv[1], os.path.abspath(argv[2])
+    if cmd == "mutate":                                       # 🆕 `W-G.9-377`
+        return mutate(repo)
+    if cmd == "_child" and len(argv) == 4:                    # 🆕 `W-G.9-377`（mutate 之子程序·內部）
+        return _child(repo, os.path.abspath(argv[3]))
     if cmd == "selftest":
         return selftest(repo)
     if cmd == "wiring":

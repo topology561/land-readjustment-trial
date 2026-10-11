@@ -29,6 +29,11 @@
            期值出自 KL 之裁（甲案）、`K-9-49`、`K-9-66` 通知 `3` 與補令一 `§二`（發單側手算·⛔ 呼叫受測碼求期）；
            等面積之對照（⛔ 帶前帳而面積同其剩下·其配地之結果須同）：E1／E2、E3／E4、E6／E7、S3／S5、S4／S6、M1／M2、Q1／Q2；
            S2 ＝ ⛔ 帶前帳之同片（非等面積）、I2 ＝ ⛔ 其後受併入之同片（非等面積）。
+           🔧 `W-G.9-377`（`W-G.9-373` 補令二 `§三` 之⛔ 量之二項·⛔ 上列一字不刪）：增 L4〜L6（三處各一）——受詞之片帶前帳
+           （向本趟亦併入之受併宗）且同一趟之內部分併出二次（L4／L5）或於其後之輪仍見（L6）：⑦ 趟中之帳之**累加**（其後之試算所見之
+           「面積_m2 ＋ 段三部分併出之和」恆 ＝ 0·⛔ 以「最末一次」或「輸入之帳 ＋ 最末一次」代之）；⑧ `R-19″` 之重劃前面積之表之
+           **取態**（受測碼呼叫 `k967_pre_area` 時所傳之表，其受詞之片之值 ＝ 分攤登記面積 − 當下之帳之和·⛔ 取輸入之態）——以
+           包一層之 `k967_pre_area`（`ns` 即受測碼之 globals）記每次所傳之表之受詞之值。期值手算（各例之註）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import contextlib, copy, importlib.util, io, os, sys
@@ -256,6 +261,88 @@ def _l3(ns, f27):
     return sorted(set(seen)), len(seen) > 0
 
 
+# 🆕 `W-G.9-377`：趟中之帳之累加（⑦）與 `R-19″` 之表之取態（⑧）
+def _pre_spy(ns, ids, rec):
+    """回 (原函式, 包一層者)：每次呼叫記其所傳之表中 `ids` 之值（依暫編地號排序之 tuple）。"""
+    orig = ns["k967_pre_area"]
+
+    def wrapped(pid, members, area_of):
+        rec.append(tuple((x, round(float(area_of[x]), 4) + 0.0) for x in sorted(ids) if x in area_of))
+        return orig(pid, members, area_of)
+    return orig, wrapped
+
+
+def _with_spy(ns, ids, fn):
+    seen, rec = [], []
+    orig, w = _pre_spy(ns, ids, rec)
+    ns["k967_pre_area"] = w
+    try:
+        fn(seen)
+    finally:
+        ns["k967_pre_area"] = orig
+    return sorted(set(seen)), sorted(set(rec)), len(seen) > 0
+
+
+def _l4(ns, f27):
+    """手冊先行（F27 T1 之形）：X(1)（甲·分攤 60）帶前帳（A1(1) 5·面積_m2 −5）。第 1 輪 BB（容 130）三片按比例 130 ÷ 145
+    （X 55／Y 50／Z 40）⇒ X 再併入 A1(1) 49.3103；剩下 5.6897 於 K-9-51 之輪至 BD 之 A2(1)（容 5）⇒ 部分 5。
+    ⑦ 第 2 輪之試算所見之 X(1)：面積_m2 −59.3103 −v ＋ 帳 {A1(1) 54.3103, A2(1) v} ＝ 0；⑧ 計畫之表（輸入之態）X 55／Y 50／Z 40；
+    K-9-51 之表（第 1 輪之後）X 60 − 5 − 49.3103 ＝ 5.6897、Y 50 × 15 ÷ 145 ＝ 5.1724、Z 40 × 15 ÷ 145 ＝ 4.1379。"""
+    tp, R, H = f27._tp, f27._R, f27.H
+    x = tp("X(1)", "BA", H, R(0, 10, 0, 30), 60)
+    x.update({"面積_m2": -5.0, "段三併出": ["A1(1)"], "段三部分併出": {"A1(1)": 5.0}})
+    t = [x, tp("Y(1)", "BA", H, R(10, 20, 0, 30), 50), tp("Z(1)", "BA", H, R(20, 30, 0, 30), 40),
+         tp("A1(1)", "BB", H, R(0, 10, 30, 60), 300), tp("B1(1)", "BB", H, R(10, 20, 30, 60), 300),
+         tp("C1(1)", "BB", H, R(20, 30, 30, 60), 300), tp("A2(1)", "BD", H, R(40, 50, 0, 30), 300)]
+    own = {"X": "甲", "A1": "甲", "A2": "甲", "Y": "乙", "B1": "乙", "Z": "丙", "C1": "丙"}
+    blocks = {b: {"category": H} for b in ("BA", "BB", "BD")}
+    ap, st = f27._cbs({"BB": 130.0, "BD": 5.0}, drop=("X(1)", "Y(1)", "Z(1)"))
+    ids = {"X(1)", "Y(1)", "Z(1)"}
+    return _with_spy(ns, ids, lambda seen: ns["k953_manual_run"](t, list(t), own, blocks, {}, ap, _rec(st, ids, seen),
+                                                                log_print=lambda *a: None))
+
+
+def _l5(ns, f27):
+    """第一趟（F27 V1 之形）：X1(1)（g1·分攤 60）帶前帳（X1(2) 5·面積_m2 −5）；名單 BB → BC。第 1 輪至 BB 之 X1(2)（容 30）
+    ⇒ 部分 30；第 2 輪至 BC 之 X1(3)（容 10）⇒ 部分 10；剩下 15 留於合併單位。⑦ 第 2 輪之試算所見之 X1(1)：
+    面積_m2 −35 −v ＋ 帳 {X1(2) 35, X1(3) v} ＝ 0；⑧ 各輪之表：第 1 輪 60 − 5 ＝ 55、第 2 輪 60 − 5 − 30 ＝ 25。"""
+    tp, R, H = f27._tp, f27._R, f27.H
+    x = tp("X1(1)", "BA", H, R(0, 10, 0, 30), 60.0)
+    x.update({"面積_m2": -5.0, "段三併出": ["X1(2)"], "段三部分併出": {"X1(2)": 5.0}})
+    t = [x, tp("X1(2)", "BB", H, R(0, 10, 30, 60), 300), tp("X1(3)", "BC", H, R(20, 30, 0, 30), 300)]
+    own = {"X1": "g1"}
+    geom = {q["暫編地號"]: [list(c) for c in q["polygon_coords"]] for q in t}
+    ap, st = f27._cbs({"BB": 30.0, "BC": 10.0}, drop=("X1(1)",))
+    subj = [{"歸戶": "g1", "軌": "建地軌", "錨點": "X1(1)", "名單": ["BB", "BC"], "片": ["X1(1)"], "原有面積合計": 60.0}]
+    return _with_spy(ns, {"X1(1)"}, lambda seen: ns["adj4_pass1_run"](t, list(t), own, subj, geom, ap,
+                                                                      _rec(st, {"X1(1)"}, seen),
+                                                                      log_print=lambda *a: None))
+
+
+def _l6(ns, f16):
+    """段三（F28 L1 之形）：Y1(1)（分攤 90）帶前帳（X1(1) 5·面積_m2 −5）；題一 4 再部分併入 X1(1) 20，剩下於第 5 項之輪至
+    Z1(1)（部分 50）。⑦ 其後之試算所見之 Y1(1)：面積_m2 ＋ 帳之和 ＝ 0（帳 {X1(1) 25, Z1(1) …}）；⑧ 第 5 項之表（題一 4 之後）
+    Y1(1) ＝ 90 − 5 − 20 ＝ 65。"""
+    temp, own, blocks, cl = f16._world4()
+    for q in temp:
+        if q["暫編地號"] == "Y1(1)":
+            q.update({"面積_m2": -5.0, "段三併出": ["X1(1)"], "段三部分併出": {"X1(1)": 5.0}})
+    build = [q for q in temp if q["街廓分類"] == f16.H]
+    ap, _tw, st = f16._cbs({"BX": 60.0, "BY": 1000.0, "B7": 50.0}, None, ("Y1(1)",))
+    thr = {("BX", "左"): 130.0, ("BY", "左"): 200.0}
+
+    def tw(temp_, build_, blk, end, cand):
+        b_ = {b["暫編地號"]: b for b in build_}
+        g = f16._g(b_[cand]) if cand in b_ else 0.0
+        return (cand if g >= thr[(blk, end)] else None), round(g, 2), thr[(blk, end)]
+    order = [{"最終序位": 1, "街廓": "BX", "端": "左", "暫編地號": "X1(1)"},
+             {"最終序位": 2, "街廓": "BY", "端": "左", "暫編地號": "Y1(1)"}]
+    ct = [{"形": "一", "列": [("BX", "左", "X1(1)", 10.0), ("BY", "左", "Y1(1)", 10.0)]}]
+    return _with_spy(ns, {"Y1(1)"}, lambda seen: ns["k6b_stage3_run"](order, set(), own, temp, build, blocks, cl, ap,
+                                                                      tw, _rec(st, {"Y1(1)"}, seen),
+                                                                      log_print=lambda *a: None, contests=ct))
+
+
 def _cases(ns, f12, f16, f27, f23):
     out = []
     # E（門檻 150）：C1(1)（a 100）以 ① 同街廓併 C1(2)；C1(2) 部分併出之剩下 50（分攤 60·已併出 10）≡ 一分未併而 a 50
@@ -362,6 +449,16 @@ def _cases(ns, f12, f16, f27, f23):
          lambda: _l2(ns, f27), ([0.0], True))
     _run(out, "L3 趟中之帳·第一趟（F27 V1 之形）：X1(1)／Y1(1) 於 BB 按比例部分併出之試施，其試算所見者皆帶其帳",
          lambda: _l3(ns, f27), ([0.0], True))
+    # 🆕 `W-G.9-377`
+    _run(out, "L4 趟中之帳之累加與 K-9-51 之表之取態·手冊先行：X(1) 帶前帳、同一趟部分併出二次 ⇒ 所見恆 0；"
+              "表 ＝ 計畫時 55／50／40、K-9-51 時 5.6897／5.1724／4.1379",
+         lambda: _l4(ns, f27),
+         ([0.0], [(("X(1)", 5.6897), ("Y(1)", 5.1724), ("Z(1)", 4.1379)),
+                  (("X(1)", 55.0), ("Y(1)", 50.0), ("Z(1)", 40.0))], True))
+    _run(out, "L5 趟中之帳之累加與各輪之表之取態·第一趟：X1(1) 帶前帳、二輪各部分併出 ⇒ 所見恆 0；表 ＝ 第 1 輪 55、第 2 輪 25",
+         lambda: _l5(ns, f27), ([0.0], [(("X1(1)", 25.0),), (("X1(1)", 55.0),)], True))
+    _run(out, "L6 趟中之帳之累加與第 5 項之表之取態·段三：Y1(1) 帶前帳、題一 4 再併入同一受併宗 ⇒ 所見恆 0；表 ＝ 65",
+         lambda: _l6(ns, f16), ([0.0], [(("Y1(1)", 65.0),)], True))
     return out
 
 
