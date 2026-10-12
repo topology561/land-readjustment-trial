@@ -94,6 +94,9 @@ ALLOW373_SP += ("build_build_parcels",)
 #   （其試算之回傳增 pool_out）——本單之接線另由 F27 之 Y8 量之
 ALLOW373_APP += ("k967_pool_out", "k967_pool_less", "adj4_trial_state", "f3_screen_k953")
 ALLOW373_SP += ("run_k953",)
+# 🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①）：X2 之許增 `k965_part_split`（合併之宗之部分併入之帳·其行為與接線由 F29 之
+#   K33／K51〜K54、Y10 量之）
+ALLOW373_APP += ("k965_part_split",)
 
 
 def _strip_fns(src, names):

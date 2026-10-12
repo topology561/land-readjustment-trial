@@ -744,6 +744,9 @@ ALLOW375_SP = ("build_build_parcels",)
 # 🔧 `W-G.9-378`（`GB-204`）：W5 之許增重劃前面積之表減入池閘之帳之二函式與五處之試算之所改（其接線由 F27 之 Y8 量之）
 ALLOW375_APP += ("k967_pool_out", "k967_pool_less", "f3_screen_k953")
 ALLOW375_SP += ("run_k953",)
+# 🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①）：W5 之許增 `k965_part_split`（合併之宗之部分併入之帳·其行為與接線由 F29 之
+#   K33／K51〜K54、Y10 量之）
+ALLOW375_APP += ("k965_part_split",)
 ANC_SKIP373 = ("_out.append(tp)", "member", "members")
 FN_GONE373 = ("_k951", "_max357", "_split357", "_try", "_fill953", "_probe953", "_remain953")
 # 🆕 `W-G.9-370`（K-9-57 ⑧）：W6 之許——`k953_manual_run` 之 `S219` 之停機訊息之基準二列（逐字）得易之（唯此二列）

@@ -15,12 +15,21 @@
            擾動其期須恰該項紅）。
            🔧 `W-G.9-377`（`自誤 603`·⛔ 上列一字不刪）：增 K50（回原狀之帳之序以該次合併時之應分配面積定：非相連之二候選，
            其後應分配面積之大小已易者⛔ 於判時重排）——期值手算（發單側窗七十九·倉外之玩具 `T2`）；P0 隨之 `50` 項。
+           🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①·⛔ 上列一字不刪）：K33 之期改之——合併之單元之部分併入⛔ 停機，其帳依各成員
+           之剩下乘同一百分比分之（宿主入「入池閘部分併出」、他成員入「入池閘成員部分併出」·`k965_part_split`）；增 K51（成員之
+           重劃前地價區段相異 ⇒ 各以其來源量計）、K52（K33 之調配之輸入：二成員皆建築街廓內不能分配·剩下 ＝ 原有面積 − 所併出）、
+           K53（成員之剩下之合〔折為宿主之單價〕與宗之面積不符——宗含非其成員之土地 ⇒ 停機·`K-9-61` ⑤ 之還原另單·`GB-205`）、
+           K54（`k965_part_split` 之純函式：按比例、剩下為 0 之成員略之、容差 `max(1e-3, 1e-6 × 面積)` 之內者照分、四停機之支
+           各以其訊息之字樣判之）——期值手算（發單側窗八十一）；P0 隨之 `54` 項。受詞增 `k965_part_split`。
   wiring   <repo>
            接線（AST·字樣）：Y1 `k929_6_fixpoint` 之簽名；Y2 harness 之注入（`run_step_g`）；Y3 畫面之注入
            （`_k929_6_screen_gate`）；Y4 harness 之 session 鍵（`build_build_parcels`）；Y5 `k929_6_fixpoint` 內之呼叫
            （`k966_block_merge` 恰一、`k953_alloc_summary` ≥ 1、`k967_rank` ≥ 1、`_projection_order` ≥ 1）；Y6 `adj_intake`
            讀「入池閘部分併出」與「入池閘成員部分併出」；Y7 `k929_6_fixpoint` 之字串常數⛔ 含案件字面；Y8 三【未裁】之停機已去、未收斂之停機仍在；
            Y9 畫面對拍器之畫面之 session 有 `f3_temp_parcels`（同 `main()`）。
+           🔧 `W-G.9-380`（⛔ 上列一字不刪）：Y10 `k965_part_split` 為模組層之函式（簽名 members, host, src, price, total, v）、
+           `k929_6_fixpoint` 內呼之恰一；其巢狀 `_pre965` 呼 `_src965`（重劃前面積與部分併入之帳同一式）；`k929_6_fixpoint` 之文⛔ 含
+           「程式未支援」（巳 ① 之停機已去）。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）之首次 step G（`run_corner_pk` 之後·含入池閘）：R1 入池閘之末態 build
            （暫編地號·成員·`面積_m2`）＝ 本器所載；R2 配地列（暫編地號·街廓·推進側·G）與不配地紀錄（依推進序）＝ 本器所載；
@@ -119,7 +128,7 @@ class ToyLate(Toy):
             self.fail = base
 
 
-def _fx_raw(ns, build, own, blocks, temp="same", fail_first=(), cat=True, max_rounds=None, late=()):
+def _fx_raw(ns, build, own, blocks, temp="same", fail_first=(), cat=True, max_rounds=None, late=(), prices=None):
     toy = ToyLate(blocks, fail_first, late)
     fl = {b: {"p1": (0.0, 0.0), "p2": (1000.0, 0.0)} for b in blocks}
     kw = dict(temp_parcels=(build if temp == "same" else temp))
@@ -127,7 +136,8 @@ def _fx_raw(ns, build, own, blocks, temp="same", fail_first=(), cat=True, max_ro
         kw.update(cat_of={b: "住宅區" for b in blocks}, front_rows={b: {"正面路寬(m)": 8} for b in blocks})
     if max_rounds:
         kw["max_rounds"] = max_rounds
-    return ns[FN](build, toy.trial, own, {"z1": 1.0}, fl, **kw)
+    # 🔧 `W-G.9-380`：prices（缺 ⇒ {"z1": 1.0}·同前）
+    return ns[FN](build, toy.trial, own, prices or {"z1": 1.0}, fl, **kw)
 
 
 def _summ(bf, out, log):
@@ -422,12 +432,36 @@ def cases(ns):
               {"alloc": {"r1": 207.0, "r2": 186.0}, "units": {"r1": ["r1", "u1"], "r2": ["r2", "u2"]}, "drops": [],
                "steps": [("第1步", "r1", "u1", "回原狀（K-9-58 ③）"), (S1R, "r1", "r1", "留置"),
                          (S1R, "r2", "r2", "留置")]}))
-    # K33 合併之單元須部分併入他街廓（K-9-66）而其帳未支援 ⇒ 停機（⛔ 靜默）
-    u3 = dict(mk("U", "ou", "A", 60, 0, 10), 面積_m2=60.0, 入池閘併入=["U", "W"])
-    b = [u3, mk("Z9", "o9", "A", 400, 20, 30), mk("r", "o5", "B", 300, 0, 20, 20, 40)]
-    msg = _raise_frag(lambda: _fx(ns, b, {"ou": "GA", "ow": "GA", "o9": "GZ", "o5": "GA"},
-                                  {"A": BLK(), "B": BLK(cap=260.003)}, temp=b + [mk("W", "ow", "A", 60, 10, 20)]))
-    C.append(("K33 單元之部分併入 ⇒ 停機", bool(msg and "程式未支援" in msg), True))
+    # K33（🔧 `W-G.9-380`·巳 ①）合併之單元 U（U 60 ＋ W 60）須部分併入他街廓之 r（K-9-66）：B 之配餘地之寬 ≥ 3 ⇒
+    #     r 之 G ≤ 200.003 ⇒ 0.6 ×（300 ＋ v）− 9 ≤ 200.003 ⇒ v ≤ 48.338（格 0.01 ⇒ 48.33）；百分比 48.33／120 ⇒ U、W 各 24.165；
+    #     U 剩 71.67（G 43.002 − 9 ＝ 34.002 ⇒ 不配地）；r 348.33 ⇒ 199.998；Z9 於 A 之首位 ⇒ 231
+    own33 = {"ou": "GA", "ow": "GA", "o9": "GZ", "o5": "GA"}
+    blk33 = {"A": BLK(), "B": BLK(cap=260.003)}
+
+    def _b33(wz="z1", wa=60.0):
+        u = dict(mk("U", "ou", "A", 60, 0, 10), 面積_m2=60.0, 入池閘併入=["U", "W"])
+        tw = dict(mk("W", "ow", "A", wa, 10, 20), 重劃前地價區段=wz)
+        tp = [mk("U", "ou", "A", 60, 0, 10), tw, mk("Z9", "o9", "A", 400, 20, 30), mk("r", "o5", "B", 300, 0, 20, 20, 40)]
+        return [u, mk("Z9", "o9", "A", 400, 20, 30), mk("r", "o5", "B", 300, 0, 20, 20, 40)], tp
+
+    def _acct(bf):
+        return {t["暫編地號"]: (round(float(t.get("面積_m2", 0) or 0), 4),
+                              {k: round(v, 4) for k, v in (t.get("入池閘部分併出") or {}).items()},
+                              {m: {k: round(v, 4) for k, v in d.items()}
+                               for m, d in (t.get("入池閘成員部分併出") or {}).items()}) for t in bf}
+
+    def _k33(**kw):
+        b33, tp33 = _b33(**kw)
+        try:
+            bf, out, log = _fx_raw(ns, b33, own33, blk33, temp=tp33, prices={"z1": 1.0, "z2": 2.0})
+            return _summ(bf, out, log), _acct(bf), (bf, out, tp33)
+        except Exception as e:  # noqa: BLE001
+            return {"執行中止": f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}"}, None, None
+    s33, a33, raw33 = _k33()
+    C.append(("K33 單元之部分併入 ⇒ 各成員乘同一百分比（巳 ①·K-9-66）", (s33, a33),
+              ({"alloc": {"Z9": 231.0, "r": 200.0}, "units": {"U": ["U", "W"]}, "drops": ["U"],
+                "steps": [("第2步（依手冊·他街廓）", "r", None, "部分成")]},
+               {"U": (11.67, {"r": 24.165}, {"W": {"r": 24.165}}), "Z9": (0.0, {}, {}), "r": (48.33, {}, {})})))
     M2 = "第2步（依手冊·他街廓）"
     # K34 K-9-58 ③ 之「合併後反不能配」含其後因他處之合併而終不配地者 ⇒ 回原狀（收斂時·逐次回溯）
     b = [mk("X", "ox", "A", 100, 0, 10), mk("Y", "oy", "A", 190, 10, 20), mk("W", "ow", "A", 100, 20, 30),
@@ -618,12 +652,57 @@ def cases(ns):
                "drops": [],
                "steps": [("第1步", "r2", "r1", "回原狀（K-9-58 ③）"), (S1R, "r1", "r1", "留置"), (S1R, "r2", "r2", "續併"),
                          (S1R, "r2", "r2", "留置")]}))
+    # 🔧 `W-G.9-380`（巳 ①）K51 成員之重劃前地價區段相異：W 於 z2（單價 2）·剩下 30 ⇒ 折為宿主（z1）之 60；百分比同 K33
+    #     （48.33／120）⇒ U 24.165、W 30 × 0.40275 ＝ 12.0825（各以其來源量計）；配地同 K33
+    s51, a51, _ = _k33(wz="z2", wa=30.0)
+    C.append(("K51 成員之地價區段相異 ⇒ 各以其來源量計", (s51, a51.get("U") if a51 else None),
+              ({"alloc": {"Z9": 231.0, "r": 200.0}, "units": {"U": ["U", "W"]}, "drops": ["U"],
+                "steps": [("第2步（依手冊·他街廓）", "r", None, "部分成")]},
+               (11.67, {"r": 24.165}, {"W": {"r": 12.0825}}))))
+    # K52 K33 之調配之輸入：U、W 皆建築街廓內不能分配；各 剩下 60 − 24.165 ＝ 35.835、已併出 24.165、應分配面積 ＝ U 之 G 34.002
+    try:
+        bf52, out52, tp52 = raw33
+        it = AI(tp52, bf52, out52[0], out52[1], own33, BB)
+        got52 = tuple((r["暫編地號"], r["類"], round(r["原有面積"], 4), round(r.get("段三併出面積", -1), 4),
+                       round(r["應分配面積"], 4)) for r in it["slices"] if r["暫編地號"] in ("U", "W"))
+    except Exception as e:  # noqa: BLE001
+        got52 = ("執行中止", f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}")
+    C.append(("K52 合併之單元之部分併入之調配之輸入", got52,
+              (("U", ns["ADJ_DISP_POOL"], 35.835, 24.165, 34.002), ("W", ns["ADJ_DISP_POOL"], 35.835, 24.165, 34.002))))
+    # K53 成員之剩下之合（折為宿主之單價 120）與宗之面積（U 之 面積_m2 70 ⇒ 130·含非成員之土地 10）不符 ⇒ 停機
+    #     （K-9-61 ⑤ 之還原另單·GB-205）
+    b53, tp53 = _b33()
+    b53[0]["面積_m2"] = 70.0
+    msg53 = _raise_frag(lambda: _fx_raw(ns, b53, own33, blk33, temp=tp53))
+    C.append(("K53 成員之剩下之合與宗之面積不符（含非成員之土地）⇒ 停機",
+              bool(msg53 and "巳 ①" in msg53 and "不符" in msg53 and "GB-205" in msg53), True))
+    # K54 k965_part_split（純函式）：按比例（f ＝ v ÷ total）；剩下為 0 之成員略之；停機之支五
+    sp = ns["k965_part_split"]
+
+    def _rs(fn, key="巳 ①"):
+        try:
+            return [(m, round(q, 6)) for m, q in fn()]
+        except RuntimeError as e:
+            return ("停機", "巳 ①" in str(e) and key in str(e))
+    got54 = (_rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 30.0}, {"U": 1.0, "W": 2.0}, 120.0, 48.33)),
+             _rs(lambda: sp(["U", "V", "W"], "U", {"U": 60.0, "V": 0.0, "W": 60.0}, {"U": 1.0, "V": 1.0, "W": 1.0},
+                            120.0, 60.0)),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 1.0}, 110.0, 50.0), "不符"),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 1.0}, 120.0, 120.0), "不合 0 <"),
+             _rs(lambda: sp(["W"], "U", {"W": 60.0}, {"W": 1.0}, 60.0, 30.0), "不在成員"),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 70.0, "W": -10.0}, {"U": 1.0, "W": 1.0}, 60.0, 30.0), "之剩下"),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 0.0}, 60.0, 30.0), "單價"),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 1.0}, 120.0005, 60.0)))
+    # 末例：差 0.0005 ＜ 容差 1e-3（段三部分併出之四位之捨入之容）⇒ 照分：f ＝ 60／120.0005
+    C.append(("K54 k965_part_split 之純函式", got54,
+              ([("U", 24.165), ("W", 12.0825)], [("U", 30.0), ("W", 30.0)], ("停機", True), ("停機", True),
+               ("停機", True), ("停機", True), ("停機", True), [("U", 29.999875), ("W", 29.999875)])))
     return C
 
 
 def selftest(repo):
     ns, _ = _harvest(repo)
-    if FN not in ns or "adj_intake" not in ns:
+    if FN not in ns or "adj_intake" not in ns or "k965_part_split" not in ns:
         print("  🔴 受詞缺")
         print("⇒ 紅 ['受詞缺']；rc 1")
         return 1
@@ -723,6 +802,13 @@ def wiring(repo):
     si = _fn(Q, "_screen_inputs")
     ok9 = bool(si) and 'ss["f3_temp_parcels"] = tp' in (ast.get_source_segment(src["verify/probes/probe_WG9345_screen.py"], si) or "")
     chk.append(("Y9 畫面對拍器之畫面之 session 寫 f3_temp_parcels（同 main()）", ok9))
+    # 🔧 `W-G.9-380`（巳 ①）
+    sp_ = _fn(A, "k965_part_split")
+    nsp = len(_calls(f, "k965_part_split")) if f else -1
+    pre_ = next((n for n in ast.walk(f) if isinstance(n, ast.FunctionDef) and n.name == "_pre965"), None) if f else None
+    ok10 = (sp_ is not None and [a.arg for a in sp_.args.args] == ["members", "host", "src", "price", "total", "v"]
+            and nsp == 1 and pre_ is not None and len(_calls(pre_, "_src965")) >= 1 and "程式未支援" not in body)
+    chk.append((f"Y10 k965_part_split 之簽名·k929_6_fixpoint 內呼之恰一（得 {nsp}）·_pre965 呼 _src965·巳 ① 之停機已去", ok10))
     red = []
     for name, ok in chk:
         print(("  ✅ " if ok else "  🔴 ") + name)
