@@ -1,0 +1,104 @@
+diff --git a/app.py b/app.py
+index 1fd95cd..ca97584 100644
+--- a/app.py
++++ b/app.py
+@@ -9516,9 +9516,11 @@ def k965_part_split(members, host, src, price, total, v):
+     參數：`src` ＝ `{成員: 剩下}`（成員之來源量·分攤登記面積 − 段三之帳 − 入池閘之帳）；`price` ＝ `{成員: 重劃前單價}`；
+       `total` ＝ 宗之面積（宿主之單價之量）。⛔ 改其輸入。
+     回 `[(成員, f × 剩下)]`（序 ＝ `members` 之序；剩下 ≤ 1e-9 之成員略之）。
+-    停機（`RuntimeError`·依序判之）：① 宿主不在成員；② `total` ≤ 0 或 `v` 不合 0 < v < total；③ 成員之剩下為負
+-      （< −1e-9）或單價非正；④ 諸成員之剩下依其單價折為宿主之單價之量之合與 `total` 相差逾 `max(1e-3, 1e-6 × |total|)`
+-      ——宗含非其成員之土地（他處之受併者·`K-9-61` ⑤ 之還原另單·`GB-205`）。"""
++    停機（`RuntimeError`·依序判之）：① 宿主不在成員；② `total` ≤ 0 或 `v` 不合 0 < v < total；③ 成員之剩下非有限值、
++      或其單價或宿主之單價非有限之正值（資料之自我檢查）。
++    🔧 `W-G.9-380` 補令一：④ 任一成員之剩下為負而逾容差 `tol ＝ max(1e-3, 1e-6 × |total|)`（容差之內之負者以 0 計）、或
++      諸成員之剩下依其單價折為宿主之單價之量之合與 `total` 之差⛔ 在 `tol` 之內 ⇒ 回 `None`（⛔ 停機）——宗含非其成員之
++      土地（他處之受併者），⛔ 能依成員分之；其停機（`GB-205`·`K-9-61` ⑤ 之還原另單）由呼叫端於檢核過後為之。"""
+     _ms = [str(_m) for _m in (members or [])]
+     _h = str(host)
+     _hd = "🔴 [K-9-65 入池閘·巳 ①]"
+@@ -9527,17 +9529,17 @@ def k965_part_split(members, host, src, price, total, v):
+     _t, _v = float(total), float(v)
+     if not _t > 0 or not 0 < _v < _t:
+         raise RuntimeError(f"{_hd} {_h!r} 之部分併入量 {_v!r} 不合 0 < v < 宗之面積 {_t!r} ⇒ 停機")
++    _tol = max(1e-3, 1e-6 * abs(_t))
+     _ph = float(price[_h])
+     _sum = 0.0
+     for _m in _ms:
+         _s, _pm = float(src[_m]), float(price[_m])
+-        if _s < -1e-9 or not _pm > 0 or not _ph > 0:
+-            raise RuntimeError(f"{_hd} {_h!r} 之成員 {_m!r} 之剩下 {_s!r} 為負、或其單價 {_pm!r}／宿主之單價 {_ph!r} 非正"
+-                               " ⇒ 停機")
++        if not math.isfinite(_s) or not (math.isfinite(_pm) and _pm > 0) or not (math.isfinite(_ph) and _ph > 0):
++            raise RuntimeError(f"{_hd} {_h!r} 之成員 {_m!r} 之剩下 {_s!r} 非有限值、或其單價 {_pm!r}／宿主之單價 {_ph!r}"
++                               " 非有限之正值 ⇒ 停機")
+         _sum += max(_s, 0.0) * _pm / _ph
+-    if abs(_sum - _t) > max(1e-3, 1e-6 * abs(_t)):
+-        raise RuntimeError(f"{_hd} {_h!r} 之成員之剩下之合（折為宿主之單價）{_sum!r} 與宗之面積 {_t!r} 不符——宗含非其成員之"
+-                           "土地（他處之受併者），其所併出之量⛔ 能依成員分之（K-9-61 ⑤ 之還原另單·GB-205）⇒ 停機")
++    if any(float(src[_m]) < -_tol for _m in _ms) or not abs(_sum - _t) <= _tol:
++        return None
+     _f = _v / _t
+     return [(_m, _f * float(src[_m])) for _m in _ms if float(src[_m]) > 1e-9]
+ 
+@@ -9575,10 +9577,10 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+       第 1 步之合併者，其分不到之宗記入回原狀之帳（跨回溯而存）、其後逐宗依 ①′ 處置。重排至各側皆無處置為止（第 6 步）。
+     停機（`RuntimeError`·⛔ 靜默略過）：投影軸、合併之標的之推進側、地價取不到；成員之切片取不到；檢核或道路片之輸入未給；
+       輪之始之態重現（循環）或逾 `max_rounds`（未收斂）。
+-    🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①）：依手冊（第 2 步·街角第 1 宗）部分併入之宗為合併之宗（成員二以上、或帶
+-      `入池閘成員部分併出`、或 `面積_m2` ＞ 0）者，其所併出之量依各成員之剩下（分攤登記面積 − 段三之帳 − 入池閘之帳·與
+-      重劃前面積同一式）乘同一百分比分之（`k965_part_split`）：宿主之量入 `入池閘部分併出`、他成員之量入 `入池閘成員部分併出`；
+-      其判於減宗之面積之前。宗含非其成員之土地（諸成員之剩下之合與宗之面積不符）⇒ 停機（`GB-205`）。
++    🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①·補令一）：依手冊（第 2 步·街角第 1 宗）之部分併入（單一之片亦然），其所併出
++      之量依各成員之剩下（分攤登記面積 − 段三之帳 − 入池閘之帳·與重劃前面積同一式）乘同一百分比分之（`k965_part_split`）：
++      宿主之量入 `入池閘部分併出`、他成員之量入 `入池閘成員部分併出`；單一之片之帳為全量；其判於減宗之面積之前。宗含非其
++      成員之土地（`k965_part_split` 回 `None`）⇒ 其帳同單片（全量）以試之，其併入過檢核者停機（`GB-205`），⛔ 過者記未成。
+     """
+     import copy as _cp_k9296
+     from shapely.geometry import Polygon as _Pg_k9296
+@@ -9983,7 +9985,7 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+         # R-6 ③：於前態之深拷貝施 [(要求, v)]；檢核（T ＝ 諸受併宗之街廓 ∪ 諸要求之宗之街廓；R ＝ 去之者）
+         _nb = _cp_k9296.deepcopy(st['build'])
+         _ix = {_pid(t): t for t in _nb}
+-        _T, _R = set(), set()
++        _T, _R, _gb965 = set(), set(), []
+         for _q, _v in pairs:
+             _v = float(_v)
+             _r, _x = _ix[_q['r']], _ix[_q['x']]
+@@ -9994,13 +9996,16 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+                 _carry965(_r, [_x])
+                 _R.add(_q['x'])
+             else:
+-                # 🔧 `W-G.9-380`（巳 ①）：合併之宗（於減其面積之前判之）⇒ 所併出之量依各成員之剩下乘同一百分比分之
+-                #   （宿主入「入池閘部分併出」、他成員入「入池閘成員部分併出」）；否則同前（全量入自身之帳）
+-                if len(_mm965(_x)) > 1 or _x.get('入池閘成員部分併出') or float(_x.get('面積_m2', 0) or 0) > 1e-9:
+-                    _ms = _mm965(_x)
+-                    _shares = k965_part_split(_ms, _pid(_x), {_m: _src965(_x, _m) for _m in _ms},
+-                                              {_m: _p(_inb965.get(_m) or _tab965[_m]) for _m in _ms}, _a(_x), _v)
+-                else:
++                # 🔧 `W-G.9-380`（巳 ①）：所併出之量依各成員之剩下乘同一百分比分之（宿主入「入池閘部分併出」、他成員入
++                #   「入池閘成員部分併出」·於減其面積之前判之）；補令一：凡部分併入皆判（單片亦然）——單片之帳為全量；
++                #   ⛔ 能依成員分（宗含非其成員之土地·回 None）⇒ 其帳同單片（全量）以試之、記之（其停機待檢核過後）
++                _ms = _mm965(_x)
++                _shares = k965_part_split(_ms, _pid(_x), {_m: _src965(_x, _m) for _m in _ms},
++                                          {_m: _p(_inb965.get(_m) or _tab965[_m]) for _m in _ms}, _a(_x), _v)
++                if _shares is None:
++                    _gb965.append(_q)
++                    _shares = [(_pid(_x), _v)]
++                elif len(_ms) == 1:
+                     _shares = [(_pid(_x), _v)]
+                 _x['面積_m2'] = float(_x.get('面積_m2', 0) or 0) - _v
+                 for _m, _w in _shares:
+@@ -10021,6 +10026,12 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+         _why = _chk965(st['out'], _aft, _T, _R)
+         if _why:
+             return None, _why
++        # 🔧 `W-G.9-380` 補令一：宗含非其成員之土地者，其部分併入過檢核 ⇒ 停機（開工態之時點·⛔ 過者已記未成）
++        if _gb965:
++            raise RuntimeError(
++                f"{_hd965} 巳 ①：{_gb965[0]['x']!r} 依手冊部分併入 {_gb965[0]['r']!r}（K-9-66 按比例）而過檢核——其成員之剩下"
++                "之合與宗之面積不符（宗含非其成員之土地·他處之受併者），其所併出之量⛔ 能依成員分之（K-9-61 ⑤ 之還原另單·"
++                "GB-205）⇒ 停機")
+         return {'build': _nb, 'out': _aft}, ''
+ 
+     def _manual965(acts, L, rnd):
