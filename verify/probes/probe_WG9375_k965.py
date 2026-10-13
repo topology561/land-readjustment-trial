@@ -21,6 +21,13 @@
            K53（成員之剩下之合〔折為宿主之單價〕與宗之面積不符——宗含非其成員之土地 ⇒ 停機·`K-9-61` ⑤ 之還原另單·`GB-205`）、
            K54（`k965_part_split` 之純函式：按比例、剩下為 0 之成員略之、容差 `max(1e-3, 1e-6 × 面積)` 之內者照分、四停機之支
            各以其訊息之字樣判之）——期值手算（發單側窗八十一）；P0 隨之 `54` 項。受詞增 `k965_part_split`。
+           🔧 `W-G.9-380` 補令一（⛔ 上列一字不刪）：K54 之期改之——宗含非其成員之土地（剩下之合與宗之面積不符，或成員之剩下
+           為負而逾容差）⇒ `k965_part_split` 回 None（⛔ 停機）；其停機之支唯 ①②③（③ ＝ 剩下非有限值或單價非有限之正值）；
+           子例增五（剩下 nan ⇒ 停機；負而在容差之內 ⇒ 以 0 計；單片不符 ⇒ None；單價 nan ⇒ 停機；負而逾容差而合恰等 ⇒ None）。
+           增 K55（K53 之玩具而部分併入皆不過檢核 ⇒ ⛔ 停機·記未成·同開工態）、K56（單片含非其成員之土地而其 `面積_m2`
+           淨 ≤ 0 ⇒ 部分併入過檢核即停機·`GB-205`）、K57（K56 之對照：單片之帳相合 ⇒ 部分併入照常·其帳為全量）、K58（K56 而
+           部分併入皆不過檢核 ⇒ ⛔ 停機·記未成）——期值出自開工態之碼之同例（K55／K57／K58）與手算（K56）·發單側窗八十二；
+           P0 隨之 `58` 項。
   wiring   <repo>
            接線（AST·字樣）：Y1 `k929_6_fixpoint` 之簽名；Y2 harness 之注入（`run_step_g`）；Y3 畫面之注入
            （`_k929_6_screen_gate`）；Y4 harness 之 session 鍵（`build_build_parcels`）；Y5 `k929_6_fixpoint` 內之呼叫
@@ -30,6 +37,8 @@
            🔧 `W-G.9-380`（⛔ 上列一字不刪）：Y10 `k965_part_split` 為模組層之函式（簽名 members, host, src, price, total, v）、
            `k929_6_fixpoint` 內呼之恰一；其巢狀 `_pre965` 呼 `_src965`（重劃前面積與部分併入之帳同一式）；`k929_6_fixpoint` 之文⛔ 含
            「程式未支援」（巳 ① 之停機已去）。
+           🔧 `W-G.9-380` 補令一（⛔ 上列一字不刪）：Y11 `k965_part_split` 內⛔ 有含「GB-205」之 raise；`k929_6_fixpoint` 之巢狀
+           `_try965` 內有含「GB-205」之 raise，且其行皆在 `_try965` 內 `_chk965` 之呼叫之後（停機於檢核過後·開工態之時點）。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）之首次 step G（`run_corner_pk` 之後·含入池閘）：R1 入池閘之末態 build
            （暫編地號·成員·`面積_m2`）＝ 本器所載；R2 配地列（暫編地號·街廓·推進側·G）與不配地紀錄（依推進序）＝ 本器所載；
@@ -681,7 +690,9 @@ def cases(ns):
 
     def _rs(fn, key="巳 ①"):
         try:
-            return [(m, round(q, 6)) for m, q in fn()]
+            _r = fn()
+            # 🔧 補令一：回 None（宗含非其成員之土地）⇒ None
+            return None if _r is None else [(m, round(q, 6)) for m, q in _r]
         except RuntimeError as e:
             return ("停機", "巳 ①" in str(e) and key in str(e))
     got54 = (_rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 30.0}, {"U": 1.0, "W": 2.0}, 120.0, 48.33)),
@@ -692,11 +703,63 @@ def cases(ns):
              _rs(lambda: sp(["W"], "U", {"W": 60.0}, {"W": 1.0}, 60.0, 30.0), "不在成員"),
              _rs(lambda: sp(["U", "W"], "U", {"U": 70.0, "W": -10.0}, {"U": 1.0, "W": 1.0}, 60.0, 30.0), "之剩下"),
              _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 0.0}, 60.0, 30.0), "單價"),
-             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 1.0}, 120.0005, 60.0)))
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": 1.0}, 120.0005, 60.0)),
+             # 🔧 補令一之增：剩下 nan ⇒ 停機（③）；W −0.0005（容差之內）⇒ 以 0 計·略之；單片不符（40 對 55）⇒ None；
+             #   單價 nan ⇒ 停機（③）；W −10 而合恰等（70 ＝ 70）⇒ None（負而逾容差）
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": float("nan")}, {"U": 1.0, "W": 1.0}, 120.0, 60.0), "之剩下"),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": -0.0005}, {"U": 1.0, "W": 1.0}, 60.0, 30.0)),
+             _rs(lambda: sp(["U"], "U", {"U": 40.0}, {"U": 1.0}, 55.0, 30.0)),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 60.0, "W": 60.0}, {"U": 1.0, "W": float("nan")}, 120.0, 60.0), "單價"),
+             _rs(lambda: sp(["U", "W"], "U", {"U": 70.0, "W": -10.0}, {"U": 1.0, "W": 1.0}, 70.0, 30.0)))
     # 末例：差 0.0005 ＜ 容差 1e-3（段三部分併出之四位之捨入之容）⇒ 照分：f ＝ 60／120.0005
+    # 🔧 補令一：第三例（120 對 110）與第六例（70 對 60）⇒ None（宗含非其成員之土地·⛔ 停機於此）
     C.append(("K54 k965_part_split 之純函式", got54,
-              ([("U", 24.165), ("W", 12.0825)], [("U", 30.0), ("W", 30.0)], ("停機", True), ("停機", True),
-               ("停機", True), ("停機", True), ("停機", True), [("U", 29.999875), ("W", 29.999875)])))
+              ([("U", 24.165), ("W", 12.0825)], [("U", 30.0), ("W", 30.0)], None, ("停機", True),
+               ("停機", True), None, ("停機", True), [("U", 29.999875), ("W", 29.999875)],
+               ("停機", True), [("U", 30.0)], None, ("停機", True), None)))
+    # 🔧 `W-G.9-380` 補令一 K55 K53 之玩具，B 之容量 231.003：r 獨 171 ⇒ 配餘地之寬 3.00015（合格）；U 整筆（a 130）⇒ r 249 ⇒
+    #     不合格；部分併入 v ≥ 0.01 ⇒ r ≥ 171.006 ⇒ 寬 ≤ 2.99985 ⇒ 不合格 ⇒ 皆不過檢核 ⇒ ⛔ 停機·記未成（同開工態）；
+    #     U（a 130 ⇒ 69）不配地；其帳⛔ 動（面積_m2 70）
+    b55, tp55 = _b33()
+    b55[0]["面積_m2"] = 70.0
+    try:
+        bf55, out55, log55 = _fx_raw(ns, b55, own33, {"A": BLK(), "B": BLK(cap=231.003)}, temp=tp55)
+        got55 = (_summ(bf55, out55, log55), _acct(bf55))
+    except Exception as e:  # noqa: BLE001
+        got55 = {"執行中止": f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}"}
+    C.append(("K55 含非成員之土地而部分併入皆不過檢核 ⇒ ⛔ 停機·記未成（停機待檢核過後）", got55,
+              ({"alloc": {"Z9": 231.0, "r": 171.0}, "units": {"U": ["U", "W"]}, "drops": ["U"],
+                "steps": [(M2, "r", None, "未成")]},
+               {"U": (70.0, {}, {}), "Z9": (0.0, {}, {}), "r": (0.0, {}, {})})))
+    # 🔧 補令一 K56 單片 U（分攤登記面積 ar·段三部分併出 20）之 面積_m2 ＝ m2：m2 −5 ⇒ 含受併之土地 15（淨 ≤ 0）——剩下 40 對
+    #     宗之面積 55 不符；U 55 ⇒ 24 不配地；整筆 ⇒ r 355 ⇒ 204 ⇒ 寬 2.80015 不合格；部分 v ≤ 48.33 ⇒ 過檢核 ⇒ 停機（GB-205）
+    own56 = {"ou": "GA", "o9": "GZ", "o5": "GA"}
+
+    def _k56(ar, m2, cap, s3=20.0):
+        u = dict(mk("U", "ou", "A", ar, 0, 10), 面積_m2=m2, 段三部分併出={"s": s3})
+        tp = [dict(mk("U", "ou", "A", ar, 0, 10), 段三部分併出={"s": s3}), mk("Z9", "o9", "A", 400, 20, 30),
+              mk("r", "o5", "B", 300, 0, 20, 20, 40)]
+        b = [u, mk("Z9", "o9", "A", 400, 20, 30), mk("r", "o5", "B", 300, 0, 20, 20, 40)]
+        return _fx_raw(ns, b, own56, {"A": BLK(), "B": BLK(cap=cap)}, temp=tp)
+    msg56 = _raise_frag(lambda: _k56(60, -5.0, 260.003))
+    C.append(("K56 單片含非其成員之土地（面積_m2 淨 ≤ 0）而部分併入過檢核 ⇒ 停機（GB-205）",
+              bool(msg56 and "巳 ①" in msg56 and "不符" in msg56 and "GB-205" in msg56), True))
+
+    def _k56s(*a):
+        try:
+            bf, out, log = _k56(*a)
+            return (_summ(bf, out, log), _acct(bf))
+        except Exception as e:  # noqa: BLE001
+            return {"執行中止": f"{type(e).__name__}：{(str(e).splitlines() or [''])[0][:160]}"}
+    # K57 對照：U 分攤 80·段三 20.0004（四位捨入之帳）·面積_m2 −20（帳相合：剩下 59.9996 對宗之面積 60·差 0.0004 ＜ 容差）
+    #     ⇒ 部分併入 48.33 照常（r 348.33 ⇒ 199.998）；U 之帳 ＝ 全量 48.33（⛔ 48.33 × 59.9996 ÷ 60 ＝ 48.3297）
+    C.append(("K57 單片之帳相合 ⇒ 部分併入照常（其帳為全量）", _k56s(80, -20.0, 260.003, 20.0004),
+              ({"alloc": {"Z9": 231.0, "r": 200.0}, "units": {}, "drops": ["U"], "steps": [(M2, "r", None, "部分成")]},
+               {"U": (-68.33, {"r": 48.33}, {}), "Z9": (0.0, {}, {}), "r": (48.33, {}, {})})))
+    # K58 K56 而 B 之容量 231.003 ⇒ 部分併入皆不過檢核 ⇒ ⛔ 停機·記未成；U 之帳⛔ 動
+    C.append(("K58 單片含非其成員之土地而部分併入皆不過檢核 ⇒ ⛔ 停機·記未成", _k56s(60, -5.0, 231.003),
+              ({"alloc": {"Z9": 231.0, "r": 171.0}, "units": {}, "drops": ["U"], "steps": [(M2, "r", None, "未成")]},
+               {"U": (-5.0, {}, {}), "Z9": (0.0, {}, {}), "r": (0.0, {}, {})})))
     return C
 
 
@@ -809,6 +872,17 @@ def wiring(repo):
     ok10 = (sp_ is not None and [a.arg for a in sp_.args.args] == ["members", "host", "src", "price", "total", "v"]
             and nsp == 1 and pre_ is not None and len(_calls(pre_, "_src965")) >= 1 and "程式未支援" not in body)
     chk.append((f"Y10 k965_part_split 之簽名·k929_6_fixpoint 內呼之恰一（得 {nsp}）·_pre965 呼 _src965·巳 ① 之停機已去", ok10))
+    # 🔧 `W-G.9-380` 補令一：GB-205 之停機⛔ 在 k965_part_split；在 _try965 之 _chk965 之呼叫之後
+
+    def _gbr(node):
+        return [n.lineno for n in ast.walk(node) if isinstance(n, ast.Raise)
+                and "GB-205" in (ast.get_source_segment(src["app.py"], n) or "")] if node else []
+    try_ = next((n for n in ast.walk(f) if isinstance(n, ast.FunctionDef) and n.name == "_try965"), None) if f else None
+    ck = [n.lineno for n in _calls(try_, "_chk965")] if try_ else []
+    gb_t, gb_s = _gbr(try_), _gbr(sp_)
+    ok11 = sp_ is not None and not gb_s and len(ck) == 1 and len(gb_t) >= 1 and min(gb_t) > ck[0]
+    chk.append((f"Y11 GB-205 之停機⛔ 在 k965_part_split（得 {len(gb_s)}）·在 _try965 之 _chk965 之後（_chk965 {ck}·"
+                f"停機 {gb_t}）", ok11))
     red = []
     for name, ok in chk:
         print(("  ✅ " if ok else "  🔴 ") + name)
