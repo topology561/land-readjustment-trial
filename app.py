@@ -9510,6 +9510,40 @@ def k929_6_unbuildable(res):
     return _out
 
 
+def k965_part_split(members, host, src, price, total, v):
+    """`W-G.9-375` 之【工】巳 ①（入池閘之合併之宗之部分併入）——`W-G.9-380`。宗（宿主 `host`·成員 `members`）依手冊部分
+    併入他處，其所併出之量 `v`（宿主之單價之量）依各成員之剩下乘同一百分比 `f ＝ v ÷ total` 分之（`K-9-66`·`K-9-68` 通知 2）。
+    參數：`src` ＝ `{成員: 剩下}`（成員之來源量·分攤登記面積 − 段三之帳 − 入池閘之帳）；`price` ＝ `{成員: 重劃前單價}`；
+      `total` ＝ 宗之面積（宿主之單價之量）。⛔ 改其輸入。
+    回 `[(成員, f × 剩下)]`（序 ＝ `members` 之序；剩下 ≤ 1e-9 之成員略之）。
+    停機（`RuntimeError`·依序判之）：① 宿主不在成員；② `total` ≤ 0 或 `v` 不合 0 < v < total；③ 成員之剩下非有限值、
+      或其單價或宿主之單價非有限之正值（資料之自我檢查）。
+    🔧 `W-G.9-380` 補令一：④ 任一成員之剩下為負而逾容差 `tol ＝ max(1e-3, 1e-6 × |total|)`（容差之內之負者以 0 計）、或
+      諸成員之剩下依其單價折為宿主之單價之量之合與 `total` 之差⛔ 在 `tol` 之內 ⇒ 回 `None`（⛔ 停機）——宗含非其成員之
+      土地（他處之受併者），⛔ 能依成員分之；其停機（`GB-205`·`K-9-61` ⑤ 之還原另單）由呼叫端於檢核過後為之。"""
+    _ms = [str(_m) for _m in (members or [])]
+    _h = str(host)
+    _hd = "🔴 [K-9-65 入池閘·巳 ①]"
+    if _h not in _ms:
+        raise RuntimeError(f"{_hd} 宿主 {_h!r} 不在成員 {_ms} ⇒ 停機")
+    _t, _v = float(total), float(v)
+    if not _t > 0 or not 0 < _v < _t:
+        raise RuntimeError(f"{_hd} {_h!r} 之部分併入量 {_v!r} 不合 0 < v < 宗之面積 {_t!r} ⇒ 停機")
+    _tol = max(1e-3, 1e-6 * abs(_t))
+    _ph = float(price[_h])
+    _sum = 0.0
+    for _m in _ms:
+        _s, _pm = float(src[_m]), float(price[_m])
+        if not math.isfinite(_s) or not (math.isfinite(_pm) and _pm > 0) or not (math.isfinite(_ph) and _ph > 0):
+            raise RuntimeError(f"{_hd} {_h!r} 之成員 {_m!r} 之剩下 {_s!r} 非有限值、或其單價 {_pm!r}／宿主之單價 {_ph!r}"
+                               " 非有限之正值 ⇒ 停機")
+        _sum += max(_s, 0.0) * _pm / _ph
+    if any(float(src[_m]) < -_tol for _m in _ms) or not abs(_sum - _t) <= _tol:
+        return None
+    _f = _v / _t
+    return [(_m, _f * float(src[_m])) for _m in _ms if float(src[_m]) > 1e-9]
+
+
 def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_lines, *, max_rounds=None,
                     temp_parcels=None, cat_of=None, front_rows=None):
     """`K-9-29 六`（入池閘）——`W-G.9-349`；🔧 `W-G.9-375` 重寫為 `K-9-65`（同一地主分不到之宗之處理程序）之落地。
@@ -9541,8 +9575,12 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
       同街廓之處置先施（每側一）；全區皆無時始施依手冊者（同一輪·依受併之街廓分組·`k966_block_merge`）。
       回原狀（K-9-58 ③·K-9-61 ⑤）：所施之合併其宗其後配不到 ⇒ 復至該次施之前（由最近之一次起·紀錄亦回）、其組合⛔ 再施；
       第 1 步之合併者，其分不到之宗記入回原狀之帳（跨回溯而存）、其後逐宗依 ①′ 處置。重排至各側皆無處置為止（第 6 步）。
-    停機（`RuntimeError`·⛔ 靜默略過）：投影軸、合併之標的之推進側、地價取不到；成員之切片取不到；檢核或道路片之輸入未給；部分併入之宗為單元
-      或已含他處併入之土地而過檢核（程式未支援）；輪之始之態重現（循環）或逾 `max_rounds`（未收斂）。
+    停機（`RuntimeError`·⛔ 靜默略過）：投影軸、合併之標的之推進側、地價取不到；成員之切片取不到；檢核或道路片之輸入未給；
+      輪之始之態重現（循環）或逾 `max_rounds`（未收斂）。
+    🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①·補令一）：依手冊（第 2 步·街角第 1 宗）之部分併入（單一之片亦然），其所併出
+      之量依各成員之剩下（分攤登記面積 − 段三之帳 − 入池閘之帳·與重劃前面積同一式）乘同一百分比分之（`k965_part_split`）：
+      宿主之量入 `入池閘部分併出`、他成員之量入 `入池閘成員部分併出`；單一之片之帳為全量；其判於減宗之面積之前。宗含非其
+      成員之土地（`k965_part_split` 回 `None`）⇒ 其帳同單片（全量）以試之，其併入過檢核者停機（`GB-205`），⛔ 過者記未成。
     """
     import copy as _cp_k9296
     from shapely.geometry import Polygon as _Pg_k9296
@@ -9649,16 +9687,20 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
         return any(len(_bb965.get(str((_tab965.get(_m) or {}).get('原地號', '')), ())) >= 2 for _m in _mm965(t))
 
     # ── R-1 ④：重劃前面積（K-9-67·K-9-70·K-9-69）──
+    # 🔧 `W-G.9-380`（巳 ①）：成員之剩下另立為 _src965（部分併入之按比例之帳與重劃前面積同一式）；_pre965 逐成員累加之
+    def _src965(t, _m):
+        _b = _inb965.get(_m) or _tab965[_m]
+        _v = float(_b.get('分攤登記面積_m2', 0) or 0) - sum(float(_q) for _q in (_b.get('段三部分併出') or {}).values())
+        if _m == _pid(t):
+            _v -= sum(float(_q) for _q in (t.get('入池閘部分併出') or {}).values())
+        else:
+            _v -= sum(float(_q) for _q in ((t.get('入池閘成員部分併出') or {}).get(_m) or {}).values())
+        return _v
+
     def _pre965(t):
         _tot = 0.0
         for _m in _mm965(t):
-            _b = _inb965.get(_m) or _tab965[_m]
-            _v = float(_b.get('分攤登記面積_m2', 0) or 0) - sum(float(_q) for _q in (_b.get('段三部分併出') or {}).values())
-            if _m == _pid(t):
-                _v -= sum(float(_q) for _q in (t.get('入池閘部分併出') or {}).values())
-            else:
-                _v -= sum(float(_q) for _q in ((t.get('入池閘成員部分併出') or {}).get(_m) or {}).values())
-            _tot += _v
+            _tot += _src965(t, _m)
         return _tot
 
     # ── R-1 ⑤：道路之群（初用時造之·同歸戶之道路片以共邊連通者為一群）──
@@ -9943,7 +9985,7 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
         # R-6 ③：於前態之深拷貝施 [(要求, v)]；檢核（T ＝ 諸受併宗之街廓 ∪ 諸要求之宗之街廓；R ＝ 去之者）
         _nb = _cp_k9296.deepcopy(st['build'])
         _ix = {_pid(t): t for t in _nb}
-        _T, _R, _part = set(), set(), []
+        _T, _R, _gb965 = set(), set(), []
         for _q, _v in pairs:
             _v = float(_v)
             _r, _x = _ix[_q['r']], _ix[_q['x']]
@@ -9954,11 +9996,28 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
                 _carry965(_r, [_x])
                 _R.add(_q['x'])
             else:
+                # 🔧 `W-G.9-380`（巳 ①）：所併出之量依各成員之剩下乘同一百分比分之（宿主入「入池閘部分併出」、他成員入
+                #   「入池閘成員部分併出」·於減其面積之前判之）；補令一：凡部分併入皆判（單片亦然）——單片之帳為全量；
+                #   ⛔ 能依成員分（宗含非其成員之土地·回 None）⇒ 其帳同單片（全量）以試之、記之（其停機待檢核過後）
+                _ms = _mm965(_x)
+                _shares = k965_part_split(_ms, _pid(_x), {_m: _src965(_x, _m) for _m in _ms},
+                                          {_m: _p(_inb965.get(_m) or _tab965[_m]) for _m in _ms}, _a(_x), _v)
+                if _shares is None:
+                    _gb965.append(_q)
+                    _shares = [(_pid(_x), _v)]
+                elif len(_ms) == 1:
+                    _shares = [(_pid(_x), _v)]
                 _x['面積_m2'] = float(_x.get('面積_m2', 0) or 0) - _v
-                _acc = dict(_x.get('入池閘部分併出') or {})
-                _acc[_q['r']] = float(_acc.get(_q['r'], 0.0)) + _v
-                _x['入池閘部分併出'] = _acc
-                _part.append(_q)
+                for _m, _w in _shares:
+                    if _m == _pid(_x):
+                        _acc = dict(_x.get('入池閘部分併出') or {})
+                        _acc[_q['r']] = float(_acc.get(_q['r'], 0.0)) + _w
+                        _x['入池閘部分併出'] = _acc
+                    else:
+                        _mp = {_k: dict(_d) for _k, _d in (_x.get('入池閘成員部分併出') or {}).items()}
+                        _mp.setdefault(_m, {})
+                        _mp[_m][_q['r']] = float(_mp[_m].get(_q['r'], 0.0)) + _w
+                        _x['入池閘成員部分併出'] = _mp
         _nb = [t for t in _nb if _pid(t) not in _R]
         try:
             _aft = trial(_nb)
@@ -9967,13 +10026,12 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
         _why = _chk965(st['out'], _aft, _T, _R)
         if _why:
             return None, _why
-        _old = {_pid(t): t for t in st['build']}
-        for _q in _part:
-            _x = _old[_q['x']]
-            if len(_mm965(_x)) > 1 or _x.get('入池閘成員部分併出') or float(_x.get('面積_m2', 0) or 0) > 1e-9:
-                raise RuntimeError(
-                    f"{_hd965} {_q['x']!r} 依手冊部分併入 {_q['r']!r}（K-9-66 按比例）而其為合併之宗或已含他處併入之土地"
-                    "——其帳程式未支援 ⇒ 停機（另單）")
+        # 🔧 `W-G.9-380` 補令一：宗含非其成員之土地者，其部分併入過檢核 ⇒ 停機（開工態之時點·⛔ 過者已記未成）
+        if _gb965:
+            raise RuntimeError(
+                f"{_hd965} 巳 ①：{_gb965[0]['x']!r} 依手冊部分併入 {_gb965[0]['r']!r}（K-9-66 按比例）而過檢核——其成員之剩下"
+                "之合與宗之面積不符（宗含非其成員之土地·他處之受併者），其所併出之量⛔ 能依成員分之（K-9-61 ⑤ 之還原另單·"
+                "GB-205）⇒ 停機")
         return {'build': _nb, 'out': _aft}, ''
 
     def _manual965(acts, L, rnd):
@@ -14126,7 +14184,9 @@ def k967_rank(g, pre_area, pid):
 
 def k967_pre_area(pid, members, area_of):
     """`K-9-67` 之「重劃前面積」——`W-G.9-373`：該宗之成員（`members` 缺或空 ⇒ `[pid]`）之 `area_of[成員]`
-    （分攤登記面積·未經地價折算）之和。成員不在 `area_of` ⇒ `RuntimeError`（⛔ 以 0 代之）。"""
+    （分攤登記面積·未經地價折算）之和。成員不在 `area_of` ⇒ `RuntimeError`（⛔ 以 0 代之）。
+    🔧 `W-G.9-380`：`area_of` 由呼叫端給之；各處之表之式 ＝ 分攤登記面積 − `段三部分併出` 之和 − 同一試算之入池閘之帳
+      （本函式唯取其值之和·⛔ 自算）。"""
     _tot967 = 0.0
     for _m967 in (members or [pid]):
         if _m967 not in area_of:
@@ -15312,12 +15372,11 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
       受併宗之 `面積_m2` 增其量；併出之片帶段三之三鍵（`段三併出`／`段三部分併出`／`段三餘量`）；整筆併出之建地片已自
       `build_out` 去之。取代之單元於 temp 與 build 中為同一物件，其形 ＝ 入池閘之佔位成員之形（補令一 裁三·`GB-199`）。
     停機（`RuntimeError`·訊息首 `🔴 [K-9-53 手冊先行]`）：build 片不在 temp；現態之配地中止或其回傳缺 `G`／`members`；
-      道路之中心線非二點、街廓之形或片之部落於中心線上；建地片與同街廓之已配得之宗相連（入池閘之射程）；
+      道路之中心線非二點、街廓之形或片之部落於中心線上；
       檢核之併入前配地中止；面積、折算或街廓之形無從定之；
       逐片之整筆之片，於其主併入之前依序全檢當下之試算（宗與其成員皆取之；其後之 `K-9-51` 用同一試算·⛔ 再查）：
       配地中止；`members` 非 dict；該片已自為已配得之宗或為其成員（`K-9-53` ① 之前提「分不到」與 `K-9-51` 之前提
-      「剩餘土地」皆不成立）；同一地主於本街廓之已配得之宗之成員與之相連（入池閘之射程·`R-6` (a) 之同街廓之例·
-      `K-9-55` 之前提「不相鄰」不成立）（補令二 裁二·補令三 裁一〜三·補令四 裁一）。
+      「剩餘土地」皆不成立）（補令二 裁二·補令三 裁一〜三·補令四 裁一）。
       🆕 `W-G.9-367`（`GB-201` 之防護）：每一受併之街廓之 `k966_block_merge` 之前（`W-G.9-373`·第 `1` 輪與 `K-9-51` 之諸輪
       之每一要求），計畫之受併宗於當下之試算未保留（或當下之配地中止）⇒ 停機。
       （本街廓之候選之檢核不過 ⇒ 記未成、續試他宗·⛔ 停機——補令二 裁一·`K-9-55` 之二·代補令一之停機。）
@@ -15335,6 +15394,11 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
       之受併宗加其量·`段三併出` 加受併宗），其後之試算所見之該片即帶之；趟末之帳之合，其既有者取輸入之態之該片（⛔ 重加）。
       `K-9-51` 之重劃前面積之表取與其 `G`／`members` 同一試算之態（受併宗之擇與道路片之落點之擇照舊取首次之試算）。
     🔧 `W-G.9-378`（`GB-204`）：計畫時之表（首次之試算 `C0`）與 `K-9-51` 之表（`_cur`）各再減其同一試算之入池閘之帳（`alloc_state` 之回傳之 `pool_out`·以 `k967_pool_less` 減之）。
+    🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ②③·`K-9-58` ③·`K-9-61` ⑥⑦）：建地片與同街廓同一地主之已配得之宗（連同其
+      成員·`C0`）相連者⛔ 停機——計畫為依手冊整筆併入相鄰之已配得之宗（同街廓與他街廓之相鄰者皆列·應分配面積大 →
+      重劃前面積大 → 暫編地號小），其檢核照一向之作法（不過 ⇒ 記未成、其量依 `K-9-51` 續之）；整筆之主併入之前之查唯餘
+      「該片已為已配得之宗或其成員」（相連之查已去·計畫以 `C0` 定之）；`K-9-51` 之輪之候選之序之鍵增「相連」（距離 →
+      本街廓者先 → 其成員〔`_cur`〕與片相連者先 → `k967_rank`）。
     """
     import copy as _cp953
     from shapely.geometry import Polygon as _Pg953, LineString as _Ln953
@@ -15435,6 +15499,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
         return [str(_m) for _m in (C0['members'].get(_h) or [_h]) if str(_m) in _tin953]
 
     # 🆕 `W-G.9-373`（`K-9-67`）：重劃前面積之表 ＝ 輸入之 temp 之各片之分攤登記面積（未經地價折算）
+    #   🔧 `W-G.9-380`：再減其下二帳（段三部分併出之和；與 C0 同一試算之入池閘之帳）
     # 🔧 `W-G.9-373` 補令一（R-16′）：減其 段三部分併出之和（部分併出之剩下所含者唯其剩下）
     #   補令二（R-19″）：本表唯受併宗之擇與道路片之落點之擇用之（首次之試算 C0·其態 ＝ 輸入之態）；K-9-51 之表另取之
     _pre953 = {_pk953: float(_tq.get('分攤登記面積_m2', 0) or 0)
@@ -15656,10 +15721,14 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
         _g = _gown953(_tin953[_x])
         _hs_g = _lots_of953[_g]
         _same_bk = [_h for _h in _hs_g if _home953[_h] == _blk953[_x] and any(_touch953(_x, _m) for _m in _mem953(_h))]
-        if _same_bk:
-            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）與同街廓之已配得之宗 {_same_bk} 相連"
-                               "——入池閘之射程 ⇒ 停機")
         _other = [_h for _h in _hs_g if _home953[_h] != _blk953[_x] and any(_touch953(_x, _m) for _m in _mem953(_h))]
+        # 🔧 `W-G.9-380`（巳 ②③·K-9-58 ③·K-9-61 ⑥⑦）：與同街廓之已配得之宗（連同其成員·C0）相連 ⇒ 依手冊整筆併入相鄰者
+        #   （同街廓與他街廓者皆列）之應分配面積大者；其檢核照一向之作法（不過 ⇒ 記未成、其量依 K-9-51 續之）
+        if _same_bk:
+            _r = _gtop953(_x, _same_bk + _other)
+            plan953[_x] = {'類': 'a', 'whole': True, 'items': [(_r, _ap953(_x, _r))],
+                           '依據': '相鄰（含同街廓）·依手冊併入應分配面積較大者（K-9-58 ③·K-9-61 ⑥）'}
+            continue
         if _other:
             _r = _gtop953(_x, _other)
             plan953[_x] = {'類': 'a', 'whole': True, 'items': [(_r, _ap953(_x, _r))],
@@ -15760,21 +15829,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
         if _own953:
             raise RuntimeError(f"{_hdr953} 程式自我檢查：建地片 {_x}（{_blk953[_x]}）於整筆之主併入之前，當下之試算已為已配得之宗"
                                f" {_own953} 或其成員——依既定機制不會發生（K-9-57 ⑧），觸之即程式有錯 ⇒ 停機")
-        _gx = _gown953(_tin953[_x])
-        _nbr953 = {}
-        for _bk in sorted(_kS953):
-            if str(_bk) != _blk953[_x]:
-                continue
-            for _h in sorted(_kS953[_bk]):
-                _h = str(_h)
-                if _h == _x or _h not in state["by"] or _gown953(state["by"][_h]) != _gx:
-                    continue
-                _tc953 = [_m for _m in _memS953(_h) if _touch953(_x, _m)]
-                if _tc953:
-                    _nbr953[_h] = _tc953
-        if _nbr953:
-            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）與同一地主於本街廓之已配得之宗（當下之試算）之成員"
-                               f"相連 {_nbr953}——入池閘之射程（R-6 (a) 之同街廓之查·K-9-55 之「不相鄰」不立）⇒ 停機")
+        # 🔧 `W-G.9-380`（巳 ②）：「同一地主於本街廓之已配得之宗（當下之試算）之成員與之相連 ⇒ 停機」已去——依計畫（C0 所定）
+        #   併入；其後別片之併入使之新相連者⛔ 改計畫（計畫之受併宗之檢核不過者，其量於 K-9-51 之輪先試相連者）
 
     # ── 🆕 `W-G.9-373`（`K-9-66`／`K-9-68`）：試施（R-5 (a)）與輪（R-5 (b)）──
     _kind953 = {'bld': '建地', 'road': '道路', 'pub': '公設地'}
@@ -15903,7 +15959,11 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
                         if not isinstance(_gc, dict) or _h not in _gc:
                             raise RuntimeError(f"{_hdr953}·K-9-51 試算未回 {_h} 之 G——應分配面積之序無從定之 ⇒ 停機")
                         _dv = _q953(_geo953[_x].distance(_ushape953(_bk)))
-                        _list.append(((_dv, 0 if str(_bk) == _blk953[_x] else 1,
+                        # 🔧 `W-G.9-380`（巳 ②·K-9-51「距離該筆土地最近者先」）：本街廓之候選中，其成員（_cur 之 members·
+                        #   缺 ⇒ 該宗）與 x 相連者（距離 0）先；他街廓之候選恆 1
+                        _adj951 = str(_bk) == _blk953[_x] and any(
+                            _touch953(_x, str(_m)) for _m in (_cmem953.get(_h) or [_h]) if str(_m) in _tin953)
+                        _list.append(((_dv, 0 if str(_bk) == _blk953[_x] else 1, 0 if _adj951 else 1,
                                        k967_rank(_gc[_h], k967_pre_area(_h, _cmem953.get(_h), _pre951), _h)),
                                       _h, str(_bk), _dv, float(_gc[_h])))
                 _list.sort(key=lambda _t: _t[0])
@@ -16384,7 +16444,7 @@ def adj4_pass1_run(temp_parcels, build_parcels, own_map, subjects, slice_geom, a
 
                 # 🔧 `W-G.9-373`（`K-9-67`）：同距離者之序改為 `k967_rank`（G 大 → 重劃前面積〔本輪之表 `_pre_a4`（分攤登記面積
                 #   − `段三部分併出` 之和 − 同一試算之入池閘之帳）之成員之和〕大 → 暫編地號小）；補令一（R-16′）：各片之重劃前面積
-                #   ＝ 分攤登記面積 − 段三部分併出之和；🔧 `W-G.9-378`（`GB-204`）：再減同一試算（_S）之入池閘之帳
+                #   ＝ 分攤登記面積 − 段三部分併出之和；🔧 `W-G.9-378`（`GB-204`）：即上開括號之末項（`W-G.9-380` 改述）
                 def _rkey_a4(_h):
                     _ms = _mof_a4(_h)
                     _same = any(_m in _tin_a4 and str(_tin_a4[_m].get('原地號', '') or '') in _lots_set for _m in _ms)
