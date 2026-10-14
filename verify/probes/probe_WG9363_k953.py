@@ -52,6 +52,15 @@
            K47（隔己之道路片而同街廓有已配得之宗相連 ⇒ 道路兩側皆有己地 ⇒ 同街廓相鄰者·手冊道路用地分配原則 1）、K48（同街廓
            相鄰者與他街廓之他地號〔G 較大〕皆相連 ⇒ 同街廓相鄰者·他地號之相連⛔ 入應分配面積之比較）。
            P0 隨之 48 項。
+           🔧 `W-G.9-383`（`K-9-73` ④·`K-9-75`·KL 裁 `2026-10-14`·⛔ 上列一字不刪）：同一原地號之可建築街廓之切片之地籍
+           相連者為一「同號之連通分量」；其跨二以上街廓、皆在 build 且皆非已配得之宗或其成員者，餘片整筆併入應分配面積
+           （試算之不配地紀錄之 G·`dropped`）最大之片再試（受併之片帶 `第31條第3款併入`）；第 31 條第 3 款（一側已配得）之
+           相連以同號之連通分量為準。玩具：`_cbs` 之試算回 `dropped`（不配地之宗之紀錄·G）、增 `need`（`{片: 下限}`·`drop` 之片其
+           面積達下限者配地）與 `nodg`（⛔ 回 `dropped`）。K18 之期改之（無配得土地之地主之同號之連通分量 ⇒ 再試、未成、仍回輸入
+           之同一物件）；增 K49〜K59（再試之成·受併之片依 G·G 並列依重劃前面積·a′·三街廓之連通·一側已配得而⛔ 直接相接·
+           隔道路⛔ 入連通·`dropped` 未回 ⇒ 停機·片為已配得之宗之成員 ⇒ ⛔ 再試·公設地之片⛔ 入連通·受併之片配地而檢核
+           不過 ⇒ 未成）。期值出自本器之玩具之手算（發單側窗八十五）。
+           P0 隨之 59 項。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -67,6 +76,8 @@
            另由 F24 之 run 量之）。
            🔧 `W-G.9-382`（⛔ 上列一字不刪）：R5 手冊先行之紀錄之「依據」欄（序 手冊·類 a·紀錄之序）＝ 本器所載（建地片之
            計畫之依據之字面·`R-3`）。
+           🔧 `W-G.9-383`（⛔ 上列一字不刪）：R6 手冊先行之紀錄之再試之列（序「第31條第3款（兩側皆配不到）」·紀錄之序之
+           片·受併宗·全量·結果）＝ 本器所載（本案三筆·二退縮皆未成）；R1 之列框⛔ 含之（照舊）。
   offsnap  <repo> <out.json> [<退縮> …]
            於行程內設 WV_K953=off，harness 實跑本案（預設退縮 `3.5`、`0.0`），以 sha256 摘要其街角、宗地（暫編地號·
            段三之三鍵·面積二欄）、build、段三紀錄、末端塊紀錄、配地列、入池閘紀錄、不配地紀錄、調配之輸入，寫 out。
@@ -138,9 +149,12 @@ def _a(t):
     return float(t.get("分攤登記面積_m2", 0) or 0) + float(t.get("面積_m2", 0) or 0)
 
 
-def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, unit_g=None):
-    """玩具之回呼。`units` ＝ `{標的: [成員…]}`（入池閘之合併單元·其成員⛔ 單列）；`unit_g` ＝ 取代後之 G（覆寫·造相異）。"""
+def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, unit_g=None, need=None, nodg=False):
+    """玩具之回呼。`units` ＝ `{標的: [成員…]}`（入池閘之合併單元·其成員⛔ 單列）；`unit_g` ＝ 取代後之 G（覆寫·造相異）。
+    🔧 `W-G.9-383`：`need` ＝ `{片: 下限}`（`drop` 之片其 a 達下限者配地）；回 `dropped`（不配地之宗之紀錄·其 G ＝ gmap 或 a）；
+    `nodg` ⇒ ⛔ 回 `dropped`。"""
     cap, price, gmap, err_cap, units = cap or {}, price or {}, gmap or {}, err_cap or {}, units or {}
+    need = need or {}
 
     def a_prime(src, dst):
         return _a(src) * price.get(src["所屬街廓"], 1.0) / price.get(dst["所屬街廓"], 1.0)
@@ -160,9 +174,13 @@ def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, uni
             p = b["暫編地號"]
             if p in units and "入池閘併入" in b:
                 mat.add(p)
+        dg = {}
         for b in build:
             p = b["暫編地號"]
-            if p in drop or any(p in m and h != p for h, m in units.items()):
+            if any(p in m and h != p for h, m in units.items()):
+                continue
+            if p in drop and not (p in need and _a(b) >= need[p] - 1e-9):
+                dg[p] = gmap.get(p, _a(b))
                 continue
             kept.setdefault(b["所屬街廓"], set()).add(p)
             G[p] = gmap.get(p, _a(b))
@@ -179,7 +197,12 @@ def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, uni
         for blk, v in acc.items():
             if v > cap.get(blk, 1e18) + 1e-9:
                 bad[blk] = 1
-        return {"kept": kept, "bad_pools": bad, "err": None, "G": G, "members": mem, "units": uu}
+        for p in dg:
+            mem[p] = [p]
+        res = {"kept": kept, "bad_pools": bad, "err": None, "G": G, "members": mem, "units": uu}
+        if not nodg:
+            res["dropped"] = {("玩", "left"): [{"暫編地號": k, "G(㎡)": v} for k, v in dg.items()]}
+        return res
     return a_prime, alloc_state
 
 
@@ -202,7 +225,8 @@ def _w1():
 
 
 def _go(world, *, own_upd=None, a_upd=None, drop=("X1(1)",), cap=None, price=None, gmap=None, err_cap=None,
-        units=None, unit_g=None, pre=None, extra=None, rm=(), blk_upd=None, geom_upd=None, cl_upd=None, orig_upd=None):
+        units=None, unit_g=None, pre=None, extra=None, rm=(), blk_upd=None, geom_upd=None, cl_upd=None, orig_upd=None,
+        need=None, nodg=False):
     t, own, blocks, cl = world()
     for e in (extra or []):
         t.append(copy.deepcopy(e))
@@ -219,7 +243,7 @@ def _go(world, *, own_upd=None, a_upd=None, drop=("X1(1)",), cap=None, price=Non
     for pid, kv in (pre or {}).items():
         next(x for x in t if x["暫編地號"] == pid).update(kv)
     build = [x for x in t if x["街廓分類"] == H]
-    ap, st = _cbs(cap, price, drop, gmap, err_cap, units, unit_g)
+    ap, st = _cbs(cap, price, drop, gmap, err_cap, units, unit_g, need, nodg)
     return _NS["fn"](t, build, own, blocks, cl, ap, st, log_print=lambda *x: None), t, build
 
 
@@ -238,6 +262,23 @@ def _rows(res):
         q = tuple(sorted((k, round(float(v), 2)) for k, v in (r.get("併入量") or {}).items()))
         out.append((r.get("序"), r.get("片"), r.get("類"), rv, q, r.get("結果")))
     return out
+
+
+def _rows4(res):
+    """🆕 `W-G.9-383`：④（第 31 條第 3 款·兩側皆配不到）之列之 (片, 受併宗, ((受併宗, 併入量 2 位)…), 結果, 不過之由)。"""
+    out = []
+    for r in res[0][2]:
+        if r.get("序") != "第31條第3款（兩側皆配不到）":
+            continue
+        q = tuple(sorted((k, round(float(v), 2)) for k, v in (r.get("併入量") or {}).items()))
+        out.append((r.get("片"), r.get("受併宗"), q, r.get("結果"), r.get("不過之由")))
+    return out
+
+
+def _mark4(res):
+    """🆕 `W-G.9-383`：輸出之 temp 中帶 `第31條第3款併入` 之片 ⇒ {片: 其值}；輸出之 build 之暫編地號之集。"""
+    return ({x["暫編地號"]: list(x["第31條第3款併入"]) for x in res[0][0] if "第31條第3款併入" in x},
+            sorted(b["暫編地號"] for b in res[0][1]))
 
 
 def _keys(res):
@@ -352,9 +393,11 @@ def _cases(ns, sp):
     _run(out, "K17 帶段三之鍵之片⛔ 受理",
          lambda: [r[1] for r in _rows(_go(W, pre={"R1(1)": {"段三併出": ["X1(2)"]}, "P1(1)": {"段三餘量": 200.0}}))],
          ["X1(1)"])
-    _run(out, "K18 無任何配得土地之地主⛔ 受理（無受詞 ⇒ 回輸入之同一物件、紀錄 ＝ []）",
-         lambda: (lambda r, t, b: (r[0] is t, r[1] is b, r[2]))(*_go(W, drop=("X1(1)", "X1(2)", "C1(1)"))),
-         (True, True, []))
+    # 🔧 `W-G.9-383`（K-9-73 ④·K-9-75）：無配得土地之地主之同號之連通分量（X1(1)·BA 60／X1(2)·BB 300）⇒ 再試（併入 G 大之
+    #     X1(2)）、X1(2) 仍不配地 ⇒ 未成；⛔ 他受詞 ⇒ 回輸入之同一物件、紀錄唯再試之列
+    _run(out, "K18 無任何配得土地之地主：同號之連通分量之再試未成 ⇒ 回輸入之同一物件、紀錄唯再試之列（K-9-73 ④）",
+         lambda: (lambda r, t, b: (r[0] is t, r[1] is b, _rows4((r,))))(*_go(W, drop=("X1(1)", "X1(2)", "C1(1)"))),
+         (True, True, [("X1(1)", "X1(2)", (), "未成", "受併之片（或其所屬單元）仍不配地")]))
     _run(out, "K19 入池閘之合併單元：取代後之配地全同 ⇒ 取代；相異 ⇒ ⛔ 取代（記之）",
          lambda: (_unit_rows(_go(W, units={"X1(2)": ["X1(2)", "Y1(1)"]}, own_upd={"Y1": "g1"})),
                   _unit_rows(_go(W, units={"X1(2)": ["X1(2)", "Y1(1)"]}, own_upd={"Y1": "g1"}, unit_g=1.0))),
@@ -489,6 +532,53 @@ def _cases(ns, sp):
               "⛔ 入比較 ⇒ 併入同街廓相鄰之 Q1(1)",
          lambda: _sel(_go(W, own_upd={"Q1": "g1", "XB": "g1"}, gmap={"X1(2)": 400.0}, orig_upd={"X1(2)": "XB"}), "X1(1)"),
          [("手冊", "X1(1)", "a", "Q1(1)", (("Q1(1)", 60.0),), "成")])
+    # 🆕 `W-G.9-383`（K-9-73 ④·K-9-75·KL 裁 `2026-10-14`）：兩側皆配不到者之再試；第 31 條第 3 款之相連以同號之連通分量為準
+    RM4 = ("R1(1)", "P1(1)", "C1(1)")
+    _run(out, "K49 （K-9-73 ④）X1(1)（BA 60）與 X1(2)（BB 300）皆不配地 ⇒ X1(1) 整筆併入 G 大之 X1(2)；併後 X1(2)（360）配地 ⇒ 成："
+              "X1(1) 出 build、帶 段三併出 ['X1(2)']；X1(2) 之 面積_m2 60、帶 第31條第3款併入 ['X1(1)']",
+         lambda: (lambda r: (_rows4(r), _keys(r), _acc(r), _mark4(r)))(
+             _go(W, drop=("X1(1)", "X1(2)"), rm=RM4, need={"X1(2)": 360.0})),
+         ([("X1(1)", "X1(2)", (("X1(2)", 60.0),), "成", None)], {"X1(1)": {"段三併出": ("X1(2)",)}},
+          {"X1(2)": 60.0}, ({"X1(2)": ["X1(1)"]}, ["C8(1)", "C9(1)", "Q1(1)", "Q2(1)", "X1(2)", "Y1(1)", "Z1(1)"])))
+    _run(out, "K50 （K-9-75）受併之片依應分配面積（不配地紀錄之 G）：X1(1) 之 G 500 ＞ X1(2) 之 300 ⇒ X1(2) 併入 X1(1)（⛔ 依面積）",
+         lambda: _rows4(_go(W, drop=("X1(1)", "X1(2)"), rm=RM4, gmap={"X1(1)": 500.0})),
+         [("X1(2)", "X1(1)", (), "未成", "受併之片（或其所屬單元）仍不配地")])
+    _run(out, "K51 （K-9-75·K-9-67）G 並列（皆 100）⇒ 重劃前面積大者（X1(2) 300 ＞ X1(1) 60）受併（⛔ 暫編地號之序）",
+         lambda: _rows4(_go(W, drop=("X1(1)", "X1(2)"), rm=RM4, gmap={"X1(1)": 100.0, "X1(2)": 100.0})),
+         [("X1(1)", "X1(2)", (), "未成", "受併之片（或其所屬單元）仍不配地")])
+    _run(out, "K52 （K-9-29）再試之併入量依 a′（BA 之地價 2 倍）⇒ 120",
+         lambda: _rows4(_go(W, drop=("X1(1)", "X1(2)"), rm=RM4, need={"X1(2)": 360.0}, price={"BA": 2.0})),
+         [("X1(1)", "X1(2)", (("X1(2)", 120.0),), "成", None)])
+    W3B = dict(rm=RM4 + ("Y1(1)",), geom_upd={"X1(2)": _R(20, 40, 0, 30)}, orig_upd={"Z1(1)": "X1"})
+    _run(out, "K53 （K-9-75 ②）同一原地號跨三街廓（X1(1)·BA ─ X1(2)·BB ─ Z1(1)·BD·X1(1) 與 Z1(1) ⛔ 直接相接）皆不配地 ⇒ "
+              "餘二片皆併入 G 最大之 Z1(1)（400）；併後 760 配地 ⇒ 成",
+         lambda: (lambda r: (_rows4(r), _keys(r), _acc(r), _mark4(r)[0]))(
+             _go(W, drop=("X1(1)", "X1(2)", "Z1(1)"), need={"Z1(1)": 760.0}, **W3B)),
+         ([("X1(1)", "Z1(1)", (("Z1(1)", 60.0),), "成", None), ("X1(2)", "Z1(1)", (("Z1(1)", 300.0),), "成", None)],
+          {"X1(1)": {"段三併出": ("Z1(1)",)}, "X1(2)": {"段三併出": ("Z1(1)",)}}, {"Z1(1)": 360.0},
+          {"Z1(1)": ["X1(1)", "X1(2)"]}))
+    _run(out, "K54 （K-9-75 ②）三街廓之同號之連通分量而 Z1(1) 已配得 ⇒ ⛔ 再試；第 31 條第 3 款：X1(1)（⛔ 與 Z1(1) 直接相接）"
+              "亦併入 Z1(1)",
+         lambda: (_rows4(_r54 := _go(W, drop=("X1(1)", "X1(2)"), **W3B)), _rows(_r54)),
+         ([], [("手冊", "X1(2)", "a", "Z1(1)", (("Z1(1)", 300.0),), "成"),
+               ("手冊", "X1(1)", "a", "Z1(1)", (("Z1(1)", 60.0),), "成")]))
+    _run(out, "K55 （K-9-73 ⑥）同一原地號而隔道路之 C1(1)（BC）⛔ 入同號之連通分量 ⇒ 再試唯 X1(1) → X1(2)",
+         lambda: _rows4(_go(W, drop=("X1(1)", "X1(2)", "C1(1)"), rm=("R1(1)", "P1(1)"), orig_upd={"C1(1)": "X1"})),
+         [("X1(1)", "X1(2)", (), "未成", "受併之片（或其所屬單元）仍不配地")])
+    _run(out, "K56 再試之受詞存在而試算未回 dropped ⇒ 停機（⛔ 以空代之）",
+         lambda: _halt(lambda: _go(W, drop=("X1(1)", "X1(2)"), rm=RM4, nodg=True), "未回 dropped"),
+         ("停機", True))
+    _run(out, "K57 同號之片 X1(2) 為已配得之宗 Y1(1) 之成員 ⇒ ⛔ 再試；第 31 條第 3 款：X1(1) 併入 Y1(1)",
+         lambda: (lambda r: (_rows4(r), _sel(r, "X1(1)")))(
+             _go(W, rm=RM4, units={"Y1(1)": ["Y1(1)", "X1(2)"]}, own_upd={"Y1": "g1"})),
+         ([], [("手冊", "X1(1)", "a", "Y1(1)", (("Y1(1)", 60.0),), "成")]))
+    _run(out, "K58 （K-9-75）同一原地號之公設地之片（P1(1)·PK·與 X1(2) 相接）⛔ 入同號之連通分量 ⇒ 再試照行（X1(1) → X1(2)）",
+         lambda: _rows4(_go(W, drop=("X1(1)", "X1(2)"), rm=("R1(1)", "C1(1)"), orig_upd={"P1(1)": "X1"})),
+         [("X1(1)", "X1(2)", (), "未成", "受併之片（或其所屬單元）仍不配地")])
+    _run(out, "K59 （K-9-73 ⑨）受併之片配地而「不影響原位次」之檢核不過（BB 之配餘地不合格）⇒ 未成（⛔ 施）",
+         lambda: (lambda r: (_rows4(r), _keys(r), _acc(r)))(
+             _go(W, drop=("X1(1)", "X1(2)"), rm=RM4, need={"X1(2)": 360.0}, cap={"BB": 50.0})),
+         ([("X1(1)", "X1(2)", (), "未成", "BB 配餘地不合格")], {}, {}))
     return out
 
 
@@ -1317,6 +1407,13 @@ R4_EXPECT = {
 # 🔧 `W-G.9-382`：手冊先行之紀錄之「依據」欄（序 手冊·類 a·紀錄之序）——`R-3` 之字面（發單側窗八十三之原型實跑）
 _S31 = '跨分配線·同一宗·併應分配面積較大之一側（第31條第3款）'
 _VIA = '隔道路·隨道路片往另一側'
+# 🆕 `W-G.9-383`：R6 本案之再試之列（發單側窗八十五·原型實跑·二退縮皆未成）
+R6_EXPECT = {
+    3.5: [("628-27(1)", "628-27(2)", 51.32, "未成"), ("628-42(1)", "628-42(2)", 8.34, "未成"),
+          ("628-53(1)", "628-53(2)", 0.44, "未成")],
+    0.0: [("628-27(2)", "628-27(1)", 46.68, "未成"), ("628-42(1)", "628-42(2)", 8.34, "未成"),
+          ("628-53(1)", "628-53(2)", 0.44, "未成")],
+}
 R5_EXPECT = {
     3.5: [('628(3)', _S31), ('628-1(2)', _S31), ('628-34(3)', _S31), ('628-49(1)', _S31), ('628-35(1)', _S31),
           ('628(4)', _S31), ('628-31(1)', _VIA), ('628(2)', _S31), ('628-32(1)', _VIA)],
@@ -1450,6 +1547,15 @@ def run(repo, sbs):
                 for a_, b_ in zip(w5 + [None] * max(0, len(e5) - len(w5)), e5 + [None] * max(0, len(w5) - len(e5))):
                     if a_ != b_:
                         print(f"      得 {a_!r}\n      期 {b_!r}")
+        # 🔧 `W-G.9-383`：R6 再試之列（片·受併宗·全量·結果）＝ 本器所載
+        w6 = [(r.get("片"), r.get("受併宗"), round(float(r.get("全量") or 0), 2), r.get("結果")) for r in (log or [])
+              if r.get("序") == "第31條第3款（兩側皆配不到）"]
+        e6 = R6_EXPECT.get(sb)
+        ok6 = e6 is not None and w6 == e6
+        print(("  ✅" if ok6 else "  🔴") + f" R6@{sb}：手冊先行之再試之列 {len(w6)} 列 ＝ 本器所載 {ok6}")
+        if not ok6:
+            red.append(f"R6@{sb}")
+            print(f"      得 {w6!r}\n      期 {e6!r}")
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
 
