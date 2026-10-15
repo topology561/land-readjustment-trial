@@ -66,6 +66,18 @@
            單元之成員 ⇒ 入池閘之合併單元之取代之後，宿主之單元帶 `第31條第3款併入`〔其值 ＝ 所併入之片〕·受併之片之 temp 之鍵
            照舊）。期值出自本器之玩具之手算（發單側窗八十六）。
            P0 隨之 60 項。
+           🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：受測函式增關鍵字參數 `blk5`（五級之街廓屬性之回呼）——本器之玩具一律
+           給之（`_go` 之 `b5`：缺 ⇒ 可建築街廓〔類 ＝ 住宅區〕之五級與深度皆同〔`_b5`·⇒ 其序同前·K1〜K60 之期⛔ 變〕；`dict`
+           ⇒ 逐街廓覆寫其屬性；`None` ⇒ ⛔ 給；可呼 ⇒ 逕用之）；他世界之直呼經 `_fn384` 補之。增 K61〜K69：K61 建地之剩下依
+           五級（他街廓之使用分區異者排後）先於距離；K62 深度（較深者排後）·同深之容差 0.1 m 內 ⇒ 依距離；K63 最小建築面積
+           往大之街廓排後而⛔ 淘汰（前者不過 ⇒ 續試之）；K64 他街廓之候選二以上而⛔ 給五級之屬性 ⇒ 停機；K65 他街廓唯一 ⇒
+           ⛔ 比五級、⛔ 須其屬性；K66 屬性缺片之所屬街廓 ⇒ 停機；K67 其回呼唯於須比時呼一次；K68 `k971_key5` ＝
+           `adj_candidate_lists` 之建地軌之八鍵之前六（合成之屬性·逐對）；K69（`W-G.9-383` 補令一之審查 #9）再試成之標記之聯集
+           非空而入池閘之合併單元之取代未成 ⇒ 當下之態⛔ 變：受併之片仍在 build 且帶標記、宿主⛔ 帶鍵。期值出自本器之玩具之
+           手算（發單側窗八十七）。P0 隨之 69 項。
+           🔧 `W-G.9-384`（唯讀審查之補·⛔ 上列一字不刪）：增 K70〜K74：K70 他街廓唯一而其宗二以上 ⇒ ⛔ 須其屬性；K71 五級與深度
+           皆同 ⇒ 依距離（名序最後而距離最近之街廓先·⛔ 以街廓名定之）；K72 正面路寬之級（往窄先於往寬·原街廓與候選之向）；
+           K73 正面道路；K74 回呼回非 dict ⇒ 停機。P0 隨之 74 項。W9 另查二回呼之 `k971_blk5` 之六引數之源（依序之字樣）。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -73,6 +85,13 @@
            地籍相連、入池閘、二回呼、調配之輸入、公設地調配之 temp、main 等）對基準一字未動；W7 頂層節點之相異 ⊆ 本單之許；
            W8 既有量測器之錨（其字串常數〔長 ≥ 4〕於基準之 app.py／selection_pipeline.py 恰一見者）於工作樹仍恰一見；
            基準中恰一之函式名（含巢狀）於工作樹仍恰一（新碼⛔ 同名）。
+           🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：W1 之 `k953_manual_run` 之關鍵字參數 ＝ `log_print`、`blk5`；W6 之受詞去
+           `f3_screen_end_block_merge`、`run_end_block_merge`；W7 之許增 `k971_key5`、`k971_blk5`、`f3_screen_end_block_merge`
+           與 `run_end_block_merge`；增 W9 五級之接線——`k953_manual_run`／`k6b_stage3_run`／`end_block_merge_run` 之關鍵字參數
+           `blk5`（預設 `None`）；後者呼段三恰一處傳 `blk5=blk5`；畫面之三入口（`f3_screen_k6b_stage3`→段三、
+           `f3_screen_end_block_merge`→末端塊合併再試、`f3_screen_k953`→手冊先行）與 harness 之三入口（`run_corner_pk_k6b`、
+           `run_end_block_merge`、`run_k953`）各恰一處以 `blk5=` 傳 `k6b_screen_callbacks`／`_k6b_callbacks` 之 `'blk5'`；二回呼之
+           回傳之 dict 含鍵 `'blk5'`，其值為其巢狀 `blk5`，其內恰一處呼 `k971_blk5`、以 `adj4_depth_of` 取深度；二新函式⛔ 案件字面。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：R1 手冊先行之紀錄逐列 ＝ 本器所載；R2 街角第 1 宗之宗 ＝ 旗標 off 之
            實跑（街角定案·`v3` §8）；R3 配地之全部（各宗之街廓·推進側·G）與各街廓之抵費地 ＝ 本器所載（容差 `0.01`）且
@@ -241,7 +260,7 @@ def _w1():
 
 def _go(world, *, own_upd=None, a_upd=None, drop=("X1(1)",), cap=None, price=None, gmap=None, err_cap=None,
         units=None, unit_g=None, pre=None, extra=None, rm=(), blk_upd=None, geom_upd=None, cl_upd=None, orig_upd=None,
-        need=None, nodg=False, units_if=None):
+        need=None, nodg=False, units_if=None, b5="eq"):
     t, own, blocks, cl = world()
     for e in (extra or []):
         t.append(copy.deepcopy(e))
@@ -259,10 +278,46 @@ def _go(world, *, own_upd=None, a_upd=None, drop=("X1(1)",), cap=None, price=Non
         next(x for x in t if x["暫編地號"] == pid).update(kv)
     build = [x for x in t if x["街廓分類"] == H]
     ap, st = _cbs(cap, price, drop, gmap, err_cap, units, unit_g, need, nodg, units_if)
-    return _NS["fn"](t, build, own, blocks, cl, ap, st, log_print=lambda *x: None), t, build
+    kw5 = {} if (b5 == "eq" and not _takes_b5(_NS["fn"])) else {"blk5": _b5fn(blocks, b5)}
+    return _NS["fn"](t, build, own, blocks, cl, ap, st, log_print=lambda *x: None, **kw5), t, build
 
 
 _NS = {}
+
+
+def _b5(blocks, over=None):
+    """🆕 `W-G.9-384`（`K-9-71`）：玩具之五級之街廓屬性（`adj_block_ctx` 之回傳之形）——可建築街廓（類 ＝ 住宅區）皆
+    使用分區 住宅區·最小建築面積 0·正面道路 RD·正面路寬 8·深度 30；`over` ＝ `{街廓: {'使用分區'|…: 值}}` 覆寫之。"""
+    from decimal import Decimal
+    out = {b: {"使用分區": H, "最小建築面積": Decimal("0"), "正面道路": "RD", "正面路寬": Decimal("8"),
+               "深度": Decimal("30")} for b, v in blocks.items() if v.get("category") == H}
+    for b, kv in (over or {}).items():
+        out[b] = dict(out[b], **{k: (Decimal(str(x)) if isinstance(x, (int, float)) else x) for k, x in kv.items()})
+    return out
+
+
+def _b5fn(blocks, b5):
+    """🆕 `W-G.9-384`：`_go` 之 `b5` ⇒ 受測函式之 `blk5`（`"eq"` ⇒ 皆同；`dict` ⇒ 覆寫；`None` ⇒ ⛔ 給；可呼 ⇒ 逕用）。"""
+    if b5 is None or callable(b5):
+        return b5
+    return lambda: _b5(blocks, None if b5 == "eq" else b5)
+
+
+def _takes_b5(f):
+    """🆕 `W-G.9-384`：受測函式（或 `_fn384` 所包者）之參數含 `blk5`？——預設之「皆同」唯於受測函式受之時給之（開工態之碼
+    ⛔ 受之 ⇒ K1〜K60 於開工態照舊可量；K61〜K67 之明給者恆給之 ⇒ 開工態紅）。"""
+    import inspect
+    return "blk5" in inspect.signature(getattr(f, "__wrapped384__", f)).parameters
+
+
+def _fn384(f):
+    """🆕 `W-G.9-384`：他世界之直呼（⛔ 經 `_go`）補 `blk5`（皆同·`_b5`·唯於受測函式受之時）。"""
+    def g(temp, build, own, blocks, cl, ap, st, **kw):
+        if _takes_b5(f):
+            kw.setdefault("blk5", lambda: _b5(blocks))
+        return f(temp, build, own, blocks, cl, ap, st, **kw)
+    g.__wrapped384__ = f
+    return g
 
 
 def _rows(res):
@@ -330,7 +385,7 @@ def _sel(res, pid):
 
 def _cases(ns, sp):
     out = []
-    _NS["fn"] = ns[FN]
+    _NS["fn"] = _fn384(ns[FN])            # 🔧 `W-G.9-384`（`K-9-71`）：他世界之直呼補 blk5（皆同）
     W = _w1
     G1 = {"C1": "gC1"}          # 地主 g1 之已配得唯 BB 之 X1(2)
     BE = {"blk_upd": {"BE": H}, "extra": [_tp("E1(1)", "BE", H, _R(10, 20, 30, 50), 300)]}
@@ -602,7 +657,95 @@ def _cases(ns, sp):
                  units_if={"Y1(1)": (["X1(2)", "Y1(1)"], "X1(2)", 360.0)})),
          ([("X1(1)", "X1(2)", (("X1(2)", 60.0),), "成", None)], [("Y1(1)", "取代")],
           ({"X1(2)": ["X1(1)"], "Y1(1)": ["X1(1)"]}, ["C8(1)", "C9(1)", "Q1(1)", "Q2(1)", "Y1(1)", "Z1(1)"])))
+    # 🆕 `W-G.9-384`（`K-9-71`·KL 裁 `2026-10-12 16:37`）：建地之片依距離併入同一地主他處已配得之宗——本街廓者先；他街廓
+    #   依五級 → 深度 → 距離 → 配得面積 → 重劃前面積 → 暫編地號。世界一·K14 之形：X1(1)（BA）部分併入 X1(2)（BB 容 10）後，
+    #   剩下 50 之他街廓之候選 ＝ C1(1)（BC·距 10）、Z1(1)（BD·距 20）
+    K14W = dict(own_upd={"Z1": "g1"}, cap={"BB": 10.0}, rm=("R1(1)", "P1(1)"))
+    P14 = ("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 10.0),), "部分成")
+    _run(out, "K61 （K-9-71）BC 之使用分區（商業區）異於片之所屬街廓 BA ⇒ 五級排後：剩下 50 併入 BD 之 Z1(1)（⛔ 距離近之 C1(1)）",
+         lambda: _rows(_go(W, b5={"BC": {"使用分區": "商業區"}}, **K14W)),
+         [P14, ("K-9-51", "X1(1)", "a", "Z1(1)", (("Z1(1)", 50.0),), "成")])
+    _run(out, "K62 （K-9-71）五級皆同而 BC 較深（40）⇒ 排後 ⇒ Z1(1)；BC 深 30.1（同深之容差 0.1 m 內）⇒ 依距離 ⇒ C1(1)",
+         lambda: (_rows(_go(W, b5={"BC": {"深度": 40}}, **K14W))[-1],
+                  _rows(_go(W, b5={"BC": {"深度": 30.1}}, **K14W))[-1]),
+         (("K-9-51", "X1(1)", "a", "Z1(1)", (("Z1(1)", 50.0),), "成"),
+          ("K-9-51", "X1(1)", "a", "C1(1)", (("C1(1)", 50.0),), "成")))
+    _run(out, "K63 （K-9-71）BD 之最小建築面積往大（100）⇒ 排後而⛔ 淘汰：C1(1)（BC 容 0）不過 ⇒ 續試 Z1(1) 成",
+         lambda: _rows(_go(W, b5={"BD": {"最小建築面積": 100}}, **dict(K14W, cap={"BB": 10.0, "BC": 0.0}))),
+         [P14, ("K-9-51", "X1(1)", "a", "C1(1)", (), "未成"), ("K-9-51", "X1(1)", "a", "Z1(1)", (("Z1(1)", 50.0),), "成")])
+    _run(out, "K64 他街廓之候選二以上（BC、BD）而⛔ 給五級之屬性 ⇒ 停機（⛔ 以距離代之）",
+         lambda: _halt(lambda: _go(W, b5=None, **K14W), "未給五級之屬性"), ("停機", True))
+    _run(out, "K65 他街廓之候選唯一（BB·C1 去之）⇒ ⛔ 比五級：⛔ 給其屬性亦照行（K42 之形）",
+         lambda: _sel(_go(W, own_upd={"Q1": "g1", "XB": "g1"}, cap={"BA": 0.0}, orig_upd={"X1(2)": "XB"},
+                          rm=("C1(1)",), b5=None), "X1(1)"),
+         [("手冊", "X1(1)", "a", "Q1(1)", (), "未成"), ("K-9-51", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "成")])
+    _run(out, "K66 五級之屬性缺片之所屬街廓（BA）⇒ 停機",
+         lambda: _halt(lambda: _go(W, b5=lambda: {k: v for k, v in _b5(_w1()[2]).items() if k != "BA"}, **K14W),
+                       "無五級之屬性"), ("停機", True))
+    _run(out, "K67 五級之屬性之回呼唯於須比時呼之、且一次（K61 之形 ⇒ 1；Z1 非 g1 ⇒ 他街廓唯一 ⇒ 0）",
+         lambda: _k67(W, K14W), (1, 0))
+    _run(out, "K68 k971_key5 ＝ adj_candidate_lists 之建地軌之八鍵之前六（合成之屬性三組·七街廓·逐對 126）",
+         lambda: _k68(ns), (126, 0))
+    # 🆕 `W-G.9-384`（`W-G.9-383` 補令一之審查 #9·覆蓋之補）：標記之聯集非空而單元之取代未成
+    _run(out, "K69 再試成而受併之片 X1(2) 為 Y1(1) 之單元之成員；取代後之配地相異（未取代）⇒ 當下之態⛔ 變：X1(2) 仍在 build 且帶"
+              "標記、宿主 Y1(1)⛔ 帶鍵",
+         lambda: (lambda r: (_rows4(r), _unit_rows(r), _mark4(r)))(
+             _go(W, drop=("X1(1)", "X1(2)", "Y1(1)"), rm=RM4, own_upd={"Y1": "g1"}, unit_g=999.0,
+                 units_if={"Y1(1)": (["X1(2)", "Y1(1)"], "X1(2)", 360.0)})),
+         ([("X1(1)", "X1(2)", (("X1(2)", 60.0),), "成", None)], [("Y1(1)", "未取代（取代後之配地相異）")],
+          ({"X1(2)": ["X1(1)"]}, ["C8(1)", "C9(1)", "Q1(1)", "Q2(1)", "X1(2)", "Y1(1)", "Z1(1)"])))
+    # 🆕 `W-G.9-384`（唯讀審查之補）：他街廓唯一而其宗二以上；同鍵者依距離（⛔ 依街廓名）；正面路寬之級、正面道路；回呼之型
+    _run(out, "K70 他街廓唯一（BC）而其候選二宗（C1(1)、C9(1)·皆 g1）⇒ ⛔ 比五級：⛔ 給其屬性亦照行 ⇒ C1(1)",
+         lambda: _rows(_go(W, b5=None, own_upd={"C9": "g1"}, cap={"BB": 10.0}, rm=("R1(1)", "P1(1)")))[-1],
+         ("K-9-51", "X1(1)", "a", "C1(1)", (("C1(1)", 50.0),), "成"))
+    _run(out, "K71 五級與深度皆同之他街廓 BC（距 10）、BD（距 20）、BZ（距 1·名序最後）⇒ 依距離 ⇒ BZ 之 Z9(1)（⛔ 依街廓名）",
+         lambda: _rows(_go(W, extra=[_tp("Z9(1)", "BZ", H, _R(10, 20, 31, 35), 300)], blk_upd={"BZ": H},
+                           own_upd={"Z1": "g1", "Z9": "g1"}, cap={"BB": 10.0}, rm=("R1(1)", "P1(1)")))[-1],
+         ("K-9-51", "X1(1)", "a", "Z9(1)", (("Z9(1)", 50.0),), "成"))
+    _run(out, "K72 （K-9-71）正面路寬：BA 8、BC 15（往寬）、BD 6（往窄）⇒ 二者皆異、級距 BD 先（往窄先於往寬）⇒ Z1(1)",
+         lambda: _rows(_go(W, b5={"BC": {"正面路寬": 15}, "BD": {"正面路寬": 6}}, **K14W))[-1],
+         ("K-9-51", "X1(1)", "a", "Z1(1)", (("Z1(1)", 50.0),), "成"))
+    _run(out, "K73 （K-9-71）正面道路：BC 臨他路（RX）⇒ 排後 ⇒ Z1(1)",
+         lambda: _rows(_go(W, b5={"BC": {"正面道路": "RX"}}, **K14W))[-1],
+         ("K-9-51", "X1(1)", "a", "Z1(1)", (("Z1(1)", 50.0),), "成"))
+    _run(out, "K74 五級之屬性之回呼回非 dict ⇒ 停機",
+         lambda: _halt(lambda: _go(W, b5=lambda: [], **K14W), "五級之屬性非 dict"), ("停機", True))
     return out
+
+
+def _k67(W, K14W):
+    """🆕 `W-G.9-384`：五級之屬性之回呼之呼數（須比 ⇒ 一次；⛔ 須 ⇒ 零）。"""
+    n = [0, 0]
+
+    def f(i):
+        def g():
+            n[i] += 1
+            return _b5(_w1()[2], {"BC": {"使用分區": "商業區"}})
+        return g
+    _go(W, b5=f(0), **K14W)
+    _go(W, b5=f(1), **dict(K14W, own_upd={}))
+    return tuple(n)
+
+
+def _k68(ns):
+    """🆕 `W-G.9-384`：`k971_key5` 與 `adj_candidate_lists` 之建地軌之鍵之前六逐對比（合成之屬性三組·七街廓）。"""
+    import random
+    tot = bad = 0
+    for seed in (1, 2, 3):
+        rg = random.Random(seed)
+        labs = [f"T{i}" for i in range(7)]
+        ctx = ns["adj_block_ctx"](labs, {x: rg.choice([H, "商業區"]) for x in labs},
+                                  {x: rg.choice([0, 100, 200]) for x in labs}, {x: rg.choice(["A", "B"]) for x in labs},
+                                  {x: rg.choice([6, 8, 10, 15]) for x in labs},
+                                  {x: rg.choice([20, 25, 25.05, 30]) for x in labs})
+        for h in labs:
+            unit = {"歸戶": "g", "軌": ns["ADJ_TRACK_BUILD"], "原街廓": h,
+                    "建築街廓內不能分配": [{"暫編地號": "Q", "原有面積": 1.0}], "共同負擔用地": []}
+            lst = ns["adj_candidate_lists"]({"units": [unit]}, ctx, {}, {"Q": [(0, 0), (1, 0), (1, 1), (0, 1)]})
+            for it in lst[0]["名單"][1:]:
+                tot += 1
+                bad += tuple(it["鍵"][:6]) != ns["k971_key5"](ctx, h, it["街廓"])
+    return tot, bad
 
 
 def _k32(W):
@@ -1120,7 +1263,9 @@ def _wiring_checks(repo, base):
     sd, stree = _defs(spp)
     # W1 新名與簽名
     f = ad.get(FN)
-    ok = f is not None and [a.arg for a in f.args.args] == SIG and [a.arg for a in f.args.kwonlyargs] == ["log_print"]
+    # 🔧 `W-G.9-384`（`K-9-71`）：關鍵字參數增 `blk5`
+    ok = f is not None and [a.arg for a in f.args.args] == SIG and [a.arg for a in f.args.kwonlyargs] == ["log_print",
+                                                                                                         "blk5"]
     consts = {}
     for n in atree.body:
         if isinstance(n, ast.Assign) and len(n.targets) == 1 and isinstance(n.targets[0], ast.Name) \
@@ -1226,7 +1371,71 @@ def _wiring_checks(repo, base):
         chk.append((f"W8 {nm_}：既有量測器之錨（{len(anc)}）於工作樹皆恰一見；基準中恰一之函式名（含巢狀·"
                     f"{sum(1 for v in fb.values() if v == 1)}）仍恰一", not moved and not dup,
                     f"錨之異 {moved[:6]}；函式名之異 {dup[:8]}"))
+    chk.append(_w9_384(ad, sd))
     return chk
+
+
+def _w9_384(ad, sd):
+    """🆕 `W-G.9-384`（`K-9-71`）：W9 五級之接線（AST）。"""
+    bad = []
+
+    def _kwd(fn):
+        return {a.arg: (ast.unparse(d) if d is not None else None)
+                for a, d in zip(fn.args.kwonlyargs, fn.args.kw_defaults)} if fn is not None else {}
+    for nm in (FN, "k6b_stage3_run", "end_block_merge_run"):
+        if _kwd(ad.get(nm)).get("blk5", "缺") != "None":
+            bad.append(f"{nm} 之 blk5")
+    eb = ad.get("end_block_merge_run")
+    cs = [c for c in (_calls(eb) if eb is not None else []) if c[0] == "k6b_stage3_run"]
+    if not (len(cs) == 1 and [ast.unparse(k.value) for k in cs[0][3].keywords if k.arg == "blk5"] == ["blk5"]):
+        bad.append("end_block_merge_run → 段三")
+    for tree_, fn_, callee, pat in (
+            (ad, "f3_screen_k6b_stage3", "k6b_stage3_run", r"^_cb\['blk5'\]$"),
+            (ad, "f3_screen_end_block_merge", "end_block_merge_run", r"^_cb\['blk5'\]$"),
+            (ad, "f3_screen_k953", FN, r"^_b5953s$"),
+            (sd, "run_corner_pk_k6b", "k6b_stage3_run", r"^_cbk\['blk5'\]$"),
+            (sd, "run_end_block_merge", "end_block_merge_run", r"^callbacks\['blk5'\]$"),
+            (sd, "run_k953", FN, r"^callbacks\['blk5'\]$")):
+        node = tree_.get(fn_)
+        cs = [c for c in (_calls(node) if node is not None else []) if c[0] == callee]
+        kv = [ast.unparse(k.value) for c in cs for k in c[3].keywords if k.arg == "blk5"]
+        if not (len(cs) == 1 and len(kv) == 1 and re.match(pat, kv[0])):
+            bad.append(f"{fn_} → {callee}（{kv}）")
+    fk = ad.get("f3_screen_k953")
+    if fk is not None:
+        src = [ast.unparse(n.value) for n in ast.walk(fk) if isinstance(n, ast.Assign)
+               and [getattr(t, "id", None) for t in n.targets] == ["_b5953s"]]
+        if src != ["k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)['blk5']"]:
+            bad.append(f"f3_screen_k953 之 _b5953s（{src}）")
+    for tree_, nm in ((ad, "k6b_screen_callbacks"), (sd, "_k6b_callbacks")):
+        cb = tree_.get(nm)
+        rets = [n for n in (cb.body if cb is not None else []) if isinstance(n, ast.Return)]
+        ok_r = (len(rets) == 1 and isinstance(rets[0].value, ast.Dict)
+                and any(isinstance(k, ast.Constant) and k.value == "blk5" and ast.unparse(v) == "blk5"
+                        for k, v in zip(rets[0].value.keys, rets[0].value.values)))
+        nest = [n for n in (cb.body if cb is not None else []) if isinstance(n, ast.FunctionDef) and n.name == "blk5"]
+        nc = [x for x in (_calls(nest[0]) if len(nest) == 1 else [])]
+        kb = [c[3] for c in nc if c[0] == "k971_blk5"]
+        # 🔧 唯讀審查之補：`k971_blk5` 之六引數之源（依序·其式之 `ast.unparse` 含之字樣；巢狀之全文含 `SS_FRONT_ROAD_NAME` 與 `g_kwargs['classified_blocks']`〔畫面〕）
+        want = (((), ("K91_SS_MBA_EFFECTIVE",), ("SS_FRONT_ROAD_DERIVE",), (".get(", "'id'"),
+                 ("_corner_rows_init", "正面路寬(m)"), ("adj4_depth_of",)) if nm == "k6b_screen_callbacks" else
+                (("cb",), ("{}",), ("front_road_derive",), ("load_front_road_names",), ("param_rows", "正面路寬(m)"),
+                 ("adj4_depth_of",)))
+        ok_a = (len(kb) == 1 and len(kb[0].args) == 6 and not kb[0].keywords
+                and all(all(t in ast.unparse(a) for t in w) for a, w in zip(kb[0].args, want))
+                and (nm != "k6b_screen_callbacks" or all(t in ast.unparse(nest[0]) for t in (
+                    "SS_FRONT_ROAD_NAME", "g_kwargs['classified_blocks']")))
+                and (nm == "k6b_screen_callbacks" or ast.unparse(kb[0].args[1]) == "{}"))
+        ok_n = (len(nest) == 1 and sum(1 for c in nc if c[0] == "k971_blk5") == 1
+                and any(c[0] == "adj4_depth_of" for c in nc) and ok_a)
+        if not (ok_r and ok_n):
+            bad.append(f"{nm} 之 blk5（回 {ok_r}／巢狀 {ok_n}）")
+    lits = [(nm, x.value) for nm in ("k971_key5", "k971_blk5") if nm in ad for x in ast.walk(ad[nm])
+            if isinstance(x, ast.Constant) and isinstance(x.value, str) and CASE_LIT_RE.match(x.value)]
+    if not all(nm in ad for nm in ("k971_key5", "k971_blk5")) or lits:
+        bad.append(f"二新函式（{[nm in ad for nm in ('k971_key5', 'k971_blk5')]}·案件字面 {lits}）")
+    return ("W9 五級之接線（三函式之 blk5·末端塊合併再試傳之·畫面與 harness 之六入口·二回呼之 blk5·二新函式）", not bad,
+            f"不合 {bad}")
 
 
 def _fn_names(src):
@@ -1280,6 +1489,14 @@ APP_ALLOW |= {"k967_pool_out", "k967_pool_less"}
 # 🔧 `W-G.9-380`（巳 ①）：W7 之許增 `k965_part_split`（合併之宗之部分併入之帳·其行為由 F29 之 K33／K51〜K54 量之、
 #   其接線由 F29 之 Y10 量之）
 APP_ALLOW |= {"k965_part_split"}
+# 🔧 `W-G.9-384`（`K-9-71`）：傳 `blk5` 之畫面之末端塊合併再試之入口與 harness 之同入口出 W6 之受詞；W7 之許增五級之二純函式與之
+#   （其接線由本器之 W9 量之）
+CHG384_APP = ("f3_screen_end_block_merge",)
+CHG384_SP = ("run_end_block_merge",)
+KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG384_APP)
+KEEP_SP = tuple(x for x in KEEP_SP if x not in CHG384_SP)
+APP_ALLOW |= {"k971_key5", "k971_blk5"} | set(CHG384_APP)
+SP_ALLOW |= set(CHG384_SP)
 
 
 def _top_dump(tree):

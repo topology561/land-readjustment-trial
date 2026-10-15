@@ -26,6 +26,8 @@
            `wiring`：X2 唯量頂層之相異 ⊆ {二函式} ∪ 本單之許（二函式之逐列之限退·本單重寫）；X3 改量 `_bpre_a4` 之新施點
            （其呼叫恰一、與 `k966_block_merge` 之呼叫同在一 `for` 之內且先之）；X4 之差除本單所改之二函式（`_k6b_callbacks`、
            `k6b_stage3_pool_temp`）之段；X5 之 `R-10′` 之模板改為新施點之文（「於第一趟併入街廓 {_bk} 之前」）。
+  🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：`wiring` 之 X2 之許增 `k971_key5`、`k971_blk5`、`f3_screen_end_block_merge`、
+           `f3_screen_k6b_stage3`；X4 之差另除 `run_end_block_merge`、`run_corner_pk_k6b` 之段（傳 `blk5`）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import ast, contextlib, difflib, io, json, os, re, subprocess, sys, tempfile, textwrap
@@ -97,6 +99,10 @@ ALLOW373_SP += ("run_k953",)
 # 🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①）：X2 之許增 `k965_part_split`（合併之宗之部分併入之帳·其行為與接線由 F29 之
 #   K33／K51〜K54、Y10 量之）
 ALLOW373_APP += ("k965_part_split",)
+# 🔧 `W-G.9-384`（`K-9-71`）：X2 之許增五級之二純函式與傳 `blk5` 之二畫面入口；X4 之除外增傳 `blk5` 之二 harness 入口
+#   （本單之行為與接線由 F23 之 K61〜K68、W9 與 F16 之 K23〜K29 量之）
+ALLOW373_APP += ("k971_key5", "k971_blk5", "f3_screen_end_block_merge", "f3_screen_k6b_stage3")
+ALLOW373_SP += ("run_end_block_merge", "run_corner_pk_k6b")
 
 
 def _strip_fns(src, names):

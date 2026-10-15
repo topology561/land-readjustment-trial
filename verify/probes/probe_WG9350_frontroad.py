@@ -19,6 +19,8 @@
              R1 可建築街廓皆有推導；R2 狀態與比值一致（入推導集 ⇔ 比值 > 具名常數）；
              R3 線長之自我驗證閘（＝ `front_lines` 之 `length`·`LineString.length`）；
              R4 外部錨：以 shapely 之 `line ∩ polygon.buffer(1.0)` 另算比值，逐一分類（> 具名常數與否）與 R2 相同。
+  🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：W4 之許另含 app.py 之 `k971_blk5`／`k6b_screen_callbacks` 與 harness 之
+           `_k6b_callbacks`（手冊先行與段三之依距離併入之五級讀正面道路·街廓屬性）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, json, math, os, re, sys
@@ -259,9 +261,12 @@ def _wiring_checks(app_src, others):
     tok_re = re.compile("|".join(re.escape(t) for t in toks))
     # 🔧 `W-G.9-367`（發單側窗六十八）：harness 之 `run_adj4`（規格步 4 乙之 harness 入口）許可——除其原文而後計他檔之命中
     others = {p: (_drop_fn367(s, "run_adj4") if p == "verify/selection_pipeline.py" else s) for p, s in others.items()}
+    # 🔧 `W-G.9-384`（`K-9-71`）：harness 之 `_k6b_callbacks`（其 `blk5` 讀正面道路〔五級之街廓屬性〕）許可——除其原文
+    others = {p: (_drop_fn367(s, "_k6b_callbacks") if p == "verify/selection_pipeline.py" else s) for p, s in others.items()}
     other_hits = {p: len(tok_re.findall(s)) for p, s in sorted(others.items()) if tok_re.search(s)}
     allowed = set(R3_FUNCS) | {"parse_cad_precision_layers", "main"}
     allowed |= {"f3_screen_adj4", "adj4_plan"}   # 🔧 `W-G.9-367`（發單側窗六十八）：規格步 4 乙之畫面入口與受詞之純函式讀正面道路（名單之街廓屬性）
+    allowed |= {"k971_blk5", "k6b_screen_callbacks"}   # 🔧 `W-G.9-384`（`K-9-71`）：五級之街廓屬性之純函式與畫面之回呼（`blk5`）
     bad = []
     for fname, node in top.items():
         if fname in allowed:

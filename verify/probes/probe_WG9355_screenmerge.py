@@ -26,6 +26,8 @@
            無之 ⇒ 試算之 build）——T3d／T9d／T6d 之期隨之（本器之樁⛔ 寫入池閘之末態 ⇒ 試算之 build 之各宗自為其成員）。
   🔧 `W-G.9-378`（`GB-204`·⛔ 上列一字不刪）：段三之 `alloc_state` 之出另增 `pool_out`（入池閘之帳·與 `members` 取同一 build）
            ——T3d／T9d／T6d 之期隨之（本器之樁⛔ 帶入池閘之帳 ⇒ `{}`）。
+  🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：段三與末端塊合併再試之樁之簽名增 `blk5`（五級之街廓屬性之回呼·其接線由 F23 之
+           W9 量之）；T6a 之期增 `blk5`（`k6b_screen_callbacks` 之回傳）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import contextlib, copy, importlib.util, inspect, io, os, sys
@@ -199,8 +201,9 @@ class _Rig:
         st.rerun()
 
     def s3(self, order, locked, own_map, temp_parcels, build_parcels, blocks, centerlines, a_prime, trial_winner,
-           alloc_state, *, log_print=print, contests=None):
+           alloc_state, *, log_print=print, contests=None, blk5=None):
         self.s3_n += 1
+        self.s3_blk5 = blk5                 # 🔧 `W-G.9-384`（`K-9-71`）：五級之屬性之回呼（其接線由 F23 之 W9 量之）
         self.in_s3 = True
         try:
             self.s3_state = alloc_state(temp_parcels, build_parcels)
@@ -219,8 +222,9 @@ class _Rig:
         return t2, b2, [dict(L3)]
 
     def merge(self, temp_parcels, build_parcels, own_map, locked, corner_lots, blocks, centerlines, a_prime,
-              alloc_eval, alloc_state, *, setback=None, log_print=print):
+              alloc_eval, alloc_state, *, setback=None, log_print=print, blk5=None):
         self.merge_n += 1
+        self.merge_blk5 = blk5              # 🔧 `W-G.9-384`（`K-9-71`）
         self.merge_args = dict(temp=temp_parcels, build=build_parcels, own=dict(own_map or {}), locked=set(locked or ()),
                                corner=set(corner_lots or ()), blocks=copy.deepcopy(blocks),
                                cl=copy.deepcopy(centerlines), setback=setback)
@@ -477,7 +481,8 @@ def _t6(ns, ss):
     with _rigged(ns, ss, dict(order=[]), "on") as rig:
         st = _St(ss)
         cb = ns["k6b_screen_callbacks"](st, pk_kwargs=pk, g_kwargs=g)
-        out.append(("T6a 四注入物之名", sorted(cb), ["a_prime", "alloc_eval", "alloc_state", "trial_winner"]))
+        # 🔧 `W-G.9-384`（`K-9-71`）：注入物增 `blk5`（五級之街廓屬性·呼叫時取之）
+        out.append(("T6a 注入物之名（四 ＋ blk5）", sorted(cb), ["a_prime", "alloc_eval", "alloc_state", "blk5", "trial_winner"]))
         out.append(("T6b a′ ＝ a(src) × p(src) ÷ p(dst)（100 × 1000 ÷ 500）", round(cb["a_prime"](t0[0], t0[2]), 9), 200.0))
         with contextlib.redirect_stdout(io.StringIO()):
             tw = cb["trial_winner"](t0, b0, "B1", "左", "A(1)")

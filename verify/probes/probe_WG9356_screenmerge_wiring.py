@@ -35,6 +35,7 @@
     S2 `自誤 517`：main() 內之 _f3L_invalidate_g_cache 抽出以假 st 實際執行：所列之鍵皆去、他鍵留、f3_g_needs_rerun ＝ True
        （該函式以 `except Exception: pass` 包裹 ⇒ 以結果判、⛔ 以「未拋」判）。
     本部全綠時另施 14 種原始碼突變，每一突變須使其所指之項轉紅（器紅 ⇒ rc 1）。
+  🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：W3 之回鍵之期 ＝ 四注入物 ∪ {blk5}（五級之街廓屬性·其接線由 F23 之 W9 量之）。
 rc：0 相符／1 不符（含受詞缺、器紅）／2 用法錯。
 """
 import ast, contextlib, copy, io, os, sys
@@ -47,6 +48,9 @@ except Exception:  # noqa: BLE001
 FN_S3, FN_EBM, FN_CB, FN_ROWS = ("f3_screen_k6b_stage3", "f3_screen_end_block_merge", "k6b_screen_callbacks",
                                  "end_block_merge_rows")
 CB4 = ("a_prime", "trial_winner", "alloc_state", "alloc_eval")
+# 🔧 `W-G.9-384`（`K-9-71`）：`k6b_screen_callbacks` 之回傳增 `blk5`（五級之街廓屬性·其接線由 F23 之 W9 量之）⇒ W3 之回鍵之期
+#   ＝ CB4 ∪ {blk5}（巢狀之同名之查⛔ 變）
+CB5_384 = CB4 + ("blk5",)
 LOGK = "f3_end_block_merge_log"
 
 
@@ -222,7 +226,7 @@ def _w3(tree, top):
     rets = [n for n in _walk_own(cb) if isinstance(n, ast.Return)]
     ret_ok = (len(rets) == 1 and isinstance(rets[0].value, ast.Dict)
               and {k.value: _uparse(v) for k, v in zip(rets[0].value.keys, rets[0].value.values)
-                   if isinstance(k, ast.Constant)} == {k: k for k in CB4})
+                   if isinstance(k, ast.Constant)} == {k: k for k in CB5_384})
     dup = sorted({f"{f.name}.{n.name}" for f in top.values() if f is not cb
                   for n in ast.walk(f) if isinstance(n, ast.FunctionDef) and n is not f and n.name in CB4})
     notes = []

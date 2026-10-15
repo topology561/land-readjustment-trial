@@ -24,6 +24,13 @@
            逐受併之街廓：先一次全部、次 建地 → 道路 → 公設地 逐類全併，不過之類按比例（各片乘同一百分比·類之合計每
            `0.01 ㎡` 一格）、其後之類⛔ 併入本街廓；建地可拆分（部分併出者留 build、`面積_m2` 減其量、帶 `段三部分併出`·
            ⛔ `段三餘量`）；剩下依 `K-9-51` 逐輪（`K-9-68`：同一輪到達同一街廓者一起依 `K-9-66`·其距離與 G 取該輪之試算）。
+           🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：段三之 `blk5`（五級之街廓屬性之回呼）——本器之段三之呼叫一律經 `_s3384`：
+           受測函式受之 ⇒ 預設給「可建築街廓之五級與深度皆同」（`_b5`·⇒ 其序同前·K1〜K22 之期⛔ 變）。增 K23〜K29（第 5 項之
+           建地之片·`_go384`·K6 之形〔W1(1)·BW〕）：K23 他街廓之候選依五級（B5 之使用分區異 ⇒ 排後 ⇒ B7 之 Z1）；K24 本街廓之
+           候選恆先（W2(1)·BW·G 20）——縱他街廓之候選距離同為 0（U1(1)·BU·唯一點相接·G 500）；K25 他街廓之候選二以上而⛔ 給
+           五級之屬性 ⇒ 停機；K26 他街廓唯一 ⇒ ⛔ 須其屬性；K27 公設地之片（P1(1)·K3 之形）照距離（⛔ 呼其回呼）；K28 其回呼
+           唯呼一次（K23 之形）；K29 段三之 `blk5` 缺省 ＝ `None`（簽名）；K30 正面路寬之級（往窄先於往寬·原街廓與候選之向）；
+           K31 正面道路；K32 回呼回非 dict ⇒ 停機（唯讀審查之補）。期值出自本器之玩具之手算（發單側窗八十七）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import contextlib, copy, importlib.util, io, os, sys
@@ -149,7 +156,7 @@ def _go(ns, cap, price=None, drop=(), no_g=False, a=None, p_owner="g1", w1=False
         next(t for t in temp if t["暫編地號"] == pid).update(kv)
     build = [t for t in temp if t["街廓分類"] == H]
     ap, tw, st = _cbs(cap, price, drop, no_g)
-    t2, b2, log = ns["k6b_stage3_run"](ORDER, set(), own, temp, build, blocks, cl, ap, tw, st,
+    t2, b2, log = _s3384(ns)(ORDER, set(), own, temp, build, blocks, cl, ap, tw, st,
                                        log_print=lambda *x: None)
     by = {t["暫編地號"]: t for t in t2}
     post = [(x["候選"], x["層級"], x["結果"], x["受併宗"] if isinstance(x["受併宗"], str) else tuple(x["受併宗"]),
@@ -193,7 +200,7 @@ def _go4(ns, cap, thr=None, drop=("Y1(1)",)):
     order = [{"最終序位": 1, "街廓": "BX", "端": "左", "暫編地號": "X1(1)"},
              {"最終序位": 2, "街廓": "BY", "端": "左", "暫編地號": "Y1(1)"}]
     ct = [{"形": "一", "列": [("BX", "左", "X1(1)", 10.0), ("BY", "左", "Y1(1)", 10.0)]}]
-    t2, b2, log = ns["k6b_stage3_run"](order, set(), own, temp, build, blocks, cl, ap, tw, st,
+    t2, b2, log = _s3384(ns)(order, set(), own, temp, build, blocks, cl, ap, tw, st,
                                        log_print=lambda *x: None, contests=ct)
     by = {t["暫編地號"]: t for t in t2}
     post = [(x["候選"], x["層級"], x["結果"], x["受併宗"] if isinstance(x["受併宗"], str) else tuple(x["受併宗"]),
@@ -233,7 +240,7 @@ def _go5(ns, cap):
     order = [{"最終序位": 1, "街廓": "BX", "端": "左", "暫編地號": "X1(1)"},
              {"最終序位": 2, "街廓": "BY", "端": "左", "暫編地號": "Y1(1)"}]
     ct = [{"形": "一", "列": [("BX", "左", "X1(1)", 10.0), ("BY", "左", "Y1(1)", 10.0)]}]
-    _t2, _b2, log = ns["k6b_stage3_run"](order, set(), own, temp, build, blocks, cl, ap, tw, st,
+    _t2, _b2, log = _s3384(ns)(order, set(), own, temp, build, blocks, cl, ap, tw, st,
                                          log_print=lambda *x: None, contests=ct)
     post = [(x["候選"], x["層級"], x["結果"], x["受併宗"] if isinstance(x["受併宗"], str) else tuple(x["受併宗"]),
              tuple(sorted((k, round(v, 2)) for k, v in (x.get("併入量") or {}).items())))
@@ -241,6 +248,80 @@ def _go5(ns, cap):
     d5 = [(x["候選"], x["受併宗"], x.get("距離"), round(float(x.get("G") or 0), 2))
           for x in log if x.get("層級") == "後處理·第5項" and x.get("結果") != "轉調配"]
     return post, d5
+
+
+def _b5(blocks, over=None):
+    """🆕 `W-G.9-384`（`K-9-71`）：玩具之五級之街廓屬性（`adj_block_ctx` 之回傳之形）——可建築街廓（類 ＝ 住宅區）皆
+    使用分區 住宅區·最小建築面積 0·正面道路 RD·正面路寬 8·深度 30；`over` 覆寫之。"""
+    from decimal import Decimal
+    out = {b: {"使用分區": H, "最小建築面積": Decimal("0"), "正面道路": "RD", "正面路寬": Decimal("8"),
+               "深度": Decimal("30")} for b, v in blocks.items() if v.get("category") == H}
+    for b, kv in (over or {}).items():
+        out[b] = dict(out[b], **{k: (Decimal(str(x)) if isinstance(x, (int, float)) else x) for k, x in kv.items()})
+    return out
+
+
+def _s3384(ns):
+    """🆕 `W-G.9-384`：段三之呼叫——受測函式受 `blk5` 之時，呼叫端未給者補「皆同」（`_b5`）。"""
+    import inspect
+    f = ns["k6b_stage3_run"]
+    if "blk5" not in inspect.signature(f).parameters:
+        return f
+
+    def g(order, locked, own, temp, build, blocks, *a, **kw):
+        kw.setdefault("blk5", lambda: _b5(blocks))
+        return f(order, locked, own, temp, build, blocks, *a, **kw)
+    return g
+
+
+def _world384(u1=False, w2=False):
+    """🆕 `W-G.9-384`：`_world(w1=True)`（K6 之形）＋（w2）BW 之 W2(1)（x∈[60,65]·g1·20·⛔ 與他片相接）＋（u1）BU
+    （x∈[20,30]·y∈[40,50]）之 U1(1)（g1·500·與 W1(1) 唯一點相接 ⇒ 距離 0 而⛔ 地籍相連）。"""
+    t, own, blocks, cl = _world(None, "gP", True)
+    if w2:
+        t.append(_tp("W2(1)", "BW", H, _R(60, 65, 30, 40), 20))
+        own["W2"] = "g1"
+    if u1:
+        t.append(_tp("U1(1)", "BU", H, _R(20, 30, 40, 50), 500))
+        own["U1"] = "g1"
+        blocks["BU"] = {"category": H}
+    return t, own, blocks, cl
+
+
+def _go384(ns, cap, b5="eq", own_upd=None, u1=False, w2=False, n5=None):
+    """🆕 `W-G.9-384`：K6 之形（W1(1) 整筆不過 ⇒ 按比例部分併入 X1；剩下依第 5 項）·`b5`：`"eq"` ⇒ 皆同；`dict` ⇒ 覆寫；
+    `None` ⇒ ⛔ 給；`n5` ＝ 計回呼之呼數之 list。回後處理之列。"""
+    temp, own, blocks, cl = _world384(u1, w2)
+    own = dict(own, **(own_upd or {}))
+    build = [t for t in temp if t["街廓分類"] == H]
+    ap, tw, st = _cbs(cap, None, ("W1(1)",))
+    if b5 is None:
+        f5 = None
+    else:
+        def f5():
+            if n5 is not None:
+                n5.append(1)
+            return _b5(blocks, None if b5 == "eq" else b5)
+    _t2, _b2, log = ns["k6b_stage3_run"](ORDER, set(), own, temp, build, blocks, cl, ap, tw, st,
+                                         log_print=lambda *x: None, blk5=f5)
+    return [(x["候選"], x["層級"], x["結果"], x["受併宗"] if isinstance(x["受併宗"], str) else tuple(x["受併宗"]),
+             tuple(sorted((k, round(v, 2)) for k, v in (x.get("併入量") or {}).items())))
+            for x in log if x.get("序") == "後處理"]
+
+
+def _k27(ns):
+    """🆕 `W-G.9-384`：公設地之片（P1(1)·K3 之形）於他街廓之五級異時之列與回呼之呼數。"""
+    n5 = []
+    temp, own, blocks, cl = _world()
+    build = [t for t in temp if t["街廓分類"] == H]
+    ap, tw, st = _cbs(_cap(B3=120.0, B5=120.0))
+
+    def f5():
+        n5.append(1)
+        return _b5(blocks, {"B5": {"使用分區": "商業區"}})
+    _t2, _b2, log = ns["k6b_stage3_run"](ORDER, set(), own, temp, build, blocks, cl, ap, tw, st,
+                                         log_print=lambda *x: None, blk5=f5)
+    return ([(x["候選"], x["層級"], x["結果"], x["受併宗"]) for x in log if x.get("層級") == "後處理·第5項"], len(n5))
 
 
 def _halt(ns, phrase, **kw):
@@ -463,7 +544,64 @@ def _cases(ns, sp):
                      drop=("W1(1)", "Y1(1)", "Y2(1)", "Z1(1)"))[0],
          # 🔧 `W-G.9-373`（`K-9-66`）：W1 按比例部分併入 X1 30
          [("W1(1)", "後處理(a)", "部分成", "X1(1)", (("X1(1)", 30.0),)), ("W1(1)", "後處理·第5項", "轉調配", "—", ())])
+    # 🆕 `W-G.9-384`（`K-9-71`·KL 裁 `2026-10-12 16:37`）：第 5 項之建地之片——本街廓者先；他街廓依五級 → 深度 → 距離 →
+    #   配得面積 → 重劃前面積 → 暫編地號（K6 之形：W1(1) 部分併入 X1 30 後剩下 20）
+    W30 = ("W1(1)", "後處理(a)", "部分成", "X1(1)", (("X1(1)", 30.0),))
+    _run(out, "K23 （K-9-71）B5 之使用分區（商業區）異於 W1 之所屬街廓 BW ⇒ 五級排後：剩下 20 併入 B7 之 Z1（⛔ 距離近之 B5）",
+         lambda: _go384(ns, _cap(B3=90.0), b5={"B5": {"使用分區": "商業區"}}),
+         [W30, ("W1(1)", "後處理·第5項", "成", "Z1(1)", (("Z1(1)", 20.0),))])
+    _run(out, "K24 （K-9-71）本街廓之候選恆先：BW 之 W2(1)（G 20）先於 BU 之 U1(1)（距離同為 0·G 500）",
+         lambda: _go384(ns, _cap(B3=90.0), u1=True, w2=True),
+         [W30, ("W1(1)", "後處理·第5項", "成", "W2(1)", (("W2(1)", 20.0),))])
+    _run(out, "K25 他街廓之候選二以上（B5、B7）而⛔ 給五級之屬性 ⇒ 停機（⛔ 以距離代之）",
+         lambda: _halt384(ns, "未給五級之屬性"), ("停機", True))
+    _run(out, "K26 他街廓之候選唯一（B5·Z1 非 g1）⇒ ⛔ 比五級：⛔ 給其屬性亦照行（同 K6）",
+         lambda: _go384(ns, _cap(B3=90.0), b5=None, own_upd={"Z1": "gZ"}),
+         [W30, ("W1(1)", "後處理·第5項", "成", "Y1(1)", (("Y1(1)", 20.0),))])
+    _run(out, "K27 公設地之片（P1(1)·K3 之形）照距離（B5 之五級雖異）、⛔ 呼其回呼",
+         lambda: _k27(ns),
+         ([("P1(1)", "後處理·第5項", "部分成", "Y1(1)"), ("P1(1)", "後處理·第5項", "未成", "Y2(1)"),
+           ("P1(1)", "後處理·第5項", "成", "Z1(1)")], 0))
+    _run(out, "K28 五級之屬性之回呼唯呼一次（K23 之形）",
+         lambda: (lambda n5: (_go384(ns, _cap(B3=90.0), b5={"B5": {"使用分區": "商業區"}}, n5=n5), len(n5))[1])([]), 1)
+    _run(out, "K29 段三之關鍵字參數 blk5 之缺省 ＝ None",
+         lambda: _sig384(ns), "None")
+    # 🆕 `W-G.9-384`（唯讀審查之補）：正面路寬之級（原街廓與候選之向）、正面道路；回呼之型
+    _run(out, "K30 （K-9-71）正面路寬：BW 8、B5 15（往寬）、B7 6（往窄）⇒ 二者皆異、級距 B7 先 ⇒ Z1",
+         lambda: _go384(ns, _cap(B3=90.0), b5={"B5": {"正面路寬": 15}, "B7": {"正面路寬": 6}})[-1],
+         ("W1(1)", "後處理·第5項", "成", "Z1(1)", (("Z1(1)", 20.0),)))
+    _run(out, "K31 （K-9-71）正面道路：B5 臨他路（RX）⇒ 排後 ⇒ Z1",
+         lambda: _go384(ns, _cap(B3=90.0), b5={"B5": {"正面道路": "RX"}})[-1],
+         ("W1(1)", "後處理·第5項", "成", "Z1(1)", (("Z1(1)", 20.0),)))
+    _run(out, "K32 五級之屬性之回呼回非 dict ⇒ 停機",
+         lambda: _halt384b(ns), ("停機", True))
     return out
+
+
+def _halt384b(ns):
+    temp, own, blocks, cl = _world384()
+    build = [t for t in temp if t["街廓分類"] == H]
+    ap, tw, st = _cbs(_cap(B3=90.0), None, ("W1(1)",))
+    try:
+        ns["k6b_stage3_run"](ORDER, set(), own, temp, build, blocks, cl, ap, tw, st, log_print=lambda *x: None,
+                             blk5=lambda: [])
+    except RuntimeError as e:
+        return ("停機", "五級之屬性非 dict" in str(e))
+    return ("無停機",)
+
+
+def _halt384(ns, phrase):
+    try:
+        _go384(ns, _cap(B3=90.0), b5=None)
+    except RuntimeError as e:
+        return ("停機", phrase in str(e))
+    return ("無停機",)
+
+
+def _sig384(ns):
+    import inspect
+    p = inspect.signature(ns["k6b_stage3_run"]).parameters.get("blk5")
+    return repr(p.default) if p is not None else "缺"
 
 
 def _perturb(v):

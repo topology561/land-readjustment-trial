@@ -39,6 +39,8 @@
            段三紀錄、末端塊紀錄、手冊先行之紀錄、配地列、入池閘紀錄、不配地紀錄、調配之輸入，寫 out。
   offcmp   <a.json> <b.json>
            二 offsnap 之摘要逐項同（第一趟之紀錄唯出艙·⛔ 入判）。
+  🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：wiring 之 W5 之許增 `k971_key5`、`k971_blk5`、`f3_screen_end_block_merge`、
+           `run_end_block_merge`；W6 比之前，工作樹之列去其末之「, blk5=…)」（段三之呼叫增 `blk5=`·其接線由 F23 之 W9 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, difflib, io, os, re, subprocess, sys, warnings
@@ -756,6 +758,11 @@ FN_GONE373 = ("_k951", "_max357", "_split357", "_try", "_fill953", "_probe953", 
 W6_REPL = {"k953_manual_run": (
     '            raise RuntimeError(f"{_hdr953} 建地片 {_x}（{_blk953[_x]}）於當下之試算已為已配得之宗 {_own953}"',
     '                               "或其成員——K-9-53 ① 之「分不到」不立、K-9-51 之「剩餘土地」不立 ⇒ 停機")')}
+# 🔧 `W-G.9-384`（`K-9-71`）：W5 之許增五級之二純函式與傳 `blk5` 之畫面與 harness 之入口；W6 比之前，工作樹之列去其末之
+#   「, blk5=…)」之關鍵字參數（⛔ 他改·其接線由 F23 之 W9 量之·⛔ 以逐字之列為許〔其字樣即 W7／F23 W8 之錨〕）
+ALLOW375_APP += ("k971_key5", "k971_blk5", "f3_screen_end_block_merge")
+ALLOW375_SP += ("run_end_block_merge",)
+B5_KW384 = re.compile(r", blk5=[^,()]+\)$")
 
 
 def _git_show(repo, rev, rel):
@@ -930,7 +937,8 @@ def _wiring_checks(repo, base, app=None, spp=None):
         if cur is None or old is None:
             w6.append((nm, False, 0, "缺"))
             continue
-        ok_, k_, note_ = _insert_only(ast.get_source_segment(src_o, old), ast.get_source_segment(src_c, cur),
+        _seg384 = "\n".join(B5_KW384.sub(")", x) for x in ast.get_source_segment(src_c, cur).splitlines())
+        ok_, k_, note_ = _insert_only(ast.get_source_segment(src_o, old), _seg384,     # 🔧 `W-G.9-384`
                                       W6_REPL.get(nm, ()))
         w6.append((nm, ok_, k_, note_))
     chk.append(("W6 本單所改之三函式（k953_manual_run／f3_screen_k6b_stage3／run_corner_pk_k6b）對基準唯增列"
