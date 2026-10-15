@@ -1,0 +1,326 @@
+diff --git a/app.py b/app.py
+index f4cb591..261c5ac 100644
+--- a/app.py
++++ b/app.py
+@@ -11332,7 +11332,7 @@ def end_block_assert_head(blk_label, eb_info, left_results, right_results):
+ 
+ 
+ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lots, blocks, centerlines,
+-                        a_prime, alloc_eval, alloc_state, *, setback=None, log_print=print):
++                        a_prime, alloc_eval, alloc_state, *, setback=None, log_print=print, blk5=None):
+     """🆕 `W-G.9-353`：末端塊之合併再試（`K-9-49 ②`·比照 `K-9-48`·單一真相源 `k6b_stage3_run`）。
+ 
+     時點（`K-9-49 ③`）：街角之段三（含其後處理）之後、配地之前。
+@@ -11354,7 +11354,9 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+          （部分併出之剩下⛔ 除外·KL 裁 `2026-10-08`）（`K-9-49 ③`：已上鎖、已併入或已分配予街角之土地⛔ 再併入末端塊）。
+       ④ 未成之標的 ⇒ 記「皆未達」（定案之配地據以強制抵費地·`K-9-36 ③`）。
+     回 `(temp_out, build_out, log, rec)`；`rec` ＝ `{'退縮': setback, '標的': [[街廓, 端]…],
+-    '皆未達': {街廓: [端…]}}`（試算中止 ⇒ `'標的'` ＝ `None`、另載 `'試算中止'`；有競合 ⇒ 另載 `'競合'`）。"""
++    '皆未達': {街廓: [端…]}}`（試算中止 ⇒ `'標的'` ＝ `None`、另載 `'試算中止'`；有競合 ⇒ 另載 `'競合'`）。
++    🔧 `W-G.9-384`（`K-9-71`）：`blk5` ＝ 五級之街廓屬性之回呼（`k971_blk5`），逕傳予 `k6b_stage3_run`（其後處理之第 `5` 項之
++      建地之片之他街廓之候選依五級與深度再排·見其 docstring）。"""
+     _rec = {'退縮': setback, '標的': [], '皆未達': {}}
+     try:
+         _ev = alloc_eval(temp_parcels, build_parcels) or {}
+@@ -11430,6 +11432,7 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+ 
+     _temp2, _build2, _log = k6b_stage3_run(_rows, _L, own_map, temp_parcels, build_parcels, blocks,
+                                            centerlines, a_prime, _trial, alloc_state, log_print=log_print,
++                                           blk5=blk5,    # 🔧 `W-G.9-384`（`K-9-71`·R-4）
+                                            contests=(_ct or None))
+     _won = {(r['街廓'], r['端']) for r in _log if r.get('結果') == '成' and r.get('序') != '後處理'}
+     for _blk, _sd in _tg:
+@@ -12522,6 +12525,56 @@ def adj_candidate_lists(intake, blk_ctx, pool_anchor, slice_coords, tol=ADJ_DEPT
+     return _out
+ 
+ 
++def k971_key5(blk_ctx, home, t, tol=ADJ_DEPTH_TIE_TOL_M):
++    """🆕 `W-G.9-384`（`K-9-71`）：建地之片之他街廓之候選之五級與深度之鍵（純函式）。
++
++    回 `(r1, r2, r3, r4, r5, r6)` ＝ `adj_candidate_lists` 之建地軌之八鍵之前六之同式——原街廓 ＝ `home`（片之所屬街廓）、
++    候選街廓 ＝ `t`；最小建築面積之級 ＝ `blk_ctx` 之全部街廓之相異值之升序、正面路寬之級 ＝ 其相異值之降序；`r1` 使用分區
++    同 `0`／異 `1`；`r2` 往小或同級 `(0, n)`、往大 `(1, n)`；`r3` 正面道路同 `0`／異 `1`；`r4` 正面路寬同 `0`／異 `1`；
++    `r5` 往窄或同級 `(0, n)`、往寬 `(1, n)`；`r6` 深度差 ＝ 候選 − 原（`|Δ| ≤ tol` ⇒ `(0, 0)`、較淺 `(0, −Δ)`、較深 `(1, Δ)`·
++    `K-9-52` ③）。皆排名之鍵·⛔ 淘汰任何街廓（往大者排於全部較小者之後）。
++    `blk_ctx` ＝ `adj_block_ctx` 之回傳（`k971_blk5`）。`home` 或 `t` 不在其中 ⇒ `RuntimeError`（⛔ 以距離代之）。
++    """
++    from decimal import Decimal
++    _attr = blk_ctx or {}
++    for _which, _lb in (('片之所屬街廓', home), ('候選街廓', t)):
++        if _lb not in _attr:
++            raise RuntimeError(f"🔴 [K-9-71 五級] {_which} {_lb!r} 無五級之屬性（不在調配之名單之街廓屬性之表）⇒ 停機")
++    _src, _dst = _attr[home], _attr[t]
++    _lv_mba = sorted({_v['最小建築面積'] for _v in _attr.values()})
++    _lv_wid = sorted({_v['正面路寬'] for _v in _attr.values()}, reverse=True)
++    _up = _lv_mba.index(_dst['最小建築面積']) - _lv_mba.index(_src['最小建築面積'])
++    _wstep = _lv_wid.index(_src['正面路寬']) - _lv_wid.index(_dst['正面路寬'])
++    _gap = _dst['深度'] - _src['深度']
++    if abs(_gap) <= Decimal(repr(float(tol))):
++        _deep = (0, Decimal('0'))
++    elif _gap < 0:
++        _deep = (0, -_gap)
++    else:
++        _deep = (1, _gap)
++    return (int(_dst['使用分區'] != _src['使用分區']),
++            ((1, _up) if _up > 0 else (0, -_up)),
++            int(_dst['正面道路'] != _src['正面道路']),
++            int(_dst['正面路寬'] != _src['正面路寬']),
++            ((1, _wstep) if _wstep > 0 else (0, -_wstep)),
++            _deep)
++
++
++def k971_blk5(classified_blocks, eff_min_build_by, front_derive_by, front_name_by, width_by, depth_by):
++    """🆕 `W-G.9-384`（`K-9-71`）：五級之街廓屬性（純函式）——與 `adj4_plan`（調配之名單·第一趟）之街廓屬性同式：
++    可建築街廓 ＝ `classified_blocks` 中負擔屬性為 `ADJ_BURDEN_BUILD` 者（原序）；正面道路 ＝ `r3_front_road_identifier`
++    之識別符（⛔ 佔位）；回 `adj_block_ctx` 之回傳（`{街廓: {'使用分區', '最小建築面積', '正面道路', '正面路寬', '深度'}}`）。
++    所呼之函式之停機照拋（正面道路之識別符為空者一次列出、深度或路寬缺等）。
++    """
++    _bld5 = [_q for _q in (classified_blocks or []) if F3_CATEGORY_BURDEN[_q['category']] == ADJ_BURDEN_BUILD]
++    _lab5 = [_q['label'] for _q in _bld5]
++    _rid5 = r3_front_road_identifier(_lab5, front_derive_by or {}, front_name_by or {})
++    _wby5 = width_by or {}
++    return adj_block_ctx(_lab5, {_q['label']: _q['category'] for _q in _bld5}, eff_min_build_by or {},
++                         {_l5: _rid5[_l5]['id'] for _l5 in _lab5}, {_l5: _wby5.get(_l5) for _l5 in _lab5},
++                         depth_by or {})
++
++
+ def adj_candidate_rows(cand, tol=ADJ_DEPTH_TIE_TOL_M):
+     """`W-G.9-359`：候選街廓名單之顯示列（純函式·各欄皆字串·⛔ 混型欄）。回 `{'lines', 'units', 'detail'}`。"""
+     def _f2(_v):
+@@ -14204,7 +14257,7 @@ def k967_pool_less(area_of, pool_out):
+ 
+ 
+ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, centerlines,
+-                   a_prime, trial_winner, alloc_state, *, log_print=print, contests=None):
++                   a_prime, trial_winner, alloc_state, *, log_print=print, blk5=None, contests=None):
+     """`K-6 §二 段三`（逐一嘗試）＋ `K-9-48`（街角合併重試·後處理）——`W-G.9-344`。
+ 
+     參數
+@@ -14252,6 +14305,11 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       之受併宗加其量·`段三併出` 加受併宗），其後之試算（含入池閘）所見之該片即帶之；趟末之帳之合照舊（以本趟之帳覆寫後加
+       前帳·⛔ 重加）。第 `5` 項之重劃前面積之表取與其 `G`／`members` 同一試算之態。
+     🔧 `W-G.9-378`（`GB-204`）：第 `5` 項之重劃前面積之表再減與 `_cur` 同一試算之入池閘之帳（`alloc_state` 之回傳另含 `pool_out`·以 `k967_pool_less` 減之）。
++    🔧 `W-G.9-384`（`K-9-71`·KL 裁 `2026-10-12 16:37`）：第 `5` 項之候選之序，於建地之片（`_kind` ＝ `'bld'`）——本街廓（片之
++      所屬街廓）之候選恆先（其間照舊）；他街廓之候選之相異街廓二以上 ⇒ 依五級與深度（`k971_key5`）再排（穩定·同鍵者照舊之序）；
++      唯一 ⇒ 照舊。上文「距離 → `k967_rank`」於建地之片之他街廓之候選不再適用（其為五級與深度同者之序）；道路、公設地之片照舊。
++      `blk5` ＝ 五級之街廓屬性之回呼（`blk5() -> adj_block_ctx 之回傳`·`k971_blk5`）：首次須比時呼之一次、存之（同一次之段三
++      之內共用）；須比而缺或其回傳非 `dict` ⇒ 停機（⛔ 以距離代之）；⛔ 須比者⛔ 呼之。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -14900,6 +14958,20 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                 else:
+                     rem.setdefault(x, 0.0)
+ 
++    # 🔧 `W-G.9-384`（`K-9-71`·R-3 ②）：五級之屬性之取——首次須比時呼 blk5 一次、存之（同一次之段三之內共用·⛔ 再呼）
++    _b5s384 = []
++
++    def _b5_384():
++        if not _b5s384:
++            if blk5 is None:
++                raise RuntimeError("🔴 [K-6-B 段三 後處理·第5項] 建地之片之他街廓之候選二以上而未給五級之屬性（blk5）"
++                                   "——候選之序無從定之 ⇒ 停機")
++            _v384 = blk5()
++            if not isinstance(_v384, dict):
++                raise RuntimeError(f"🔴 [K-6-B 段三 後處理·第5項] 五級之屬性非 dict（{type(_v384).__name__}）⇒ 停機")
++            _b5s384.append(_v384)
++        return _b5s384[0]
++
+     def _p5_373(xs, rem, F):
+         # ④ 第 5 項之輪（`K-9-51`·`K-9-68`）：以一次之試算定各片之候選之序——同一地主之已配得之宗（扣片自身、已整筆併出者、
+         #   不在當下之態者、該片之已試而未全收之街廓之宗）；距離 → `k967_rank`；其後逐輪各取其次一候選；諸輪畢仍有剩下 ⇒ 轉調配
+@@ -14943,6 +15015,13 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                     _cands.append(((_d, k967_rank(_G[_p], k967_pre_area(_p, _cm.get(_p), _pa), _p)), _p, _d,
+                                    float(_G[_p])))
+             _cands.sort(key=lambda c_: c_[0])
++            # 🔧 `W-G.9-384`（`K-9-71`·R-3 ③）：建地之片 ⇒ 再排（穩定）——本街廓之候選 (0,)；他街廓之候選之相異街廓二以上
++            #   ⇒ (1, 五級與深度之鍵)、唯一 ⇒ (1,)；道路、公設地之片⛔ 再排
++            if _kind(x) == 'bld' and _cands:
++                _bk384 = {_p: str(_b) for _b, _p in _pre}
++                _ob384 = {_bk384[c_[1]] for c_ in _cands if _bk384[c_[1]] != _blk_of[x]}
++                _cands.sort(key=lambda c_: (0,) if _bk384[c_[1]] == _blk_of[x] else (
++                    (1, k971_key5(_b5_384(), _blk_of[x], _bk384[c_[1]])) if len(_ob384) >= 2 else (1,)))
+             _seq[x] = _cands
+         _ptr = {x: 0 for x in xs}
+         while True:
+@@ -15323,7 +15402,7 @@ def k953_units_of(build_final):
+ 
+ 
+ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a_prime, alloc_state, *,
+-                    log_print=print):
++                    log_print=print, blk5=None):
+     """規格步 4 甲（`K-9-53` ①·手冊先行）——`W-G.9-363`。地主已有配得土地者，其分不到之建地片、道路片與公設片，
+     依手冊併入其已配得之宗；每次併入皆受「不影響原位次」之檢核（`K-9-48` 其三）；併不進去者依 `K-9-48` 七項 3〜5 與
+     `K-9-51` 處之；都不行者留為合併單位之土地（`K-9-45`·規格步 4 乙另單）。
+@@ -15390,6 +15469,11 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+       （⛔ 片自身）者。
+     🔧 `W-G.9-383` 補令一（唯讀審查 #13·`K-6` 典 `W-G.9-383` 節之四之戊）：入池閘之合併單元之取代時，自 build 去之成員之
+       標記（其值）併入單元之同鍵（聯集·字典序）——受併之片為他宗之單元之成員者，其標記隨單元存續。
++    🔧 `W-G.9-384`（`K-9-71`·KL 裁 `2026-10-12 16:37`）：`K-9-51` 之輪之候選之序，於建地之片——本街廓（片之所屬街廓）之候選
++      恆先（其間照舊：相連者先 → `k967_rank`）；他街廓之候選之相異街廓二以上 ⇒ 依五級與深度（`k971_key5`）再排（穩定·同鍵者
++      照舊之序：距離 → `k967_rank`）；唯一 ⇒ 照舊。上文「距離 → 本街廓者先」於建地之片之他街廓之候選不再適用；道路、公設地
++      之片照舊。`blk5` ＝ 五級之街廓屬性之回呼（`k971_blk5`）：首次須比時呼之一次、存之（同一次之手冊先行之內共用）；須比而缺
++      或其回傳非 `dict` ⇒ 停機（⛔ 以距離代之）。其列之依據 ＝ `K-9-51／K-9-71`。
+     """
+     import copy as _cp953
+     from shapely.geometry import Polygon as _Pg953, LineString as _Ln953
+@@ -15954,8 +16038,21 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+ 
+     # ── 🆕 `W-G.9-373`（`K-9-66`／`K-9-68`）：試施（R-5 (a)）與輪（R-5 (b)）──
+     _kind953 = {'bld': '建地', 'road': '道路', 'pub': '公設地'}
+-    _why951 = 'K-9-51（剩餘土地·距離近者先）'
++    _why951 = 'K-9-51／K-9-71（剩餘土地·本街廓先·建地之他街廓依五級 → 距離）'
+     _rem953, _F953 = {}, {}             # 片 → 剩下（來源量）；片 → 已試而未全收之街廓（第 1 輪）
++    # 🔧 `W-G.9-384`（`K-9-71`·R-5 ②）：五級之屬性之取——首次須比時呼 blk5 一次、存之（同一次之手冊先行之內共用·⛔ 再呼）
++    _b5s953 = []
++
++    def _b5953():
++        if not _b5s953:
++            if blk5 is None:
++                raise RuntimeError(f"{_hdr953}·K-9-51 建地之片之他街廓之候選二以上而未給五級之屬性（blk5）"
++                                   "——候選之序無從定之 ⇒ 停機")
++            _v953 = blk5()
++            if not isinstance(_v953, dict):
++                raise RuntimeError(f"{_hdr953}·K-9-51 五級之屬性非 dict（{type(_v953).__name__}）⇒ 停機")
++            _b5s953.append(_v953)
++        return _b5s953[0]
+ 
+     def _try953k(_st, _pairs):
+         # 於所給之態之拷貝施 [(要求, 來源量 v)]：受併宗增 κ·v；建地片減 v（仍有剩下 ⇒ 留 build；否則復其輸入之面積、出
+@@ -16087,6 +16184,12 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                                        k967_rank(_gc[_h], k967_pre_area(_h, _cmem953.get(_h), _pre951), _h)),
+                                       _h, str(_bk), _dv, float(_gc[_h])))
+                 _list.sort(key=lambda _t: _t[0])
++                # 🔧 `W-G.9-384`（`K-9-71`·R-5 ③）：建地之片 ⇒ 再排（穩定）——本街廓之候選 (0,)；他街廓之候選之相異街廓二以上
++                #   ⇒ (1, 五級與深度之鍵)、唯一 ⇒ (1,)；道路、公設地之片⛔ 再排
++                if _sort953(_tin953[_x]) == 'bld' and _list:
++                    _ob953 = {_t[2] for _t in _list if _t[2] != _blk953[_x]}
++                    _list.sort(key=lambda _t: (0,) if _t[2] == _blk953[_x] else (
++                        (1, k971_key5(_b5953(), _blk953[_x], _t[2])) if len(_ob953) >= 2 else (1,)))
+                 _seq953[_x] = _list
+         _ptr953 = {_x: 0 for _x in _xs953}
+         while True:
+@@ -22297,7 +22400,10 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+     （`K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`·試算前存、試算後復）去之。
+     🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（試算畢之 session 之
+     `SS_ADJ_BUILD_FINAL`·試算中止者⛔ 取；無 ⇒ 該次試算所給之 build）之成員；每次試算之前先自 session 去 `SS_ADJ_BUILD_FINAL`。
+-    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
++    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。
++    🔧 `W-G.9-384`（`K-9-71`）：回傳增鍵 `blk5`（五級之街廓屬性之回呼·`k971_blk5`·呼叫時取之）——session 之最小建築面積
++      （`K91_SS_MBA_EFFECTIVE`）、正面道路之推導（`SS_FRONT_ROAD_DERIVE`）與步驟 E 之名（`SS_FRONT_ROAD_NAME`）、街角之初列之
++      正面路寬、`adj4_depth_of` 之深度（同 `f3_screen_adj4` 之 `adj4_plan` 之引數之源）；段三、末端塊合併再試、手冊先行用之。"""
+     import copy as _cp_s3
+     import contextlib as _cl_s3
+     import io as _io_s3
+@@ -22427,8 +22533,17 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
+             raise RuntimeError('🔴 [末端塊合併再試·畫面] 試算（配地）未產出 G 值表')
+         return _cp_s3.deepcopy(_ss.get(SS_END_BLOCK_EVAL) or {})
+ 
++    def blk5():
++        # 🔧 `W-G.9-384`（`K-9-71`·R-6）：五級之街廓屬性——與 `f3_screen_adj4` 之 `adj4_plan` 之引數同源（呼叫時取之·⛔ 預取）
++        _rn384 = _ss.get(SS_FRONT_ROAD_NAME, {}) or {}
++        return k971_blk5(g_kwargs['classified_blocks'], _ss.get(K91_SS_MBA_EFFECTIVE, {}) or {},
++                         _ss.get(SS_FRONT_ROAD_DERIVE, {}) or {},
++                         {cb['label']: _rn384.get(cb.get('id'), '') for cb in g_kwargs['classified_blocks']},
++                         {cr['街廓']: cr.get('正面路寬(m)') for cr in pk_kwargs['_corner_rows_init']},
++                         adj4_depth_of(st.session_state))
++
+     return {'a_prime': a_prime, 'trial_winner': trial_winner, 'alloc_state': alloc_state,
+-            'alloc_eval': alloc_eval}
++            'alloc_eval': alloc_eval, 'blk5': blk5}
+ 
+ 
+ def f3_screen_end_block_merge(st, *, pk_kwargs, g_kwargs):
+@@ -22469,7 +22584,7 @@ def f3_screen_end_block_merge(st, *, pk_kwargs, g_kwargs):
+         temp3, build3, log, rec = end_block_merge_run(
+             temp_in, build_in, _ss.get('t8_ownership_map', {}) or {}, _locked, _corner, _blocks,
+             _ss.get('f3_manual_road_centerlines') or {}, _cb['a_prime'], _cb['alloc_eval'], _cb['alloc_state'],
+-            setback=_ss.get('f3L_setback_default'), log_print=_unhandled.append)
++            setback=_ss.get('f3L_setback_default'), log_print=_unhandled.append, blk5=_cb['blk5'])
+     except RuntimeError as _e_ebm:
+         _ss['f3_k6b_stage3_error'] = '（末端塊合併再試）' + str(_e_ebm).split("\n")[0][:500]
+         st.error(str(_e_ebm))
+@@ -22559,12 +22674,13 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+                     dropped=({} if _er else _cp953s.deepcopy(K917_DROPPED)))
+ 
+     _a953s = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)['a_prime']
++    _b5953s = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)['blk5']
+     _keep953s = {_kk: _cp953s.deepcopy(_sst[_kk]) for _kk in K6B_SCREEN_TRIAL_KEYS if _kk in _sst}
+     _k917_keep953s = _cp953s.deepcopy(K917_DROPPED)
+     try:
+         temp_o, build_o, log953 = k953_manual_run(
+             temp_in, build_in, _sst.get('t8_ownership_map', {}) or {}, _blocks953s,
+-            _sst.get('f3_manual_road_centerlines') or {}, _a953s, _trial953s)
++            _sst.get('f3_manual_road_centerlines') or {}, _a953s, _trial953s, blk5=_b5953s)
+     except RuntimeError as _e953:
+         _sst['f3_k6b_stage3_error'] = '（手冊先行）' + str(_e953).split("\n")[0][:500]
+         st.error(str(_e953))
+@@ -22776,7 +22892,7 @@ def f3_screen_k6b_stage3(st, *, pk_kwargs, g_kwargs):
+         temp2, build2, log = k6b_stage3_run(
+             order, _locked, _ss.get('t8_ownership_map', {}) or {}, temp0, build0, _blocks,
+             _ss.get('f3_manual_road_centerlines') or {}, _cb['a_prime'], _cb['trial_winner'],
+-            _cb['alloc_state'], log_print=_unhandled.append)
++            _cb['alloc_state'], log_print=_unhandled.append, blk5=_cb['blk5'])
+     except RuntimeError as _e_s3r:
+         # 7. 段三停機 ⇒ 記其訊息（配地由 `k6b_screen_build_for_g` 擋下）
+         _ss['f3_k6b_stage3_error'] = str(_e_s3r).split("\n")[0][:500]
+diff --git a/verify/selection_pipeline.py b/verify/selection_pipeline.py
+index cf1d8e4..d197f22 100644
+--- a/verify/selection_pipeline.py
++++ b/verify/selection_pipeline.py
+@@ -675,7 +675,10 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+     各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。
+     🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（入池閘之末態 build；
+     `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。
+-    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
++    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。
++    🔧 `W-G.9-384`（`K-9-71`）：回傳增鍵 `blk5`（五級之街廓屬性之回呼·`ns["k971_blk5"]`·呼叫時取之）——最小建築面積 `{}`、
++    `cad` 之正面道路之推導、`run_verification.load_front_road_names()`、`param_rows` 之正面路寬、`adj4_depth_of` 之深度（同
++    `run_adj4` 之 `adj4_plan` 之引數之源）；段三、末端塊合併再試、手冊先行用之。"""
+     import copy as _cp
+     import contextlib as _cl
+     import io as _io
+@@ -776,8 +779,15 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
+                        eff_min_build_by_blk={})
+         return _cp.deepcopy(ss.get(ns["SS_END_BLOCK_EVAL"]) or {})
+ 
++    def blk5():
++        # 🔧 `W-G.9-384`（`K-9-71`·R-6）：五級之街廓屬性——與 `run_adj4` 之 `adj4_plan` 之引數同源（呼叫時取之·⛔ 預取）
++        import run_verification
++        return ns["k971_blk5"](cb, {}, cad.get("front_road_derive") or {}, run_verification.load_front_road_names(),
++                               {r["街廓"]: r.get("正面路寬(m)") for r in param_rows},
++                               ns["adj4_depth_of"](fake_st.session_state))
++
+     return {'a_prime': a_prime, 'trial_winner': trial_winner, 'alloc_state': alloc_state,
+-            'alloc_eval': alloc_eval}
++            'alloc_eval': alloc_eval, 'blk5': blk5}
+ 
+ 
+ def run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
+@@ -803,7 +813,7 @@ def run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp_parcels, build_pa
+         temp3, build3, log, rec = ns["end_block_merge_run"](
+             temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {}, _locked, _corner, _blocks,
+             cad.get("centerlines", {}) or {}, callbacks['a_prime'], callbacks['alloc_eval'],
+-            callbacks['alloc_state'], setback=setback)
++            callbacks['alloc_state'], setback=setback, blk5=callbacks['blk5'])
+     finally:
+         ss.clear()
+         ss.update(_ss_saved)
+@@ -868,7 +878,7 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+         temp_out, build_out, log = ns["k953_manual_run"](
+             temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {},
+             {b["label"]: {"category": b.get("category", "")} for b in cb}, cad.get("centerlines", {}) or {},
+-            callbacks['a_prime'], _trial_k)
++            callbacks['a_prime'], _trial_k, blk5=callbacks['blk5'])
+     finally:
+         ss.clear()
+         ss.update(_ss_keep)
+@@ -999,7 +1009,7 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
+             temp2, build2, log = ns["k6b_stage3_run"](
+                 order, _locked, ss.get("t8_ownership_map", {}) or {}, temp_parcels, build_parcels,
+                 _blocks, cad.get("centerlines", {}) or {}, _cbk['a_prime'], _cbk['trial_winner'],
+-                _cbk['alloc_state'])
++                _cbk['alloc_state'], blk5=_cbk['blk5'])
+         finally:
+             ss.clear()
+             ss.update(_ss_saved)
