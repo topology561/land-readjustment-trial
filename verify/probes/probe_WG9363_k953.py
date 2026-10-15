@@ -61,6 +61,11 @@
            隔道路⛔ 入連通·`dropped` 未回 ⇒ 停機·片為已配得之宗之成員 ⇒ ⛔ 再試·公設地之片⛔ 入連通·受併之片配地而檢核
            不過 ⇒ 未成）。期值出自本器之玩具之手算（發單側窗八十五）。
            P0 隨之 59 項。
+           🔧 `W-G.9-383` 補令一（唯讀審查 #13·⛔ 上列一字不刪）：玩具之 `_cbs` 增 `units_if`（`{標的: ([成員…], 片, 下限)}`·試算
+           之 temp 中該片之 a 達下限 ⇒ 該單元成立、其標的⛔ 以 `drop` 計）；增 K60（再試成而受併之片為同地主之他宗〔宿主〕之
+           單元之成員 ⇒ 入池閘之合併單元之取代之後，宿主之單元帶 `第31條第3款併入`〔其值 ＝ 所併入之片〕·受併之片之 temp 之鍵
+           照舊）。期值出自本器之玩具之手算（發單側窗八十六）。
+           P0 隨之 60 項。
   wiring   <repo> <基準 commit>
            接線（AST·字樣·工作樹對基準）：W1 模組層之新名與簽名；W2 harness 之入口（`run_k953`）與 `run_corner_pk_k6b`
            之序（末端塊合併再試之後、以 winners／forced 呼叫、其後⛔ 重跑街角選位）；W3 畫面之入口（`f3_screen_k953`·
@@ -149,17 +154,27 @@ def _a(t):
     return float(t.get("分攤登記面積_m2", 0) or 0) + float(t.get("面積_m2", 0) or 0)
 
 
-def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, unit_g=None, need=None, nodg=False):
+def _cbs(cap=None, price=None, drop=(), gmap=None, err_cap=None, units=None, unit_g=None, need=None, nodg=False,
+         units_if=None):
     """玩具之回呼。`units` ＝ `{標的: [成員…]}`（入池閘之合併單元·其成員⛔ 單列）；`unit_g` ＝ 取代後之 G（覆寫·造相異）。
     🔧 `W-G.9-383`：`need` ＝ `{片: 下限}`（`drop` 之片其 a 達下限者配地）；回 `dropped`（不配地之宗之紀錄·其 G ＝ gmap 或 a）；
-    `nodg` ⇒ ⛔ 回 `dropped`。"""
+    `nodg` ⇒ ⛔ 回 `dropped`。
+    🔧 `W-G.9-383` 補令一：`units_if` ＝ `{標的: ([成員…], 片, 下限)}`——試算之 temp 中該片之 a 達下限 ⇒ 該單元成立（同
+    `units`）且其標的⛔ 以 `drop` 計；未達 ⇒ ⛔ 成立。"""
     cap, price, gmap, err_cap, units = cap or {}, price or {}, gmap or {}, err_cap or {}, units or {}
     need = need or {}
+    units_if = units_if or {}
+    units0, drop0 = units, drop
 
     def a_prime(src, dst):
         return _a(src) * price.get(src["所屬街廓"], 1.0) / price.get(dst["所屬街廓"], 1.0)
 
     def alloc_state(temp, build):
+        units, drop = dict(units0), tuple(drop0)          # 🔧 `W-G.9-383` 補令一：units_if 之成立
+        for h_if, (mm_if, pz_if, thr_if) in sorted(units_if.items()):
+            if any(t["暫編地號"] == pz_if and _a(t) >= thr_if - 1e-9 for t in temp):
+                units[h_if] = list(mm_if)
+                drop = tuple(x for x in drop if x != h_if)
         kept, bad, G, acc, mem, uu = {}, {}, {}, {}, {}, {}
         ids = {b["暫編地號"] for b in build}
         for b in build:
@@ -226,7 +241,7 @@ def _w1():
 
 def _go(world, *, own_upd=None, a_upd=None, drop=("X1(1)",), cap=None, price=None, gmap=None, err_cap=None,
         units=None, unit_g=None, pre=None, extra=None, rm=(), blk_upd=None, geom_upd=None, cl_upd=None, orig_upd=None,
-        need=None, nodg=False):
+        need=None, nodg=False, units_if=None):
     t, own, blocks, cl = world()
     for e in (extra or []):
         t.append(copy.deepcopy(e))
@@ -243,7 +258,7 @@ def _go(world, *, own_upd=None, a_upd=None, drop=("X1(1)",), cap=None, price=Non
     for pid, kv in (pre or {}).items():
         next(x for x in t if x["暫編地號"] == pid).update(kv)
     build = [x for x in t if x["街廓分類"] == H]
-    ap, st = _cbs(cap, price, drop, gmap, err_cap, units, unit_g, need, nodg)
+    ap, st = _cbs(cap, price, drop, gmap, err_cap, units, unit_g, need, nodg, units_if)
     return _NS["fn"](t, build, own, blocks, cl, ap, st, log_print=lambda *x: None), t, build
 
 
@@ -579,6 +594,14 @@ def _cases(ns, sp):
          lambda: (lambda r: (_rows4(r), _keys(r), _acc(r)))(
              _go(W, drop=("X1(1)", "X1(2)"), rm=RM4, need={"X1(2)": 360.0}, cap={"BB": 50.0})),
          ([("X1(1)", "X1(2)", (), "未成", "BB 配餘地不合格")], {}, {}))
+    # 🆕 `W-G.9-383` 補令一（唯讀審查 #13·K-6 典 W-G.9-383 節之四之戊）：受併之片為他宗之單元之成員 ⇒ 其標記隨單元存續
+    _run(out, "K60 再試成而受併之片 X1(2) 為同地主之 Y1(1)（宿主）之單元之成員 ⇒ 單元之取代（X1(2) 出 build）之後，"
+              "Y1(1) 之單元帶 第31條第3款併入 ['X1(1)']（⛔ 失）",
+         lambda: (lambda r: (_rows4(r), _unit_rows(r), _mark4(r)))(
+             _go(W, drop=("X1(1)", "X1(2)", "Y1(1)"), rm=RM4, own_upd={"Y1": "g1"},
+                 units_if={"Y1(1)": (["X1(2)", "Y1(1)"], "X1(2)", 360.0)})),
+         ([("X1(1)", "X1(2)", (("X1(2)", 60.0),), "成", None)], [("Y1(1)", "取代")],
+          ({"X1(2)": ["X1(1)"], "Y1(1)": ["X1(1)"]}, ["C8(1)", "C9(1)", "Q1(1)", "Q2(1)", "Y1(1)", "Z1(1)"])))
     return out
 
 
