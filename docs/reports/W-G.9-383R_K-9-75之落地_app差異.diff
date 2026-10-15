@@ -1,0 +1,458 @@
+diff --git a/app.py b/app.py
+index 48bb05a..f4cb591 100644
+--- a/app.py
++++ b/app.py
+@@ -9556,7 +9556,7 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+       pre_price_by_zone  `{重劃前地價區段: 單價}`（`a′` 之 `p`）。
+       front_lines        `{街廓: {"p1": (x, y), "p2": (x, y)}}`（投影序之軸）。
+       max_rounds         輪數之上限（缺 ⇒ 20 ×（輸入之宗數 ＋ 1））。
+-      temp_parcels       重劃前之全部切片（宗之成員之原形、道路片之源；缺 ⇒ 片之表唯輸入之 build）。
++      temp_parcels       重劃前之全部切片（宗之成員之原形；缺 ⇒ 片之表唯輸入之 build）。
+       cat_of／front_rows `{街廓: 街廓分類}`／`{街廓: 參數列}`——「不影響原位次」之檢核（`k953_alloc_summary`）所需。
+     回傳 `(build_final, (rows, dropped, payload) 之末輪, log)`；末輪即以 `build_final` 所跑者。
+ 
+@@ -9578,7 +9578,7 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+     停機（`RuntimeError`·⛔ 靜默略過）：投影軸、合併之標的之推進側、地價取不到；成員之切片取不到；檢核之輸入未給；
+       部分併入之資料之自我檢查（`k965_part_split` ③：成員之剩下非有限值、或其單價或宿主之單價非有限之正值）；宗含非其
+       成員之土地而其部分併入過檢核（`GB-205`）；輪之始之態重現（循環）或逾 `max_rounds`（未收斂）。
+-    🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①·補令一）：依手冊（第 2 步·街角第 1 宗）之部分併入（單一之片亦然），其所併出
++    🔧 `W-G.9-380`（`W-G.9-375` 之【工】巳 ①·補令一）：依手冊（街角第 1 宗）之部分併入（單一之片亦然），其所併出
+       之量依各成員之剩下（分攤登記面積 − 段三之帳 − 入池閘之帳·與重劃前面積同一式）乘同一百分比分之（`k965_part_split`）：
+       宿主之量入 `入池閘部分併出`、他成員之量入 `入池閘成員部分併出`；單一之片之帳為全量；其判於減宗之面積之前。宗含非其
+       成員之土地（`k965_part_split` 回 `None`）⇒ 其帳同單片（全量）以試之，其併入過檢核者停機（`GB-205`），⛔ 過者記未成。
+@@ -9589,6 +9589,14 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+       小片（N0-9）亦判之（⑥ 之二處之濾去之）。第 2 步（依手冊·與他街廓之已配得之宗相連）去之，其併入改由手冊先行之計畫
+       依市地重劃實施辦法第 31 條第 3 款（唯同一原地號）處之；隨之去 N0-9 之判、道路之群、第 2 步之帳（含輪之始之態之
+       該元、回原狀（二）之該段）。依手冊之併入唯街角第 1 宗（每一處置為一要求）。
++    🔧 `W-G.9-383`（`K-9-75` ①·`K-9-76`·`K-9-77`·KL 裁 `2026-10-14`）：
++      （`K-9-76` ①）第 1 步之合併之標的 ＝ 判宗時所循之同街廓同歸戶之已配得之宗（`k967_rank` 之序之首一在分量內者·即可配得之
++      最大一塊）——上文「合併之標的 ＝ G（0.01 ㎡）大者……」於第 1 步者不再適用（第 4 步之相連照舊）；側、佔位、地價依之。
++      （`K-9-76` ②）回原狀之帳之序 ＝ `k967_rank`（該次施時之 G）——上文 ①′ 之「相連者先」不再適用。
++      （`K-9-75` ①）宗之成員中有輸入之 build 之片帶 `第31條第3款併入`（值為真）者為帶標記：其 ①′ 與第 1 步／第 3 步（同街廓
++      同歸戶之已配得之宗）⛔ 行、其分量⛔ 含已配得之宗、其弱弱聯合不以已配得之宗之有無為限；⛔ 帶標記之宗之分量⛔ 含帶標記之宗。
++      （`K-9-77`）判宗之始，同街廓同歸戶之帶標記而配不到之宗依 `k967_rank` 之序先判之（判至所判之宗本身止）——上文「每一
++      （街廓, 側）依推進序逐宗判其處置」於帶標記而配不到之宗不適用；其先判唯於非巢狀之判（弱弱聯合之他宗之判與先判之判⛔ 行）。
+     """
+     import copy as _cp_k9296
+     from shapely.geometry import Polygon as _Pg_k9296
+@@ -9645,6 +9653,10 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+                 raise RuntimeError(f"{_hd965} {_pid(_x965)!r} 之成員 {_m965!r} 之切片取不到（temp_parcels）⇒ 停機"
+                                    "（⛔ 以單元之形代之）")
+ 
++    def _mk965(t):
++        # 🔧 `W-G.9-383`（K-9-75 ①·R-3）：帶標記 ＝ 宗之成員中有輸入之 build 之片帶「第31條第3款併入」且其值為真
++        return any((_inb965.get(_m) or {}).get('第31條第3款併入') for _m in _mm965(t))
++
+     _pg965 = {}
+ 
+     def _psh965(m):
+@@ -9782,8 +9794,10 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+         # 第 1 步之分量：同街廓、同歸戶、自身之形相連（經同歸戶之宗連成）；街角第 1 宗⛔ 入
+         _by = L['by']
+         _bu, _gu = _bk965(_by[u]), _gid(_by[u])
++        # 🔧 `W-G.9-383`（K-9-75 ①·R-3 ①）：u 帶標記 ⇒ 已配得之宗⛔ 入；u ⛔ 帶標記 ⇒ 帶標記之宗⛔ 入
++        _mu4 = _mk965(_by[u])
+         _pool = [_k for _k in sorted(_by) if _k != u and _k not in L['corner'] and _bk965(_by[_k]) == _bu
+-                 and _gid(_by[_k]) == _gu]
++                 and _gid(_by[_k]) == _gu and ((_k not in L['alloc']) if _mu4 else not _mk965(_by[_k]))]
+         _c, _stk = {u}, [u]
+         while _stk:
+             _x = _stk.pop()
+@@ -9793,7 +9807,7 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+                     _stk.append(_y)
+         return _c
+ 
+-    def _judge965(u, L, ww=True):
++    def _judge965(u, L, ww=True, dl=True):
+         # R-4：宗 u 之處置（①〜⑥ 之先後·首一者）；無 ⇒ None
+         _by = L['by']
+         _tu = _by[u]
+@@ -9801,7 +9815,20 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+         if not _gu:
+             return None
+         _bu, _mu = _bk965(_tu), _ms965(_tu)
+-        if _mu in _undo965:
++        # 🔧 `W-G.9-383`（K-9-75 ①·R-3 ②）：u 帶標記 ⇒ ①′ 與同街廓同歸戶之已配得之宗之迴圈⛔ 行；弱弱聯合不以已配得之宗之有無為限
++        _p4 = _mk965(_tu)
++        if ww and dl:
++            # 🔧 `W-G.9-383`（K-9-77·R-3 ③）：同街廓同歸戶之帶標記而配不到之宗依 k967_rank 之序先判之（⛔ 依推進之序）；
++            #   u 本身帶標記者判至其本身止；皆無處置 ⇒ 續判 u
++            for _o in sorted((_k for _k in L['by'] if (_k == u and _p4) or (
++                    _k != u and _k not in L['alloc'] and _bk965(_by[_k]) == _bu and _gid(_by[_k]) == _gu
++                    and _mk965(_by[_k]))), key=lambda _k: _rk965(_k, L)):
++                if _o == u:
++                    break
++                _ao = _judge965(_o, L, dl=False)
++                if _ao is not None:
++                    return _ao
++        if _mu in _undo965 and not _p4:
+             # ①′（R-4′·補令一·先於 ①·N0-9 之宗亦判之）：回原狀之帳之分不到之宗 ⇒ 依帳之序逐一取其暫編地號之今之宗（宿主之表），
+             #   首一已配得、非街角第 1 宗、同街廓同歸戶、非自身、其組合⛔ 已試者 ⇒ 併入之（K-9-58 ③）；相連與序⛔ 於判時重判
+             _sn965 = set()
+@@ -9820,11 +9847,12 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+         # 🔧 `W-G.9-382`（K-9-73 ①·【工】乙丙）：同街廓同歸戶之已配得之宗（⛔ 自身·含街角第 1 宗·相連與否）依 k967_rank 之序
+         #   逐一，首一其組合⛔ 已試者：在分量內 ⇒ 第 1 步之合併；街角第 1 宗 ⇒ 依手冊；否則 ⇒ 第 3 步；N0-9 之片亦判之
+         _su = _forms965(_tu)[0]
+-        for _r in sorted((_k for _k in L['alloc'] if _k != u and _bk965(_by[_k]) == _bu and _gid(_by[_k]) == _gu),
+-                         key=lambda _k: _rk965(_k, L)):
++        # 🔧 `W-G.9-383`（K-9-76 ①·R-1）：第 1 步之合併之要求載其標的（_r ＝ 可配得之最大一塊）；（R-3 ②）u 帶標記 ⇒ ⛔ 行
++        for _r in sorted((_k for _k in L['alloc'] if not _p4 and _k != u and _bk965(_by[_k]) == _bu
++                          and _gid(_by[_k]) == _gu), key=lambda _k: _rk965(_k, L)):
+             if _r in _cm:
+                 if len(_cm) >= 2 and ('C', _cmem) not in _S['tried']:
+-                    return {'kind': 'merge', 'step': _S1_965, 'comp': _cm, 'who': u}
++                    return {'kind': 'merge', 'step': _S1_965, 'comp': _cm, 'who': u, 'tgt': _r}
+                 continue
+             if _r in L['corner']:
+                 if ('K', _mu, _ms965(_by[_r])) not in _S['tried']:
+@@ -9836,8 +9864,8 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+                         'key': ('S3', _mu, _ms965(_by[_r]))}
+         if not _hal and len(_cm) >= 2 and ('C', _cmem) not in _S['tried']:
+             return {'kind': 'merge', 'step': _S4_965, 'comp': _cm, 'who': u}
+-        if ww and u not in _S['ww'] and not any(
+-                _bk965(_by[_k]) == _bu and _gid(_by[_k]) == _gu for _k in L['alloc']):
++        if ww and u not in _S['ww'] and (_p4 or not any(
++                _bk965(_by[_k]) == _bu and _gid(_by[_k]) == _gu for _k in L['alloc'])):
+             _oth = []
+             for _, _, _ids in L['seq']:
+                 for _o in _ids:
+@@ -9879,6 +9907,9 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+         _gq = {_c: adj_q2(L['g'].get(_c, 0.0)) for _c in _cm}
+         _tops = sorted(_c for _c in _cm if _gq[_c] == max(_gq.values()))
+         _tgt = _tops[0] if len(_tops) == 1 else min(_tops, key=lambda _k: _rk965(_k, L))
++        if act.get('tgt') is not None:
++            # 🔧 `W-G.9-383`（K-9-76 ①·R-1）：第 1 步之合併 ⇒ 標的 ＝ 要求所載（可配得之最大一塊）；第 4 步之相連照上式
++            _tgt = act['tgt']
+         _sd = L['side'].get(_tgt)
+         if _sd not in ('left', 'right'):
+             # R-5′ ②（補令一）：⛔ 以他側代之
+@@ -10060,7 +10091,8 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+                 _row['結果'] = '回原狀（K-9-58 ③）' if _e['step'] in (_S1_965, _S4_965) else '回原狀（併入後不配地）'
+                 log.append(_row)
+             # R-3′（補令一）：第 1／4 步之合併之分不到之宗（N0-9 之宗亦同）記入回原狀之帳——其值 ＝ 原可配之宗之序，定於
+-            #   回原狀之時（相連〔雙方之自身之形·復之後〕者先、次 k967_rank〔該次施時之 G〕·以暫編地號記之）；本輪⛔ 施併入
++            #   回原狀之時（k967_rank〔該次施時之 G〕·以暫編地號記之）；本輪⛔ 施併入
++            #   🔧 `W-G.9-383`（K-9-76 ②·R-2）：應分配面積大者先（⛔ 相連者先）
+             _by = {_pid(t): t for t in _S['build']}
+             for _e in _recs:
+                 if _e['step'] not in (_S1_965, _S4_965):
+@@ -10068,10 +10100,8 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
+                 for _d in _e['dr']:
+                     if _d not in _by:
+                         continue
+-                    _sf965 = _forms965(_by[_d])[0]
+                     _lv965 = sorted((_r for _r in _e['al'] if _r in _by),
+-                                    key=lambda _x: (not _tc965(_sf965, _forms965(_by[_x])[0]),
+-                                                    k967_rank(_e['g'].get(_x, 0.0), _pre965(_by[_x]), _x)))
++                                    key=lambda _x: k967_rank(_e['g'].get(_x, 0.0), _pre965(_by[_x]), _x))
+                     _kd965 = _ms965(_by[_d])
+                     _undo965[_kd965] = _lv965 + [_x for _x in _undo965.get(_kd965, []) if _x not in _lv965]
+             continue
+@@ -15307,6 +15337,8 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+       a_prime        `a_prime(src, dst) -> float`（`K-9-29 三`）。
+       alloc_state    `alloc_state(temp, build) -> {"kept", "bad_pools", "err", "G", "members", "units"}`：以所給之宗地試算
+                      配地（街角定案·⛔ 重跑街角選位）。
++                     🔧 `W-G.9-383`：其回傳另含 `dropped`（該次試算之不配地紀錄 `{(街廓, 側): [紀錄]}`·紀錄含 `暫編地號`、
++                     `G(㎡)`）——兩側皆配不到者之再試以之比大小（唯有其受詞時讀之）。
+       log_print      留供呼叫端注入之印出函式（本函式之停機一律 `raise`）。
+     回傳 `(temp_out, build_out, log)`：無受詞 ⇒ 輸入之同一物件與 `[]`；否則 `temp_out` 為深拷貝（含入池閘之單元之取代），
+       受併宗之 `面積_m2` 增其量；併出之片帶段三之三鍵（`段三併出`／`段三部分併出`／`段三餘量`）；整筆併出之建地片已自
+@@ -15344,6 +15376,20 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+       同於該片者 ⇒ 整筆併入其應分配面積大者（他地號之相連⛔ 入計畫）；(2) 手冊道路用地分配原則——隔己之道路片 ⇒ 隨道路片
+       往另一側（照舊）；(3) 同街廓相鄰之已配得之宗 ⇒ 整筆併入其應分配面積大者（⛔ 併他街廓者）；(4) 無 ⇒ 未併（照舊）。
+       其檢核與其後之施照舊。
++    🔧 `W-G.9-383`（`K-9-73` ④·`K-9-75` ②·`K-9-77` ①·KL 裁 `2026-10-14`）：
++      同號之連通分量 ＝ 同一原地號（非空）之可建築街廓之片（非殘料·有形）之地籍相連（`k6_shares_segment`·遞移·⛔ 經道路與
++      公設地之片）者。`C0` 之二查之後、計畫之前，依分量（暫編地號之排序之字典序）逐一：分量跨二以上街廓、其片皆在當下之
++      build 且皆⛔ 為當下之試算之已配得之宗或其成員、其首之歸戶非空 ⇒ 兩側（各側）皆配不到者之再試——餘片整筆（`a′`）併入
++      受併之片（其所屬單元之試算之 `dropped` 之 G 大 → 重劃前面積大 → 暫編地號小·`K-9-67`），受併之片帶 `第31條第3款併入`
++      （值 ＝ 所併入之片）；「不影響原位次」之檢核過且受併之片（或其所屬單元）於試算中配地 ⇒ 成（施之·其後之分量以施後之態與
++      試算判之）；否則未成（⛔ 施）。逐一餘片記一列（置於紀錄之首）。有成者 ⇒ 以施後之態重算 `C0`（重行其二查）；成者之餘片
++      ⛔ 入受詞、帶 `段三併出` ＝ 其既有之集 ∪ {受併之片}。上文「無受詞 ⇒ 輸入之同一物件與 `[]`」改為：無受詞而無成者 ⇒ 輸入
++      之同一物件與再試之列；有成者 ⇒ 照常輸出。停機另增：逐分量判之時當下之試算之 `kept` 非 dict、`dropped` 未回或其型不合、
++      其暫編地號重見、其 G 缺、片之所屬單元⛔ 在其中（⛔ 以 0 代之）。
++      計畫 (1) 之「與片直接相接且其原地號同於該片」改以同號之連通分量為準：他街廓之已配得之宗之成員在片之同號之連通分量
++      （⛔ 片自身）者。
++    🔧 `W-G.9-383` 補令一（唯讀審查 #13·`K-6` 典 `W-G.9-383` 節之四之戊）：入池閘之合併單元之取代時，自 build 去之成員之
++      標記（其值）併入單元之同鍵（聯集·字典序）——受併之片為他宗之單元之成員者，其標記隨單元存續。
+     """
+     import copy as _cp953
+     from shapely.geometry import Polygon as _Pg953, LineString as _Ln953
+@@ -15431,6 +15477,148 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+         raise RuntimeError(f"{_hdr953} 現態之配地中止（無從判定）：{C0.get('err')!r} ⇒ 停機")
+     if not isinstance(C0.get('G'), dict) or not isinstance(C0.get('members'), dict):
+         raise RuntimeError(f"{_hdr953} 現態之試算未回 G／members（dict）⇒ 停機")
++
++    # ── R-8：「不影響原位次」之檢核 ──
++    #   🔧 `W-G.9-383`：_chk953／_inject953 之定義移於 ④ 之再試之前（其式⛔ 改·④ 之再試與計畫之施同用之）
++    def _chk953(_before, _after, _T, _R):
++        _sb = _sim953(_before)
++        if _sb.get('err'):
++            raise RuntimeError(f"{_hdr953} 「不影響原位次」無從判定：併入前之配地中止 {_sb.get('err')!r} ⇒ 停機")
++        _sa = _sim953(_after)
++        if _sa.get('err'):
++            return False, '併入後配地中止：' + str(_sa.get('err'))[:120]
++        _why = []
++        for _t in sorted(_T):
++            _lost = (set(_sb["kept"].get(_t, set())) - set(_R)) - set(_sa["kept"].get(_t, set()))
++            if _lost:
++                _why.append(f"{_t} 原保留之宗 {sorted(_lost)} 不保留")
++            if int(_sa["bad_pools"].get(_t, 0)) > int(_sb["bad_pools"].get(_t, 0)):
++                _why.append(f"{_t} 配餘地不合格")
++        return (not _why), '；'.join(_why)
++
++    def _inject953(_st, _x, _items, _whole):
++        for _r, _qv in _items:
++            _d = _st["by"][_r]
++            _d['面積_m2'] = float(_d.get('面積_m2', 0) or 0) + float(_qv)
++        if _whole:
++            _st["build"] = [_bq953 for _bq953 in _st["build"] if str(_bq953['暫編地號']) != _x]
++
++    # ── 🔧 `W-G.9-383`（K-9-73 ④·K-9-75 ②·R-5）：兩側（各側）皆配不到者之再試——同號之連通分量之餘片整筆併入應分配面積
++    #   最大之片（受併之片·帶標記）；檢核過且受併之片（或其所屬單元）配地 ⇒ 成（施之）；否則未成（⛔ 施）──
++    # ① 同號之連通分量：同一原地號（非空）·可建築街廓之片·非殘料·有形；地籍相連（k6_shares_segment）·遞移
++    _cc953 = {}                         # 片 → 其同號之連通分量（frozenset）
++    _byo953 = {}
++    for _pk953, _tq in sorted(_tin953.items()):
++        _on4 = str(_tq.get('原地號', '') or '')
++        if _on4 and _sort953(_tq) == 'bld' and not _tq.get('_is_ghost_sliver') and _raw953.get(_pk953) is not None:
++            _byo953.setdefault(_on4, []).append(_pk953)
++    for _on4, _ps4 in sorted(_byo953.items()):
++        _left4 = set(_ps4)
++        while _left4:
++            _c4 = {min(_left4)}
++            _stk4 = sorted(_c4)
++            while _stk4:
++                _a4 = _stk4.pop()
++                for _b4 in sorted(_left4 - _c4):
++                    if k6_shares_segment(_raw953[_a4], _raw953[_b4])[0]:
++                        _c4.add(_b4)
++                        _stk4.append(_b4)
++            _left4 -= _c4
++            for _m4 in _c4:
++                _cc953[_m4] = frozenset(_c4)
++
++    def _unit4_953(_A, _x):
++        # 片之所屬單元：試算之 members 中含之之宗（無 ⇒ 自身）
++        _hs = sorted(str(_h) for _h, _ms in _A['members'].items() if _x in {str(_m) for _m in (_ms or [_h])})
++        return _x if (_x in _hs or not _hs) else _hs[0]
++
++    def _gdrop4_953(_A):
++        # ③ 試算之不配地紀錄之 G（暫編地號 → G）；缺、型不合、重見 ⇒ 停機（⛔ 以 0 代之）
++        _dg = _A.get('dropped')
++        if not isinstance(_dg, dict):
++            raise RuntimeError(f"{_hdr953} ④ 之再試：試算未回 dropped（dict）——應分配面積無從比較 ⇒ 停機")
++        _out = {}
++        for _rs in _dg.values():
++            if not isinstance(_rs, list):
++                raise RuntimeError(f"{_hdr953} ④ 之再試：試算之 dropped 之值非 list（{type(_rs).__name__}）⇒ 停機")
++            for _rw in _rs:
++                if not isinstance(_rw, dict):
++                    raise RuntimeError(f"{_hdr953} ④ 之再試：試算之 dropped 之列非 dict（{type(_rw).__name__}）⇒ 停機")
++                _k = str(_rw.get('暫編地號'))
++                if _k in _out:
++                    raise RuntimeError(f"{_hdr953} ④ 之再試：試算之 dropped 之暫編地號 {_k!r} 重見 ⇒ 停機")
++                if _rw.get('G(㎡)') is None:
++                    raise RuntimeError(f"{_hdr953} ④ 之再試：試算之 dropped 之 {_k!r} 之 G 缺 ⇒ 停機（⛔ 以 0 代之）")
++                _out[_k] = float(_rw['G(㎡)'])
++        return _out
++
++    # ② 依分量之暫編地號之排序之字典序逐一，以當下之態 _S4 與當下之試算 _A4 判之
++    _S4, _A4 = state, C0
++    _done953 = {}                       # ⑧ 成者之餘片 → 受併之片
++    _log4 = []                          # ⑦ 再試之列（置於手冊先行之紀錄之首）
++    for _cp4 in sorted(set(_cc953.values()), key=lambda _c: sorted(_c)):
++        _kt4 = _A4.get("kept")
++        if not isinstance(_kt4, dict):
++            raise RuntimeError(f"{_hdr953} ④ 之再試：當下之試算之 kept 非 dict（{type(_kt4).__name__}）⇒ 停機")
++        _cb4 = {_blk953[_x] for _x in _cp4}
++        _bn4 = {str(_bq953['暫編地號']) for _bq953 in _S4["build"]}
++        _al4 = {str(_m) for _hs in _A4["kept"].values() for _h in _hs
++                for _m in (_A4['members'].get(str(_h)) or [_h])}
++        _hd4 = min(_cp4)
++        if len(_cb4) < 2 or not _cp4 <= _bn4 or (_cp4 & _al4) or not _gown953(_tin953[_hd4]):
++            continue
++        # ③ 各片之所屬單元之 G
++        _gd4 = _gdrop4_953(_A4)
++        _ut4 = {}
++        for _x in sorted(_cp4):
++            _ut4[_x] = _unit4_953(_A4, _x)
++            if _ut4[_x] not in _gd4:
++                raise RuntimeError(f"{_hdr953} ④ 之再試：片 {_x} 之所屬單元 {_ut4[_x]!r} 不在試算之 dropped ⇒ 停機")
++        # ④ 受併之片 ＝ 應分配面積大 → 重劃前面積大 → 暫編地號小（K-9-67）
++        _P4 = k967_pool_less({_pk953: float(_tq.get('分攤登記面積_m2', 0) or 0)
++                              - sum(float(_v) for _v in (_tq.get('段三部分併出') or {}).values())
++                              for _pk953, _tq in _S4["by"].items()}, _A4.get('pool_out'))
++        _L4 = min(sorted(_cp4), key=lambda _x: k967_rank(
++            _gd4[_ut4[_x]], k967_pre_area(_ut4[_x], _A4['members'].get(_ut4[_x]), _P4), _x))
++        _rs4 = sorted(_cp4 - {_L4})
++        # ⑤ 候選之態：餘片整筆併入受併之片（a′·K-9-29）；受併之片帶標記（值 ＝ 所併入之片）
++        _cand4 = _dup953(_S4)
++        _q4 = {}
++        for _x in _rs4:
++            _q4[_x] = float(a_prime(_S4["by"][_x], _S4["by"][_L4]))
++            _inject953(_cand4, _x, [(_L4, _q4[_x])], True)
++        _dL4 = _cand4["by"][_L4]
++        _dL4['第31條第3款併入'] = sorted(set(_dL4.get('第31條第3款併入') or []) | set(_rs4))
++        # ⑥ 判：檢核（T ＝ 分量之所屬街廓·R ＝ 餘片）且受併之片（或其所屬單元）配地 ⇒ 成
++        _ok4, _why4 = _chk953(_S4, _cand4, _cb4, set(_rs4))
++        _B4 = _sim953(_cand4)
++        _Lk4 = (not _B4.get('err')) and any(
++            _L4 in {str(_m) for _m in (_B4['members'].get(str(_h)) or [_h])}
++            for _hs in _B4["kept"].values() for _h in _hs)
++        _ok4 = bool(_ok4 and _Lk4)
++        # ⑦ 紀錄（逐一餘片一列）
++        for _x in _rs4:
++            _rw4 = {'序': '第31條第3款（兩側皆配不到）', '歸戶': _gown953(_tin953[_hd4]), '街廓': _blk953[_x], '片': _x,
++                    '類': 'a', '依據': '跨分配線·同一宗·兩側皆配不到·併入應分配面積最大之一側再試（第31條第3款·K-9-73 ④）',
++                    '受併宗': _L4, '併入量': ({_L4: round(_q4[_x], 4)} if _ok4 else {}), '結果': ('成' if _ok4 else '未成'),
++                    '檢核': ('通過' if _ok4 else '不過'), '全量': round(_q4[_x], 4)}
++            if not _ok4:
++                _rw4['不過之由'] = '；'.join(([] if _Lk4 else ['受併之片（或其所屬單元）仍不配地']) + ([_why4] if _why4 else []))
++            _log4.append(_rw4)
++        # ⑧ 成 ⇒ 當下之態與試算改之；未成 ⇒ ⛔ 變
++        if _ok4:
++            _S4, _A4 = _cand4, _B4
++            for _x in _rs4:
++                _done953[_x] = _L4
++    # ⑨ 有成者 ⇒ 以施後之態重算 C0 並重行其二查
++    if _done953:
++        state = _S4
++        C0 = _sim953(state)
++        if C0.get('err'):
++            raise RuntimeError(f"{_hdr953} ④ 之後之現態之配地中止（無從判定）：{C0.get('err')!r} ⇒ 停機")
++        if not isinstance(C0.get('G'), dict) or not isinstance(C0.get('members'), dict):
++            raise RuntimeError(f"{_hdr953} ④ 之後之現態之試算未回 G／members（dict）⇒ 停機")
++
+     _home953 = {}                       # 已配得之宗 → 其街廓
+     for _bk, _hs in sorted((C0.get("kept") or {}).items()):
+         for _h953 in _hs:
+@@ -15460,13 +15648,14 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+     _inlot953 = {_m for _h953 in _home953 for _m in _mem953(_h953)}
+ 
+     # ── R-4：受詞 ──
++    # 🔧 `W-G.9-383`（R-5 ⑩）：④ 之成者之餘片⛔ 入受詞；無受詞而 ④ 無成者 ⇒ 回輸入之同一物件與 ④ 之列；有成者 ⇒ ⛔ 早回
+     X = [_pk953 for _pk953 in sorted(_cands953)
+          if _pk953 not in _inlot953 and _gown953(_tin953[_pk953])
+-         and _lots_of953.get(_gown953(_tin953[_pk953]))]
+-    if not X:
+-        return temp_parcels, build_parcels, []
++         and _lots_of953.get(_gown953(_tin953[_pk953])) and _pk953 not in _done953]
++    if not X and not _done953:
++        return temp_parcels, build_parcels, _log4
+ 
+-    log = []
++    log = list(_log4)
+ 
+     def _put_row953(**_kw):
+         _rw = {'序': '—', '歸戶': '—', '街廓': '—', '片': '—', '類': '—', '依據': '—', '受併宗': '—',
+@@ -15491,6 +15680,12 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+                   for _tq in _cp953.deepcopy(state["temp"])]
+         _oth953 = set(_mem953(_h953)) | {str(_m) for _m in (C0['members'].get(_h953) or [])}
+         _oth953.discard(_h953)
++        # 🔧 `W-G.9-383` 補令一（R-12·唯讀審查 #13）：自 build 去之成員之標記併入單元之同鍵（聯集·字典序）
++        _mv953 = {str(_v953) for _m953 in _oth953 if _m953 in state["by"]
++                  for _v953 in (state["by"][_m953].get('第31條第3款併入') or [])}
++        if _mv953:
++            _u953 = next(_tq for _tq in _nt953 if str(_tq['暫編地號']) == _h953)
++            _u953['第31條第3款併入'] = sorted(set(_u953.get('第31條第3款併入') or []) | _mv953)
+         _nb953 = [str(_bq953['暫編地號']) for _bq953 in state["build"]
+                   if str(_bq953['暫編地號']) not in _oth953]
+         _cand_st = _mk953(_nt953, _nb953)
+@@ -15666,12 +15861,12 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+         _g = _gown953(_tin953[_x])
+         _hs_g = _lots_of953[_g]
+         _same_bk = [_h for _h in _hs_g if _home953[_h] == _blk953[_x] and any(_touch953(_x, _m) for _m in _mem953(_h))]
+-        _other = [_h for _h in _hs_g if _home953[_h] != _blk953[_x] and any(_touch953(_x, _m) for _m in _mem953(_h))]
+         # 🔧 `W-G.9-382`（K-9-73 ③⑤⑥⑦·【工】丁）：計畫之序 ＝ (1) 市地重劃實施辦法第 31 條第 3 款（他街廓之已配得之宗之成員
+         #   與片直接相接且同一原地號）→ (2) 手冊道路用地分配原則（隔己之道路片）→ (3) 同街廓相鄰者 → (4) 無
+-        _on953 = str(_tin953[_x].get('原地號', '') or '')
+-        _p3 = [_h for _h in _other if any(_touch953(_x, _m) and str(_tin953[_m].get('原地號', '') or '') == _on953
+-                                          for _m in _mem953(_h))]
++        # 🔧 `W-G.9-383`（K-9-75 ②·R-6）：(1) 之相連以同號之連通分量為準——他街廓之已配得之宗之成員在片之同號之連通分量
++        #   （⛔ 片自身）者（⛔ 直接相接之限）
++        _p3 = [_h for _h in _hs_g if _home953[_h] != _blk953[_x]
++               and any(_m in (_cc953.get(_x, frozenset()) - {_x}) for _m in _mem953(_h))]
+         if _p3:
+             _r = _gtop953(_x, _p3)
+             plan953[_x] = {'類': 'a', 'whole': True, 'items': [(_r, _ap953(_x, _r))],
+@@ -15692,31 +15887,9 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+         else:
+             plan953[_x] = {'類': 'a', 'whole': True, 'items': [], '依據': '無相鄰之已配得土地'}
+ 
+-    # ── R-8：「不影響原位次」之檢核 ──
+-    def _chk953(_before, _after, _T, _R):
+-        _sb = _sim953(_before)
+-        if _sb.get('err'):
+-            raise RuntimeError(f"{_hdr953} 「不影響原位次」無從判定：併入前之配地中止 {_sb.get('err')!r} ⇒ 停機")
+-        _sa = _sim953(_after)
+-        if _sa.get('err'):
+-            return False, '併入後配地中止：' + str(_sa.get('err'))[:120]
+-        _why = []
+-        for _t in sorted(_T):
+-            _lost = (set(_sb["kept"].get(_t, set())) - set(_R)) - set(_sa["kept"].get(_t, set()))
+-            if _lost:
+-                _why.append(f"{_t} 原保留之宗 {sorted(_lost)} 不保留")
+-            if int(_sa["bad_pools"].get(_t, 0)) > int(_sb["bad_pools"].get(_t, 0)):
+-                _why.append(f"{_t} 配餘地不合格")
+-        return (not _why), '；'.join(_why)
+-
+-    def _inject953(_st, _x, _items, _whole):
+-        for _r, _qv in _items:
+-            _d = _st["by"][_r]
+-            _d['面積_m2'] = float(_d.get('面積_m2', 0) or 0) + float(_qv)
+-        if _whole:
+-            _st["build"] = [_bq953 for _bq953 in _st["build"] if str(_bq953['暫編地號']) != _x]
+-
+     _marks953 = {}                      # 片 → 受併宗之集（正之併入）
++    # 🔧 `W-G.9-383`（R-5 ⑪）：④ 之成者之餘片 ⇒ 其受併之片入其初值
++    _marks953.update({_x: {_r} for _x, _r in _done953.items()})
+     _part953 = {}                       # 可拆分之片 → {受併宗: 所併之來源面積}
+     _rest953 = {}                       # 可拆分之片 → 剩下之來源面積
+     _gone953 = set()                    # 整筆併出之片
+@@ -22331,7 +22504,9 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+          （入池閘之末態 build；無則試算之 build）。`a′` ＝ `k6b_screen_callbacks` 之 `a_prime`。
+       ③ 隔離 ＝ 試算前存 `K6B_SCREEN_TRIAL_KEYS` 與 `K917_DROPPED`、試算後（含例外）復原。
+       ④ 停機（`RuntimeError`）⇒ `f3_k6b_stage3_error` ＝ `'（手冊先行）'` ＋ 訊息之首列、`st.error` ＋ `st.stop()`。
+-      ⑤ 復原之後寫 `f3_k953_log` ＝ 紀錄，並以 `st.expander` 示其表。"""
++      ⑤ 復原之後寫 `f3_k953_log` ＝ 紀錄，並以 `st.expander` 示其表。
++    🔧 `W-G.9-383`（`K-9-73` ④·`K-9-75`）：② 之試算之回傳另增 `dropped`（該次試算之後之 `K917_DROPPED` 之深拷貝；`err` 非空 ⇒
++      `{}`）——手冊先行之兩側皆配不到者之再試以其 G 比大小（同 harness 之 `run_k953`）。"""
+     import copy as _cp953s
+     import contextlib as _cl953s
+     import io as _io953s
+@@ -22380,7 +22555,8 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
+         _mm, _uu = k953_units_of(_bfin if _bfin is not None else _tb)
+         # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
+         return dict(_summ, err=_er, members=_mm, units=_uu,
+-                    pool_out=k967_pool_out(_bfin if _bfin is not None else _tb))
++                    pool_out=k967_pool_out(_bfin if _bfin is not None else _tb),
++                    dropped=({} if _er else _cp953s.deepcopy(K917_DROPPED)))
+ 
+     _a953s = k6b_screen_callbacks(st, pk_kwargs=pk_kwargs, g_kwargs=g_kwargs)['a_prime']
+     _keep953s = {_kk: _cp953s.deepcopy(_sst[_kk]) for _kk in K6B_SCREEN_TRIAL_KEYS if _kk in _sst}
+diff --git a/verify/selection_pipeline.py b/verify/selection_pipeline.py
+index cff92d1..cf1d8e4 100644
+--- a/verify/selection_pipeline.py
++++ b/verify/selection_pipeline.py
+@@ -824,7 +824,9 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+     `winners`／`forced`·⛔ 重跑街角選位）；`RuntimeError` ⇒ `err` ＝ 其首列之首 300 字；摘要 ＝ `ns["k953_alloc_summary"]`；
+     單元 ＝ `ns["k953_units_of"]`（入池閘之末態 build；無則試算之 build）。`a′` ＝ `callbacks['a_prime']`。
+     隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。
+-    🔧 `W-G.9-378`（`GB-204`）：試算之回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
++    🔧 `W-G.9-378`（`GB-204`）：試算之回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。
++    🔧 `W-G.9-383`（`K-9-73` ④·`K-9-75`）：試算之回傳另增 `dropped`（該次試算之後之 `ns["K917_DROPPED"]` 之深拷貝；`err` 非空 ⇒
++    `{}`）——手冊先行之兩側皆配不到者之再試以其 G 比大小。"""
+     import copy as _cpk
+     import contextlib as _clk
+     import io as _iok
+@@ -857,7 +859,8 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
+         _memk, _unik = ns["k953_units_of"](_finalk if _finalk is not None else _bk)
+         # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
+         return dict(_sumk, err=_errk, members=_memk, units=_unik,
+-                    pool_out=ns["k967_pool_out"](_finalk if _finalk is not None else _bk))
++                    pool_out=ns["k967_pool_out"](_finalk if _finalk is not None else _bk),
++                    dropped=({} if _errk else _cpk.deepcopy(ns["K917_DROPPED"])))
+ 
+     _ss_keep = _cpk.deepcopy(dict(ss))
+     _k917_keep = _cpk.deepcopy(ns["K917_DROPPED"])
