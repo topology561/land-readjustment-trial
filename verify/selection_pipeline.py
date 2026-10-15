@@ -675,7 +675,10 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
     各筆單獨皆未達之末端塊暫以強制抵費地計）；呼叫端須於其外層深拷貝並回復 `session_state`。
     🆕 `W-G.9-373`（`K-9-67`）：`alloc_state` 之回傳增第五鍵 `members` ＝ `k953_units_of`（入池閘之末態 build；
     `run_step_g` 拋出或無之 ⇒ 該次試算所給之 build）之成員。
-    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
+    🔧 `W-G.9-378`（`GB-204`）：`alloc_state` 之回傳另增第六鍵 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。
+    🔧 `W-G.9-384`（`K-9-71`）：回傳增鍵 `blk5`（五級之街廓屬性之回呼·`ns["k971_blk5"]`·呼叫時取之）——最小建築面積 `{}`、
+    `cad` 之正面道路之推導、`run_verification.load_front_road_names()`、`param_rows` 之正面路寬、`adj4_depth_of` 之深度（同
+    `run_adj4` 之 `adj4_plan` 之引數之源）；段三、末端塊合併再試、手冊先行用之。"""
     import copy as _cp
     import contextlib as _cl
     import io as _io
@@ -776,8 +779,15 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
                        eff_min_build_by_blk={})
         return _cp.deepcopy(ss.get(ns["SS_END_BLOCK_EVAL"]) or {})
 
+    def blk5():
+        # 🔧 `W-G.9-384`（`K-9-71`·R-6）：五級之街廓屬性——與 `run_adj4` 之 `adj4_plan` 之引數同源（呼叫時取之·⛔ 預取）
+        import run_verification
+        return ns["k971_blk5"](cb, {}, cad.get("front_road_derive") or {}, run_verification.load_front_road_names(),
+                               {r["街廓"]: r.get("正面路寬(m)") for r in param_rows},
+                               ns["adj4_depth_of"](fake_st.session_state))
+
     return {'a_prime': a_prime, 'trial_winner': trial_winner, 'alloc_state': alloc_state,
-            'alloc_eval': alloc_eval}
+            'alloc_eval': alloc_eval, 'blk5': blk5}
 
 
 def run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setback,
@@ -803,7 +813,7 @@ def run_end_block_merge(ns, fake_st, cb, cad, param_rows, temp_parcels, build_pa
         temp3, build3, log, rec = ns["end_block_merge_run"](
             temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {}, _locked, _corner, _blocks,
             cad.get("centerlines", {}) or {}, callbacks['a_prime'], callbacks['alloc_eval'],
-            callbacks['alloc_state'], setback=setback)
+            callbacks['alloc_state'], setback=setback, blk5=callbacks['blk5'])
     finally:
         ss.clear()
         ss.update(_ss_saved)
@@ -868,7 +878,7 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
         temp_out, build_out, log = ns["k953_manual_run"](
             temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {},
             {b["label"]: {"category": b.get("category", "")} for b in cb}, cad.get("centerlines", {}) or {},
-            callbacks['a_prime'], _trial_k)
+            callbacks['a_prime'], _trial_k, blk5=callbacks['blk5'])
     finally:
         ss.clear()
         ss.update(_ss_keep)
@@ -999,7 +1009,7 @@ def run_corner_pk_k6b(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parc
             temp2, build2, log = ns["k6b_stage3_run"](
                 order, _locked, ss.get("t8_ownership_map", {}) or {}, temp_parcels, build_parcels,
                 _blocks, cad.get("centerlines", {}) or {}, _cbk['a_prime'], _cbk['trial_winner'],
-                _cbk['alloc_state'])
+                _cbk['alloc_state'], blk5=_cbk['blk5'])
         finally:
             ss.clear()
             ss.update(_ss_saved)
