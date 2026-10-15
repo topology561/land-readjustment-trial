@@ -824,7 +824,9 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
     `winners`／`forced`·⛔ 重跑街角選位）；`RuntimeError` ⇒ `err` ＝ 其首列之首 300 字；摘要 ＝ `ns["k953_alloc_summary"]`；
     單元 ＝ `ns["k953_units_of"]`（入池閘之末態 build；無則試算之 build）。`a′` ＝ `callbacks['a_prime']`。
     隔離同段三（深拷貝 `session_state` 與 `ns["K917_DROPPED"]`·`finally` 原地回復）。
-    🔧 `W-G.9-378`（`GB-204`）：試算之回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。"""
+    🔧 `W-G.9-378`（`GB-204`）：試算之回傳另增 `pool_out`（`k967_pool_out`·入池閘之帳·其 build 與 `members` 同）。
+    🔧 `W-G.9-383`（`K-9-73` ④·`K-9-75`）：試算之回傳另增 `dropped`（該次試算之後之 `ns["K917_DROPPED"]` 之深拷貝；`err` 非空 ⇒
+    `{}`）——手冊先行之兩側皆配不到者之再試以其 G 比大小。"""
     import copy as _cpk
     import contextlib as _clk
     import io as _iok
@@ -857,7 +859,8 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
         _memk, _unik = ns["k953_units_of"](_finalk if _finalk is not None else _bk)
         # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
         return dict(_sumk, err=_errk, members=_memk, units=_unik,
-                    pool_out=ns["k967_pool_out"](_finalk if _finalk is not None else _bk))
+                    pool_out=ns["k967_pool_out"](_finalk if _finalk is not None else _bk),
+                    dropped=({} if _errk else _cpk.deepcopy(ns["K917_DROPPED"])))
 
     _ss_keep = _cpk.deepcopy(dict(ss))
     _k917_keep = _cpk.deepcopy(ns["K917_DROPPED"])
