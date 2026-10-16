@@ -19,6 +19,9 @@
            🔧 `W-G.9-385` 補令一（停機上呈之 #1、#2 與審查之 #6·⛔ 上列一字不刪）：K17 公有所有權人之權利範圍缺漏或分母為 0
            ⇒ 填列錯誤；K18 道路 BLOCK 內之片重疊而抵充地之面積大於其面積 ⇒ 錯誤、該段⛔ 計；K19 地籍資料來源之讀取之例外
            （壞檔、U_LAND 缺欄）⇒ 錯誤一則（「地籍資料來源讀取失敗（」起首）、⛔ 拋。
+           🔧 `W-G.9-385` 補令二（補令一之停機上呈 #1 與審查 #6·⛔ 上列一字不刪）：K20 實座標之旋轉之道路 BLOCK 恰為一筆全公有之
+           抵充地 ⇒ 尺度 0、⛔ 錯誤（前提：諸角之中浮點之比例 ＜ 0 者 ≥ 1）；K21 片之重疊之超出 0.005 ㎡ ⇒ 比例取 0、⛔ 錯誤，0.02 ㎡
+           ⇒ 錯誤；K22 缺二表之一 ⇒ 錯誤一則。
            （新碼之突變之判別力：發單側於原型施之〔`W-G.9-385` 規格單 `§一` 項 `6`〕；以受單側之碼之字樣為錨之突變另單補寫。）
   wiring   <repo> <基準>
            AST 查接線（其式以 `ast.unparse` 比之）：W1 頂層之新名 ＝ `K974_PARAMS`、`k962_land_marks`、`k974_read_junctions`、
@@ -234,9 +237,9 @@ def _cases(ns):
 
 
 def _cases385(ns):
-    """🆕 `W-G.9-385` 補令一：K17〜K19（各例之例外 ⇒ 該例紅·⛔ 中止他例）。"""
+    """🆕 `W-G.9-385` 補令一：K17〜K19；補令二：K20〜K22（各例之例外 ⇒ 該例紅·⛔ 中止他例）。"""
     out = []
-    for nm, f in (("K17", _k17), ("K18", _k18), ("K19", _k19)):
+    for nm, f in (("K17", _k17), ("K18", _k18), ("K19", _k19), ("K20", _k20), ("K21", _k21), ("K22", _k22)):
         try:
             out.append(f(ns))
         except Exception as e:
@@ -282,6 +285,64 @@ def _k19(ns):
         except Exception as e:
             got19.append((nm19, False, f"拋 {type(e).__name__}"))
     return (("K19", all(x[1] for x in got19), f"{got19}"))
+
+
+def _k20(ns):
+    # 🔧 `W-G.9-385` 補令二（補令一之停機上呈 #1）：實座標（TWD97 之量級）之旋轉之道路 BLOCK 恰為一筆全公有之抵充地之片
+    #   （片 ＝ 道路之多邊形·持分 1·未勾）⇒ 真比例 0 ⇒ 尺度 0、⛔ 錯誤（浮點之誤差 ≤ overlap_tol_m2 ⇒ 比例取 0）；
+    #   前提（判別力）：諸角之中至少一角之 (A − B) ÷ A 之浮點值 ＜ 0（以 shapely 另算）
+    import math
+    from shapely.geometry import Polygon
+    neg, bad = 0, []
+    for k in range(60):
+        th = math.radians(k * 7.3 + 0.37)
+        c, s_ = math.cos(th), math.sin(th)
+        X0, Y0 = 310123.457, 2652345.679
+
+        def T(pts):
+            return [(X0 + x * c - y * s_, Y0 + x * s_ + y * c) for x, y in pts]
+        road = T(_rect(0, 0, 100, 15))
+        A = Polygon(road).area
+        if (A - Polygon(road).intersection(Polygon(road)).area) / A < 0:
+            neg += 1
+        build = {"B1": T(_rect(0, -40, 100, 0))}
+        fl = {"B1": {"p1": T([(0.0, 0.0)])[0], "p2": T([(100.0, 0.0)])[0]}}
+        pcs = [{"原地號": "1", "所屬街廓": "B1", "polygon_coords": T(_rect(0, -40, 100, 0))},
+               {"原地號": "10", "所屬街廓": "RA", "polygon_coords": road},
+               {"原地號": "2", "所屬街廓": "O1", "polygon_coords": T(_rect(0, 15, 100, 55))}]
+        r = ns["k974_burden_scales"](build, {"RA": road}, {"RA": T([(0.0, 7.5), (100.0, 7.5)])}, fl, {}, pcs,
+                                     {"10": 1.0}, {"B1": {"front": (15.0, False)}})
+        if r["errors"] or r["scales"]["B1"]["front"] != 0.0:
+            bad.append((k, r["scales"]["B1"]["front"], r["errors"][:1]))
+    return ("K20", neg > 0 and not bad, f"前提（浮點之負）{neg}／60；不符 {bad[:3]}（{len(bad)}）")
+
+
+def _k21(ns):
+    # 🔧 補令二：片之重疊之超出 ＝ 0.005 ㎡（≤ 0.01）⇒ 比例取 0、⛔ 錯誤 ⇒ 尺度 0；超出 0.02 ㎡（＞ 0.01）⇒ 錯誤（字樣同 K18）
+    out = []
+    for w, want_err in ((0.005 / 15, False), (0.02 / 15, True)):
+        t = _toy(roads={"RA": _rect(0, 0, 100, 15)}, cls={"RA": [(0.0, 7.5), (100.0, 7.5)]},
+                 extra=[_piece("10", "RA", 0, 0, 50 + w / 2, 15), _piece("11", "RA", 50 - w / 2, 0, 100, 15)])
+        r = _call(ns, t, {"10": 1.0, "11": 1.0}, {"B1": {"front": (15.0, False)}})
+        e = ["道路 BLOCK RA 內抵充地之面積大於扣除路口後之面積（宗地之片重疊），請檢查地籍（B1 正面臨之）"]
+        out.append((r["errors"] == (e if want_err else [])) and r["scales"]["B1"]["front"] == 0.0)
+    return ("K21", all(out), f"{out}")
+
+
+def _k22(ns):
+    # 🔧 補令二（補令一之審查 #6）：地籍資料來源缺「重劃區地籍」（或「U_LAND」）之表 ⇒ 錯誤一則（字樣逐字）、⛔ 靜默
+    import pandas as pd
+    got = []
+    for keep in ("U_LAND", "重劃區地籍"):
+        bio = io.BytesIO()
+        with pd.ExcelWriter(bio, engine="openpyxl") as w:
+            if keep == "U_LAND":
+                _ul([("0001甲段", 1000001, "A1", "某縣", "公", 1, 1)]).to_excel(w, sheet_name="U_LAND", index=False)
+            else:
+                _rz([("某市", "甲段", "100-1", "", "是")]).to_excel(w, sheet_name="重劃區地籍", index=False)
+        r = ns["k974_screen_scales"]({"f7_saved": ("x.xlsx", bio.getvalue())}, [], [], "ROADK")
+        got.append(r["errors"] == ["地籍資料來源缺「U_LAND」或「重劃區地籍」工作表"])
+    return ("K22", all(got), f"{got}")
 
 
 def selftest(repo):
