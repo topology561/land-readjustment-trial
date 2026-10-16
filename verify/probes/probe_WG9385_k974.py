@@ -16,6 +16,9 @@
              二地段〔他地段者未註記亦然〕）；
              K13 `JUNCTION` 圖層之讀取；K14 `calc_special_burden_total` 之呼叫端之尺度；K15 取樣之容差
              （首一取樣點距道路 BLOCK 0.005 m ⇒ 仍計）；K16 無宗地 ⇒ 區界⛔ 判 ＋ 警示。
+           🔧 `W-G.9-385` 補令一（停機上呈之 #1、#2 與審查之 #6·⛔ 上列一字不刪）：K17 公有所有權人之權利範圍缺漏或分母為 0
+           ⇒ 填列錯誤；K18 道路 BLOCK 內之片重疊而抵充地之面積大於其面積 ⇒ 錯誤、該段⛔ 計；K19 地籍資料來源之讀取之例外
+           （壞檔、U_LAND 缺欄）⇒ 錯誤一則（「地籍資料來源讀取失敗（」起首）、⛔ 拋。
            （新碼之突變之判別力：發單側於原型施之〔`W-G.9-385` 規格單 `§一` 項 `6`〕；以受單側之碼之字樣為錨之突變另單補寫。）
   wiring   <repo> <基準>
            AST 查接線（其式以 `ast.unparse` 比之）：W1 頂層之新名 ＝ `K974_PARAMS`、`k962_land_marks`、`k974_read_junctions`、
@@ -226,7 +229,59 @@ def _cases(ns):
     out.append(("K16", r["scales"]["B1"]["front"] == 3.75
                 and r["warnings"] == ["尚無宗地資料（地籍），中心線是否為重劃區界⛔ 判（以輸入之路寬計）"],
                 f"{r['scales']}／{r['warnings']}"))
+    out += _cases385(ns)
     return out
+
+
+def _cases385(ns):
+    """🆕 `W-G.9-385` 補令一：K17〜K19（各例之例外 ⇒ 該例紅·⛔ 中止他例）。"""
+    out = []
+    for nm, f in (("K17", _k17), ("K18", _k18), ("K19", _k19)):
+        try:
+            out.append(f(ns))
+        except Exception as e:
+            out.append((nm, False, f"例外 {type(e).__name__}: {e}"))
+    return out
+
+
+def _k17(ns):
+    # 🔧 `W-G.9-385` 補令一（停機上呈之 #1）：公有所有權人之權利範圍缺漏（分子空白）或分母為 0 ⇒ 填列錯誤（字樣逐字）、⛔ 入註記
+    ul17 = _ul([("0001甲段", 1000001, "A1", "某縣", "公", None, 1),
+                ("0001甲段", 1000002, "A1", "某縣", "公", 1, 0),
+                ("0001甲段", 1000003, "A1", "某縣", "公", 1, 2), ("0001甲段", 1000003, "P1", "王某", "私", None, None)])
+    mk17 = ns["k962_land_marks"](_rz([("某市", "甲段", "100-1", "", "是"), ("某市", "甲段", "100-2", "", "是"),
+                                      ("某市", "甲段", "100-3", "", "是")]), ul17)
+    e17 = ["填列錯誤：甲段 100-1「抵充地」欄填「是」，但其公有所有權人之權利範圍（U_LAND 分子／分母）缺漏或分母非正數",
+           "填列錯誤：甲段 100-2「抵充地」欄填「是」，但其公有所有權人之權利範圍（U_LAND 分子／分母）缺漏或分母非正數"]
+    return (("K17", mk17["errors"] == e17 and mk17["抵充地"] == {"100-3": 0.5}, f"{mk17}"))
+
+
+def _k18(ns):
+    # 🔧 補令一（審查之 #6）：道路 BLOCK 內之宗地之片重疊而抵充地之面積大於其面積 ⇒ 錯誤（字樣逐字）、該段⛔ 計
+    t18 = _toy(roads={"RA": _rect(0, 0, 100, 15)}, cls={"RA": [(0.0, 7.5), (100.0, 7.5)]},
+               extra=[_piece("10", "RA", 0, 0, 100, 15), _piece("11", "RA", 0, 0, 100, 15)])
+    r = _call(ns, t18, {"10": 1.0, "11": 1.0}, {"B1": {"front": (15.0, False)}})
+    return (("K18", r["errors"] == ["道路 BLOCK RA 內抵充地之面積大於扣除路口後之面積（宗地之片重疊），請檢查地籍（B1 正面臨之）"]
+                and r["scales"]["B1"]["front"] == 0.0, f"{r['scales']}／{r['errors']}"))
+
+
+def _k19(ns):
+    # 🔧 補令一（停機上呈之 #2）：地籍資料來源之讀取之例外（非 xlsx 之 bytes；U_LAND 缺「段小段」之欄）⇒ 錯誤一則（字首逐字）、⛔ 拋
+    import pandas as pd
+    bio = io.BytesIO()
+    with pd.ExcelWriter(bio, engine="openpyxl") as w:
+        _ul([("0001甲段", 1000001, "A1", "某縣", "公", 1, 1)]).drop(columns=["段小段"]).to_excel(w, sheet_name="U_LAND", index=False)
+        _rz([("某市", "甲段", "100-1", "", "是")]).to_excel(w, sheet_name="重劃區地籍", index=False)
+    got19 = []
+    for nm19, bb in (("壞檔", b"not an xlsx"), ("缺欄", bio.getvalue())):
+        ss19 = {"f7_saved": ("x.xlsx", bb)}
+        try:
+            r19 = ns["k974_screen_scales"](ss19, [], [], "ROADK")
+            e19 = r19["errors"]
+            got19.append((nm19, len(e19) == 1 and e19[0].startswith("地籍資料來源讀取失敗（"), e19[:1]))
+        except Exception as e:
+            got19.append((nm19, False, f"拋 {type(e).__name__}"))
+    return (("K19", all(x[1] for x in got19), f"{got19}"))
 
 
 def selftest(repo):
