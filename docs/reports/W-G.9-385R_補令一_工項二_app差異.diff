@@ -1,0 +1,451 @@
+diff --git a/app.py b/app.py
+index 261c5ac..797082a 100644
+--- a/app.py
++++ b/app.py
+@@ -4854,6 +4854,8 @@ def calc_special_burden_total(blocks_with_roads: list, C_value: float) -> dict:
+       右側道路負擔面積 = 側街尺度 × 右側長度（僅新闢道路計入）
+       臨街地特別負擔總面積 = (Σ正面 + Σ左側 + Σ右側) × (1 − C)
+     ※ 相容舊欄位：若未提供 left_*/right_* 則沿用舊 side_*（視為左側單條）
++    🔧 `W-G.9-385`（`K-9-74`／`K-9-79`）：列含鍵 `front_scale`／`left_side_scale`／`right_side_scale` 者，該面之尺度
++      逕用其值（呼叫端依臨接之道路 BLOCK 所求·`k974_screen_scales`），⛔ 再依新闢與否；無其鍵者照上式。
+     """
+     front_total = 0.0
+     side_total = 0.0
+@@ -4874,6 +4876,12 @@ def calc_special_burden_total(blocks_with_roads: list, C_value: float) -> dict:
+         fs  = calc_frontage_burden_scale(fw) if fn else 0.0
+         lss = calc_side_burden_scale(lw) if ln else 0.0
+         rss = calc_side_burden_scale(rw) if rn else 0.0
++        if 'front_scale' in b:
++            fs = float(b['front_scale'])
++        if 'left_side_scale' in b:
++            lss = float(b['left_side_scale'])
++        if 'right_side_scale' in b:
++            rss = float(b['right_side_scale'])
+ 
+         f_area = fs  * fl
+         l_area = lss * ll
+@@ -4896,6 +4904,354 @@ def calc_special_burden_total(blocks_with_roads: list, C_value: float) -> dict:
+     }
+ 
+ 
++# 🆕 `W-G.9-385`（`R-1`·`K-9-74`／`K-9-79`）：臨街地特別負擔之路寬之參數（`k974_burden_scales` 之諸數皆取自此）
++K974_PARAMS = {
++    'sample_n': 400,          # 一面之線均分之段數（臨接之取樣）
++    'sample_offset_m': 0.5,   # 取樣點沿法向往街廓外之偏移
++    'snap_m': 0.1,            # 取樣點⛔ 落於道路 BLOCK 而距之不逾此者，視為臨其最近者
++    'width_warn_m': 0.5,      # 中心線垂距 × 2 與輸入路寬之差逾此 ⇒ 警示
++    'fragment_avg_m': 0.5,    # 中心線另一側之地籍之平均寬小於此 ⇒ 中心線即區界
++    'side_name': {'front': '正面', 'left': '左側', 'right': '右側'},
++}
++
++
++def k962_land_marks(df_rezoning, df_uland):
++    """🆕 `W-G.9-385`（`R-2`·`K-9-62` 第 3 點）：「重劃區地籍」工作表之「第33條排除」「抵充地」二欄之讀取與檢核。
++
++    回 `{'抵充地': {正規化地號: 公有持分}, '第33條排除': {正規化地號: 公有持分}, 'errors': [訊息…]}`。
++    - 二欄以欄名認之（⛔ 依位置）；二欄皆無（或 `df_rezoning` 為 `None`）⇒ 三空。
++    - 格之值去前後空白：空、`None`、`NaN`、`'nan'`、「否」⇒ 略；「是」⇒ 註記；他值 ⇒ 填列錯誤。
++    - 註記者：於 `U_LAND` 以（段小段去前導數字 ＝ 地段、地號之整數）取其列；無之 ⇒ 填列錯誤；有之 ⇒ 所有權人去重
++      （統一編號，無則姓名）後，公有持分 ＝ Σ（公私別 ＝「公」之權利範圍分子 ÷ 分母）；≤ 0（或 `df_uland` 為 `None`）
++      ⇒ 填列錯誤（非公有地）。
++    - 其正規化地號於 `df_rezoning` 見於二以上之相異地段 ⇒ 填列錯誤（無從對應宗地）。
++    - 餘 ⇒ 記 `min(公有持分, 1.0)`。錯誤之序 ＝ 逐列、逐欄（「第33條排除」→「抵充地」）；有錯誤之格⛔ 記。
++    🔧 `W-G.9-385` 補令一（`R-11`）：公有所有權人（去重後）之權利範圍之分子或分母非數值（含空白）、分母 ≤ 0、或分子 ＜ 0
++      者有一 ⇒ 填列錯誤（該格⛔ 記·⛔ 再判非公有地與二地段）；他所有權人之權利範圍⛔ 查；⛔ 拋例外。
++      其序：U_LAND 無對應資料 → 本款 → 非公有地 → 二地段。
++    """
++    out = {'抵充地': {}, '第33條排除': {}, 'errors': []}
++    if df_rezoning is None:
++        return out
++    cols = [c for c in ('第33條排除', '抵充地') if c in df_rezoning.columns]
++    if not cols:
++        return out
++
++    def _k974_cell_text(v):
++        if v is None:
++            return ''
++        try:
++            if pd.isna(v):
++                return ''
++        except (TypeError, ValueError):
++            pass
++        return str(v).strip()
++
++    # 正規化地號 → 其所見之地段（依 df_rezoning 首見之序）
++    segs_of = {}
++    for _, rz in df_rezoning.iterrows():
++        segs = segs_of.setdefault(_normalize_landno_module(_k974_cell_text(rz.get('地號'))), [])
++        seg_txt = _k974_cell_text(rz.get('地段'))
++        if seg_txt not in segs:
++            segs.append(seg_txt)
++
++    ul = None
++    if df_uland is not None:
++        ul = df_uland.copy()
++        ul['_k974_seg'] = ul['段小段'].astype(str).str.replace(r"^\d+", "", regex=True)
++        ul['_k974_no'] = pd.to_numeric(ul['地號'], errors='coerce')
++
++    for _, rz in df_rezoning.iterrows():
++        seg_txt = _k974_cell_text(rz.get('地段'))
++        no_txt = _k974_cell_text(rz.get('地號'))
++        for col in cols:
++            val = _k974_cell_text(rz.get(col))
++            if val in ('', 'nan', '否'):
++                continue
++            if val != '是':
++                out['errors'].append(f'填列錯誤：{seg_txt} {no_txt}「{col}」欄填「{val}」，僅得填「是」或空白')
++                continue
++            share = 0.0
++            if ul is not None:
++                try:
++                    if '-' in no_txt:
++                        a_txt, b_txt = no_txt.split('-', 1)
++                        no_int = int(a_txt) * 10000 + int(b_txt)
++                    else:
++                        no_int = int(no_txt) * 10000
++                except Exception:
++                    no_int = None
++                hit = ul.iloc[0:0] if no_int is None else ul[(ul['_k974_seg'] == seg_txt) & (ul['_k974_no'] == no_int)]
++                if hit.empty:
++                    out['errors'].append(f'填列錯誤：{seg_txt} {no_txt}「{col}」欄填「是」，但 U_LAND 無對應資料')
++                    continue
++                seen = set()
++                bad_frac = False
++                for _, ow in hit.iterrows():
++                    uni = _k974_cell_text(ow.get('所有權統一編號'))
++                    key = uni if uni not in ('', 'nan') else str(ow.get('姓名', '')).strip()
++                    if key in seen:
++                        continue
++                    seen.add(key)
++                    if _k974_cell_text(ow.get('公私別')) == '公':
++                        num = pd.to_numeric(ow.get('權利範圍分子'), errors='coerce')
++                        den = pd.to_numeric(ow.get('權利範圍分母'), errors='coerce')
++                        if pd.isna(num) or pd.isna(den) or den <= 0 or num < 0:
++                            bad_frac = True
++                            continue
++                        share += float(num) / float(den)
++                if bad_frac:
++                    out['errors'].append(f'填列錯誤：{seg_txt} {no_txt}「{col}」欄填「是」，'
++                                         f'但其公有所有權人之權利範圍（U_LAND 分子／分母）缺漏或分母非正數')
++                    continue
++            if share <= 0:
++                out['errors'].append(f'填列錯誤：{seg_txt} {no_txt}「{col}」欄填「是」，但該地號非公有地（U_LAND 公私別）')
++                continue
++            key_no = _normalize_landno_module(no_txt)
++            segs = segs_of.get(key_no, [])
++            if len(segs) >= 2:
++                out['errors'].append(f'填列錯誤：地號 {no_txt} 於 {"、".join(segs)} 皆有，「{col}」無從對應宗地')
++                continue
++            out[col][key_no] = min(share, 1.0)
++    return out
++
++
++def k974_read_junctions(doc):
++    """🆕 `W-G.9-385`（`R-3`·`K-9-79` ③·`K-9-59` ⑤）：`JUNCTION` 圖層（選用之路口框）之多節線之頂點。
++
++    圖層名（不分大小寫）＝ `JUNCTION` 之 `LWPOLYLINE`／`POLYLINE`，依其序取頂點 `[(x, y), …]`；三點以上者入回傳。
++    讀取之例外 ⇒ 略該實體；`query` 本身之例外 ⇒ 回 `[]`。
++    """
++    try:
++        ents = list(doc.modelspace().query('LWPOLYLINE POLYLINE'))
++    except Exception:
++        return []
++    out = []
++    for e in ents:
++        try:
++            if str(e.dxf.layer).upper() != 'JUNCTION':
++                continue
++            if e.dxftype() == 'LWPOLYLINE':
++                pts = [(float(p[0]), float(p[1])) for p in e.get_points()]
++            else:
++                pts = [(float(v.dxf.location[0]), float(v.dxf.location[1])) for v in e.vertices]
++        except Exception:
++            continue
++        if len(pts) >= 3:
++            out.append(pts)
++    return out
++
++
++def k974_burden_scales(build_polys, road_polys, centerlines, front_lines, side_lines_by_side, pieces, offset_share,
++                       road_inputs, junctions=()):
++    """🆕 `W-G.9-385`（`R-4`·`K-9-74`／`K-9-79`）：各可建築街廓之正面、左側、右側之臨街地特別負擔尺度（純函式）。
++
++    逐街廓（sorted）、逐面（正面 → 左側 → 右側·無其線或線長 0 者略）：
++    ① 臨接：其線均分 `sample_n` 段，各段之中點沿法向往街廓外偏移 `sample_offset_m`；落於某道路 BLOCK 即臨之；
++       皆⛔ 落而距某道路 BLOCK 不逾 `snap_m` ⇒ 臨其最近者；餘 ⇒ ⛔ 臨（區外）。
++    ② 皆⛔ 臨 ⇒ 尺度 0；勾新闢 ⇒ 警示（`K-9-79` ②）。
++    ③ 各臨接之道路 BLOCK：無中心線 ⇒ 錯誤；垂距 ＝ 臨接諸段之平均位置之點至中心線之最近一節之直線之距離；
++       中心線之另一側、寬 ＝ 垂距之帶內之地籍（`_GHOST` 除外）之面積 ÷ 中心線之長 ＜ `fragment_avg_m` ⇒ 區界（基寬 ＝ 垂距），
++       否則基寬 ＝ 輸入之路寬；比例 ＝ 勾新闢 ⇒ 1，否則（A − B）÷ A（A ＝ 道路 BLOCK 去 `JUNCTION` 後之面積、
++       B ＝ 其內各宗地之片之面積 × 抵充地之公有持分）；垂距 × 2 與輸入路寬相差逾 `width_warn_m` ⇒ 警示；
++       負擔路寬 ＝ 基寬 × 比例 ⇒ 正面 `calc_frontage_burden_scale`、側面 `calc_side_burden_scale`。
++    ④ 一面之尺度 ＝ Σ（臨接段數 ÷ `sample_n`）× 該道路 BLOCK 之尺度（`K-9-79` ①）。
++    回 `{'scales': {街廓: {面: 尺度}}, 'detail': [列…], 'warnings': [訊息…], 'errors': [訊息…]}`；⛔ 讀 session、⛔ 停機。
++    🔧 `W-G.9-385` 補令一（`R-13`）：未勾新闢而比例 ＜ 0（抵充地之面積大於扣除路口後之面積）⇒ 錯誤、該道路 BLOCK 略之
++      （⛔ 入該面之尺度、⛔ 入明細·同 A ≤ 0 之支）。
++    """
++    from shapely.geometry import Point, Polygon, LineString
++    from shapely.ops import unary_union
++    from shapely.prepared import prep
++
++    n_smp = int(K974_PARAMS['sample_n'])
++    off_m = float(K974_PARAMS['sample_offset_m'])
++    snap_m = float(K974_PARAMS['snap_m'])
++    frag_m = float(K974_PARAMS['fragment_avg_m'])
++    face_names = K974_PARAMS['side_name']
++
++    def _k974_polygon(verts):
++        g = Polygon([(float(p[0]), float(p[1])) for p in verts])
++        return g if g.is_valid else g.buffer(0)
++
++    roads = {lb: _k974_polygon(v) for lb, v in (road_polys or {}).items()}
++    road_lbs = sorted(roads)
++    road_prep = {lb: prep(roads[lb]) for lb in road_lbs}
++    jn_polys = [_k974_polygon(j) for j in (junctions or []) if j and len(j) >= 3]
++    jn_union = unary_union(jn_polys) if jn_polys else None
++    land = [(t, _k974_polygon(t['polygon_coords'])) for t in (pieces or [])
++            if len(t.get('polygon_coords') or []) >= 3]
++    cad_cache = []          # [地籍之聯集]（首次須判區界時始求之）
++    no_land = [False]
++    scales, detail, warnings, errors = {}, [], [], []
++
++    def _k974_cad_union():
++        if not cad_cache:
++            lands = [g for t, g in land if not str(t.get('原地號', '')).startswith('_GHOST')]
++            cad_cache.append(unary_union(lands) if lands else Polygon())
++        return cad_cache[0]
++
++    for blk in sorted(build_polys or {}):
++        bpoly = _k974_polygon(build_polys[blk])
++        faces = []
++        if (front_lines or {}).get(blk):
++            faces.append(('front', front_lines[blk]))
++        sides = (side_lines_by_side or {}).get(blk) or {}
++        for sd in ('left', 'right'):
++            if sides.get(sd):
++                faces.append((sd, sides[sd]))
++        for sd, ln in faces:
++            p1 = (float(ln['p1'][0]), float(ln['p1'][1]))
++            p2 = (float(ln['p2'][0]), float(ln['p2'][1]))
++            dx, dy = p2[0] - p1[0], p2[1] - p1[1]
++            ln_len = math.hypot(dx, dy)
++            if ln_len == 0:
++                continue
++            nx, ny = -dy / ln_len, dx / ln_len
++            mx, my = (p1[0] + p2[0]) / 2.0, (p1[1] + p2[1]) / 2.0
++            if bpoly.contains(Point(mx + nx * off_m, my + ny * off_m)):
++                nx, ny = -nx, -ny
++            hits = {}
++            for i in range(n_smp):
++                t = (i + 0.5) / n_smp
++                pt = Point(p1[0] + t * dx + nx * off_m, p1[1] + t * dy + ny * off_m)
++                got = next((lb for lb in road_lbs if road_prep[lb].contains(pt)), None)
++                if got is None:
++                    near = None
++                    for lb in road_lbs:
++                        dd = roads[lb].distance(pt)
++                        if dd <= snap_m and (near is None or dd < near[0]):
++                            near = (dd, lb)
++                    got = near[1] if near else None
++                if got is not None:
++                    hits.setdefault(got, []).append(t)
++            w_in, new_in = ((road_inputs or {}).get(blk) or {}).get(sd, (0.0, False))
++            w_in = float(w_in or 0.0)
++            new_in = bool(new_in)
++            fnm = face_names[sd]
++            scales.setdefault(blk, {})
++            if not hits:
++                scales[blk][sd] = 0.0
++                if new_in:
++                    warnings.append(f'{blk} {fnm}道路勾選新闢，但未偵測到道路 BLOCK')
++                detail.append({'街廓': blk, '面': fnm, '道路': '（無）', '臨接比': 0.0, '基寬(m)': None,
++                               '比例': None, '區界在中心線': None, '垂距×2(m)': None, '負擔路寬(m)': None,
++                               '尺度': 0.0})
++                continue
++            face_total = 0.0
++            for lb in sorted(hits):
++                ts = hits[lb]
++                cl = [(float(p[0]), float(p[1])) for p in ((centerlines or {}).get(lb) or [])]
++                tm = sum(ts) / len(ts)
++                q = (p1[0] + tm * dx, p1[1] + tm * dy)
++                nearest = None
++                for k in range(len(cl) - 1):
++                    a, b = cl[k], cl[k + 1]
++                    seg_len = math.hypot(b[0] - a[0], b[1] - a[1])
++                    if seg_len == 0:
++                        continue
++                    dd = LineString([a, b]).distance(Point(q))
++                    if nearest is None or dd < nearest[0]:
++                        nearest = (dd, a, b, seg_len)
++                if nearest is None:
++                    errors.append(f'道路 BLOCK {lb} 未繪 CENTERLINE（{blk} {fnm}臨之），請補畫')
++                    continue
++                _, a, b, seg_len = nearest
++                cross = (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])
++                d_perp = abs(cross) / seg_len
++                cad = _k974_cad_union()
++                if cad.is_empty:
++                    on_edge = False
++                    no_land[0] = True
++                else:
++                    cline = LineString(cl)
++                    band = cline.buffer(d_perp if cross < 0 else -d_perp, single_sided=True)
++                    on_edge = (band.intersection(cad).area / cline.length) < frag_m
++                if new_in:
++                    ratio = 1.0
++                else:
++                    rp = roads[lb] if jn_union is None else roads[lb].difference(jn_union)
++                    area_a = float(rp.area)
++                    if area_a <= 0:
++                        errors.append(f'道路 BLOCK {lb} 扣除路口後之面積為 0（{blk} {fnm}臨之）')
++                        continue
++                    area_b = 0.0
++                    for t_, g_ in land:
++                        if t_.get('所屬街廓') != lb:
++                            continue
++                        sh = float((offset_share or {}).get(_normalize_landno_module(t_.get('原地號')), 0.0))
++                        if sh:
++                            area_b += float(g_.intersection(rp).area) * sh
++                    ratio = (area_a - area_b) / area_a
++                    if ratio < 0:
++                        errors.append(f'道路 BLOCK {lb} 內抵充地之面積大於扣除路口後之面積（宗地之片重疊），'
++                                      f'請檢查地籍（{blk} {fnm}臨之）')
++                        continue
++                if w_in > 0 and abs(2 * d_perp - w_in) > K974_PARAMS['width_warn_m']:
++                    warnings.append(f'{blk} {fnm}：中心線垂距 × 2 ＝ {2 * d_perp:.2f} m，與輸入路寬 {w_in:.2f} m '
++                                    f'相差逾 {K974_PARAMS["width_warn_m"]} m，請確認')
++                base_w = d_perp if on_edge else w_in
++                bw = base_w * ratio
++                sc = calc_frontage_burden_scale(bw) if sd == 'front' else calc_side_burden_scale(bw)
++                face_total += (len(ts) / n_smp) * sc
++                detail.append({'街廓': blk, '面': fnm, '道路': lb, '臨接比': round(len(ts) / n_smp, 4),
++                               '基寬(m)': base_w, '比例': ratio, '區界在中心線': on_edge, '垂距×2(m)': 2 * d_perp,
++                               '負擔路寬(m)': bw, '尺度': sc})
++            scales[blk][sd] = face_total
++    if no_land[0]:
++        warnings.append('尚無宗地資料（地籍），中心線是否為重劃區界⛔ 判（以輸入之路寬計）')
++    return {'scales': scales, 'detail': detail, 'warnings': warnings, 'errors': errors}
++
++
++def k974_screen_scales(ss, build_blocks, temp_parcels, road_key):
++    """🆕 `W-G.9-385`（`R-5`·`K-9-74`／`K-9-62`）：畫面（步驟 H）之各面之負擔尺度。
++
++    ① 二欄之讀取：tab1 所存之地籍資料來源（`f7_saved`）之 sha256 ＝ session 之 `f3_k962_marks_cache` 之鍵 ⇒ 用其值；
++       否則讀「重劃區地籍」（二欄有值者另讀「U_LAND」）⇒ `k962_land_marks`，其結果依檔之 sha256 存之（換檔即重讀）。
++    ② 道路 BLOCK、可建築街廓、中心線、正面線、側面線、宗地之片、抵充地、步驟 E 之路寬與新闢、`JUNCTION` ⇒ `k974_burden_scales`。
++    ③ 回其回傳，唯 `errors` ＝ 二欄之填列錯誤 ＋ 其錯誤。
++    🔧 `W-G.9-385` 補令一（`R-12`）：① 之讀取與二欄之讀取與檢核之任一例外 ⇒ 二欄皆空、錯誤一則（含例外之類名與訊息），
++      其結果亦依檔之 sha256 存之；⛔ 拋（步驟 H 列之而停止計算）。`k974_burden_scales` 之例外⛔ 捕。
++    """
++    import hashlib
++    marks = {'抵充地': {}, '第33條排除': {}, 'errors': []}
++    saved = ss.get('f7_saved')
++    if saved:
++        xb = saved[1]
++        h = hashlib.sha256(xb).hexdigest()
++        cache = ss.get('f3_k962_marks_cache')
++        if isinstance(cache, tuple) and len(cache) == 2 and cache[0] == h:
++            marks = cache[1]
++        else:
++            try:
++                xl = pd.ExcelFile(io.BytesIO(xb), engine='openpyxl')
++                if 'U_LAND' in xl.sheet_names and '重劃區地籍' in xl.sheet_names:
++                    df_rz = pd.read_excel(xl, sheet_name='重劃區地籍', header=0, engine='openpyxl')
++                    filled = any(df_rz[c].notna().any() for c in ('第33條排除', '抵充地') if c in df_rz.columns)
++                    df_ul = pd.read_excel(xl, sheet_name='U_LAND', header=0, engine='openpyxl') if filled else None
++                    marks = k962_land_marks(df_rz, df_ul)
++            except Exception as e:
++                marks = {'抵充地': {}, '第33條排除': {}, 'errors': [f'地籍資料來源讀取失敗（{type(e).__name__}）：{e}']}
++            ss['f3_k962_marks_cache'] = (h, marks)
++    roads = {b['label']: b.get('vertices') for b in ss.get('f3_classified_blocks') or []
++             if _is_road_like_category(b.get('category', '')) and b.get('vertices')}
++    build_polys = {b['label']: b.get('vertices') for b in build_blocks}
++    road_inputs = {}
++    for b in build_blocks:
++        r = (ss.get(road_key) or {}).get(b['id'], {}) or {}
++        road_inputs[b['label']] = {
++            'front': (r.get('front_width', 0.0), bool(r.get('front_new', False))),
++            'left': (r.get('left_side_width', r.get('side_width', 0.0)),
++                     bool(r.get('left_side_new', r.get('side_new', False)))),
++            'right': (r.get('right_side_width', 0.0), bool(r.get('right_side_new', False))),
++        }
++    res = k974_burden_scales(build_polys, roads, ss.get('f3_manual_road_centerlines') or {},
++                             ss.get('f3_cad_front_lines') or {}, ss.get('f3_cad_side_lines_by_side') or {},
++                             temp_parcels or [], marks['抵充地'], road_inputs,
++                             junctions=ss.get('f3_cad_junctions') or [])
++    return dict(res, errors=list(marks['errors']) + list(res['errors']))
++
++
+ # ============ 街廓多邊形幾何分析（道路截角還原 + 邊界分類） ============
+ # 依「升級指南任務二」實作，結合 shapely 計算幾何
+ # 【2026-04 修復版】改用「拓樸鄰接」演算法，避免拿平行的對立邊去求交點
+@@ -26559,6 +26915,8 @@ def main():
+                         #   ⇒ 存於檔案級 session 鍵，**⛔ 不再只倚賴街廓級 `_match`**
+                         #   （手動鎖邊會抹掉後者·`GB-85` 出路③）。取值序見 `_cad_dxf_quantum`。
+                         st.session_state['f3_cad_dxf_quantum'] = _cad_layers.get('dxf_quantum')
++                        # 🆕 `W-G.9-385`（`K-9-79` ③·`K-9-59` ⑤）：JUNCTION 圖層（選用之路口框·抵充地之比例之母體扣除之）
++                        st.session_state['f3_cad_junctions'] = k974_read_junctions(_doc_cad_p7)
+                         # 🚨 W-B §1-1b：未吻合 SIDE_LINE 警示
+                         _sl_unmatched = (
+                             _cad_layers.get('side_unmatched_warnings', []) or []
+@@ -27718,7 +28076,9 @@ def main():
+             st.markdown("---")
+             st.markdown("#### 🛣️ 步驟 E：可建築街廓路寬、長度與雙側面道路")
+             st.caption(
+-                "路寬長度計算至「臨正街延伸與臨側街延伸之交點」，不計道路截角。僅新闢道路計入臨街地特別負擔。"
++                "路寬長度計算至「臨正街延伸與臨側街延伸之交點」，不計道路截角。臨街地特別負擔之路寬（K-9-74）："
++                "勾選新闢者以全寬計；未勾選者依其臨接之道路 BLOCK 扣除抵充地後之比例計；"
++                "拓寬既有道路者不勾新闢；道路在區外者不計。"
+                 "正面／側面長度由街廓 DXF 最小外接矩形自動帶入；若街廓有兩條側面道路（左+右），可分別設定。"
+             )
+             # 先按一次以讓使用者可以重設全部
+@@ -28006,6 +28366,14 @@ def main():
+             st.info(f"✅ 已讀取 財務分析 之 C 值 = {C_value:.6f}")
+             C_for_calc = float(C_value)
+ 
++        # 🆕 `W-G.9-385`（`K-9-74`／`K-9-79`／`K-9-62`）：各面之負擔尺度依其臨接之道路 BLOCK 求之；警示列出、錯誤停止計算
++        _k974 = k974_screen_scales(st.session_state, build_blocks, temp_parcels, SS_ROAD)
++        for _w974 in _k974['warnings']:
++            st.warning(f"⚠️ {_w974}")
++        if _k974['errors']:
++            for _e974 in _k974['errors']:
++                st.error(f"⛔ {_e974}")
++            st.stop()
+         road_data = []
+         for b in build_blocks:
+             r = st.session_state[SS_ROAD].get(b['id'], {})
+@@ -28022,6 +28390,11 @@ def main():
+                 'right_side_length': r.get('right_side_length', 0.0),
+                 'right_side_new':    r.get('right_side_new', False),
+             })
++            # 🆕 `W-G.9-385`：有其面者，其尺度入列（無其面者⛔ 增鍵）
++            _s974 = _k974['scales'].get(b['label'], {})
++            for _sd974, _ky974 in (('front', 'front_scale'), ('left', 'left_side_scale'), ('right', 'right_side_scale')):
++                if _sd974 in _s974:
++                    road_data[-1][_ky974] = _s974[_sd974]
+         sb = calc_special_burden_total(road_data, C_for_calc)
+         # W-G G.1：純加性曝值（供「七級調配」區 live 組 ctx；harvest 保留 main() 但不呼叫→零 diff）
+         st.session_state['f3_sb_rows'] = sb['rows']
+@@ -28029,6 +28402,10 @@ def main():
+         if sb['rows']:
+             st.markdown("##### 📋 各街廓臨街地負擔計算")
+             st.dataframe(pd.DataFrame(sb['rows']), use_container_width=True, hide_index=True)
++        # 🆕 `W-G.9-385`：各面之尺度之明細（臨接之道路 BLOCK、臨接比、基寬、比例、區界、垂距 × 2、負擔路寬）
++        if _k974['detail']:
++            with st.expander("🔎 K-9-74 臨街地特別負擔之路寬明細（各面臨接之道路 BLOCK）", expanded=False):
++                st.dataframe(pd.DataFrame(_k974['detail']), use_container_width=True, hide_index=True)
+ 
+         offset_area = float(st.session_state.get('f3_offset_area', 0.0))
+         preexisting_public = float(st.session_state.get('f3_preexisting_public', 0.0))
+@@ -28055,8 +28432,9 @@ def main():
+         with st.expander("🔎 公式說明", expanded=False):
+             st.markdown("""
+ **臨街地特別負擔總面積** = (Σ正面道路負擔面積 + Σ側面道路負擔面積) × (1 − C)
+-- 正面道路負擔面積 = 正街負擔尺度 × 正面長度（僅新闢道路）
+-- 側面道路負擔面積 = 側街負擔尺度 × 側面長度（僅新闢道路）
++- 正面道路負擔面積 = 正街負擔尺度 × 正面長度（K-9-74：勾新闢者以全寬計；未勾者依道路 BLOCK 扣除抵充地後之比例計；區外不計）
++- 側面道路負擔面積 = 側街負擔尺度 × 側面長度（同上·K-9-74）
++- 一面臨接二段以上之道路 BLOCK 者，整面之尺度依臨接長度加權（K-9-79）；中心線即重劃區界者，基寬以中心線之垂距計
+ - 正街負擔尺度：≤4M → 0；4<路寬<8 → (w−4)/2；8≤路寬<20 → w/4；≥20 → 5
+ - 側街負擔尺度 = 正街尺度 × 1/2
+ 
