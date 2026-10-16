@@ -92,6 +92,10 @@
            `f3_screen_end_block_merge`→末端塊合併再試、`f3_screen_k953`→手冊先行）與 harness 之三入口（`run_corner_pk_k6b`、
            `run_end_block_merge`、`run_k953`）各恰一處以 `blk5=` 傳 `k6b_screen_callbacks`／`_k6b_callbacks` 之 `'blk5'`；二回呼之
            回傳之 dict 含鍵 `'blk5'`，其值為其巢狀 `blk5`，其內恰一處呼 `k971_blk5`、以 `adj4_depth_of` 取深度；二新函式⛔ 案件字面。
+           🔧 `W-G.9-385`（`K-9-74`／`K-9-79`·⛔ 上列一字不刪）：增 K75（`W-G.9-384` 之唯讀審查之 (丙) 2·覆蓋之補）——手冊先行之
+           輪之道路之片之剩下⛔ 依五級再排（照距離）；P0 隨之 75 項。W6 之受詞去 `main`；W7 之許增 `K974_PARAMS`、`k962_land_marks`、
+           `k974_read_junctions`、`k974_burden_scales`、`k974_screen_scales`、`calc_special_burden_total` 與 `main`（其接線與
+           `main`／`calc_special_burden_total` 之唯增列由 F30 之 wiring 量之）。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：R1 手冊先行之紀錄逐列 ＝ 本器所載；R2 街角第 1 宗之宗 ＝ 旗標 off 之
            實跑（街角定案·`v3` §8）；R3 配地之全部（各宗之街廓·推進側·G）與各街廓之抵費地 ＝ 本器所載（容差 `0.01`）且
@@ -710,6 +714,14 @@ def _cases(ns, sp):
          ("K-9-51", "X1(1)", "a", "Z1(1)", (("Z1(1)", 50.0),), "成"))
     _run(out, "K74 五級之屬性之回呼回非 dict ⇒ 停機",
          lambda: _halt(lambda: _go(W, b5=lambda: [], **K14W), "五級之屬性非 dict"), ("停機", True))
+    # 🆕 `W-G.9-385`（`W-G.9-384` 之唯讀審查之 (丙) 2·覆蓋之補）：手冊先行之輪之道路之片⛔ 依五級再排（`K-9-71`·唯建地）
+    _run(out, "K75 （K-9-71）道路之片 R1(1)（RD）之北半部分併入 X1(2)（BB 容 33.333）後，剩下 16.67 之他街廓之候選 ＝ "
+              "C1(1)（BC·距 0·使用分區 商業區）、Z1(1)（BD·距 10）⇒ 道路之片照距離 ⇒ C1(1)（⛔ 依五級排 Z1(1) 先）",
+         lambda: _rows(_go(W, own_upd={"Z1": "g1"}, rm=("X1(1)", "P1(1)"), drop=(), cap={"BB": 33.333},
+                           b5={"BC": {"使用分區": "商業區"}})),
+         [("手冊", "R1(1)", "b", "C1(1)", (("C1(1)", 50.0),), "成"),
+          ("手冊", "R1(1)", "b", "X1(2)", (("X1(2)", 33.33),), "部分成"),
+          ("K-9-51", "R1(1)", "b", "C1(1)", (("C1(1)", 16.67),), "成")])
     return out
 
 
@@ -1497,6 +1509,11 @@ KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG384_APP)
 KEEP_SP = tuple(x for x in KEEP_SP if x not in CHG384_SP)
 APP_ALLOW |= {"k971_key5", "k971_blk5"} | set(CHG384_APP)
 SP_ALLOW |= set(CHG384_SP)
+# 🔧 `W-G.9-385`（`K-9-74`／`K-9-79`）：步驟 H 之尺度（`main`）出 W6 之受詞；W7 之許增四新函式、`K974_PARAMS`、
+#   `calc_special_burden_total` 與之（其接線與二函式之唯增列由 F30 之 wiring 量之）
+CHG385_APP = ("main", "calc_special_burden_total")
+KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG385_APP)
+APP_ALLOW |= {"K974_PARAMS", "k962_land_marks", "k974_read_junctions", "k974_burden_scales", "k974_screen_scales"} | set(CHG385_APP)
 
 
 def _top_dump(tree):

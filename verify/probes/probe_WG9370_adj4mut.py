@@ -28,6 +28,9 @@
            `k6b_stage3_pool_temp`）之段；X5 之 `R-10′` 之模板改為新施點之文（「於第一趟併入街廓 {_bk} 之前」）。
   🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：`wiring` 之 X2 之許增 `k971_key5`、`k971_blk5`、`f3_screen_end_block_merge`、
            `f3_screen_k6b_stage3`；X4 之差另除 `run_end_block_merge`、`run_corner_pk_k6b` 之段（傳 `blk5`）。
+  🔧 `W-G.9-385`（`K-9-74`／`K-9-79`·⛔ 上列一字不刪）：`wiring` 之 X2 之許增 `K974_PARAMS`、`k962_land_marks`、
+           `k974_read_junctions`、`k974_burden_scales`、`k974_screen_scales`、`calc_special_burden_total`、`main`（其接線由 F30 之
+           wiring 量之）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import ast, contextlib, difflib, io, json, os, re, subprocess, sys, tempfile, textwrap
@@ -103,6 +106,8 @@ ALLOW373_APP += ("k965_part_split",)
 #   （本單之行為與接線由 F23 之 K61〜K68、W9 與 F16 之 K23〜K29 量之）
 ALLOW373_APP += ("k971_key5", "k971_blk5", "f3_screen_end_block_merge", "f3_screen_k6b_stage3")
 ALLOW373_SP += ("run_end_block_merge", "run_corner_pk_k6b")
+# 🔧 `W-G.9-385`（`K-9-74`／`K-9-79`）：X2 之許增四新函式、`K974_PARAMS` 與步驟 H 之尺度所改之二函式（其接線由 F30 之 wiring 量之）
+ALLOW373_APP += ("K974_PARAMS", "k962_land_marks", "k974_read_junctions", "k974_burden_scales", "k974_screen_scales", "calc_special_burden_total", "main")
 
 
 def _strip_fns(src, names):

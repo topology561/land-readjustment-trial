@@ -41,6 +41,9 @@
            二 offsnap 之摘要逐項同（第一趟之紀錄唯出艙·⛔ 入判）。
   🔧 `W-G.9-384`（`K-9-71`·⛔ 上列一字不刪）：wiring 之 W5 之許增 `k971_key5`、`k971_blk5`、`f3_screen_end_block_merge`、
            `run_end_block_merge`；W6 比之前，工作樹之列去其末之「, blk5=…)」（段三之呼叫增 `blk5=`·其接線由 F23 之 W9 量之）。
+  🔧 `W-G.9-385`（`K-9-74`／`K-9-79`·⛔ 上列一字不刪）：wiring 之 W5 之許增 `K974_PARAMS`、`k962_land_marks`、
+           `k974_read_junctions`、`k974_burden_scales`、`k974_screen_scales`、`calc_special_burden_total`、`main`（其接線與
+           二函式之唯增列由 F30 之 wiring 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, difflib, io, os, re, subprocess, sys, warnings
@@ -763,6 +766,8 @@ W6_REPL = {"k953_manual_run": (
 ALLOW375_APP += ("k971_key5", "k971_blk5", "f3_screen_end_block_merge")
 ALLOW375_SP += ("run_end_block_merge",)
 B5_KW384 = re.compile(r", blk5=[^,()]+\)$")
+# 🔧 `W-G.9-385`（`K-9-74`／`K-9-79`）：W5 之許增四新函式、`K974_PARAMS` 與步驟 H 之尺度所改之二函式（其接線由 F30 之 wiring 量之）
+ALLOW375_APP += ("K974_PARAMS", "k962_land_marks", "k974_read_junctions", "k974_burden_scales", "k974_screen_scales", "calc_special_burden_total", "main")
 
 
 def _git_show(repo, rev, rel):
