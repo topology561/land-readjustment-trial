@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-17T08:15:58+08:00",
+  "status": "running",
+  "status_since": "2026-10-17T08:59:34+08:00",
   "order": "W-G.9-386_規格單.md",
   "order_bytes": 23646,
   "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
@@ -18,6 +18,13 @@
       "from": null,
       "to": "pending",
       "note": "自動化建立；試跑單 W-G.9-386（零生產碼）"
+    },
+    {
+      "at": "2026-10-17T08:59:34+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-386_規格單.md；bytes/sha256/SELF_SHA256 驗符"
     }
   ]
 }
