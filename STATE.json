@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-18T00:39:34+08:00",
+  "status": "running",
+  "status_since": "2026-10-18T00:40:35+08:00",
   "order": "W-G.9-387_補令一.md",
   "order_bytes": 25221,
   "order_sha256": "f87b02d13794b0fcd636ea6fb29e09e5be2813499a9db245f7376cd9c74e087d",
@@ -123,6 +123,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-387 通過（生產碼 d2c4f65 逐行合 R-1〜R-3；73 呼叫皆合期；k6s3 cmp 二退縮相異 0、F8 逐位同、parity 正規化後逐位同 ⇒ 配地⛔ 變；收工閘 1〜4、6〜8 合）；工項四未做 ⇒ 出 W-G.9-387 補令一（工項四之補 ＋ 主線快轉 34736ab → 補令之工項一″）"
+    },
+    {
+      "at": "2026-10-18T00:40:35+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-387_補令一.md；bytes 25221／sha256 f87b02d1…／SELF_SHA256 b503caee… 驗符"
     }
   ]
 }
