@@ -99,6 +99,7 @@ idle ──發單端出單──▶ pending ──執行端接單──▶ runni
 
 1. `git clone --depth 1 --branch ops/queue https://github.com/topology561/land-readjustment-trial /tmp/q`（目錄已存者先刪）。
 2. 讀本檔、自身角色之步驟檔、`STATE.json`、`log.md` 之末 30 列。
-3. 依狀態判斷本輪是否有事；無事者，⛔ 任何 `commit`，以一句話結束（避免無謂之通知）。
-4. 存取被 Git 代理拒絕（「not in this session's authorized repository set」等）⇒ 以 `add_repo`（`owner` ＝ `topology561`、`repo` ＝ `land-readjustment-trial`、`access` ＝ `push`）附掛後重試一次；仍不能 ⇒ ⛔ 繞道，於最後之回覆說明「本輪無法存取倉庫」並結束（完成通知即告 KL）。
-5. 附掛倉庫之工具若提示「登錄倉庫根目錄」（`register_repo_root`）：**發單端⛔ 登錄**（`CLAUDE.md` 為執行端之規則，發單端以讀檔參照即可）；執行端依 `執行端.md` 丙之第 2 步。
+3. 有事之輪（將 `commit` 者）於 `log.md` 之該列記 `effort=<$CLAUDE_CODE_EFFORT_LEVEL 之值>`（KL 2026-10-17 設於雲端環境·期 `high`；空或他值者照記，⛔ 停）。
+4. 依狀態判斷本輪是否有事；無事者，⛔ 任何 `commit`，以一句話結束（避免無謂之通知）。
+5. 存取被 Git 代理拒絕（「not in this session's authorized repository set」等）⇒ 以 `add_repo`（`owner` ＝ `topology561`、`repo` ＝ `land-readjustment-trial`、`access` ＝ `push`）附掛後重試一次；仍不能 ⇒ ⛔ 繞道，於最後之回覆說明「本輪無法存取倉庫」並結束（完成通知即告 KL）。
+6. 附掛倉庫之工具若提示「登錄倉庫根目錄」（`register_repo_root`）：**發單端⛔ 登錄**（`CLAUDE.md` 為執行端之規則，發單端以讀檔參照即可）；執行端依 `執行端.md` 丙之第 2 步。
