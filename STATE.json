@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-17T23:01:26+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-17T23:03:40+08:00",
   "order": "W-G.9-387_規格單.md",
   "order_bytes": 103669,
   "order_sha256": "e0a0ec32090bc5176c887d6ed191dc09a8d20887fca552dd7be5ac299c259fa4",
@@ -109,6 +109,13 @@
       "from": "running",
       "to": "reported",
       "note": "執行端停機上呈（CLAUDE.md 之寫入被分類器拒）；工項三由 KL 本機代行 6dae569；工項四未做"
+    },
+    {
+      "at": "2026-10-17T23:03:40+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-387（停機上呈·工項三代行·工項四未做）"
     }
   ]
 }
