@@ -81,8 +81,8 @@ idle ──發單端出單──▶ pending ──執行端接單──▶ runni
 ## 六、雲端之通則（取代以往單中之 Windows 通則）
 
 1. 雲端為 Linux：直譯器 `python3`（`python` 亦可）；路徑用正斜線之絕對路徑；以往單中「Windows 下路徑引數一律反斜線」「`<O>\…`」等，一律讀為 Linux 之等價寫法。
-2. 依賴：`python3 -c "import shapely,streamlit,pandas,openpyxl,ezdxf,geopandas"` 失敗者 ⇒ `pip install -r requirements.txt --break-system-packages`。
-3. 機器僅約 2 核：驗之命令之並行數 ≤ **2**（KL 之「≤ 6」為上限，⛔ 為下限）。
+2. 依賴：`python3 -c "import shapely,streamlit,pandas,openpyxl,ezdxf,geopandas"` 失敗者 ⇒ `python3 -m pip install -r requirements.txt --break-system-packages`（⛔ 用裸 `pip`：其可能屬他版之直譯器·`W-G.9-386` 執行端之自捕 1）。
+3. 機器約 2〜4 核（`W-G.9-386` 實測 `nproc` ＝ `4`）：驗之命令之並行數 ≤ **2**（KL 之「≤ 6」為上限，⛔ 為下限）。
 4. Git 代理對本倉同時至多 2 個連線；⛔ 同時發多個 `clone`／`fetch`／`push`。
 5. `F8` 之落檔 hash 依平台而異：雲端（Linux）之值 ＝ `8be0160b…`／`6fb86647…`；`V-6` 唯要求同一機之前後相等。
 6. **KL 之主 checkout**（其 Windows 電腦）⛔ 由排程同步；KL 欲看畫面時自行 `git pull --ff-only`。凡以往單中「工項：主 checkout 之同步」者，於自動化下省之，並於回報中記「主 checkout 之同步由 KL 自行為之」。
