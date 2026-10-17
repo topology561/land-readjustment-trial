@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-17T17:55:49+08:00",
+ "status": "running",
+ "status_since": "2026-10-17T18:13:30+08:00",
  "order": "W-G.9-387_規格單.md",
  "order_bytes": 103669,
  "order_sha256": "e0a0ec32090bc5176c887d6ed191dc09a8d20887fca552dd7be5ac299c259fa4",
@@ -95,6 +95,13 @@
    "from": "idle",
    "to": "pending",
    "note": "出 W-G.9-387 規格單（K-9-61 ⑧ 之落地·原街廓之三鍵·新側支 verify/W-G.9-387-k961h·expects_allocation_change=false）"
+  },
+  {
+   "at": "2026-10-17T18:13:30+08:00",
+   "by": "執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接單 W-G.9-387_規格單.md；bytes/sha256/SELF_SHA256 驗符"
   }
  ]
 }
