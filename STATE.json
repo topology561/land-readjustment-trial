@@ -1,6 +1,6 @@
 {
-  "status": "await_kl",
-  "status_since": "2026-10-17T14:58:00+08:00",
+  "status": "idle",
+  "status_since": "2026-10-17T15:23:19+08:00",
   "order": "W-G.9-386_規格單.md",
   "order_bytes": 23646,
   "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-386_規格單_回報.md",
   "result": "完成",
-  "kl_question": "2026-10-17_K-9-61之二題_續.md",
+  "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
     {
@@ -81,6 +81,13 @@
       "from": "await_kl",
       "to": "await_kl",
       "note": "KL 14:55 答（KL答覆/2026-10-17_1455.md）：問二採現行；問一附問並給要旨（G 最大 → 重劃前面積 → 分不到土地中暫編地號最小）——逐街廓合計或逐筆待確認，續請示（待KL/2026-10-17_K-9-61之二題_續.md）"
+    },
+    {
+      "at": "2026-10-17T15:23:19+08:00",
+      "by": "發單端",
+      "from": "await_kl",
+      "to": "idle",
+      "note": "KL 15:23 答「甲」（KL答覆/2026-10-17_1523.md）：原街廓＝各街廓分不到土地之 G 加總 → 重劃前面積合計 → 最小暫編地號；二題皆答，續擬 W-G.9-387"
     }
   ]
 }
