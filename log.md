@@ -31,3 +31,4 @@
 | 2026-10-18T00:40:02+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01TNRzxFxEJz2k7S5UcaTgQb`；effort=high | `pending` |
 | 2026-10-18T00:53:35+08:00 | 執行端 | 接單並施工 `W-G.9-387_補令一`：工項零″ `405cb74`、工項一″ `fd9ef0f`（執行報告 `docs/reports/W-G.9-387R_K-9-61之八之落地_執行報告.md` ＋ 差異檔）推側支；主線 `34736ab959e3d6915abf94bda3977063bf2711e5` → `fd9ef0fa136bcc0f2ab0d1e88c7632b539cbf753`（快轉·⛔ `--force`）；收工閘 1″〜8″ 皆合；回報 `reports/W-G.9-387_補令一_回報.md`；effort=high | `reported`（完成） |
 | 2026-10-18T00:53:49+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_01Q9ir1TakR1bS5oDz363nSN`；effort=high | `reported` |
+| 2026-10-18T00:55:00+08:00 | 發單端 | 接手復驗 `W-G.9-387_補令一`；effort=high | `verifying` |
