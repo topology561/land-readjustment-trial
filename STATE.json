@@ -1,6 +1,6 @@
 {
-  "status": "await_kl",
-  "status_since": "2026-10-17T10:30:00+08:00",
+  "status": "idle",
+  "status_since": "2026-10-17T12:40:01+08:00",
   "order": "W-G.9-386_規格單.md",
   "order_bytes": 23646,
   "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-386_規格單_回報.md",
   "result": "完成",
-  "kl_question": "2026-10-17_下一個方向.md",
+  "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
     {
@@ -53,6 +53,13 @@
       "from": "idle",
       "to": "await_kl",
       "note": "待落地清單已無可自動處理之項目（README 二·6），請 KL 指定下一個方向"
+    },
+    {
+      "at": "2026-10-17T12:40:01+08:00",
+      "by": "發單端",
+      "from": "await_kl",
+      "to": "idle",
+      "note": "KL 答丙：先序 9（K-9-59〜61、63）與序 8（GB-205），先後由發單端依依賴定；K-9-38/40 附圖與調配後半其後；最小建築面積統一暫緩"
     }
   ]
 }
