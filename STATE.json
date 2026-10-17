@@ -1,6 +1,6 @@
 {
-  "status": "idle",
-  "status_since": "2026-10-17T09:57:41+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-17T10:30:00+08:00",
   "order": "W-G.9-386_規格單.md",
   "order_bytes": 23646,
   "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-386_規格單_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "2026-10-17_下一個方向.md",
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
     {
@@ -46,6 +46,13 @@
       "from": "verifying",
       "to": "idle",
       "note": "復驗通過：主線 34736ab 嚴格前綴追加、零生產碼、閘綠；無需另行入主線（執行端已依單快轉）"
+    },
+    {
+      "at": "2026-10-17T10:30:00+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "await_kl",
+      "note": "待落地清單已無可自動處理之項目（README 二·6），請 KL 指定下一個方向"
     }
   ]
 }
