@@ -1,6 +1,6 @@
 {
-  "status": "idle",
-  "status_since": "2026-10-17T12:40:09+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-17T14:08:00+08:00",
   "order": "W-G.9-386_規格單.md",
   "order_bytes": 23646,
   "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-386_規格單_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "2026-10-17_K-9-61之二題.md",
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
     {
@@ -67,6 +67,13 @@
       "from": "await_kl",
       "to": "idle",
       "note": "KL 答丙：先序 9（K-9-59〜61、63）與序 8（GB-205），先後由發單端依依賴定；K-9-38/40 附圖與調配後半其後；最小建築面積統一暫緩"
+    },
+    {
+      "at": "2026-10-17T14:08:00+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "await_kl",
+      "note": "擬 W-G.9-387 時查出 K-9-61 ⑧ 之末序之受詞未定、段三之跨分配線併入與 K-9-73 ⑤ 之讀法二（README 二·停 1）；請示 KL（待KL/2026-10-17_K-9-61之二題.md）"
     }
   ]
 }
