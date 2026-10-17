@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-17T09:10:04+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-17T09:57:06+08:00",
   "order": "W-G.9-386_規格單.md",
   "order_bytes": 23646,
   "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
@@ -32,6 +32,13 @@
       "from": "running",
       "to": "reported",
       "note": "完成；主線 eb9bc66 → 34736ab（三次快轉）；收工閘 1〜7 皆＝期"
+    },
+    {
+      "at": "2026-10-17T09:57:06+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗"
     }
   ]
 }
