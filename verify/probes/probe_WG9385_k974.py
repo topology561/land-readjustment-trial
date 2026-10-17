@@ -489,7 +489,8 @@ def wiring(repo, base):
             for ln in difflib.ndiff((btop.get(k) or "").split("\n"), (ctop.get(k) or "").split("\n")):
                 if ln.startswith("- "):
                     dels.append((k, hashlib.sha256(ln[2:].encode("utf-8")).hexdigest()))
-        ok7 = (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"}
+        # 🔧 `W-G.9-387`：其後之單所改之頂層節點亦許（`adj_intake`·`K-9-61` ⑧·其行為由 F31 量之）
+        ok7 = (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"} | {"adj_intake"}
                and sorted(h for _, h in dels) == sorted(REPL385) and all(k == "main" for k, _ in dels))
         res.append(("W7 main／calc 唯增列（具名之換列三）·頂層之相異", ok7, f"相異 {dif}／刪列 {len(dels)}"))
     except Exception as e:

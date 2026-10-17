@@ -72,7 +72,8 @@ FN_PT, FN_HCB = "k6b_stage3_pool_temp", "_k6b_callbacks"
 NEST = ("_has357", "_res357", "_max357", "_dist357", "_k951", "_split357", "_t14_357")
 # 🔧 `W-G.9-373`（`K-9-66`）：`_max357`／`_k951`／`_split357` 去之
 NEST = tuple(x for x in NEST if x not in ("_max357", "_k951", "_split357"))
-X4 = ("float(_r['應分配面積'])", "if _pool or (_cm and not _al):", "if '段三併出' in t:", "if len(_cands) != 1:")
+# 🔧 `W-G.9-387`（`K-9-61` ⑧·原街廓之並列⛔ 停機）：去第四字樣（其句已去·新碼由 F31 量之）
+X4 = ("float(_r['應分配面積'])", "if _pool or (_cm and not _al):", "if '段三併出' in t:")
 
 
 def _read(repo, rel):

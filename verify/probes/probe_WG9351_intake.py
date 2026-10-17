@@ -21,6 +21,10 @@
            相同；R4 逐類之切片數與原有面積之和 ＝ 全部切片；R5 入池閘之入池宗（不配地之 build 單元之成員）之數與
            原有面積 ＝ 類「建築街廓內不能分配」者。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
+🔧 `W-G.9-387`（`K-9-61` ⑧·KL 補裁 `2026-10-17 14:55`／`15:23`「甲」·⛔ 上列一字不刪）：原街廓之應分配面積以 `0.01 ㎡` 為單位
+  相同者，取重劃前面積之合計較大者，再同取分不到之土地中最小之暫編地號較小者（`k967_rank`·⛔ 停機）——抽出另含
+  `k967_rank`、`adj_q2`（`ADJ_DEPS387`）；S6 之期改為重劃前面積較大之街廓；突變 M4（並列⛔ 停機）去之（其錨已去·新碼之判別力
+  由 F31 量之）；run 之外部錨（R3）之原街廓依上開三鍵另寫。
 """
 import ast, contextlib, io, os, re, sys
 
@@ -30,6 +34,7 @@ except Exception:
     pass
 
 ADJ_FUNCS = ["adj_intake", "adj_intake_rows"]
+ADJ_DEPS387 = ["k967_rank", "adj_q2"]   # 🔧 `W-G.9-387`：`adj_intake` 所呼之函式（抽出用·⛔ 入 ADJ_FUNCS 之他判）
 ADJ_KEYS = ["f3_k929_6_build", "f3_k929_6_dropped"]
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 
@@ -44,7 +49,7 @@ def _extract_ns(src):
     tree = ast.parse(src)
     parts = []
     for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name in ADJ_FUNCS:
+        if isinstance(node, ast.FunctionDef) and node.name in ADJ_FUNCS + ADJ_DEPS387:
             parts.append(ast.get_source_segment(src, node))
         elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
                 and (node.targets[0].id.startswith("ADJ_") or node.targets[0].id.startswith("SS_ADJ_")):
@@ -109,7 +114,8 @@ def _cases(ns):
     run("S5 原街廓 ＝ 應分配面積較大者（⛔ 原有面積）",
         lambda: I(temp2, b2, [], d2, own, BUR)["units"][0]["原街廓"], "B2")
     d2t = {("B1", "left"): [{"暫編地號": "u", "G(㎡)": 25.0}], ("B2", "right"): [{"暫編地號": "v", "G(㎡)": 25.0}]}
-    run("S6 應分配面積並列 ⇒ loud", lambda: I(temp2, b2, [], d2t, own, BUR), ("例外", "RuntimeError"))
+    # 🔧 `W-G.9-387`（`K-9-61` ⑧）：應分配面積並列（25／25）⇒ 重劃前面積之合計較大者（u 100 對 v 40）⇒ B1（⛔ 停機）
+    run("S6 應分配面積並列 ⇒ 重劃前面積較大者", lambda: I(temp2, b2, [], d2t, own, BUR)["units"][0]["原街廓"], "B1")
     # 入池閘之合併單元：入池（不配地）與留置（配地）
     temp3 = [_t("m1", "L5", "B1", 60.0), _t("m2", "L6", "B1", 30.0), _t("k1", "L7", "B2", 70.0)]
     b3 = [dict(temp3[0], 入池閘併入=["m1", "m2"]), dict(temp3[2])]
@@ -188,7 +194,6 @@ def selftest(repo):
         ("M1 原街廓改以原有面積比", "float(_r['應分配面積'])", "float(_r['原有面積'])"),
         ("M2 兼有配地者⛔ 成單位", "if _pool or (_cm and not _al):", "if (_pool and not _al) or (_cm and not _al):"),
         ("M3 段三所併出者當共同負擔", "if '段三併出' in t:", "if False:"),
-        ("M4 並列⛔ 停機", "if len(_cands) != 1:", "if len(_cands) < 1:"),
     ]
     for mname, a, b in muts:
         if src.count(a) != 1:
@@ -411,6 +416,11 @@ def wiring(repo):
     return 1 if red else 0
 
 
+def _q2_387(x):
+    from decimal import Decimal, ROUND_HALF_UP
+    return Decimal(repr(float(x))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 def _independent(tp3, bfin, rows, drops, own, bur):
     """外部錨：本器另寫之分類（⛔ 呼叫 adj_intake）。回 ({暫編: 類名}, {歸戶: (軌, 原街廓, 成員)})。"""
     alloc = {str(r["暫編地號"]) for r in rows if r.get("推進側別") in ("left", "right")}
@@ -422,11 +432,24 @@ def _independent(tp3, bfin, rows, drops, own, bur):
         for m in u.get("入池閘併入") or [u["暫編地號"]]:
             mem[str(m)] = str(u["暫編地號"])
     kind, owner, s3 = {}, {}, set()
+    # 🔧 `W-G.9-387`：重劃前面積 ＝ 分攤登記面積 − 段三部分併出之和 − 入池閘之帳（build 之宗之自身與其成員）
+    po = {}
+    for u in bfin:
+        if u.get("_is_ghost_sliver"):
+            continue
+        if u.get("入池閘部分併出"):
+            po[str(u["暫編地號"])] = po.get(str(u["暫編地號"]), 0.0) + sum(float(v) for v in u["入池閘部分併出"].values())
+        for m, d in (u.get("入池閘成員部分併出") or {}).items():
+            po[str(m)] = po.get(str(m), 0.0) + sum(float(v) for v in (d or {}).values())
+    pre = {}
     for t in tp3:
         if t.get("_is_ghost_sliver"):
             continue
         k = str(t["暫編地號"])
         owner[k] = own[str(t["原地號"])]
+        # 入池閘之帳者（W-G.9-375）恆扣段三部分併出；否則唯段三併出非空者（W-G.9-373）扣之
+        pre[k] = float(t.get("分攤登記面積_m2", 0) or 0) - po.get(k, 0.0) - (
+            sum(float(v) for v in (t.get("段三部分併出") or {}).values()) if (k in po or t.get("段三併出")) else 0.0)
         # 🔧 `W-G.9-363`（發單側窗六十四·⛔ 下列一字不刪）：帶 段三餘量 而其值 ＞ 0 之片（段三或手冊先行之剩下）⇒
         #   恆入合併單位（`W-G.9-357`）——其歸戶無入池之宗而有配地者，另成公設軌之單位（`adj_intake` 之 `_s3`）
         if float(t.get("段三餘量", 0) or 0) > 0:
@@ -450,7 +473,15 @@ def _independent(tp3, bfin, rows, drops, own, bur):
             bl = {}
             for u in {mem[k] for k in ks if kind[k] == "池"}:
                 bl[dg[u][0]] = bl.get(dg[u][0], 0.0) + dg[u][1]
-            units[g] = ("建", max(bl, key=bl.get), sorted([k for k in ks if kind[k] == "池"] + cm))
+            # 🔧 `W-G.9-387`（`K-9-61` ⑧）：G 之加總（0.01 ㎡）→ 重劃前面積之合計 → 最小之暫編地號（字典序）
+            pa, mn = {}, {}
+            for k in ks:
+                if kind[k] == "池":
+                    b_ = dg[mem[k]][0]
+                    pa[b_] = pa.get(b_, 0.0) + pre[k]
+                    mn[b_] = min(mn.get(b_, k), k)
+            units[g] = ("建", sorted(bl, key=lambda b_: (-_q2_387(bl[b_]), -_q2_387(pa[b_]), mn[b_]))[0],
+                        sorted([k for k in ks if kind[k] == "池"] + cm))
             for k in cm:
                 kind[k] = "公入"
         elif cm and not has_a:

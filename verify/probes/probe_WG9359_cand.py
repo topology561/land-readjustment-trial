@@ -382,7 +382,9 @@ def _find_main_block(mn):
 
 
 def _screen_ns(app_src):
-    return _extract_ns(app_src, funcs=FUNCS + ["adj_intake", "r3_front_road_identifier", "r3_normalize_road_name"],
+    # 🔧 `W-G.9-387`：`adj_intake` 呼 `k967_rank`（原街廓之擇·`K-9-61` ⑧）⇒ 抽出亦含之
+    return _extract_ns(app_src, funcs=FUNCS + ["adj_intake", "r3_front_road_identifier", "r3_normalize_road_name",
+                                               "k967_rank"],
                        consts=CONSTS + ["SS_FRONT_ROAD_NAME", "SS_FRONT_ROAD_DERIVE", "K91_SS_MBA_EFFECTIVE"],
                        prefixes=("ADJ_", "SS_ADJ_", "R3_STATUS_"))
 
