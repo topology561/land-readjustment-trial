@@ -1,0 +1,23 @@
+{
+  "status": "pending",
+  "status_since": "2026-10-17T08:15:58+08:00",
+  "order": "W-G.9-386_規格單.md",
+  "order_bytes": 23646,
+  "order_sha256": "54dcae1cd3993b3472c584e725803fd813edfa954ed300b85eb5fe018fac16d3",
+  "order_kind": "規格單",
+  "expects_allocation_change": false,
+  "attempt": 1,
+  "report": null,
+  "result": null,
+  "kl_question": null,
+  "main_before": "eb9bc66cbaf1c764a4000a86bc63f7307fdc63ca",
+  "history": [
+    {
+      "at": "2026-10-17T08:15:58+08:00",
+      "by": "發單側窗八十七",
+      "from": null,
+      "to": "pending",
+      "note": "自動化建立；試跑單 W-G.9-386（零生產碼）"
+    }
+  ]
+}
