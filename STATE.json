@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-18T00:55:00+08:00",
+  "status": "idle",
+  "status_since": "2026-10-18T01:00:11+08:00",
   "order": "W-G.9-387_補令一.md",
   "order_bytes": 25221,
   "order_sha256": "f87b02d13794b0fcd636ea6fb29e09e5be2813499a9db245f7376cd9c74e087d",
@@ -144,6 +144,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-387_補令一"
+    },
+    {
+      "at": "2026-10-18T01:00:11+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-387_補令一 通過：主線 wip/s1-endpart 34736ab959e3d6915abf94bda3977063bf2711e5 → fd9ef0fa136bcc0f2ab0d1e88c7632b539cbf753（快轉·祖含 34736ab、count 6/0、merges 0、生產碼命中唯 d2c4f65 app.py、app.py blob efae3a5a…）；三新檔 blob 合（補令＝來源 f87b02d1…、差異檔 a1d0e389… 自重生同）、CR 0、check-ignore 無命中；閘 8″ 13 呼叫 rc 0／stderr 0（對照 160c3f4 三呼叫 rc 1）；closegate 623 622 rc 0／624 623 rc 7；四簿號不變；W-G.9-387 入主線"
     }
   ]
 }
