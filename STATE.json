@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-18T00:40:35+08:00",
+  "status": "reported",
+  "status_since": "2026-10-18T00:53:35+08:00",
   "order": "W-G.9-387_補令一.md",
   "order_bytes": 25221,
   "order_sha256": "f87b02d13794b0fcd636ea6fb29e09e5be2813499a9db245f7376cd9c74e087d",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-387_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
@@ -130,6 +130,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-387_補令一.md；bytes 25221／sha256 f87b02d1…／SELF_SHA256 b503caee… 驗符"
+    },
+    {
+      "at": "2026-10-18T00:53:35+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-387_補令一（完成）：側支 verify/W-G.9-387-k961h 6dae569 → 405cb74（工項零″）→ fd9ef0f（工項一″·執行報告二檔）；主線 wip/s1-endpart 34736ab959e3d6915abf94bda3977063bf2711e5 → fd9ef0fa136bcc0f2ab0d1e88c7632b539cbf753（快轉）；收工閘 1″〜8″ 皆合"
     }
   ]
 }
