@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-18T20:28:48+08:00",
-  "order": "W-G.9-388_規格單.md",
-  "order_bytes": 148474,
-  "order_sha256": "606428c4dba5616e10e4187758fa2a05edee6c55a1c39be17b9fdb51719b3cd3",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-18T22:37:34+08:00",
+  "order": "W-G.9-388_補令一.md",
+  "order_bytes": 65501,
+  "order_sha256": "b42aa2689f181742e83db7391bdd5f6f70e015658855812f7d4293f9422f812c",
+  "order_kind": "補令",
   "expects_allocation_change": false,
-  "attempt": 1,
-  "report": "W-G.9-388_規格單_回報.md",
-  "result": "停機上呈",
+  "attempt": 2,
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
@@ -207,6 +207,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-388 之停機上呈（停機款 12）"
+    },
+    {
+      "at": "2026-10-18T22:37:34+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "pending",
+      "note": "復驗 W-G.9-388 之停機上呈：屬實·發單端之誤（自誤 628）·二讀依既裁 K-9-63 ⑩ 定（扣路衝街廓·⛔ 新域問）⇒ 出 W-G.9-388_補令一.md（R-0″ 原趟之碼重施 ＋ R-6′；F32 K29〜K31；KL 14:46 查明已合 K-9-73 ①·⛔ 改碼；expects_allocation_change=false）"
     }
   ]
 }
