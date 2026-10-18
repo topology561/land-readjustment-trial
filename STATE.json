@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-18T22:47:00+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-18T22:57:39+08:00",
   "order": "W-G.9-388_補令一.md",
   "order_bytes": 65501,
   "order_sha256": "b42aa2689f181742e83db7391bdd5f6f70e015658855812f7d4293f9422f812c",
@@ -228,6 +228,13 @@
       "from": "running",
       "to": "reported",
       "note": "停機上呈（停機款 4″：工項二″ 前置″ 項 3「git diff --stat 9977c86 HEAD 唯 probe_WG9388_k961s3.py 一檔」而實為二檔——含工項零″ 依單所入之 docs/orders/W-G.9-388_補令一.md；⛔ 涉土地後果）；工項零″ b250d63、工項一″ 28f87ca 已推側支；生產碼⛔ 動·配地⛔ 變"
+    },
+    {
+      "at": "2026-10-18T22:57:39+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-388 補令一之停機上呈（停機款 4″）"
     }
   ]
 }
