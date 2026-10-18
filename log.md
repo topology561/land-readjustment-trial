@@ -60,3 +60,4 @@
 | 2026-10-18T20:28:09+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_01LS2UHbzqswfFmRjLwPrzPi`；effort=high | `reported` |
 | 2026-10-18T20:28:48+08:00 | 發單端 | 接手復驗 `W-G.9-388` 之停機上呈（停機款 `12`）；effort=high | `verifying` |
 | 2026-10-18T20:48:39+08:00 | 監看窗 | 補錄 KL 20:48 之釐清入 `KL答覆/2026-10-18_1413.md`（三法 ①②③ 即所指·規則⛔ 改） | `verifying` |
+| 2026-10-18T21:05:45+08:00 | 監看窗 | 錄 KL 21:04 入 `KL答覆/2026-10-18_2104.md`；立 `本機模式.md`（試跑稿·驗算在 KL 筆電·唯 `mode` ＝ `local` 適用·預設雲端不變）；二角色檔首加指引一行。試跑於 388 收尾後 | `verifying` |
