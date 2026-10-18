@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-18T20:27:45+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-18T20:28:48+08:00",
   "order": "W-G.9-388_規格單.md",
   "order_bytes": 148474,
   "order_sha256": "606428c4dba5616e10e4187758fa2a05edee6c55a1c39be17b9fdb51719b3cd3",
@@ -200,6 +200,13 @@
       "from": "running",
       "to": "reported",
       "note": "停機上呈（停機款 12：R-6 之「遠半」是否扣近半亦臨之街廓·§三-1 與塊 K30／審查要點之二讀·土地後果相異·本案⛔ 觸）；工項零 347b3b4、工項一 9977c86 已推新側支；工項二 2ba27a7 已 commit 而⛔ 推；V-1〜V-9 皆合·配地⛔ 變"
+    },
+    {
+      "at": "2026-10-18T20:28:48+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-388 之停機上呈（停機款 12）"
     }
   ]
 }
