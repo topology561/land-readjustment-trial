@@ -81,3 +81,4 @@
 | 2026-10-19T05:22:16+08:00 | 執行端 | 接單 `W-G.9-388_補令三.md`（`22034` B·`c88b6d45…`·`SELF_SHA256` `85607ee4…` 皆合）；effort=high | `running` |
 | 2026-10-19T05:29:37+08:00 | 執行端 | 回報 `W-G.9-388_補令三`（完成）：工項零⁗ `929ea20` 推側支（`906a8ff` → `929ea20`·快轉）；**主線 `fd88f64793a373ab921999fbe5b325c44f0c2a4c` → `929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb`**（快轉·⛔ `--force`·heads `48`）；生產碼 `34` 檔 ≡ `8fd9f8a`·本案配地⛔ 變；收工閘 `1⁗`〜`8⁗` 皆合（閘 `8⁗` 十五呼叫 `rc 0`·`stderr` `0` B）；effort=high | `reported` |
 | 2026-10-19T05:30:16+08:00 | 發單端 | 接手復驗 `W-G.9-388_補令三`（入主線之短單·完成之回報）；effort=high | `verifying` |
+| 2026-10-19T05:30:30+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_01Kd8rUouovAAxa1dg9YzVFu`；effort=high | `reported` |
