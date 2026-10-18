@@ -1,0 +1,228 @@
+diff --git a/app.py b/app.py
+index efae3a5..3f02399 100644
+--- a/app.py
++++ b/app.py
+@@ -14680,6 +14680,13 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       唯一 ⇒ 照舊。上文「距離 → `k967_rank`」於建地之片之他街廓之候選不再適用（其為五級與深度同者之序）；道路、公設地之片照舊。
+       `blk5` ＝ 五級之街廓屬性之回呼（`blk5() -> adj_block_ctx 之回傳`·`k971_blk5`）：首次須比時呼之一次、存之（同一次之段三
+       之內共用）；須比而缺或其回傳非 `dict` ⇒ 停機（⛔ 以距離代之）；⛔ 須比者⛔ 呼之。
++    🔧 `W-G.9-388`（`K-9-61` ①②③⑥·KL 裁 `2026-10-06 01:29`；`2026-10-18 08:03`／`08:14`）：後處理之某街廓之承受之宗 ＝ 該群
++      於該街廓之本段之受併宗（同一街廓之左右兩端可二）∪ 照配之宗（該群之依原位次配得而保留之建地·有受併宗之街廓者亦照配、
++      ⛔ 併入受併宗）；二以上 ⇒ 與所承受之片相鄰（宗連同其於本段整筆併入之片）者先 → `k967_rank`（試算之 G → 重劃前面積
++      〔同第 5 項之表之式〕→ 暫編地號），唯一者⛔ 須 G；題一之未得之一端之候選先（同前）。分不到之建地所鄰之已配得街廓二以上
++      ⇒ 本街廓先，否則其承受之宗之序鍵最小（應分配面積較大）之一側；為零 ⇒ 本街廓有同一地主之已配得之宗者依第 5 項之輪，否則
++      經該群之與之相鄰之道路片（⛔ 已併出·⛔ 穿越）之遠半臨另一側之已配得街廓者向該側併（隨其道路片之受者·手冊道路用地分配
++      原則第 2 點），仍為零 ⇒ 依第 5 項之輪（整筆·於整批試與其諸輪之後另為一輪）。受併宗於試算未保留之停機改以逐受併宗判。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -15491,48 +15498,75 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+     # 🔧 `W-G.9-373`（R-7 ①）：諸合併群之計畫皆以步驟 10 之前之一次之試算定之（諸群共用），依群之序併為一表 `_tab`
+     _cur = None
+     _tab = []
++    # 🔧 `W-G.9-388`（`K-9-61` ⑥·R-6 (二)）：所鄰為零而⛔ 經道路片者之串列（跨群·依處置之序）與經道路片之受者
++    #   （{片: {街廓: [受者…]}}）——其片⛔ 入 (a) 之計畫，於整批試與其第 1 輪、第 5 項之輪之後另為一次第 5 項之輪（R-7）
++    _p5x388, _via388 = [], {}
++
++    def _key388(p):
++        # 🔧 `W-G.9-388`（`K-9-61` ①·R-4）：序鍵 ＝ k967_rank(試算之 G, 重劃前面積〔同第 5 項之表之式〕, p)；試算⛔ 回 G
++        #   或其中無 p ⇒ 停機（⛔ 以 0 代之）
++        _G388 = _cur.get("G")
++        if not isinstance(_G388, dict) or p not in _G388:
++            raise RuntimeError(f"🔴 [K-6-B 段三 後處理] {p}：試算未回 G——承受之宗之序鍵無從定之（停機款 9）")
++        return k967_rank(_G388[p], k967_pre_area(p, _cm388.get(p), _pa388), p)
++
++    def _ra388(x, b, rof):
++        # 🔧 `W-G.9-388`（R-6）：(a) 之受者——x 經道路片而臨 b 者 ⇒ 其經道路片之受者（唯一 ⇒ 之；二以上 ⇒ 序鍵最小者）；
++        #   否則 rof(b, x)（該群之 _recv_of）
++        _vs388 = sorted(set(_via388.get(x, {}).get(b, [])))
++        if not _vs388:
++            return rof(b, x)
++        if len(_vs388) == 1:
++            return _vs388[0]
++        return min(_vs388, key=_key388)
+     for _gi in _seen_g:
+         _mem = set(_groups[_gi])
++        # 🔧 `W-G.9-388`（`K-9-61` ①·R-1）：同一街廓之受併宗可二以上（左右兩端）⇒ {街廓: [受併宗…]}（依 successes 之序）
+         _recv_by_blk = {}
+         for _g2, _c2, _b2 in successes:
+             if _g2 == _gi:
+-                if _b2 in _recv_by_blk and _recv_by_blk[_b2] != _c2:
+-                    raise RuntimeError(
+-                        f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 於街廓 {_b2} 有二受併宗"
+-                        f"（{_recv_by_blk[_b2]}／{_c2}）⇒ 停機款 9")
+-                _recv_by_blk[_b2] = _c2
++                _recv_by_blk.setdefault(_b2, [])
++                if _c2 not in _recv_by_blk[_b2]:
++                    _recv_by_blk[_b2].append(_c2)
++        _rcv388 = {_c388 for _cs388 in _recv_by_blk.values() for _c388 in _cs388}
+         _cl0 = _closer.get(_gi)
+-        R = _mem - merged_out - set(_recv_by_blk.values()) - L - _t14_done   # 補令一 `X-3′`：扣 `R-7` 所處置之候選
++        R = _mem - merged_out - _rcv388 - L - _t14_done   # 補令一 `X-3′`：扣 `R-7` 所處置之候選
+         if not R:
+             continue
+         if _cur is None:
+             _cur = alloc_state(state["temp"], state["build"])
+             if _cur.get("err"):
+                 raise RuntimeError(f"🔴 [K-6-B 段三 後處理] 現態配地中止：{_cur['err']!r}（停機款 9）")
++            # 🔧 `W-G.9-388`（R-4）：序鍵之表（首次之試算之後各立一次）——試算之 members 與重劃前面積之表（現態之每一片之
++            #   分攤登記面積 − 其段三部分併出之和，再以 k967_pool_less 減試算之 pool_out·同第 5 項之輪之式）
++            _cm388 = _cur.get("members") if isinstance(_cur.get("members"), dict) else {}
++            _pa388 = k967_pool_less(
++                {_q388: float(_u388.get('分攤登記面積_m2', 0) or 0)
++                 - sum(float(_w388) for _w388 in (_u388.get('段三部分併出') or {}).values())
++                 for _q388, _u388 in state["by"].items()}, _cur.get("pool_out"))
+         B = sorted({_blk_of[m] for m in _mem
+                     if _kind(m) == 'bld' and m in _cur["kept"].get(_blk_of[m], set())})
+         # 🆕 `W-G.9-354`（`K-9-48` 其二·讀法 `1` ⑤·`K-9-50` 題一 4）：該群於本段無受併宗之街廓，其依原位次配得之宗
+         #   照配（⛔ 動）；分往該街廓之土地由其配得之宗承受（`_recv_of`）
+-        _stay = {m for m in _mem if _kind(m) == 'bld' and _blk_of[m] in B and _blk_of[m] not in _recv_by_blk
++        # 🔧 `W-G.9-388`（`K-9-61` ③·R-2）：有受併宗之街廓之依原位次配得之宗亦照配（⛔ 動、⛔ 併入受併宗）、亦為承受之宗
++        _stay = {m for m in _mem if _kind(m) == 'bld' and _blk_of[m] in B and m not in _rcv388
+                  and m in _cur["kept"].get(_blk_of[m], set())}
+         R = R - _stay
+-        _orig = {}
+-
+-        def _recv_of(b):
+-            # 受併宗：本段之受併宗；無 ⇒ 題一未得之一端取其候選（現態配得者），他街廓唯恰一宗配得者；餘 ⇒ 停機
+-            if b in _recv_by_blk:
+-                return _recv_by_blk[b]
+-            if b not in _orig:
+-                _kb = sorted(m for m in _stay if _blk_of[m] == b)
+-                if _cl0 is not None and b == _cl0['敗']['blk'] and _cl0['敗']['c'] in _kb:
+-                    _orig[b] = _cl0['敗']['c']
+-                elif len(_kb) == 1:
+-                    _orig[b] = _kb[0]
+-                else:
+-                    raise RuntimeError(
+-                        f"🔴 [K-6-B 段三 後處理] 街廓 {b} 有群 {sorted(_mem)} 之保留宗 {_kb} 而無本段之受併宗"
+-                        "——承受之宗未定（停機款 9）")
+-            return _orig[b]
++
++        def _recv_of(b, y):
++            # 🔧 `W-G.9-388`（`K-9-61` ①②·R-3）：街廓 b 之承受之宗 ＝ 本段之受併宗 ∪ 照配之宗；y ＝ 所承受之片。
++            #   ① b 無本段之受併宗而為題一之未得之一端、其候選為承受之宗 ⇒ 之；② 唯一 ⇒ 之（⛔ 須 G）；③ 二以上 ⇒
++            #   與 y 相鄰（宗連同其於本段整筆併入之片）者先 → 序鍵（應分配面積 → 重劃前面積 → 暫編地號）
++            _hs388 = list(_recv_by_blk.get(b, [])) + sorted(m for m in _stay if _blk_of[m] == b)
++            if b not in _recv_by_blk and _cl0 is not None and b == _cl0['敗']['blk'] and _cl0['敗']['c'] in _hs388:
++                return _cl0['敗']['c']
++            if len(_hs388) == 1:
++                return _hs388[0]
++
++            def _nx388(_e388):
++                _ws388 = [_e388] + sorted(_z388 for _z388 in merged_out if _e388 in marks.get(_z388, set()))
++                return 0 if any(_adj(y, _z388) for _z388 in _ws388) else 1
++            return min(_hs388, key=lambda _e388: (_nx388(_e388), _key388(_e388)))
+         if not R:
+             continue
+         # 🔧 補令二 裁五 2：B 為空、或某受併宗之街廓 ∉ B ⇒ 停機款 9（⛔ 靜默略過·⛔ 除以 0）
+@@ -15540,31 +15574,55 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             raise RuntimeError(
+                 f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之 B 為空（現態無保留之建築成員）"
+                 f"而待處置者 {sorted(R)} 非空（停機款 9）")
+-        _recv_out = sorted(b for b in _recv_by_blk if b not in B)
++        # 🔧 `W-G.9-388`（`K-9-61` ④ 之防·R-5）：逐受併宗判（同一街廓二受併宗而其一未保留者亦停機）
++        _recv_out = sorted(_c388 for _c388 in _rcv388 if _c388 not in _cur["kept"].get(_blk_of[_c388], set()))
+         if _recv_out:
+             raise RuntimeError(
+-                f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之受併宗所在街廓 {_recv_out} ∉ B {B}"
++                f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之受併宗 {_recv_out} 於試算⛔ 保留"
+                 "（受併宗於現態未保留·停機款 9）")
+         _plan = []      # (類, x, [(recv, qty)], whole, 鄰接, 鄰接半片)
+         _ga = lambda x: (-float(_by0[x].get('幾何面積_m2', 0) or 0), x)
+         _cls = {'a': [], 'b': [], 'c': []}
++        _own388 = own_map or {}
+         for x in sorted(R):
+             _k = _kind(x)
+             if _k == 'bld':
+-                _kept_x = x in _cur["kept"].get(_blk_of[x], set())
+-                if _blk_of[x] in B and _kept_x:
+-                    raise RuntimeError(
+-                        f"🔴 [K-6-B 段三 後處理] {x}（{_blk_of[x]}）為 B 內之保留建築片而非受併宗"
+-                        "——§三-2 未定（停機款 9）")
+                 if _cl0 is not None and _blk_of[x] == _cl0['敗']['blk']:
+                     # 🆕 `W-G.9-354`（`K-9-50` 題一 4）：未得之一端之地主土地不能依原位次配地者 ⇒ 併入已取得之一端
+                     _cls['a'].append((x, _cl0['勝']['blk']))
+                     continue
+                 _tb = sorted({b for b in B for m in _mem
+                               if _blk_of[m] == b and m != x and _adj(x, m)})
+-                if len(_tb) != 1:
+-                    raise RuntimeError(
+-                        f"🔴 [K-6-B 段三 後處理 (a)] {x} 所鄰之 B 內街廓 ＝ {_tb}（期恰 1）（停機款 9）")
++                # 🔧 `W-G.9-388`（`K-9-61` ⑥·KL `2026-10-18 08:03` 第 2 點·R-6）：所鄰為零 ⇒（一）本街廓無同一地主之已配得
++                #   之宗者，經該群之與之相鄰之道路片（⛔ 已併出·⛔ 穿越）之遠半臨 B 內街廓（手冊道路用地分配原則第 2 點）；
++                #   （二）仍為零 ⇒ 入串列（第 5 項·R-7）；（三）二以上 ⇒ 本街廓先，否則 (a) 之受者之序鍵最小之街廓；（四）恰一
++                if not _tb:
++                    _gx388 = str(_own388.get(str(_by0[x].get('原地號', '') or ''), '') or '')
++                    _same388 = any(
++                        _p388 != x and _p388 not in merged_out and _p388 in state["by"]
++                        and str(_own388.get(str(state["by"][_p388].get('原地號', '') or ''), '') or '') == _gx388
++                        for _p388 in sorted(_cur["kept"].get(_blk_of[x], set())))
++                    if not _same388:
++                        for _d388 in sorted(_mem):
++                            if _kind(_d388) != 'road' or _raw[_d388] is None or _d388 in merged_out \
++                                    or _is_crossing(_d388) or not _adj(x, _d388):
++                                continue
++                            # 🔧 `W-G.9-388` 補令一（`K-9-63` ⑩·R-6′）：遠半之所臨扣近半之所臨（路衝街廓⛔ 為另一側·以本道路片為單位）
++                            _hv388 = [_nbr_blocks(_h388, _blk_of[_d388])
++                                      for _h388 in _road_halves(_d388, '後處理·經道路片')]
++                            _n388 = set().union(*[set(_k388) for _k388 in _hv388 if _blk_of[x] in _k388])
++                            for _nb388 in _hv388:
++                                if _blk_of[x] in _nb388:
++                                    continue
++                                for _b388 in sorted((set(_nb388) & set(B)) - _n388):
++                                    _via388.setdefault(x, {}).setdefault(_b388, []).append(_recv_of(_b388, _d388))
++                        _tb = sorted(_via388.get(x, {}))
++                if not _tb:
++                    _p5x388.append(x)
++                    continue
++                if len(_tb) >= 2:
++                    _tb = [_blk_of[x]] if _blk_of[x] in _tb else [
++                        min(_tb, key=lambda _t388: _key388(_ra388(x, _t388, _recv_of)))]
+                 _cls['a'].append((x, _tb[0]))
+             elif _k == 'road' and not _is_crossing(x):
+                 _cls['b'].append(x)
+@@ -15573,7 +15631,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             else:
+                 raise RuntimeError(f"🔴 [K-6-B 段三 後處理] {x} 之類別無從歸入 (a)(b)(c)（停機款 9）")
+         for x, b in sorted(_cls['a'], key=lambda p: _ga(p[0])):
+-            _plan.append(('a', x, [(_recv_of(b), _aprime(state, x, _recv_of(b)))], True,
++            _r388 = _ra388(x, b, _recv_of)    # 🔧 `W-G.9-388`（R-6）：(a) 之受者
++            _plan.append(('a', x, [(_r388, _aprime(state, x, _r388))], True,
+                           _nbr_blocks(_raw[x], _blk_of[x]), None))
+         for x in sorted(_cls['b'], key=_ga):
+             _rb = _blk_of[x]
+@@ -15591,16 +15650,16 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             if not _ones:
+                 _plan.append(('b', x, [], False, _nbr_blocks(_raw[x], _rb), _half_log))
+             elif len(_ones) == 1:
+-                _recv = _recv_of(_ones[0][1][0])
++                _recv = _recv_of(_ones[0][1][0], x)
+                 _plan.append(('b', x, [(_recv, _aprime(state, x, _recv))], False,
+                               _nbr_blocks(_raw[x], _rb), _half_log))
+             else:
+-                _qs = [(_recv_of(h[1][0]),
+-                        _aprime(state, x, _recv_of(h[1][0])) * (h[0].area / _geo[x].area))
++                _qs = [(_recv_of(h[1][0], x),
++                        _aprime(state, x, _recv_of(h[1][0], x)) * (h[0].area / _geo[x].area))
+                        for h in _halves]
+                 _plan.append(('b', x, _qs, False, _nbr_blocks(_raw[x], _rb), _half_log))
+         for x in sorted(_cls['c'], key=_ga):
+-            _recvs = [_recv_of(b) for b in B]
++            _recvs = [_recv_of(b, x) for b in B]
+             _plan.append(('c', x, [(r, _aprime(state, x, r) / len(B)) for r in _recvs], False,
+                           _nbr_blocks(_raw[x], _blk_of[x]), None))
+         _tab.extend(_plan)
+@@ -15665,6 +15724,12 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         for x in _xs10:
+             if _kind(x) != 'bld':
+                 _left[x] = max(0.0, _rem10.get(x, 0.0))
++    if _p5x388:
++        # 🔧 `W-G.9-388`（`K-9-61` ⑥·R-7）：所鄰為零而⛔ 經道路片者 ⇒ 逐片記一列，再依第 5 項之輪（整筆之來源量）
++        for x in _p5x388:
++            _row(序='後處理', 街廓=_blk_of[x], 候選=x, 層級=_lvl_name['a'], 結果='依第5項',
++                 鄰接街廓=_nbr_blocks(_raw[x], _blk_of[x]))
++        _p5_373(list(_p5x388), {x: _a357(x) for x in _p5x388}, {})
+ 
+     for _pid, _rs in marks.items():
+         state["by"][_pid]['段三併出'] = sorted(_rs)
