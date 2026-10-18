@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-18T22:37:34+08:00",
+  "status": "running",
+  "status_since": "2026-10-18T22:38:18+08:00",
   "order": "W-G.9-388_補令一.md",
   "order_bytes": 65501,
   "order_sha256": "b42aa2689f181742e83db7391bdd5f6f70e015658855812f7d4293f9422f812c",
@@ -214,6 +214,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-388 之停機上呈：屬實·發單端之誤（自誤 628）·二讀依既裁 K-9-63 ⑩ 定（扣路衝街廓·⛔ 新域問）⇒ 出 W-G.9-388_補令一.md（R-0″ 原趟之碼重施 ＋ R-6′；F32 K29〜K31；KL 14:46 查明已合 K-9-73 ①·⛔ 改碼；expects_allocation_change=false）"
+    },
+    {
+      "at": "2026-10-18T22:38:18+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-388_補令一.md（bytes 65501／sha256 b42aa268… 與 STATE 合；SELF_SHA256 1c222a6b… 依 P-5 自驗合）"
     }
   ]
 }
