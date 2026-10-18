@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-18T23:10:16+08:00",
+  "status": "running",
+  "status_since": "2026-10-18T23:13:00+08:00",
   "order": "W-G.9-388_補令二.md",
   "order_bytes": 22037,
   "order_sha256": "37a351662e6bb2d7e603b186f63b5117e2c899a2e6ffee13e4cc9acb7652dc1b",
@@ -242,6 +242,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-388 補令一之停機上呈（停機款 4″）：屬實·發單端之誤（自誤 629·前置″ 項 3 之期漏計工項零″ 所入之補令自身）·⛔ 涉土地後果 ⇒ 出 W-G.9-388_補令二.md（補令·續自側支 28f87ca·代換表 D-1〜D-12·塊 E33；expects_allocation_change=false·attempt 3）"
+    },
+    {
+      "at": "2026-10-18T23:13:00+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-388_補令二.md（22037 B·sha256 37a35166…·SELF_SHA256 8776f547… 依 P-5 自驗皆合）"
     }
   ]
 }
