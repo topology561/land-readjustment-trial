@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-18T22:57:39+08:00",
-  "order": "W-G.9-388_補令一.md",
-  "order_bytes": 65501,
-  "order_sha256": "b42aa2689f181742e83db7391bdd5f6f70e015658855812f7d4293f9422f812c",
+  "status": "pending",
+  "status_since": "2026-10-18T23:10:16+08:00",
+  "order": "W-G.9-388_補令二.md",
+  "order_bytes": 22037,
+  "order_sha256": "37a351662e6bb2d7e603b186f63b5117e2c899a2e6ffee13e4cc9acb7652dc1b",
   "order_kind": "補令",
   "expects_allocation_change": false,
-  "attempt": 2,
-  "report": "W-G.9-388_補令一_回報.md",
-  "result": "停機上呈",
+  "attempt": 3,
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
@@ -235,6 +235,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-388 補令一之停機上呈（停機款 4″）"
+    },
+    {
+      "at": "2026-10-18T23:10:16+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "pending",
+      "note": "復驗 W-G.9-388 補令一之停機上呈（停機款 4″）：屬實·發單端之誤（自誤 629·前置″ 項 3 之期漏計工項零″ 所入之補令自身）·⛔ 涉土地後果 ⇒ 出 W-G.9-388_補令二.md（補令·續自側支 28f87ca·代換表 D-1〜D-12·塊 E33；expects_allocation_change=false·attempt 3）"
     }
   ]
 }
