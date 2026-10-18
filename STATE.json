@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-18T08:57:30+08:00",
-  "order": "W-G.9-387_補令一.md",
-  "order_bytes": 25221,
-  "order_sha256": "f87b02d13794b0fcd636ea6fb29e09e5be2813499a9db245f7376cd9c74e087d",
-  "order_kind": "補令",
+  "status": "pending",
+  "status_since": "2026-10-18T14:05:53+08:00",
+  "order": "W-G.9-388_規格單.md",
+  "order_bytes": 148474,
+  "order_sha256": "606428c4dba5616e10e4187758fa2a05edee6c55a1c39be17b9fdb51719b3cd3",
+  "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-387_補令一_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
@@ -179,6 +179,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-G.9-388（段三後處理之五停機·依 KL 08:03／08:14 之答）上鎖"
+    },
+    {
+      "at": "2026-10-18T14:05:53+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-388 規格單（K-9-61 ①②③⑥·段三後處理之四停機·新側支 verify/W-G.9-388-k961s3·expects_allocation_change=false）"
     }
   ]
 }
