@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-19T05:20:28+08:00",
+  "status": "running",
+  "status_since": "2026-10-19T05:22:16+08:00",
   "order": "W-G.9-388_補令三.md",
   "order_bytes": 22034,
   "order_sha256": "c88b6d457e8373aa1399e90c1b3224c10b0e02a7a893a4872ad504de6762e52c",
@@ -270,6 +270,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-388 補令二 通過（獨立重跑 79 呼叫·配地⛔ 變·收工閘合）⇒ 出入主線之短單 W-G.9-388_補令三.md（快轉 fd88f64 → 工項零⁗ 之 commit）"
+    },
+    {
+      "at": "2026-10-19T05:22:16+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-388_補令三.md（22034 B·c88b6d45…·SELF_SHA256 85607ee4… 皆合）"
     }
   ]
 }
