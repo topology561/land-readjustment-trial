@@ -82,3 +82,4 @@
 | 2026-10-19T05:29:37+08:00 | 執行端 | 回報 `W-G.9-388_補令三`（完成）：工項零⁗ `929ea20` 推側支（`906a8ff` → `929ea20`·快轉）；**主線 `fd88f64793a373ab921999fbe5b325c44f0c2a4c` → `929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb`**（快轉·⛔ `--force`·heads `48`）；生產碼 `34` 檔 ≡ `8fd9f8a`·本案配地⛔ 變；收工閘 `1⁗`〜`8⁗` 皆合（閘 `8⁗` 十五呼叫 `rc 0`·`stderr` `0` B）；effort=high | `reported` |
 | 2026-10-19T05:30:16+08:00 | 發單端 | 接手復驗 `W-G.9-388_補令三`（入主線之短單·完成之回報）；effort=high | `verifying` |
 | 2026-10-19T05:30:30+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_01Kd8rUouovAAxa1dg9YzVFu`；effort=high | `reported` |
+| 2026-10-19T06:34:00+08:00 | 發單端 | 復驗 `W-G.9-388_補令三` 進行中（進度列·防逾時之誤判）：主線 `929ea20`（`ls-remote` 實測·快轉 `fd88f64`→`929ea20`·`rev-list` `9`·反向 `0`·merges `0`·新 `commit` 唯本補令一檔 `116`/`0`·blob ＝ 來源）、heads `48`、四 blob ＝ 期、`closegate 629 623` rc 0／`630 629` rc 7、`issuer_anchor` 四簿 ＝ 期；基準之 `68` 呼叫於 `929ea20` 跑中（已畢 `60`·皆合期）；並擬 `W-G.9-389`（試算內之程式之停機之上拋·原型與唯讀審查已畢）於暫存；effort=high | `verifying` |
