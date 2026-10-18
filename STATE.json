@@ -1,6 +1,6 @@
 {
-  "status": "await_kl",
-  "status_since": "2026-10-18T01:14:42+08:00",
+  "status": "idle",
+  "status_since": "2026-10-18T08:16:11+08:00",
   "order": "W-G.9-387_補令一.md",
   "order_bytes": 25221,
   "order_sha256": "f87b02d13794b0fcd636ea6fb29e09e5be2813499a9db245f7376cd9c74e087d",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-387_補令一_回報.md",
   "result": "完成",
-  "kl_question": "2026-10-18_段三後處理之三題.md",
+  "kl_question": null,
   "main_before": "34736ab959e3d6915abf94bda3977063bf2711e5",
   "history": [
     {
@@ -165,6 +165,13 @@
       "from": "drafting",
       "to": "await_kl",
       "note": "擬 W-G.9-388 時查出段三後處理三題（K-9-61 ⑥ 所鄰二以上之地號、⑥ 所鄰為零而隔道路者、③ 之街廓內原位次宗可否承受道路／公設地之土地）裁示未定而土地後果相異（README 二·停 1）；請示 KL（待KL/2026-10-18_段三後處理之三題.md）"
+    },
+    {
+      "at": "2026-10-18T08:16:11+08:00",
+      "by": "監看窗",
+      "from": "await_kl",
+      "to": "idle",
+      "note": "KL 08:14 答：問一、問三依 10/06 既裁（K-9-61）；問二見 08:03"
     }
   ]
 }
