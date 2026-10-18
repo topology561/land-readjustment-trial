@@ -1,6 +1,6 @@
 {
-  "status": "idle",
-  "status_since": "2026-10-18T08:16:11+08:00",
+  "status": "drafting",
+  "status_since": "2026-10-18T08:57:30+08:00",
   "order": "W-G.9-387_補令一.md",
   "order_bytes": 25221,
   "order_sha256": "f87b02d13794b0fcd636ea6fb29e09e5be2813499a9db245f7376cd9c74e087d",
@@ -172,6 +172,13 @@
       "from": "await_kl",
       "to": "idle",
       "note": "KL 08:14 答：問一、問三依 10/06 既裁（K-9-61）；問二見 08:03"
+    },
+    {
+      "at": "2026-10-18T08:57:30+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "drafting",
+      "note": "擬 W-G.9-388（段三後處理之五停機·依 KL 08:03／08:14 之答）上鎖"
     }
   ]
 }
