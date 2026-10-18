@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-19T03:40:00+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-19T03:40:26+08:00",
   "order": "W-G.9-388_補令二.md",
   "order_bytes": 22037,
   "order_sha256": "37a351662e6bb2d7e603b186f63b5117e2c899a2e6ffee13e4cc9acb7652dc1b",
@@ -256,6 +256,13 @@
       "from": "running",
       "to": "reported",
       "note": "完成：工項零‴ 6973af4、二″ 8fd9f8a（app.py +104/-39·R-0″＋R-6′·審查甲-1 修後重驗 V-1″〜V-9″ 皆合）、三″ c38fb71、四″ 906a8ff 推側支 verify/W-G.9-388-k961s3（28f87ca → 906a8ff·快轉）；主線 fd88f64 ⛔ 變；本案配地⛔ 變；收工閘 1″〜8″ 皆合"
+    },
+    {
+      "at": "2026-10-19T03:40:26+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-388_補令二（完成之回報）"
     }
   ]
 }
