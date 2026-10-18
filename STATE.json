@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-18T14:05:53+08:00",
+  "status": "running",
+  "status_since": "2026-10-18T14:06:50+08:00",
   "order": "W-G.9-388_規格單.md",
   "order_bytes": 148474,
   "order_sha256": "606428c4dba5616e10e4187758fa2a05edee6c55a1c39be17b9fdb51719b3cd3",
@@ -186,6 +186,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-388 規格單（K-9-61 ①②③⑥·段三後處理之四停機·新側支 verify/W-G.9-388-k961s3·expects_allocation_change=false）"
+    },
+    {
+      "at": "2026-10-18T14:06:50+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-388_規格單.md（bytes 148474／sha256 606428c4…／SELF_SHA256 5eb47045… 三者皆合）"
     }
   ]
 }
