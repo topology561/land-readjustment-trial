@@ -1,6 +1,6 @@
 {
-  "status": "idle",
-  "status_since": "2026-10-19T07:08:00+08:00",
+  "status": "drafting",
+  "status_since": "2026-10-19T07:08:16+08:00",
   "order": "W-G.9-388_補令三.md",
   "order_bytes": 22034,
   "order_sha256": "c88b6d457e8373aa1399e90c1b3224c10b0e02a7a893a4872ad504de6762e52c",
@@ -298,6 +298,13 @@
       "from": "verifying",
       "to": "idle",
       "note": "復驗 W-G.9-388_補令三 通過：主線 fd88f64 → 929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb（快轉·ls-remote 實測·新 commit 唯本補令一檔）；收工閘 1⁗〜8⁗ 自倉重跑皆合；立基準 基準/929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb.md（68 呼叫皆合期·stderr 0 B）；本案配地⛔ 變"
+    },
+    {
+      "at": "2026-10-19T07:08:16+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "drafting",
+      "note": "擬 W-G.9-389（試算內之程式之停機之上拋）·上鎖"
     }
   ]
 }
