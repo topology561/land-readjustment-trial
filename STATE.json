@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-19T05:22:16+08:00",
+  "status": "reported",
+  "status_since": "2026-10-19T05:29:37+08:00",
   "order": "W-G.9-388_補令三.md",
   "order_bytes": 22034,
   "order_sha256": "c88b6d457e8373aa1399e90c1b3224c10b0e02a7a893a4872ad504de6762e52c",
   "order_kind": "短單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-388_補令三_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "fd88f64793a373ab921999fbe5b325c44f0c2a4c",
   "history": [
@@ -277,6 +277,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-388_補令三.md（22034 B·c88b6d45…·SELF_SHA256 85607ee4… 皆合）"
+    },
+    {
+      "at": "2026-10-19T05:29:37+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "完成：工項零⁗ 929ea20 推側支 verify/W-G.9-388-k961s3（906a8ff → 929ea20·快轉）；工項一⁗ 主線 wip/s1-endpart 快轉 fd88f64793a373ab921999fbe5b325c44f0c2a4c → 929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb（⛔ --force）；本案配地⛔ 變；收工閘 1⁗〜8⁗ 皆合"
     }
   ]
 }
