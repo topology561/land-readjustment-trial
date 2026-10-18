@@ -55,6 +55,8 @@ _k6b_callbacks 之巢狀 alloc_state。
     量 `_has357`／`_res357`／鍵之環；W8 之回傳之鍵增 `'members'`（`K-9-67`·第五鍵）；W11 之三支取鍵之環中測試為
     `_has357(_rm) and _pid in marks` 之 if（建地之支另立於其前·⛔ 計）。突變去 M2〜M9、M14、M16、M19、M22、M28、M29
     （其錨已去·M2 之錨之縮排隨步驟 10 之重排而異），餘 15 種。
+  🔧 `W-G.9-388`（`K-9-61` ①·⛔ 下列一字不刪）：W6 之第一句改為 `R = _mem - merged_out - _rcv388 - L - _t14_done`（`_rcv388`
+     ＝ 該群之本段之受併宗之集·同一街廓可二以上）；M17 之錨同之。
   🔧 `W-G.9-378`（`GB-204`·⛔ 上列一字不刪）：W8 之回傳之鍵於 `'members'` 之後增 `'pool_out'`（入池閘之帳·第六鍵·其值與
     `members` 取同一 build·F27 之 Y8 量之）。
 rc：0 相符／1 不符（含受詞缺、器紅）／2 用法錯。
@@ -249,7 +251,7 @@ def _w5(c):
 
 def _w6(c):
     rs = [_u(n) for n in _walk_own(c.s3) if isinstance(n, ast.Assign) and _u(n.targets[0]) == "R"]
-    want = ["R = _mem - merged_out - set(_recv_by_blk.values()) - L - _t14_done", "R = R - _stay"]
+    want = ["R = _mem - merged_out - _rcv388 - L - _t14_done", "R = R - _stay"]    # 🔧 `W-G.9-388`
     return sorted(rs) == sorted(want), f"R 之賦值 {rs}"
 
 
@@ -442,7 +444,7 @@ def _mut_list():
          [(FA, "                    _r4 = None\n",
            "                    raise RuntimeError(\"🔴 [K-6-B 段三 K-9-50 題一] `K-9-48` 七項 3〜5 未落地（停機款 9）\")\n")]),
         ("M17 步驟 10 之 R ⛔ 扣已處置之候選", "W6",
-         [(FA, "R = _mem - merged_out - set(_recv_by_blk.values()) - L - _t14_done", "R = _mem - merged_out - set(_recv_by_blk.values()) - L")]),
+         [(FA, "R = _mem - merged_out - _rcv388 - L - _t14_done", "R = _mem - merged_out - _rcv388 - L")]),
         ("M18 有剩下以 1e-6 判", "W7", [(FA, "return round(float(r), 4) > 0", "return float(r) > 1e-6")]),
         ("M20 鍵之環以 1e-6 判", "W7",
          [(FA, "        if _has357(_rm) and _pid in marks:\n", "        if _rm > 1e-6 and _pid in marks:\n")]),

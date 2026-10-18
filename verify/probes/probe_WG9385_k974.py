@@ -40,6 +40,7 @@
            ⇒ 其尺度 ＝ 外部錨（`RD1` 之 BLOCK 面積與該宗之幾何面積之比）；R4 模擬：私有地填「是」⇒ 填列錯誤；
            R5 模擬：`JUNCTION` 框疊於 `RD1` 之一端 ⇒ 比例之母體扣除之（外部錨）；R6 二欄之結果依檔之 sha256 存 session
            （同檔再呼 ⇒ 用之；換檔 ⇒ 重讀）。
+🔧 `W-G.9-388`（⛔ 上列一字不刪）：W7 之頂層之相異之許增 `k6b_stage3_run`（`K-9-61` ①②③⑥·其行為由 F32 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, os, sys
@@ -490,7 +491,8 @@ def wiring(repo, base):
                 if ln.startswith("- "):
                     dels.append((k, hashlib.sha256(ln[2:].encode("utf-8")).hexdigest()))
         # 🔧 `W-G.9-387`：其後之單所改之頂層節點亦許（`adj_intake`·`K-9-61` ⑧·其行為由 F31 量之）
-        ok7 = (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"} | {"adj_intake"}
+        # 🔧 `W-G.9-388`：同（`k6b_stage3_run`·`K-9-61` ①②③⑥·其行為由 F32 量之）
+        ok7 = (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"} | {"adj_intake"} | {"k6b_stage3_run"}
                and sorted(h for _, h in dels) == sorted(REPL385) and all(k == "main" for k, _ in dels))
         res.append(("W7 main／calc 唯增列（具名之換列三）·頂層之相異", ok7, f"相異 {dif}／刪列 {len(dels)}"))
     except Exception as e:

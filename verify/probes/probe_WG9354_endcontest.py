@@ -29,6 +29,9 @@
            乙 ＝ 寬 `8`／`5.5`，`628-23(2)` 假設跨占街角規定範圍、`G009` 他街廓之片上鎖（整片只 `R5` 成）；
            丙 ＝ 寬 `8`／`5.0`，同乙（切半只 `R5` 成，`628(4)` 連其半併入 `628(3)`）。外部錨 ＝ 本器另寫之末端帶、
            交面積、切半之比與 G 公式（⛔ 呼叫 `end_block_*`／`_end_band`／`_end_region_R`／`solve_G_binary`）。
+🔧 `W-G.9-388`（`K-9-61` ②·KL 裁 `2026-10-06 01:29`·⛔ 上列一字不刪）：P2 改為「須承受而配得者二筆 ⇒ 與該片相鄰者先 →
+  應分配面積 → 重劃前面積 → 暫編地號（`k967_rank`）」——二筆皆⛔ 與公設片相鄰、G 皆 30、重劃前面積皆 30 ⇒ 暫編地號小者 W5(1)；
+  其回呼另回 `G`（`_cbs` 之 `with_g`·唯 P2 用之）。W5 之 `_recv_of` 之形改為 `def _recv_of(b, y):`（`y` ＝ 所承受之片）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, io, os, re, sys
@@ -139,7 +142,7 @@ def _world2(a=None):
     return t, own, blocks, {"RZ": [(-10.0, -5.0), (50.0, -5.0)]}
 
 
-def _cbs(targets, drop=(), bad_if_grow=()):
+def _cbs(targets, drop=(), bad_if_grow=(), with_g=False):
     """玩具之回呼：`alloc_eval` 以 G ＝ 分攤登記面積 ＋ 面積（a′ 之累加）逐端依所給之候選序評選（門檻 ＝ R_end）；
     `alloc_state` 以 `drop` 為恆不配得之宗、`bad_if_grow` 之宗一旦受併即使其街廓之配餘地不合格。"""
     def g(t):
@@ -173,7 +176,10 @@ def _cbs(targets, drop=(), bad_if_grow=()):
             kept.setdefault(b["所屬街廓"], set()).add(b["暫編地號"])
             if b["暫編地號"] in bad_if_grow and float(b.get("面積_m2", 0) or 0) > 0:
                 bad[b["所屬街廓"]] = bad.get(b["所屬街廓"], 0) + 1
-        return {"kept": kept, "bad_pools": bad, "err": None}
+        out = {"kept": kept, "bad_pools": bad, "err": None}
+        if with_g:    # 🔧 `W-G.9-388`：G ＝ 保留宗之 分攤登記面積 ＋ 面積
+            out["G"] = {p: g(b) for b in build for p in [b["暫編地號"]] if p in kept.get(b["所屬街廓"], set())}
+        return out
     return a_prime, alloc_eval, alloc_state
 
 
@@ -338,8 +344,13 @@ def _cases(ns):
     wp2 = _world1(extra=[_tp("G5(1)", "PK", "鄰里公園", _R(-10, 0, 0, 30), 90), _tp("W5(1)", "BW", H, _R(5, 10, -60, -40), 30),
                          _tp("W6(1)", "BW", H, _R(10, 15, -60, -40), 30)],
                   own_extra={"G5": "g1", "W5": "g1", "W6": "g1"})
-    _run(out, "P2 公設片平分須由 BW 承受而其配得之宗二筆 ⇒ 停機（承受之宗未定）",
-         lambda: _halt(ns, wp2, _T(160, 140), "承受之宗未定"), ("停機", True))
+    # 🔧 `W-G.9-388`（`K-9-61` ②）：W5／W6 皆⛔ 與 G5 相鄰、G 皆 30、重劃前面積皆 30 ⇒ 暫編地號小者 W5(1) 承受 BW 之一份（÷ 3）
+    _run(out, "P2 公設片平分須由 BW 承受而其配得之宗二筆 ⇒ 相鄰者先 → G → 重劃前面積 → 暫編地號（W5）",
+         lambda: _go(ns, wp2, _T(160, 140), with_g=True),
+         ([("X1(1)", "①", "成", "免"), ("Y1(1)", "①", "成", "免"), _D, _K, _YD],
+          [("X3(1)", "後處理(b)", "成", ("X1(1)", "Y1(1)")), ("G5(1)", "後處理(c)", "成", ("W5(1)", "X1(1)", "Y1(1)"))],
+          {}, {"W5(1)": 30.0, "X1(1)": 122.0, "Y1(1)": 128.0},
+          ["K1(1)", "K2(1)", "P(1)", "Q(1)", "W5(1)", "W6(1)", "X1(1)", "Y1(1)"]))
     wp3 = _world1(extra=[_tp("G5(1)", "PK", "鄰里公園", _R(-10, 0, 0, 30), 90), _tp("W5(1)", "BW", H, _R(5, 10, -60, -40), 30)],
                   own_extra={"G5": "g1", "W5": "g1"})
     _run(out, "P3 公設片三街廓平分，BW 由其唯一配得之宗承受",
@@ -457,7 +468,7 @@ def _wiring_checks(app, sel):
     ok4 = (k6.count("_road_halves(x, '") == 2 and k6.count("def _road_halves(") == 1
            and "_split(_geo[x], _line)" in k6 and k6.count("_split(") == 1)
     res.append(("W4 道路片之中心線切分 ＝ 單一真相源（後處理 (b) 與題一之切半）", ok4, ""))
-    ok5 = ("R = R - _stay" in k6 and k6.count("_recv_of(") >= 5 and "def _recv_of(b):" in k6)
+    ok5 = ("R = R - _stay" in k6 and k6.count("_recv_of(") >= 5 and "def _recv_of(b, y):" in k6)    # 🔧 `W-G.9-388`
     res.append(("W5 後處理：無本段受併宗之街廓之配得者照配、承受之宗經 `_recv_of`", ok5, ""))
     lits = []
     for name, src in (("end_block_merge_run", mr), ("k6b_stage3_run", k6)):

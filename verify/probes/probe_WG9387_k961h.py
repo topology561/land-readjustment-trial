@@ -20,6 +20,7 @@
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：R1 盤點⛔ 停機；R2 每一建地軌之單位之原街廓 ＝ 本器另寫之三鍵之擇
            （⛔ 呼叫 `k967_rank`／`adj_q2`）；R3 每一合併單位之原街廓 ＝ 外部錨 `EXPECT_RUN`（主線 `34736ab` 之
            `probe_WG9351_intake.py run` 之出艙·發單端實跑·舊碼之值）——本案⛔ 遇並列 ⇒ 原街廓⛔ 變。
+🔧 `W-G.9-388`（⛔ 上列一字不刪）：X3 之許增 `k6b_stage3_run`（`K-9-61` ①②③⑥ 之落地·其行為由 F32 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, os, re, subprocess, sys
@@ -260,7 +261,7 @@ def wiring(repo, base):
                               check=True).stdout.decode("utf-8")
         bt, ct = _top(bsrc), _top(src)
         dif = sorted(k for k in set(bt) | set(ct) if bt.get(k) != ct.get(k))
-        ok3 = set(bt) == set(ct) and set(dif) <= {FN_AI}
+        ok3 = set(bt) == set(ct) and set(dif) <= {FN_AI} | {"k6b_stage3_run"}    # 🔧 `W-G.9-388`：其後之單所改者亦許（F32 量之）
         res.append(("X3 頂層之名之集⛔ 變·相異之節點 ⊆ {adj_intake}", ok3,
                     f"增 {sorted(set(ct) - set(bt))}／去 {sorted(set(bt) - set(ct))}／相異 {dif}"))
         ls = subprocess.run(["git", "-C", repo, "ls-tree", "--name-only", base, "verify/"], capture_output=True,
