@@ -7493,7 +7493,7 @@ def evaluate_parcel_width_n14(row, front_line, min_depth, legal_min_width,
     #     缺 FRONT_LINE、街角地 K-4）**之後**——該三類**依構造不量寬度**，
     #     對其要求 BASELINE 係誤咬。⇒ 判準與早退條件**共用同一份**、不另複製述詞。
     if _require_baseline and baseline_pts is None:
-        raise RuntimeError(
+        raise k6_program_stop(
             f"🔴 evaluate_parcel_width_n14[{_label}]：本宗須量寬度，"
             f"但**查無該街廓之 BASELINE**（`baseline_pts is None`）。"
             f"⛔ **禁靜默回退舊帶**——回退即以畸零地附表深度 {min_depth} 充當量測帶深"
@@ -9773,6 +9773,41 @@ def _wg9268p_anchor_advance(cum_S, cut_coords, d_hat, base_pt, allocation_dir):
 K917_DROPPED = {}
 
 
+# ── 🆕 `W-G.9-389`：試算內之程式之停機之上拋（`K-6` 典 `W-G.9-389` 之節之二·【工】）──
+#   🔒 「程式之停機」＝ 訊息之全文帶 `K6_PROGRAM_STOP_RE` 之號之停機（`GB` 之號 ＝ 程式未支援之形；未裁 ＝ 須 KL 裁之形）。
+#   🔒 帶號之停機一律經 `k6_program_stop` 立之（登記其全文）；吞試算之中止之處，試算之前取 `k6_trial_mark()`，
+#   其後 `k6_trial_raise_since(…)` 見有新登記者即上拋其首者之全文——⛔ 判為「不過」「未成」「試算中止」而續辦。
+#   🛑 他之試算中止（無號·配地上不可）照舊為「不過」（`K-9-53` ① 之工程讀法之庚）。
+
+#: 🔒 程式之停機之登記（全文·⛔ 截）；⛔ 清、⛔ 刪其項——巢狀之試算以長度分之。
+K6_PROGRAM_STOPS = []
+
+#: 🔒 程式之停機之號：`GB-` 繼以數字（其前⛔ 英數字或連字號、其後⛔ 數字）或未裁之標記（逐字）。
+K6_PROGRAM_STOP_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])|【未裁】")
+
+
+def k6_program_stop(msg):
+    """🆕 `W-G.9-389`：立程式之停機——全文登記於 `K6_PROGRAM_STOPS`（⛔ 截），回 `RuntimeError`（⛔ 拋·由呼叫端 `raise`）。"""
+    _s = str(msg)
+    if not K6_PROGRAM_STOP_RE.search(_s):
+        raise RuntimeError(
+            f"🔴 `W-G.9-389`：`k6_program_stop` 之訊息⛔ 帶程式之停機之號 ⇒ 停機（⛔ 登記）：{_s[:200]!r}")
+    K6_PROGRAM_STOPS.append(_s)
+    return RuntimeError(_s)
+
+
+def k6_trial_mark():
+    """🆕 `W-G.9-389`：試算之前取程式之停機之登記之長度（供 `k6_trial_raise_since`）。"""
+    return len(K6_PROGRAM_STOPS)
+
+
+def k6_trial_raise_since(mark, where):
+    """🆕 `W-G.9-389`：登記之長度 ＞ `mark` ⇒ 上拋其首一新登記者之全文（⛔ 截）；否則回 `None`。"""
+    if len(K6_PROGRAM_STOPS) > int(mark):
+        raise RuntimeError(f"🔴 [試算內之程式之停機·{where}] {K6_PROGRAM_STOPS[int(mark)]}")
+    return None
+
+
 def k917_should_drop(res, is_corner_first, has_successor, chain_side, blk_label, pid=""):
     """🆕 `W-G.9-269` `c1`：判該宗是否依 `K-9-11 三` **不配地**。回 `(是否剔除, 其判)`。
 
@@ -9797,7 +9832,7 @@ def k917_should_drop(res, is_corner_first, has_successor, chain_side, blk_label,
             return True, "不合格"
         return False, _v
     if is_corner_first:
-        raise RuntimeError(
+        raise k6_program_stop(
             f"🔴 `K-9-17` 遞補：街廓 {blk_label} {chain_side} 側之**街角第 1 宗** {pid!r} "
             f"竟為閘一『不合格』——其分配範圍係 winner 之 `G` 所單獨決定、⛔ 受遞補影響"
             f"（構造保證）⇒ 此情狀⛔ 得發生（`GB-104` 之 loud 斷言）。")
@@ -10371,16 +10406,18 @@ def k929_6_fixpoint(build_parcels, trial, own_map, pre_price_by_zone, front_line
                         _mp[_m][_q['r']] = float(_mp[_m].get(_q['r'], 0.0)) + _w
                         _x['入池閘成員部分併出'] = _mp
         _nb = [t for t in _nb if _pid(t) not in _R]
+        _m389 = k6_trial_mark()
         try:
             _aft = trial(_nb)
         except RuntimeError as _e:
+            k6_trial_raise_since(_m389, '入池閘·併入後之試算')
             return None, '併入後配地中止：' + str(_e).partition('\n')[0][:200]
         _why = _chk965(st['out'], _aft, _T, _R)
         if _why:
             return None, _why
         # 🔧 `W-G.9-380` 補令一：宗含非其成員之土地者，其部分併入過檢核 ⇒ 停機（開工態之時點·⛔ 過者已記未成）
         if _gb965:
-            raise RuntimeError(
+            raise k6_program_stop(
                 f"{_hd965} 巳 ①：{_gb965[0]['x']!r} 依手冊部分併入 {_gb965[0]['r']!r}（K-9-66 按比例）而過檢核——其成員之剩下"
                 "之合與宗之面積不符（宗含非其成員之土地·他處之受併者），其所併出之量⛔ 能依成員分之（K-9-61 ⑤ 之還原另單·"
                 "GB-205）⇒ 停機")
@@ -11723,10 +11760,12 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
     🔧 `W-G.9-384`（`K-9-71`）：`blk5` ＝ 五級之街廓屬性之回呼（`k971_blk5`），逕傳予 `k6b_stage3_run`（其後處理之第 `5` 項之
       建地之片之他街廓之候選依五級與深度再排·見其 docstring）。"""
     _rec = {'退縮': setback, '標的': [], '皆未達': {}}
+    _m389 = k6_trial_mark()
     try:
         _ev = alloc_eval(temp_parcels, build_parcels) or {}
     except RuntimeError as _e:
         _rec['標的'] = None
+        k6_trial_raise_since(_m389, '末端塊合併再試·試算')
         _rec['試算中止'] = str(_e).split("\n")[0][:300]
         return temp_parcels, build_parcels, [], _rec
     _tg = []
@@ -12449,7 +12488,7 @@ def adj_intake(temp_parcels, build_final, g_rows, dropped, own_map, burden_by_bl
         _bt = burden_by_block[_bl]
         _g = str((own_map or {}).get(str(t.get('原地號', '')), '') or '')
         if not _g:
-            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入]【未裁】切片 {_k!r}（原地號 {t.get('原地號')!r}）無歸戶 ⇒ 停機")
+            raise k6_program_stop(f"🔴 [W-G.9-351 調配之輸入]【未裁】切片 {_k!r}（原地號 {t.get('原地號')!r}）無歸戶 ⇒ 停機")
         _row = {'暫編地號': _k, '原地號': str(t.get('原地號', '')), '歸戶': _g, '所屬街廓': _bl,
                 '負擔屬性': _bt, '原有面積': _a(t), '重劃前地價區段': str(t.get('重劃前地價區段', '') or ''),
                 '所屬單元': '', '應分配面積': None, '不配地由': '', '配地街廓': []}
@@ -12552,7 +12591,7 @@ def adj_intake(temp_parcels, build_final, g_rows, dropped, own_map, burden_by_bl
         elif _bt == ADJ_BURDEN_COMMON:
             _row['類'] = ADJ_DISP_COMMON_STEP4   # 暫記·依歸戶定之（下）
         else:
-            raise RuntimeError(f"🔴 [W-G.9-351 調配之輸入]【未裁】切片 {_k!r} 位於負擔屬性 {_bt!r} 之街廓 {_bl!r} ⇒ 停機"
+            raise k6_program_stop(f"🔴 [W-G.9-351 調配之輸入]【未裁】切片 {_k!r} 位於負擔屬性 {_bt!r} 之街廓 {_bl!r} ⇒ 停機"
                                "（⛔ 臆其調配之處置）")
         _rows.append(_row)
     _missing = sorted(set(_unit_of) - {_r['暫編地號'] for _r in _rows})
@@ -14604,10 +14643,10 @@ def k967_pool_out(build_final):
                 _ent967.append((str(_p967), _l967))
         for _p967, _l967 in _ent967:
             if _p967 in _po967:
-                raise RuntimeError(f"🔴 [GB-204] 片 {_p967!r} 之入池閘之帳見於二處 ⇒ 停機")
+                raise k6_program_stop(f"🔴 [GB-204] 片 {_p967!r} 之入池閘之帳見於二處 ⇒ 停機")
             _q967 = sum(float(_v967) for _v967 in _l967.values())
             if not _q967 > 0:
-                raise RuntimeError(f"🔴 [GB-204] 片 {_p967!r} 之入池閘之帳之量 {_q967!r} ≤ 0 ⇒ 停機")
+                raise k6_program_stop(f"🔴 [GB-204] 片 {_p967!r} 之入池閘之帳之量 {_q967!r} ≤ 0 ⇒ 停機")
             _po967[_p967] = _q967
     return _po967
 
@@ -14619,10 +14658,10 @@ def k967_pool_less(area_of, pool_out):
     if pool_out is None:
         pool_out = {}
     if not isinstance(pool_out, dict):
-        raise RuntimeError(f"🔴 [GB-204] pool_out 非 dict（{type(pool_out).__name__}）⇒ 停機")
+        raise k6_program_stop(f"🔴 [GB-204] pool_out 非 dict（{type(pool_out).__name__}）⇒ 停機")
     _miss967 = sorted(str(_p967) for _p967 in pool_out if _p967 not in area_of)
     if _miss967:
-        raise RuntimeError(f"🔴 [GB-204] 入池閘之帳之片 {_miss967} 不在重劃前面積之表 ⇒ 停機")
+        raise k6_program_stop(f"🔴 [GB-204] 入池閘之帳之片 {_miss967} 不在重劃前面積之表 ⇒ 停機")
     return {_p967: float(area_of[_p967]) - float(pool_out.get(_p967, 0)) for _p967 in area_of}
 
 
@@ -16434,7 +16473,7 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
             raise RuntimeError(f"{_hdr953} {_x} 之併入（受併宗 {_r}）之前，當下之配地中止（無從判定）："
                                f"{_Sg953.get('err')!r} ⇒ 停機")
         if not any(str(_r) in {str(_h) for _h in _hs} for _hs in (_Sg953.get("kept") or {}).values()):
-            raise RuntimeError(f"{_hdr953} GB-201：{_x} 之計畫之受併宗 {_r} 於當下之試算未保留"
+            raise k6_program_stop(f"{_hdr953} GB-201：{_x} 之計畫之受併宗 {_r} 於當下之試算未保留"
                                "（⛔ 以已失保留之宗為受併宗而靜默併入）⇒ 停機")
 
     def _tally953(_x, _r, _gv):
@@ -22901,6 +22940,7 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
         for _k_rb in K6B_SCREEN_READBACK_KEYS:
             _ss.pop(_k_rb, None)
         _ss.pop(SS_ADJ_BUILD_FINAL, None)   # 🆕 `W-G.9-373`（`K-9-67`）：入池閘之末態 build 由本次試算寫（⛔ 讀前一趟之殘值）
+        _m389 = k6_trial_mark()
         try:
             with _cl_s3.redirect_stdout(_io_s3.StringIO()):
                 f3_screen_corner_pk_run(_px, **dict(pk_kwargs, temp_parcels=_t, build_parcels=_b))
@@ -22916,6 +22956,7 @@ def k6b_screen_callbacks(st, *, pk_kwargs, g_kwargs):
             _err = f"試算中止（st.stop）：{_px.msgs[-1:]}"
         except RuntimeError as _e_as:
             _err = str(_e_as).split("\n")[0][:300]
+        k6_trial_raise_since(_m389, '段三·畫面之試算')
         _rows = [] if _err else list(_ss.get('f3_G_values') or [])
         _kept, _bad, _G = {}, {}, {}
         for _r in _rows:
@@ -23087,6 +23128,7 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
         _sst.pop(SS_ADJ_BUILD_FINAL, None)
         _pxy = _K6BTrialSt(st)
         _er = None
+        _m389 = k6_trial_mark()
         try:
             with _cl953s.redirect_stdout(_io953s.StringIO()):
                 _sst[SS_END_BLOCK_MODE] = 'trial'
@@ -23099,6 +23141,7 @@ def f3_screen_k953(st, *, pk_kwargs, g_kwargs):
             _er = f"試算中止（st.stop）：{_pxy.msgs[-1:]}"
         except RuntimeError as _e953t:
             _er = str(_e953t).split("\n")[0][:300]
+        k6_trial_raise_since(_m389, '手冊先行·畫面之試算')
         _gr = [] if _er else list(_sst.get('f3_G_values') or [])
         _summ = k953_alloc_summary(_gr, _cat953s, _frt953s)
         _bfin = _sst.get(SS_ADJ_BUILD_FINAL)
@@ -23186,6 +23229,7 @@ def f3_screen_adj4(st, *, pk_kwargs, g_kwargs, slices):
         _ssa.pop(SS_ADJ_BUILD_FINAL, None)
         _pxy = _K6BTrialSt(st)
         _er = None
+        _m389 = k6_trial_mark()
         try:
             with _cl_a4s.redirect_stdout(_io_a4s.StringIO()):
                 _ssa[SS_END_BLOCK_MODE] = 'trial'
@@ -23198,6 +23242,7 @@ def f3_screen_adj4(st, *, pk_kwargs, g_kwargs, slices):
             _er = f"試算中止（st.stop）：{_pxy.msgs[-1:]}"
         except RuntimeError as _e_a4t:
             _er = str(_e_a4t).split("\n")[0][:300]
+        k6_trial_raise_since(_m389, '第一趟·畫面之試算')
         _gr = [] if _er else list(_ssa.get('f3_G_values') or [])
         _bfin = _ssa.get(SS_ADJ_BUILD_FINAL)
         _kp_a4s.update(g_rows=_gr, build=_bfin, temp=_tt, err=_er, dropped=_cp_a4s.deepcopy(K917_DROPPED),

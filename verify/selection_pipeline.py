@@ -732,6 +732,7 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
         ns["K917_DROPPED"].clear()
         _err = None
         _bf373 = None   # 🆕 `W-G.9-373`（`K-9-67`）：入池閘之末態 build（保留宗之成員·run_step_g 拋出者⛔ 取）
+        _m389 = ns["k6_trial_mark"]()
         with _cl.redirect_stdout(_io.StringIO()):
             _d, _s, _o, _w, _f = run_corner_pk(ns, fake_st, cb, cad, param_rows, _t, _b, setback,
                                                snapshot=snapshot)
@@ -744,6 +745,7 @@ def _k6b_callbacks(ns, fake_st, cb, cad, param_rows, setback, snapshot):
             except RuntimeError as _e:
                 _err = str(_e).split("\n")[0][:300]
                 _rows = (getattr(_e, "partial", None) or {}).get("g_rows") or []
+        ns["k6_trial_raise_since"](_m389, '段三·harness 之試算')
         _kept, _bad, _G = {}, {}, {}
         for _r in _rows:
             _blk = _r.get("所屬街廓")
@@ -857,6 +859,7 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
         ns["K917_DROPPED"].clear()
         ss[ns["SS_END_BLOCK_MODE"]] = 'trial'
         _errk, _rowsk, _finalk = None, [], None
+        _m389 = ns["k6_trial_mark"]()
         with _clk.redirect_stdout(_iok.StringIO()):
             try:
                 _sgk = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _bk, winners, forced, setback,
@@ -865,6 +868,7 @@ def run_k953(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
                 _finalk = (_sgk.get("k929_6") or {}).get("build")
             except RuntimeError as _ek:
                 _errk = str(_ek).split("\n")[0][:300]
+        ns["k6_trial_raise_since"](_m389, '手冊先行·harness 之試算')
         _sumk = ns["k953_alloc_summary"](_rowsk, _cat_k, _front_k)
         _memk, _unik = ns["k953_units_of"](_finalk if _finalk is not None else _bk)
         # 🔧 `W-G.9-378`（`GB-204`）：pool_out 與 members 取同一 build
@@ -922,6 +926,7 @@ def run_adj4(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
         ns["K917_DROPPED"].clear()
         ss[ns["SS_END_BLOCK_MODE"]] = 'trial'
         _ea4, _rowsa4, _fina4 = None, [], None
+        _m389 = ns["k6_trial_mark"]()
         with _cla4.redirect_stdout(_ioa4.StringIO()):
             try:
                 _sga4 = run_step_g(ns, fake_st, cb, cad, snapshot, param_rows, _ba4, winners, forced, setback,
@@ -930,6 +935,7 @@ def run_adj4(ns, fake_st, cb, cad, param_rows, temp_parcels, build_parcels, setb
                 _fina4 = (_sga4.get("k929_6") or {}).get("build")
             except RuntimeError as _xa4:
                 _ea4 = str(_xa4).split("\n")[0][:300]
+        ns["k6_trial_raise_since"](_m389, '第一趟·harness 之試算')
         _got_a4.update(g_rows=_rowsa4, build=_fina4, temp=_ta4, err=_ea4,
                        dropped=_cpa4.deepcopy(ns["K917_DROPPED"]), depth=ns["adj4_depth_of"](ss))
         return ns["adj4_trial_state"](ns["k953_alloc_summary"](_rowsa4, _cat_a4, _row_a4), _ea4,
