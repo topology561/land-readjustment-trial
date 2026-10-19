@@ -32,6 +32,8 @@
 🔧 `W-G.9-388`（`K-9-61` ②·KL 裁 `2026-10-06 01:29`·⛔ 上列一字不刪）：P2 改為「須承受而配得者二筆 ⇒ 與該片相鄰者先 →
   應分配面積 → 重劃前面積 → 暫編地號（`k967_rank`）」——二筆皆⛔ 與公設片相鄰、G 皆 30、重劃前面積皆 30 ⇒ 暫編地號小者 W5(1)；
   其回呼另回 `G`（`_cbs` 之 `with_g`·唯 P2 用之）。W5 之 `_recv_of` 之形改為 `def _recv_of(b, y):`（`y` ＝ 所承受之片）。
+🔧 `W-G.9-390`（`K-9-61` ④·⛔ 上列一字不刪）：W2 之「逐列之環經 `_k950_rows`」改以其呼叫（`_k950_rows(sorted(order, …))`）於
+  `k6b_stage3_run` 內恰一見判之（步驟 1〜8 之環經回原狀之重試之產生器·其行為由 F34 量之）；N2 之錨隨之。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, io, os, re, sys
@@ -455,7 +457,7 @@ def _wiring_checks(app, sel):
         inner = {n.name: ast.get_source_segment(k6, n) for n in ast.walk(fn) if isinstance(n, ast.FunctionDef)}
         g = inner.get("_k950_rows") or ""
         ok2 = ("contests" in kws and isinstance(dflt.get("contests"), ast.Constant) and dflt["contests"].value is None
-               and k6.count("for _r in _k950_rows(sorted(order, key=lambda r: r['最終序位'])):") == 1
+               and k6.count("_k950_rows(sorted(order, key=lambda r: r['最終序位']))") == 1    # 🔧 `W-G.9-390`
                and "if not contests:\n            yield from rows\n            return" in g)
     res.append(("W2 `k6b_stage3_run`：`contests=None`、逐列之環經 `_k950_rows`、無競合 ⇒ 逐列依序", ok2, ""))
     k6c = _fn_src(sel, "run_corner_pk_k6b") or ""
@@ -484,8 +486,8 @@ WIRE_MUTS = [
     ("N1 ⛔ 交競合", "app.py", "                                           contests=(_ct or None))",
      "                                           contests=None)", "W1"),
     ("N2 逐列之環⛔ 經 `_k950_rows`", "app.py",
-     "    for _r in _k950_rows(sorted(order, key=lambda r: r['最終序位'])):",
-     "    for _r in sorted(order, key=lambda r: r['最終序位']):", "W2"),
+     "_k950_rows(sorted(order, key=lambda r: r['最終序位']))",
+     "sorted(order, key=lambda r: r['最終序位'])", "W2"),    # 🔧 `W-G.9-390`
     ("N3 後處理 (b) 另切", "app.py", "            _parts = _road_halves(x, '後處理 (b)')",
      "            _parts = list(_split(_geo[x], _geo[x].exterior))", "W4"),
     ("N4 ⛔ 照配", "app.py", "        R = R - _stay\n", "        R = R\n", "W5"),

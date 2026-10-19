@@ -24,6 +24,7 @@
            且 `K6_PROGRAM_STOPS` 終為空（本案之一切試算⛔ 觸程式之停機 ⇒ 上拋之機制⛔ 觸 ⇒ 配地⛔ 變）；
            R2（唯首一退縮）注入：手冊先行之內，入池閘自其第 2 次之呼叫起立程式之停機（`GB-999`）⇒ 須上拋至
            `run_corner_pk_k6b`（訊息含 `GB-999` 與「試算內之程式之停機·手冊先行」）·⛔ 判為不過而續辦。
+🔧 `W-G.9-390`（`K-9-61` ④·⛔ 上列一字不刪）：X3 之許增 `k6b_stage3_run`（其差⛔ 限於二形·其行為與接線由 F34 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, difflib, io, math, os, re, subprocess, sys
@@ -39,6 +40,8 @@ NEW_TOP = {"K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_tria
 ALLOW = {"evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
          "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953",
          "f3_screen_adj4"}
+# 🔧 `W-G.9-390`：其後之單所改之頂層節點（⛔ 限於二形·F34 量之）
+ALLOW390 = {"k6b_stage3_run"}
 TAG_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])|【未裁】")
 TRIAL_CALLS = {"f3_screen_stepg_run", "run_step_g", "trial", "alloc_eval"}
 CATCH = {"RuntimeError", "_K6BTrialStop", "Exception"}
@@ -531,7 +534,7 @@ def wiring(repo, base):
             ok_, w_ = _diff_ok(bt[k], ct[k])
             if not ok_:
                 why.append(f"{k}：{w_}")
-    ok3 = add == NEW_TOP and not gone and set(dif) <= ALLOW and not why
+    ok3 = add == NEW_TOP and not gone and set(dif) <= ALLOW | ALLOW390 and not why
     res.append(("X3 頂層：新名 ＝ 五·相異 ⊆ 本單之許·其差唯二形", ok3,
                 f"增 {sorted(add)}／去 {sorted(gone)}／相異 {dif}／不合 {why}"))
     # X4
