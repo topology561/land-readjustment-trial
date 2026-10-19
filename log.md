@@ -101,3 +101,4 @@
 | 2026-10-19T16:05:07+08:00 | 執行端 | 接單 `W-G.9-389_補令一.md`（bytes `21882`·sha256 `25317c60…` ＝ STATE；`SELF_SHA256` `67fbbb0c…` 自驗相符）；effort=high | `running` |
 | 2026-10-19T16:14:15+08:00 | 執行端 | 回報 `W-G.9-389_補令一`（完成）：工項零″ `2aa6302` 推側支（`dbe21f5` → `2aa6302`·快轉）；**主線 `929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb` → `2aa63021da38632704519e05d53ced9f56e22659`**（快轉·⛔ `--force`·heads `49`）；生產碼 `34` 檔 ≡ `a298a4f`·本案配地⛔ 變；收工閘 `1″`〜`8″` 皆合（閘 `6″` rc 0／對照 rc 7；閘 `7″` 四簿 ＝ 期；閘 `8″` `17` 呼叫 rc 0·末列皆 `⇒ 紅 []；rc 0`·`stderr` `0` B）；回報 `reports/W-G.9-389_補令一_回報.md`；effort=high | `reported` |
 | 2026-10-19T16:14:51+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_016BF98oShYoxFFWwWKcDR9P`；effort=high | `reported` |
+| 2026-10-19T16:15:14+08:00 | 發單端 | 接手復驗 `W-G.9-389_補令一`（入主線之短單·完成之回報）；effort=high | `verifying` |
