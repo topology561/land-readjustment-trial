@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-19T10:43:04+08:00",
+  "status": "running",
+  "status_since": "2026-10-19T10:44:21+08:00",
   "order": "W-G.9-389_規格單.md",
   "order_bytes": 134281,
   "order_sha256": "8ba8c7bc90a61cc871d95fdad038e8206e0ca05d7acf6164db9a552447490ef0",
@@ -312,6 +312,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-389_規格單.md（試算內之程式之停機之上拋·134281 B·8ba8c7bc90a6…·expects_allocation_change=false·attempt 1）"
+    },
+    {
+      "at": "2026-10-19T10:44:21+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "執行端接單 W-G.9-389_規格單.md（bytes 134281·sha256 8ba8c7bc…相符·SELF_SHA256 0d30f02f…自驗相符）"
     }
   ]
 }
