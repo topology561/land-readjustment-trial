@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-20T02:25:00+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-20T02:26:30+08:00",
   "order": "W-G.9-390_規格單.md",
   "order_bytes": 128165,
   "order_sha256": "1be510539a1f82ef0653fd45897328461c28c27666db35522aeed38d49e50af4",
@@ -410,6 +410,13 @@
       "from": "running",
       "to": "reported",
       "note": "停機上呈 W-G.9-390（停機款 12：reviewer 之 (B) 三項〔B-1 回原狀之土地之去處、B-2 回原狀之端為 K-9-50 之敗端、B-3 同時之成之「最後」〕）；V-1〜V-9 皆合、本案配地⛔ 變、(A) 無；工項二 c68f920 ⛔ 推；側支 ＝ 591b9c3（工項一）"
+    },
+    {
+      "at": "2026-10-20T02:26:30+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手 W-G.9-390 之停機上呈（停機款 12·(B) 三項）之復驗與判讀"
     }
   ]
 }
