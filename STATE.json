@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-19T16:05:07+08:00",
+  "status": "reported",
+  "status_since": "2026-10-19T16:14:15+08:00",
   "order": "W-G.9-389_補令一.md",
   "order_bytes": 21882,
   "order_sha256": "25317c60ce0f7eca3bbfda23805b98cc5799d41ac7482f4caeba9f5ee424c647",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-389_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb",
   "history": [
@@ -347,6 +347,13 @@
       "from": "pending",
       "to": "running",
       "note": "執行端接單 W-G.9-389_補令一.md（bytes 21882·sha256 25317c60ce0f…·SELF_SHA256 67fbbb0c… 自驗相符）"
+    },
+    {
+      "at": "2026-10-19T16:14:15+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "執行端回報 W-G.9-389_補令一.md（完成）：工項零″ 2aa6302 推側支 verify/W-G.9-389-trialstop（dbe21f5 → 2aa6302·快轉）；主線 929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb → 2aa63021da38632704519e05d53ced9f56e22659（快轉·⛔ --force·heads 49）；生產碼 34 檔 ≡ a298a4f·本案配地⛔ 變；收工閘 1″〜8″ 皆合（閘 8″ 17 呼叫 rc 0·stderr 0 B）"
     }
   ]
 }
