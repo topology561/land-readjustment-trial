@@ -1508,6 +1508,11 @@ CHG384_SP = ("run_end_block_merge",)
 KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG384_APP)
 KEEP_SP = tuple(x for x in KEEP_SP if x not in CHG384_SP)
 APP_ALLOW |= {"k971_key5", "k971_blk5"} | set(CHG384_APP)
+# 🔧 `W-G.9-389`（試算內之程式之停機之上拋）：W7 之許增五新名與十一函式（其行為與接線由 F33 量之）
+W389_APP = ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since",
+                "evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
+                "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953", "f3_screen_adj4")
+APP_ALLOW |= set(W389_APP)
 SP_ALLOW |= set(CHG384_SP)
 # 🔧 `W-G.9-385`（`K-9-74`／`K-9-79`）：步驟 H 之尺度（`main`）出 W6 之受詞；W7 之許增四新函式、`K974_PARAMS`、
 #   `calc_special_burden_total` 與之（其接線與二函式之唯增列由 F30 之 wiring 量之）

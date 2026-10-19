@@ -21,6 +21,8 @@
            （⛔ 呼叫 `k967_rank`／`adj_q2`）；R3 每一合併單位之原街廓 ＝ 外部錨 `EXPECT_RUN`（主線 `34736ab` 之
            `probe_WG9351_intake.py run` 之出艙·發單端實跑·舊碼之值）——本案⛔ 遇並列 ⇒ 原街廓⛔ 變。
 🔧 `W-G.9-388`（⛔ 上列一字不刪）：X3 之許增 `k6b_stage3_run`（`K-9-61` ①②③⑥ 之落地·其行為由 F32 量之）。
+🔧 `W-G.9-389`（⛔ 上列一字不刪）：X3 之許增試算內之程式之停機之上拋之五新名（名之集唯增之）與十一函式；X5 之許增
+  `verify/selection_pipeline.py`（其增列·其行為與接線由 F33 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, os, re, subprocess, sys
@@ -33,6 +35,11 @@ except Exception:
 
 FN_AI = "adj_intake"
 EXTRACT_FUNCS = [FN_AI, "adj_intake_rows", "k967_rank", "adj_q2"]
+# 🔧 `W-G.9-389`：其後之單之新名與所改之頂層節點（試算內之程式之停機之上拋·F33 量之）
+NEW389 = ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since")
+W389 = ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since",
+            "evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
+            "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953", "f3_screen_adj4")
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 # 外部錨（R3）：主線 `34736ab` 之 `probe_WG9351_intake.py run <repo>` 之「單位」列之原街廓（發單端 2026-10-17 實跑）
 EXPECT_RUN = {
@@ -262,6 +269,8 @@ def wiring(repo, base):
         bt, ct = _top(bsrc), _top(src)
         dif = sorted(k for k in set(bt) | set(ct) if bt.get(k) != ct.get(k))
         ok3 = set(bt) == set(ct) and set(dif) <= {FN_AI} | {"k6b_stage3_run"}    # 🔧 `W-G.9-388`：其後之單所改者亦許（F32 量之）
+        ok3 = ok3 or (set(ct) - set(bt) == set(NEW389) and set(bt) <= set(ct)
+                      and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389))   # 🔧 `W-G.9-389`：同（F33 量之）
         res.append(("X3 頂層之名之集⛔ 變·相異之節點 ⊆ {adj_intake}", ok3,
                     f"增 {sorted(set(ct) - set(bt))}／去 {sorted(set(bt) - set(ct))}／相異 {dif}"))
         ls = subprocess.run(["git", "-C", repo, "ls-tree", "--name-only", base, "verify/"], capture_output=True,
@@ -277,6 +286,7 @@ def wiring(repo, base):
                 c = None
             if b != c:
                 chg.append(p)
+        chg = [p for p in chg if p != "verify/selection_pipeline.py"]   # 🔧 `W-G.9-389`：其增列（F33 之 X4 量之）
         res.append((f"X5 生產碼 app.py 以外之 {len(prod)} 檔對基準相異 0", not chg and len(prod) >= 1, f"相異 {chg}"))
     except Exception as e:  # noqa: BLE001
         res.append(("X3 頂層之名之集⛔ 變·相異之節點 ⊆ {adj_intake}", False, f"基準讀不到：{type(e).__name__}"))

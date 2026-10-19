@@ -32,9 +32,17 @@ KL 裁 `2026-10-06 01:29`；`2026-10-18 08:03`〔問二 ＝ 手冊道路用地�
            之停機仍在；X2 `_recv_of` 之形 ＝ `def _recv_of(b, y):`，其呼叫皆二引數；X3 app.py 之頂層節點對基準之相異 ＝
            `{k6b_stage3_run}`、頂層之名之集⛔ 變；X4 `k6b_stage3_run` 內⛔ 案件字面；X5 `verify/` 之 `*.py`（頂層）對基準
            逐位同。
+🔧 `W-G.9-389`（⛔ 上列一字不刪）：X3 之許增試算內之程式之停機之上拋之五新名（名之集唯增之）與十一函式；X5 之許增
+           `verify/selection_pipeline.py`（其增列·其行為與接線由 F33 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, os, re, subprocess, sys
+
+# 🔧 `W-G.9-389`：其後之單之新名與所改之頂層節點（試算內之程式之停機之上拋·F33 量之）
+NEW389 = ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since")
+W389 = ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since",
+            "evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
+            "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953", "f3_screen_adj4")
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -514,6 +522,9 @@ def wiring(repo, base):
     ta, tb = _top(app), _top(old)
     diff = sorted(k for k in set(ta) | set(tb) if ta.get(k) != tb.get(k))
     ok3 = diff == ["k6b_stage3_run"] and set(ta) == set(tb)
+    # 🔧 `W-G.9-389`：其後之單之新名（名之集唯增之）與所改之頂層節點亦許（F33 量之）
+    ok3 = ok3 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW389) and set(tb) <= set(ta)
+                  and set(diff) <= {"k6b_stage3_run"} | set(W389))
     print(("  ✅" if ok3 else "  🔴") + f" X3 頂層之相異 {diff}（期 ['k6b_stage3_run']）、名之集同 {set(ta) == set(tb)}")
     if not ok3:
         red.append("X3")
@@ -523,7 +534,7 @@ def wiring(repo, base):
     if lits:
         red.append("X4")
     ch = [l for l in _git(repo, "diff", "--name-only", base, "--", "verify/").splitlines()
-          if l.count("/") == 1 and l.endswith(".py")]
+          if l.count("/") == 1 and l.endswith(".py") and l != "verify/selection_pipeline.py"]   # 🔧 `W-G.9-389`：其增列（F33 量之）
     print(("  ✅" if not ch else "  🔴") + f" X5 verify/ 頂層之 *.py 對基準逐位同（異 {ch}）")
     if ch:
         red.append("X5")

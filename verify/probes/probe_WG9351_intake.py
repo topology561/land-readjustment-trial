@@ -25,6 +25,8 @@ rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等�
   相同者，取重劃前面積之合計較大者，再同取分不到之土地中最小之暫編地號較小者（`k967_rank`·⛔ 停機）——抽出另含
   `k967_rank`、`adj_q2`（`ADJ_DEPS387`）；S6 之期改為重劃前面積較大之街廓；突變 M4（並列⛔ 停機）去之（其錨已去·新碼之判別力
   由 F31 量之）；run 之外部錨（R3）之原街廓依上開三鍵另寫。
+🔧 `W-G.9-389`（試算內之程式之停機之上拋·⛔ 上列一字不刪）：`adj_intake` 之【未裁】之停機改經 `k6_program_stop` ⇒ 抽出另含
+  `k6_program_stop`、`k6_trial_mark`、`k6_trial_raise_since` 與 `K6_PROGRAM_STOPS`／`K6_PROGRAM_STOP_RE`（`ADJ_DEPS389`·存者始取）。
 """
 import ast, contextlib, io, os, re, sys
 
@@ -35,6 +37,7 @@ except Exception:
 
 ADJ_FUNCS = ["adj_intake", "adj_intake_rows"]
 ADJ_DEPS387 = ["k967_rank", "adj_q2"]   # 🔧 `W-G.9-387`：`adj_intake` 所呼之函式（抽出用·⛔ 入 ADJ_FUNCS 之他判）
+ADJ_DEPS389 = ["k6_program_stop", "k6_trial_mark", "k6_trial_raise_since"]   # 🔧 `W-G.9-389`：同（存者始取）
 ADJ_KEYS = ["f3_k929_6_build", "f3_k929_6_dropped"]
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 
@@ -47,14 +50,15 @@ def _read(repo, rel):
 def _extract_ns(src):
     """自 `app.py` 以 AST 抽出 `ADJ_*`／`SS_ADJ_*` 常數與 `adj_*` 函式，於隔離之命名空間執行。"""
     tree = ast.parse(src)
-    parts = []
+    parts = ["import re"]      # 🔧 `W-G.9-389`：`K6_PROGRAM_STOP_RE` 之所需
     for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name in ADJ_FUNCS + ADJ_DEPS387:
+        if isinstance(node, ast.FunctionDef) and node.name in ADJ_FUNCS + ADJ_DEPS387 + ADJ_DEPS389:
             parts.append(ast.get_source_segment(src, node))
         elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name) \
-                and (node.targets[0].id.startswith("ADJ_") or node.targets[0].id.startswith("SS_ADJ_")):
+                and (node.targets[0].id.startswith("ADJ_") or node.targets[0].id.startswith("SS_ADJ_")
+                     or node.targets[0].id in ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE")):
             parts.append(ast.get_source_segment(src, node))
-    if not parts:
+    if parts == ["import re"]:
         raise KeyError("受詞缺")
     ns = {}
     exec(compile("\n\n".join(parts), "<adj_extract>", "exec"), ns)

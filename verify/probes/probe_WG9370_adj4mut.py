@@ -108,6 +108,10 @@ ALLOW373_APP += ("k971_key5", "k971_blk5", "f3_screen_end_block_merge", "f3_scre
 ALLOW373_SP += ("run_end_block_merge", "run_corner_pk_k6b")
 # 🔧 `W-G.9-385`（`K-9-74`／`K-9-79`）：X2 之許增四新函式、`K974_PARAMS` 與步驟 H 之尺度所改之二函式（其接線由 F30 之 wiring 量之）
 ALLOW373_APP += ("K974_PARAMS", "k962_land_marks", "k974_read_junctions", "k974_burden_scales", "k974_screen_scales", "calc_special_burden_total", "main")
+# 🔧 `W-G.9-389`（試算內之程式之停機之上拋）：X2 之許增五新名與十一函式；X4 之差除含 `k6_trial_` 之增列（其行為與接線由 F33 量之）
+ALLOW373_APP += ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since",
+                "evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
+                "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953", "f3_screen_adj4")
 
 
 def _strip_fns(src, names):
@@ -305,6 +309,7 @@ def wiring(repo, base):
     s1 = _strip_fns(open(os.path.join(repo, "verify", "selection_pipeline.py"), encoding="utf-8").read(),
                     ALLOW373_SP).splitlines()
     d = [x for x in difflib.unified_diff(s0, s1, n=0, lineterm="") if x[:1] in "+-" and x[:3] not in ("+++", "---")]
+    d = [x for x in d if not (x[:1] == "+" and "k6_trial_" in x)]     # 🔧 `W-G.9-389`：其增列（F33 之 X4 量之）
     want = ['-            temp_parcels, build_parcels, ss["t8_ownership_map"]):',
             '-    _own_a4 = ss["t8_ownership_map"]',
             '+            temp_parcels, build_parcels, ss.get("t8_ownership_map", {}) or {}):',
