@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-19T19:41:42+08:00",
-  "order": "W-G.9-389_補令一.md",
-  "order_bytes": 21882,
-  "order_sha256": "25317c60ce0f7eca3bbfda23805b98cc5799d41ac7482f4caeba9f5ee424c647",
-  "order_kind": "補令",
+  "status": "pending",
+  "status_since": "2026-10-19T22:55:43+08:00",
+  "order": "W-G.9-390_規格單.md",
+  "order_bytes": 128165,
+  "order_sha256": "1be510539a1f82ef0653fd45897328461c28c27666db35522aeed38d49e50af4",
+  "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-389_補令一_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb",
   "history": [
@@ -389,6 +389,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-G.9-390（K-9-61 ④⑤ 與 GB-205 之還原·待落地序 7 之二）上鎖"
+    },
+    {
+      "at": "2026-10-19T22:55:43+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-390_規格單.md（K-9-61 ④·128165 B·1be510539a1f…·expects_allocation_change=false·attempt 1）"
     }
   ]
 }
