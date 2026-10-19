@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-19T22:55:43+08:00",
+  "status": "running",
+  "status_since": "2026-10-19T22:57:30+08:00",
   "order": "W-G.9-390_規格單.md",
   "order_bytes": 128165,
   "order_sha256": "1be510539a1f82ef0653fd45897328461c28c27666db35522aeed38d49e50af4",
@@ -396,6 +396,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-390_規格單.md（K-9-61 ④·128165 B·1be510539a1f…·expects_allocation_change=false·attempt 1）"
+    },
+    {
+      "at": "2026-10-19T22:57:30+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-390_規格單.md（bytes 128165／sha256 1be510539a1f…／SELF_SHA256 9773afec… 皆合）"
     }
   ]
 }
