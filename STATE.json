@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-19T16:15:14+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-19T18:15:07+08:00",
   "order": "W-G.9-389_補令一.md",
   "order_bytes": 21882,
   "order_sha256": "25317c60ce0f7eca3bbfda23805b98cc5799d41ac7482f4caeba9f5ee424c647",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-389_補令一_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "2026-10-19_0807.md",
   "main_before": "929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb",
   "history": [
     {
@@ -361,6 +361,20 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-389_補令一（入主線之短單·完成之回報）"
+    },
+    {
+      "at": "2026-10-19T18:15:07+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-389_補令一 通過：主線 929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb → 2aa63021da38632704519e05d53ced9f56e22659（快轉·ls-remote 實測）；立基準 基準/2aa63021da38632704519e05d53ced9f56e22659.md（71 呼叫皆合期·stderr 0 B）；本案配地⛔ 變"
+    },
+    {
+      "at": "2026-10-19T18:15:07+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "await_kl",
+      "note": "丙之閘（KL 2026-10-19 08:07）：下一號 W-G.9-390 而無 mode=local ⇒ ⛔ 上鎖、⛔ 擬；待 KL 擇時於筆電前切本機"
     }
   ]
 }
