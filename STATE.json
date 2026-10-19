@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-19T07:08:16+08:00",
-  "order": "W-G.9-388_補令三.md",
-  "order_bytes": 22034,
-  "order_sha256": "c88b6d457e8373aa1399e90c1b3224c10b0e02a7a893a4872ad504de6762e52c",
-  "order_kind": "短單",
+  "status": "pending",
+  "status_since": "2026-10-19T10:43:04+08:00",
+  "order": "W-G.9-389_規格單.md",
+  "order_bytes": 134281,
+  "order_sha256": "8ba8c7bc90a61cc871d95fdad038e8206e0ca05d7acf6164db9a552447490ef0",
+  "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-388_補令三_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "fd88f64793a373ab921999fbe5b325c44f0c2a4c",
   "history": [
@@ -305,6 +305,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-G.9-389（試算內之程式之停機之上拋）·上鎖"
+    },
+    {
+      "at": "2026-10-19T10:43:04+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-389_規格單.md（試算內之程式之停機之上拋·134281 B·8ba8c7bc90a6…·expects_allocation_change=false·attempt 1）"
     }
   ]
 }
