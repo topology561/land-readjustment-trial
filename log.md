@@ -116,3 +116,4 @@
 | 2026-10-19T22:56:18+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01Hfee5UkxTGzqWqt23w21dQ`；更新 `交接.md`（`390` 之要、留次單、待 KL 知悉）、`skill/retro.md`；effort=high | `pending` |
 | 2026-10-19T22:57:30+08:00 | 執行端 | 接單 `W-G.9-390_規格單.md`（bytes `128165`／sha256 `1be510539a1f…`／`SELF_SHA256` `9773afec…` 皆合）；effort=high | `running` |
 | 2026-10-20T02:25:00+08:00 | 執行端 | 回報 `W-G.9-390_規格單.md`（**停機上呈**·停機款 `12`）：工項零 `7c171db`、工項一 `591b9c3` 推至新側支 `verify/W-G.9-390-k961r`（heads `50`·主線 `2aa6302` ⛔ 動）；工項二 `c68f920`（`app.py` `+78`／`−8`·blob `7b4c626b…`）之驗 `V-1`〜`V-9` 皆合（`74` 呼叫合期·stderr `0` B·`k6s3 cmp` 二退縮相異 `0`·`F8`／`parity` 同 ⇒ 本案配地⛔ 變）；唯讀審查 (A) 無、(B) 三項（回原狀之土地之去處、回原狀之端為 `K-9-50` 之敗端、同時之成之「最後」）⇒ ⛔ 自裁、工項二⛔ 推、工項三四⛔ 施；(C) 二項候單；報告 `reports/W-G.9-390_規格單_回報.md`；effort=high | `reported` |
+| 2026-10-20T02:26:00+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_017m8m6NvTH6cgffTezRYd6g`；effort=high | `reported` |
