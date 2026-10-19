@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-19T13:20:02+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-19T13:21:00+08:00",
   "order": "W-G.9-389_規格單.md",
   "order_bytes": 134281,
   "order_sha256": "8ba8c7bc90a61cc871d95fdad038e8206e0ca05d7acf6164db9a552447490ef0",
@@ -326,6 +326,13 @@
       "from": "running",
       "to": "reported",
       "note": "執行端回報 W-G.9-389_規格單.md（完成）：新側支 verify/W-G.9-389-trialstop ＝ dbe21f5e98ac5a74a3852df8f6cab3a6f4ff7db9（五 commit：4d21a04、1689af8、a298a4f、b117fb3、dbe21f5）；主線 929ea20 ⛔ 動；V-1〜V-9 皆期（71 呼叫 rc 0·stderr 0 B）；k6s3 cmp 相異 0、F8 同、parity 正規化後同 ⇒ 本案配地⛔ 變；收工閘 1〜8 皆過；審查 (A)(B) 無·(C) 三項記錄"
+    },
+    {
+      "at": "2026-10-19T13:21:00+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "發單端接手復驗 W-G.9-389_規格單.md"
     }
   ]
 }
