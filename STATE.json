@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-21T05:43:13+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-21T05:43:46+08:00",
   "order": "W-G.9-390_補令三.md",
   "order_bytes": 144572,
   "order_sha256": "9b74273c61b4597351f29dff5243712400274a75ed36881b6df62b529e7304cf",
@@ -550,6 +550,13 @@
       "from": "running",
       "to": "reported",
       "note": "回報 W-G.9-390_補令三（完成）：新側支 6d1e994 → ca3ea9e（工項零⁗ e456b93·一⁗ 3cf4685·二⁗ a41022d·三⁗ 5bbe795·四⁗ ca3ea9e）；app.py 80d00d86 → 82855efb；V-1⁗〜V-9⁗ 與收工閘 1⁗〜8⁗ 皆合；本案配地⛔ 變；審查 (A)(D) 無；主線 2aa6302 ⛔ 動"
+    },
+    {
+      "at": "2026-10-21T05:43:46+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-390_補令三（完成·⛔ 採自報）"
     }
   ]
 }
