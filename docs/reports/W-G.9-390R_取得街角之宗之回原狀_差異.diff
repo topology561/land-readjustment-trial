@@ -1,0 +1,120 @@
+diff --git a/app.py b/app.py
+index 80d00d8..82855ef 100644
+--- a/app.py
++++ b/app.py
+@@ -14726,6 +14726,14 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       ⇒ 本街廓先，否則其承受之宗之序鍵最小（應分配面積較大）之一側；為零 ⇒ 本街廓有同一地主之已配得之宗者依第 5 項之輪，否則
+       經該群之與之相鄰之道路片（⛔ 已併出·⛔ 穿越）之遠半臨另一側之已配得街廓者向該側併（隨其道路片之受者·手冊道路用地分配
+       原則第 2 點），仍為零 ⇒ 依第 5 項之輪（整筆·於整批試與其諸輪之後另為一輪）。受併宗於試算未保留之停機改以逐受併宗判。
++    🔧 `W-G.9-390` 補令三（`K-9-80` ②⑧·KL `2026-10-20 22:30`／`22:55`；`K-9-50` 題一第 3 點·KL `2026-10-20 09:11`）：
++      `R-1⁗` 取得即鎖定之宗之查——步驟 1〜8 一趟畢、步驟 10 之前，成者（紀錄中 `序` ≠ 後處理、`結果` ＝ 成之列）須與
++      `successes` 逐一相應（⛔ ⇒ 停機）；成者 ≥ 1 ⇒ 以一次之試算查一切成者之宗之保留：試算中止 ⇒ 停機；有未保留者 ⇒ 停機
++      → 其訊息具一切未保留之成者（程式錯誤）；皆保留 ⇒ 步驟 10 以此試算為其首次之 `_cur`（⛔ 另呼）；成者為零 ⇒ ⛔ 查。
++      ⇒ ⛔ 還原、⛔ 重試、⛔ 以名單之下一名續試；他宗（含題一 4 之照配之列）之未保留⛔ 構成此停機；鎖定之宗仍受同一地主之併入。
++      `R-4⁗` `W-G.9-388` `R-5` 之停機（步驟 10 之受併宗之查）去之，由 `R-1⁗` 代之。
++      `R-9‴` 題一第 3 點（整片各試而二端皆成）⇒ 歸題一 3 之序之先者——序鍵 ＝ `k967_rank`（該端之試之 `G` → 重劃前面積
++      → 暫編地號·小者先）；重劃前面積之成員 ＝ 候選 ∪ 該試之整筆併入之片，表 ＝ 現態之分攤登記面積 − 段三部分併出；題二⛔ 改。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -14954,13 +14962,26 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+              受併宗=(e['c'] if ok else '—'), 試算G=(res or {}).get('G', '—'), 門檻=(res or {}).get('thr', '—'),
+              檢核=(res or {}).get('chk', '—'), 競合=note)
+ 
+-    def _ct_pick(A, B, form):
+-        # 二端皆拿得下：與 R_end 之交之面積大者；並列 ⇒ 題一取跨占者暫編地號（字典序）小者、題二取前緣線 p1 側
++    def _rk390(e390, res390):
++        # 🔧 `W-G.9-390` 補令三（R-9‴·題一 3 之序·KL `2026-10-20 09:11`）：一端之試之序鍵 ＝ k967_rank(該試之 G, 重劃前面積,
++        #   候選)；重劃前面積 ＝ k967_pre_area(候選, 候選 ∪ 該試之整筆併入之片〔切分併入之片⛔ 入〕, 表)，表 ＝ 求鍵時之現態之
++        #   每一片之分攤登記面積 − 其段三部分併出之值之和
++        _pa390 = {}
++        for _p390, _t390 in state["by"].items():
++            _pa390[_p390] = float(_t390.get('分攤登記面積_m2', 0) or 0) - sum(
++                float(_s390) for _s390 in (_t390.get('段三部分併出') or {}).values())
++        _m390 = [e390['c']] + sorted(_x390 for _x390, _q390, _w390 in res390['items'] if _w390)
++        return k967_rank(res390['G'], k967_pre_area(e390['c'], _m390, _pa390), e390['c'])
++
++    def _ct_pick(A, B, form, rk390=None):
++        # 二端皆拿得下：題二 ⇒ 與 R_end 之交之面積大者；並列 ⇒ 前緣線 p1 側
++        # 🔧 `W-G.9-390` 補令三（R-9‴）：題一 ⇒ 題一 3 之序（rk390 ＝ {端之鍵: 序鍵}·小者先）之先者（⛔ 以交面積、⛔ 以暫編地號
++        #   之並列之支）；題二⛔ 改
++        if form == '一':
++            return (A, B) if rk390[A['k']] < rk390[B['k']] else (B, A)
+         if round(float(A['area']), 2) != round(float(B['area']), 2):
+             return (A, B) if float(A['area']) > float(B['area']) else (B, A)
+-        if form == '二':
+-            return (A, B) if A['end'] == '左' else (B, A)
+-        return (A, B) if A['c'] < B['c'] else (B, A)
++        return (A, B) if A['end'] == '左' else (B, A)
+ 
+     def _ct_same_block(A, B):
+         # 題二（`K-9-50` 二·比照 `K-9-24 二`、`K-9-27`）：二端分別以地主相連之土地試（先同街廓，再及道路、公設地）；
+@@ -15135,9 +15156,11 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             _ct_log(B, _rw[B['k']], False, _note)
+             return [A, B]
+         if len(_ow) == 2:
+-            W, Lo = _ct_pick(A, B, '一')
+-            _why = (f"二端皆成 ⇒ {W['c']}（交面積 {W['area']:.2f} ／ {Lo['area']:.2f}"
+-                    + ("·並列 ⇒ 暫編地號小者" if round(float(W['area']), 2) == round(float(Lo['area']), 2) else "") + "）")
++            # 🔧 `W-G.9-390` 補令三（R-9‴）：二端皆成 ⇒ 題一 3 之序（G → 重劃前面積 → 暫編地號）之先者（序鍵於施之前之現態求之）
++            _two390 = {e390['k']: _rk390(e390, _rw[e390['k']]) for e390 in (A, B)}
++            W, Lo = _ct_pick(A, B, '一', _two390)
++            _why = (f"二端皆成 ⇒ {W['c']}（題一 3 之序·G {-_two390[W['k']][0]} ／ {-_two390[Lo['k']][0]}·"
++                    f"重劃前面積 {-_two390[W['k']][1]} ／ {-_two390[Lo['k']][1]}）")
+         else:
+             W = _ow[0]
+             Lo = B if W is A else A
+@@ -15529,6 +15552,30 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         if not _done:
+             _row(**_base, 結果='未成', **(_last or {}))
+ 
++    # 🔧 `W-G.9-390` 補令三（R-1⁗·`K-9-80` ②⑧·KL `2026-10-20 22:30`／`22:55`）：取得即鎖定之宗之查——步驟 1〜8 畢（一趟）、
++    #   步驟 10 之前。成者 ＝ 紀錄中序 ≠ 後處理、結果 ＝ 成之列之 (街廓, 端, 候選)，須與 successes 逐一相應；成者 ≥ 1 ⇒ 以一次之
++    #   試算查一切成者之宗之保留（試算中止、有未保留者 ⇒ 停機·⛔ 還原、⛔ 重試、⛔ 以名單之下一名續試）；皆保留 ⇒ 步驟 10 以此
++    #   試算為其首次之 _cur（⛔ 另呼）；成者為零 ⇒ ⛔ 查。他宗（非成者·含題一 4 之照配之列）之未保留⛔ 構成此停機
++    _won390 = [(_y390['街廓'], _y390['端'], _y390['候選']) for _y390 in log
++               if _y390['序'] != '後處理' and _y390['結果'] == '成']
++    _suc390 = sorted((str(_b390), str(_c390)) for _g390, _c390, _b390 in successes)
++    if len(set(_won390)) != len(_won390) or sorted((str(_b390), str(_c390)) for _b390, _e390, _c390 in _won390) != _suc390:
++        raise RuntimeError(
++            f"🔴 [K-6-B 段三] 取得即鎖定之宗之查：成者 {_won390} 與 successes {_suc390} 不相應（或成者重複）"
++            "——程式錯誤 ⇒ 停機")
++    _cur390 = None
++    if _won390:
++        _cur390 = alloc_state(state["temp"], state["build"])
++        if _cur390.get("err"):
++            raise RuntimeError(
++                f"🔴 [K-6-B 段三] 取得即鎖定之宗之查：試算中止 {_cur390['err']!r}——成者之宗之保留無從判定 ⇒ 停機")
++        _out390 = [_k390 for _k390 in _won390 if _k390[2] not in _cur390["kept"].get(_k390[0], set())]
++        if _out390:
++            raise RuntimeError(
++                "🔴 [K-6-B 段三] 取得即鎖定之宗之查：成者 "
++                + "、".join(f"{_b390} {_e390}端 {_c390}" for _b390, _e390, _c390 in _out390)
++                + " 於試算⛔ 保留——程式錯誤 ⇒ 停機")
++
+     # ── 步驟 10：後處理 ──
+     _seen_g = []
+     for _gi, _c, _b in successes:
+@@ -15573,7 +15620,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         if not R:
+             continue
+         if _cur is None:
+-            _cur = alloc_state(state["temp"], state["build"])
++            # 🔧 `W-G.9-390` 補令三（R-1⁗）：首次之 _cur ＝ 取得即鎖定之宗之查之試算（⛔ 另呼）；其 err 已經彼判之（下之判不可達而留之）
++            _cur = _cur390
+             if _cur.get("err"):
+                 raise RuntimeError(f"🔴 [K-6-B 段三 後處理] 現態配地中止：{_cur['err']!r}（停機款 9）")
+             # 🔧 `W-G.9-388`（R-4）：序鍵之表（首次之試算之後各立一次）——試算之 members 與重劃前面積之表（現態之每一片之
+@@ -15613,12 +15661,6 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             raise RuntimeError(
+                 f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之 B 為空（現態無保留之建築成員）"
+                 f"而待處置者 {sorted(R)} 非空（停機款 9）")
+-        # 🔧 `W-G.9-388`（`K-9-61` ④ 之防·R-5）：逐受併宗判（同一街廓二受併宗而其一未保留者亦停機）
+-        _recv_out = sorted(_c388 for _c388 in _rcv388 if _c388 not in _cur["kept"].get(_blk_of[_c388], set()))
+-        if _recv_out:
+-            raise RuntimeError(
+-                f"🔴 [K-6-B 段三 後處理] 群 {sorted(_mem)} 之受併宗 {_recv_out} 於試算⛔ 保留"
+-                "（受併宗於現態未保留·停機款 9）")
+         _plan = []      # (類, x, [(recv, qty)], whole, 鄰接, 鄰接半片)
+         _ga = lambda x: (-float(_by0[x].get('幾何面積_m2', 0) or 0), x)
+         _cls = {'a': [], 'b': [], 'c': []}
