@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-20T15:49:34+08:00",
+  "status": "running",
+  "status_since": "2026-10-20T15:50:17+08:00",
   "order": "W-G.9-390_補令二.md",
   "order_bytes": 110496,
   "order_sha256": "42b3891a0a47748fc84320be96a5e50948228ccdd484d6e52ce16f4c79f1ef1b",
@@ -473,6 +473,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-390_補令二.md（補令一之前置″ 項 4 之正〔自誤 632〕＋ KL 09:02 之補正與 09:11 之改裁之落地：R-2‴〔同一次所施之成者之組·未保留者二以上 ⇒ 依 G → 重劃前面積 → 暫編地號之序之後者先還原〕、R-9‴〔K-9-50 題一第 3 點同序〕；R-0″、R-8″ 照舊；塊 Fy44／K35／E35〔自誤 632、633〕／P46）·expects_allocation_change=false·attempt 3"
+    },
+    {
+      "at": "2026-10-20T15:50:17+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-390_補令二（bytes 110496／sha256 42b3891a…／SELF_SHA256 f8e16e6a… 皆合）"
     }
   ]
 }
