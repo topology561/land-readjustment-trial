@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-20T15:50:17+08:00",
+  "status": "reported",
+  "status_since": "2026-10-20T18:38:57+08:00",
   "order": "W-G.9-390_補令二.md",
   "order_bytes": 110496,
   "order_sha256": "42b3891a0a47748fc84320be96a5e50948228ccdd484d6e52ce16f4c79f1ef1b",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 3,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-390_補令二_回報.md",
+  "result": "停機上呈",
   "kl_question": null,
   "main_before": "929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb",
   "history": [
@@ -480,6 +480,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-390_補令二（bytes 110496／sha256 42b3891a…／SELF_SHA256 f8e16e6a… 皆合）"
+    },
+    {
+      "at": "2026-10-20T18:38:57+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-390_補令二（停機上呈·停機款 12‴：唯讀審查之 (D)〔組中依新序所擇之端前已回原狀 ⇒ 新碼停機「還原後仍出現」；他讀則配地續行〕⛔ 在 §三-4‴ 已知之形 ①〜⑤）；工項零‴ 320f967、一‴ 6d1e994 已推新側支；工項二‴ 3f51658（app.py 0502e193）⛔ 推·V-1‴〜V-9‴ 皆合·本案配地⛔ 變；主線 2aa6302 ⛔ 動"
     }
   ]
 }
