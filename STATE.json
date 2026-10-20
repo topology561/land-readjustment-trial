@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-20T12:31:53+08:00",
+  "status": "drafting",
+  "status_since": "2026-10-20T12:46:30+08:00",
   "order": "W-G.9-390_補令一.md",
   "order_bytes": 93760,
   "order_sha256": "5c537dcafc1e06f882eb09ce4f43b5a6459dbfb44576090b2dc0042454f1bd09",
@@ -459,6 +459,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-390_補令一（停機上呈·停機款 4″·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-20T12:46:30+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "drafting",
+      "note": "復驗 W-G.9-390_補令一 之停機上呈：屬實（前置″ 項 4 之期未計工項零″ 所入之本補令·發單端之誤·自誤 632）；側支 ddddfb8 二 commit 合單（blob 皆合·heads 50·主線 2aa6302 ⛔ 動）⇒ 擬 W-G.9-390_補令二（併 KL 09:02 之序之補正與 09:11 K-9-50 題一 3 之改·監看窗 12:22 之必辦）上鎖"
     }
   ]
 }
