@@ -1,15 +1,15 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-20T08:52:30+08:00",
-  "order": "W-G.9-390_規格單.md",
-  "order_bytes": 128165,
-  "order_sha256": "1be510539a1f82ef0653fd45897328461c28c27666db35522aeed38d49e50af4",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-20T12:19:54+08:00",
+  "order": "W-G.9-390_補令一.md",
+  "order_bytes": 93760,
+  "order_sha256": "5c537dcafc1e06f882eb09ce4f43b5a6459dbfb44576090b2dc0042454f1bd09",
+  "order_kind": "補令",
   "expects_allocation_change": false,
-  "attempt": 1,
-  "report": "W-G.9-390_規格單_回報.md",
-  "result": "停機上呈",
-  "kl_question": "2026-10-20_二端同時配得而皆未被保留.md",
+  "attempt": 2,
+  "report": null,
+  "result": null,
+  "kl_question": null,
   "main_before": "929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb",
   "history": [
     {
@@ -431,6 +431,13 @@
       "from": "await_kl",
       "to": "drafting",
       "note": "讀 KL答覆/2026-10-20_0847.md（B-3 採乙）⇒ 擬 W-G.9-390_補令一 上鎖"
+    },
+    {
+      "at": "2026-10-20T12:19:54+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-390_補令一.md（KL 08:47「採乙」之落地：R-2′ 同一次所施之二端皆未保留 ⇒ 保留 K-9-50 題一 3 之序之先者、先還原其後者；R-0″ 原趟之碼之重施；R-8″ C-1/C-2；塊 Fy43/K34/E34/P45；自誤 630、631）·expects_allocation_change=false·attempt 2"
     }
   ]
 }
