@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-21T01:15:48+08:00",
+  "status": "running",
+  "status_since": "2026-10-21T01:16:35+08:00",
   "order": "W-G.9-390_補令三.md",
   "order_bytes": 144572,
   "order_sha256": "9b74273c61b4597351f29dff5243712400274a75ed36881b6df62b529e7304cf",
@@ -536,6 +536,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-390_補令三.md（補令·144572 B·9b74273c61b4…·expects_allocation_change=false·attempt 4）：KL 22:30／22:55 取得即鎖定（K-9-80）⇒ 還原去之、未保留即停機；R-9‴ 照舊"
+    },
+    {
+      "at": "2026-10-21T01:16:35+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-390_補令三.md（bytes 144572·sha256 9b74273c…·SELF_SHA256 81832dc7… 皆合）"
     }
   ]
 }
