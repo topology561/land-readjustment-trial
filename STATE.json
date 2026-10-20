@@ -1,6 +1,6 @@
 {
-  "status": "await_kl",
-  "status_since": "2026-10-20T22:34:00+08:00",
+  "status": "idle",
+  "status_since": "2026-10-20T23:05:00+08:00",
   "order": "W-G.9-390_補令二.md",
   "order_bytes": 110496,
   "order_sha256": "42b3891a0a47748fc84320be96a5e50948228ccdd484d6e52ce16f4c79f1ef1b",
@@ -9,7 +9,7 @@
   "attempt": 3,
   "report": "W-G.9-390_補令二_回報.md",
   "result": "停機上呈",
-  "kl_question": "2026-10-20_已還原過之一端又被選為還原者.md",
+  "kl_question": null,
   "main_before": "929ea20434fe0d1b06e6c94a7cdc85ef145ae7fb",
   "history": [
     {
@@ -515,6 +515,13 @@
       "from": "await_kl",
       "to": "await_kl",
       "note": "KL 提「取得」之新定義（取得即鎖定；R_end 依最小建築面積往內擴）並問其衍生問題（KL答覆/2026-10-20_2230.md·尚非定案）；已於對話答之；待 KL 定案"
+    },
+    {
+      "at": "2026-10-20T23:05:00+08:00",
+      "by": "發單端",
+      "from": "await_kl",
+      "to": "idle",
+      "note": "KL 22:55 答（KL答覆/2026-10-20_2255.md）：取得即鎖定定案、原請示不必再答、390 改以自我檢查取代還原 ⇒ idle；次輪擬 390 改向之單"
     }
   ]
 }
