@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-20T12:31:12+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-20T12:31:53+08:00",
   "order": "W-G.9-390_補令一.md",
   "order_bytes": 93760,
   "order_sha256": "5c537dcafc1e06f882eb09ce4f43b5a6459dbfb44576090b2dc0042454f1bd09",
@@ -452,6 +452,13 @@
       "from": "running",
       "to": "reported",
       "note": "停機上呈（停機款 4″·工項二″ 前置″ 項 4：git diff --stat 591b9c3 HEAD 之出艙二檔〔工項零″ 所入之本補令 ＋ probe_WG9390_k961r.py〕≠ 期之唯一檔·同自誤 629 之形）；工項零″ 640a652、一″ ddddfb8 已推側支（⛔ 撤）；生產碼⛔ 動；配地⛔ 變；⛔ 涉土地後果"
+    },
+    {
+      "at": "2026-10-20T12:31:53+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-390_補令一（停機上呈·停機款 4″·⛔ 採自報）"
     }
   ]
 }
