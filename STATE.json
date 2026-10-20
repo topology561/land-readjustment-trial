@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-20T12:19:54+08:00",
+  "status": "running",
+  "status_since": "2026-10-20T12:21:09+08:00",
   "order": "W-G.9-390_補令一.md",
   "order_bytes": 93760,
   "order_sha256": "5c537dcafc1e06f882eb09ce4f43b5a6459dbfb44576090b2dc0042454f1bd09",
@@ -438,6 +438,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-390_補令一.md（KL 08:47「採乙」之落地：R-2′ 同一次所施之二端皆未保留 ⇒ 保留 K-9-50 題一 3 之序之先者、先還原其後者；R-0″ 原趟之碼之重施；R-8″ C-1/C-2；塊 Fy43/K34/E34/P45；自誤 630、631）·expects_allocation_change=false·attempt 2"
+    },
+    {
+      "at": "2026-10-20T12:21:09+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-390_補令一.md（bytes 93760／sha256 5c537dca… 合 STATE；SELF_SHA256 e40016a5… 依 P-5 自驗合）"
     }
   ]
 }
