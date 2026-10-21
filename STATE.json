@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-21T20:40:51+08:00",
-  "order": "W-G.9-391_規格單.md",
-  "order_bytes": 151956,
-  "order_sha256": "22ef8a8c84f52b1d9ed0443705c87e685fefacafbd3134ec6aa82fb86f386c53",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-22T01:02:11+08:00",
+  "order": "W-G.9-391_補令一.md",
+  "order_bytes": 25718,
+  "order_sha256": "ca7d777ca189fbc2fa27f08dd083a6009dda14ce2df99c3832d4872dd85380fe",
+  "order_kind": "短單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-391_規格單_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -627,6 +627,20 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-391_規格單（完成·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-22T01:02:11+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-391_規格單 通過：側支 verify/W-G.9-391-k980x ＝ b95b44d（五筆·生產碼唯 a65e3c7 三檔）；差異逐行讀合 R-1〜R-9；前態 39 ＋ 施後 77 呼叫皆合期（stderr 0 B）；k6s3 cmp 二退縮相異 0・F8 逐位同・parity 同 ⇒ 本案配地⛔ 變；收工閘 1〜8 合；主線 a8657c4 ⛔ 動"
+    },
+    {
+      "at": "2026-10-22T01:02:11+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "pending",
+      "note": "出 W-G.9-391_補令一.md（入主線之短單·25718 B·ca7d777ca189…·快轉 a8657c4 → 工項零″ 之 commit·快轉前於 log.md 與 history 記前後值）"
     }
   ]
 }
