@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-21T08:06:41+08:00",
+  "status": "reported",
+  "status_since": "2026-10-21T08:15:10+08:00",
   "order": "W-G.9-390_補令四.md",
   "order_bytes": 24277,
   "order_sha256": "9a0e876c95b90d559cc58498481d4c01d0b09b5d1845924da86c1f2abb5a2c36",
   "order_kind": "短單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-390_補令四_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "2aa63021da38632704519e05d53ced9f56e22659",
   "history": [
@@ -571,6 +571,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-390_補令四（bytes 24277·sha256 9a0e876c95b9… 合·SELF_SHA256 9ead1ba9… 合）"
+    },
+    {
+      "at": "2026-10-21T08:15:10+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-390_補令四（完成）：工項零⁗′ a8657c4 推至側支 verify/W-G.9-390-k961r（ca3ea9e → a8657c4）；主線 wip/s1-endpart 快轉 2aa63021da38632704519e05d53ced9f56e22659 → a8657c4012d961eccebd77cd812c0ab6aeab030f（⛔ --force）；出艙 ①〜④ 與收工閘 1⁗′〜8⁗′ 皆合（閘 8⁗′ 23 呼叫 rc 0·stderr 0 B）；本案配地⛔ 變"
     }
   ]
 }
