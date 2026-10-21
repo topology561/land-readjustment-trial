@@ -200,3 +200,4 @@
 | 2026-10-22T01:02:46+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01ULcLKq8ru1PT58oaRZcnri`；更新 `交接.md`（391 之復驗、補令一之要、留次單、下一輪）、`進度表.md`（現況）；effort=high | `pending` |
 | 2026-10-22T01:03:24+08:00 | 執行端 | 接單 `W-G.9-391_補令一.md`：bytes `25718`、`sha256` `ca7d777ca189…`、`SELF_SHA256` `acb99fd38776…`（`P-5` 口徑）皆符；effort=high | `running` |
 | 2026-10-22T01:06:48+08:00 | 執行端 | 快轉前之記 `W-G.9-391_補令一`：主線 `a8657c4012d961eccebd77cd812c0ab6aeab030f` → `56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81`（將快轉）；工項零″ `56c77fd` 已推側支 `verify/W-G.9-391-k980x`（`b95b44d` → `56c77fd`）；前置 `1`〜`4` 皆合期；effort=high | `running` |
+| 2026-10-22T01:13:16+08:00 | 執行端 | 回報 `W-G.9-391_補令一`（**完成**）：主線 `a8657c4012d961eccebd77cd812c0ab6aeab030f` → `56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81`（快轉後之實值·⛔ `--force`）；側支 `verify/W-G.9-391-k980x` `b95b44d` → `56c77fd`（工項零″·零生產碼）；快轉後出艙 ①〜④ 合；收工閘 `1″`〜`8″` 皆合（`8″` `25` 呼叫 `rc 0`·`stderr` `0` B）；本案配地⛔ 變；effort=high | `reported` |
