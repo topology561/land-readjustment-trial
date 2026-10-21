@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-21T15:14:04+08:00",
+  "status": "reported",
+  "status_since": "2026-10-21T20:40:15+08:00",
   "order": "W-G.9-391_規格單.md",
   "order_bytes": 151956,
   "order_sha256": "22ef8a8c84f52b1d9ed0443705c87e685fefacafbd3134ec6aa82fb86f386c53",
   "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-391_規格單_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -613,6 +613,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-391_規格單.md（bytes 151956／sha256 22ef8a8c…／SELF_SHA256 afb401e3… 三者皆合）"
+    },
+    {
+      "at": "2026-10-21T20:40:15+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-391_規格單（完成）：新側支 verify/W-G.9-391-k980x ＝ b95b44d（工項零 65b1f25·一 a749c78·二 a65e3c7·三 54812a4·四 b95b44d）；V-1〜V-9 二趟皆合期·本案配地⛔ 變；唯讀審查 (A) ⛔ 新·(B) 一已修；收工閘 1〜8 皆合；主線 a8657c4 ⛔ 動"
     }
   ]
 }
