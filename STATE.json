@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-22T01:13:16+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-22T01:14:07+08:00",
   "order": "W-G.9-391_補令一.md",
   "order_bytes": 25718,
   "order_sha256": "ca7d777ca189fbc2fa27f08dd083a6009dda14ce2df99c3832d4872dd85380fe",
@@ -662,6 +662,13 @@
       "from": "running",
       "to": "reported",
       "note": "完成；主線 a8657c4012d961eccebd77cd812c0ab6aeab030f → 56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81（快轉）；側支 b95b44d → 56c77fd；收工閘 1″〜8″ 皆＝期"
+    },
+    {
+      "at": "2026-10-22T01:14:07+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-391_補令一（入主線之短單·⛔ 採自報）"
     }
   ]
 }
