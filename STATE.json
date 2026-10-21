@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-21T08:57:23+08:00",
+  "status": "idle",
+  "status_since": "2026-10-21T10:41:25+08:00",
   "order": "W-G.9-390_補令四.md",
   "order_bytes": 24277,
   "order_sha256": "9a0e876c95b90d559cc58498481d4c01d0b09b5d1845924da86c1f2abb5a2c36",
@@ -10,7 +10,7 @@
   "report": "W-G.9-390_補令四_回報.md",
   "result": "完成",
   "kl_question": null,
-  "main_before": "2aa63021da38632704519e05d53ced9f56e22659",
+  "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
     {
       "at": "2026-10-17T08:15:58+08:00",
@@ -585,6 +585,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-390_補令四（完成·入主線之短單·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-21T10:41:25+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-390_補令四 通過：主線 2aa63021da38632704519e05d53ced9f56e22659 → a8657c4012d961eccebd77cd812c0ab6aeab030f（快轉·⛔ --force）；立 基準/a8657c4012d961eccebd77cd812c0ab6aeab030f.md（74／74 合期·stderr 0 B）"
     }
   ]
 }
