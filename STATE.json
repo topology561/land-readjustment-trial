@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-22T01:02:11+08:00",
+  "status": "running",
+  "status_since": "2026-10-22T01:03:24+08:00",
   "order": "W-G.9-391_補令一.md",
   "order_bytes": 25718,
   "order_sha256": "ca7d777ca189fbc2fa27f08dd083a6009dda14ce2df99c3832d4872dd85380fe",
@@ -641,6 +641,13 @@
       "from": "idle",
       "to": "pending",
       "note": "出 W-G.9-391_補令一.md（入主線之短單·25718 B·ca7d777ca189…·快轉 a8657c4 → 工項零″ 之 commit·快轉前於 log.md 與 history 記前後值）"
+    },
+    {
+      "at": "2026-10-22T01:03:24+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-391_補令一.md；bytes 25718／sha256 ca7d777c…／SELF_SHA256 acb99fd3… 驗符"
     }
   ]
 }
