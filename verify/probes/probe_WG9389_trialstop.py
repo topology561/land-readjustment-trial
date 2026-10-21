@@ -42,6 +42,11 @@ ALLOW = {"evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "en
          "f3_screen_adj4"}
 # 🔧 `W-G.9-390`：其後之單所改之頂層節點（⛔ 限於二形·F34 量之）
 ALLOW390 = {"k6b_stage3_run"}
+# 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點、harness 二檔（範圍依最小建築面積之擴大、短街廓之警示停止·F35 量之）
+NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check", "k980_mba")
+W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
+                 "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
+F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 TAG_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])|【未裁】")
 TRIAL_CALLS = {"f3_screen_stepg_run", "run_step_g", "trial", "alloc_eval"}
 CATCH = {"RuntimeError", "_K6BTrialStop", "Exception"}
@@ -535,6 +540,8 @@ def wiring(repo, base):
             if not ok_:
                 why.append(f"{k}：{w_}")
     ok3 = add == NEW_TOP and not gone and set(dif) <= ALLOW | ALLOW390 and not why
+    # 🔧 `W-G.9-391`：其新名與所改之頂層節點亦許（⛔ 及 ALLOW 之二形之查·F35 量之）
+    ok3 = ok3 or (add == NEW_TOP | set(NEW391) and not gone and set(dif) <= ALLOW | ALLOW390 | set(W391) and not why)
     res.append(("X3 頂層：新名 ＝ 五·相異 ⊆ 本單之許·其差唯二形", ok3,
                 f"增 {sorted(add)}／去 {sorted(gone)}／相異 {dif}／不合 {why}"))
     # X4
@@ -545,6 +552,8 @@ def wiring(repo, base):
         diffs = [p for p in tops if _git_show(repo, base, p) != _read(repo, p)]
         ok4a, w4 = _diff_ok(sbsrc, ssrc)
         ok4 = diffs == ["verify/selection_pipeline.py"] and ok4a and "換 0" in w4
+        # 🔧 `W-G.9-391`：harness 二檔之增列亦許（selection_pipeline 之查照舊·F35 量之）
+        ok4 = ok4 or (sorted(set(diffs) - set(F391)) == ["verify/selection_pipeline.py"] and ok4a and "換 0" in w4)
         res.append(("X4 verify/ 頂層唯 selection_pipeline.py 異·其差唯含 k6_trial_ 之增列", ok4, f"異 {diffs}／{w4}"))
     except Exception as e:  # noqa: BLE001
         res.append(("X4 verify/ 頂層唯 selection_pipeline.py 異", False, f"中止 {type(e).__name__}：{e}"))

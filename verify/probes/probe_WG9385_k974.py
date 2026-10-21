@@ -42,6 +42,7 @@
            （同檔再呼 ⇒ 用之；換檔 ⇒ 重讀）。
 🔧 `W-G.9-388`（⛔ 上列一字不刪）：W7 之頂層之相異之許增 `k6b_stage3_run`（`K-9-61` ①②③⑥·其行為由 F32 量之）。
 🔧 `W-G.9-389`（⛔ 上列一字不刪）：W7 之頂層之相異之許增試算內之程式之停機之上拋之五新名與十一函式（其行為與接線由 F33 量之）。
+🔧 `W-G.9-391`（`K-9-34`·`K-9-80` ④⑥·⛔ 上列一字不刪）：W7 之頂層之相異之許增範圍之擴大之六新名與九函式（`main` 之唯增列照舊·其行為與接線由 F35 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, io, os, sys
@@ -57,6 +58,11 @@ NEW_NAMES = ["K974_PARAMS"] + NEW_FUNCS
 W389_APP = ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since",
                 "evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
                 "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953", "f3_screen_adj4")
+# 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點、harness 二檔（範圍依最小建築面積之擴大、短街廓之警示停止·F35 量之）
+NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check", "k980_mba")
+W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
+                 "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
+F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 TOL = 1e-9
 
 
@@ -498,8 +504,9 @@ def wiring(repo, base):
         # 🔧 `W-G.9-387`：其後之單所改之頂層節點亦許（`adj_intake`·`K-9-61` ⑧·其行為由 F31 量之）
         # 🔧 `W-G.9-388`：同（`k6b_stage3_run`·`K-9-61` ①②③⑥·其行為由 F32 量之）
         # 🔧 `W-G.9-389`：同（試算內之程式之停機之上拋·F33 量之）
+        # 🔧 `W-G.9-391`：同（範圍依最小建築面積之擴大·F35 量之）
         ok7 = (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"} | {"adj_intake"} | {"k6b_stage3_run"}
-               | set(W389_APP)
+               | set(W389_APP) | set(W391)
                and sorted(h for _, h in dels) == sorted(REPL385) and all(k == "main" for k, _ in dels))
         res.append(("W7 main／calc 唯增列（具名之換列三）·頂層之相異", ok7, f"相異 {dif}／刪列 {len(dels)}"))
     except Exception as e:

@@ -1519,6 +1519,13 @@ SP_ALLOW |= set(CHG384_SP)
 CHG385_APP = ("main", "calc_special_burden_total")
 KEEP_APP = tuple(x for x in KEEP_APP if x not in CHG385_APP)
 APP_ALLOW |= {"K974_PARAMS", "k962_land_marks", "k974_read_junctions", "k974_burden_scales", "k974_screen_scales"} | set(CHG385_APP)
+# 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點、harness 二檔（範圍依最小建築面積之擴大、短街廓之警示停止·F35 量之）
+NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check", "k980_mba")
+W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
+                 "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
+F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
+KEEP_APP = tuple(x for x in KEEP_APP if x not in W391)
+APP_ALLOW |= set(W391)
 
 
 def _top_dump(tree):

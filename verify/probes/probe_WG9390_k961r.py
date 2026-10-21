@@ -45,6 +45,11 @@ LOCK = "取得即鎖定之宗之查"
 KEPT = "於試算⛔ 保留"
 BLOCKS = {"BA": {"category": H}, "BB": {"category": H}, "RD": {"category": RDC}}
 CL = {"RD": [(-40.0, -5.0), (90.0, -5.0)]}
+# 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點、harness 二檔（範圍依最小建築面積之擴大、短街廓之警示停止·F35 量之）
+NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check", "k980_mba")
+W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
+                 "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
+F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 
 
 def _harvest(repo):
@@ -401,6 +406,9 @@ def wiring(repo, base):
     ta, tb = _top(app), _top(old)
     diff = sorted(k for k in set(ta) | set(tb) if ta.get(k) != tb.get(k))
     ok2 = diff == ["k6b_stage3_run"] and set(ta) == set(tb)
+    # 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點亦許（F35 量之）
+    ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) and set(tb) <= set(ta)
+                  and set(diff) <= {"k6b_stage3_run"} | set(W391))
     print(("  ✅" if ok2 else "  🔴") + f" X2 頂層之相異 {diff}（期 ['k6b_stage3_run']）、名之集同 {set(ta) == set(tb)}")
     if not ok2:
         red.append("X2")
@@ -410,7 +418,7 @@ def wiring(repo, base):
     if lits:
         red.append("X3")
     ch = [l for l in _git(repo, "diff", "--name-only", base, "--", "verify/").splitlines()
-          if l.count("/") == 1 and l.endswith(".py")]
+          if l.count("/") == 1 and l.endswith(".py") and l not in F391]   # 🔧 `W-G.9-391`：harness 二檔（F35 量之）
     print(("  ✅" if not ch else "  🔴") + f" X4 verify/ 頂層之 *.py 對基準逐位同（異 {ch}）")
     if ch:
         red.append("X4")

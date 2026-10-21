@@ -44,6 +44,7 @@
   🔧 `W-G.9-385`（`K-9-74`／`K-9-79`·⛔ 上列一字不刪）：wiring 之 W5 之許增 `K974_PARAMS`、`k962_land_marks`、
            `k974_read_junctions`、`k974_burden_scales`、`k974_screen_scales`、`calc_special_burden_total`、`main`（其接線與
            二函式之唯增列由 F30 之 wiring 量之）。
+  🔧 `W-G.9-391`（`K-9-34`·`K-9-80` ④⑥·⛔ 上列一字不刪）：wiring 之 W5 之許增範圍之擴大之六新名與九函式（其行為與接線由 F35 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, difflib, io, os, re, subprocess, sys, warnings
@@ -772,6 +773,12 @@ ALLOW375_APP += ("K974_PARAMS", "k962_land_marks", "k974_read_junctions", "k974_
 ALLOW375_APP += ("K6_PROGRAM_STOPS", "K6_PROGRAM_STOP_RE", "k6_program_stop", "k6_trial_mark", "k6_trial_raise_since",
                 "evaluate_parcel_width_n14", "k917_should_drop", "k929_6_fixpoint", "end_block_merge_run", "adj_intake",
                 "k967_pool_out", "k967_pool_less", "k953_manual_run", "k6b_screen_callbacks", "f3_screen_k953", "f3_screen_adj4")
+# 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點、harness 二檔（範圍依最小建築面積之擴大、短街廓之警示停止·F35 量之）
+NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check", "k980_mba")
+W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
+                 "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
+F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
+ALLOW375_APP += W391
 
 
 def _git_show(repo, rev, rel):

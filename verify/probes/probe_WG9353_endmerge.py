@@ -553,12 +553,14 @@ def _pipeline(ns, fake_st, rv, sb, scen=None):
             hits["merge"] += 1
         return saved["end_block_merge_run"](temp, build, own, set(locked) | set(cfg["lock"]), corner, *a, **k)
 
-    def geo(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir, min_width, side, _label=''):
+    def geo(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir, min_width, side, _label='',
+            min_build_area=None):  # 🔧 `W-G.9-391`：`end_block_side_geom` 增 `min_build_area`（照傳·未傳者⛔ 傳·F35 量之）
         if cfg["mw"] is not None and _label == "R6":
             hits["geo"] += 1
             min_width = cfg["mw"]
         return saved["end_block_side_geom"](block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
-                                            min_width, side, _label=_label)
+                                            min_width, side, _label=_label,
+                                            **({} if min_build_area is None else {"min_build_area": min_build_area}))
     ns["end_block_host"], ns["end_block_merge_run"], ns["end_block_side_geom"] = host, merge, geo
     try:
         with contextlib.redirect_stdout(io.StringIO()):

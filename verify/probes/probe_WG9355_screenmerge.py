@@ -622,11 +622,13 @@ def _screen_pipeline_factory(f13, f4, extra):
         hits = {"host": 0, "merge": 0, "geo": 0}
         msig = inspect.signature(saved["end_block_merge_run"])
 
-        def geo(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir, min_width, side, _label=''):
+        def geo(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir, min_width, side, _label='',
+                min_build_area=None):  # 🔧 `W-G.9-391`：`end_block_side_geom` 增 `min_build_area`（照傳·未傳者⛔ 傳·F35 量之）
             w = cfg["wid"].get((_label, side))
             if w is None:
                 return saved["end_block_side_geom"](block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
-                                                    min_width, side, _label=_label)
+                                                    min_width, side, _label=_label,
+                                            **({} if min_build_area is None else {"min_build_area": min_build_area}))
             hits["geo"] += 1
             p1 = np.asarray(corner_pt, float)[:2]
             dd = np.asarray(d_hat, float)[:2]
