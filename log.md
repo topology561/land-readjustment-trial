@@ -187,3 +187,4 @@
 | 2026-10-21T15:13:22+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01JEiADpRswGAtSUCPxHRyDH`；更新 `交接.md`（391 之要、審查之記而⛔ 改、③ 之查、下一輪）、`進度表.md`（現況、1-5〜1-7 之單號）、`skill/retro.md`；effort=high | `pending` |
 | 2026-10-21T15:14:04+08:00 | 執行端 | 接單 `W-G.9-391_規格單.md`（bytes `151956`／sha256 `22ef8a8c84f5…`／`SELF_SHA256` `afb401e3…` 皆合）；effort=high | `running` |
 | 2026-10-21T15:29:16+08:00 | 執行端 | `W-G.9-391` 施工中（進度列）：`§零-0` 皆合（heads `50`·主線 `a8657c4`·四簿合·依賴依 🔎 三列釘後 `pip freeze` ＝ `ae1438da…`·pre-flight 🔴 `0`／🟡 `3`）；工項零 `65b1f25`、工項一 `a749c78` 已推新側支 `verify/W-G.9-391-k980x`；前置 (甲)(乙) `39` 呼叫跑中（並行 `2`）；工項二之碼撰寫中（`F35 selftest`／`wiring` 自跑皆綠）；effort=high | `running` |
+| 2026-10-21T16:37:44+08:00 | 執行端 | `W-G.9-391` 施工中（進度列）：前置 (甲) `33`、(乙) `6` 呼叫皆合期（`stderr` `0` B·並行 `2`·牆鐘 `4772` s）；(丙) 版本之比對皆同 ⇒ 沿用基準；前置 `4` 四字樣皆 `rc 1`；工項二 `d565c5b` 已 `commit`（⛔ 推）·`V-7`／`V-8` 合；`V-1`〜`V-6` 之 `77` 呼叫跑中（並行 `2`）；effort=high | `running` |
