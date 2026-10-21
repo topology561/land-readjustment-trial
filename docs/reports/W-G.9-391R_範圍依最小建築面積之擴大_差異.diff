@@ -1,0 +1,423 @@
+diff --git a/app.py b/app.py
+index 82855ef..b591d76 100644
+--- a/app.py
++++ b/app.py
+@@ -11009,7 +11009,7 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
+                         solve_one, build_g_row, mark_zaling,
+                         has_side_left=True, has_side_right=True,
+                         min_width=0.0, s_front_p2=None,
+-                        burden_shift=RW_SATURATION_WIDTH_M, _verbose=True):
++                        burden_shift=RW_SATURATION_WIDTH_M, _verbose=True, min_build_area=None):
+     """§4 階段2（裁定B/B5·**單一真相源**）：於**池範圍內**逐筆落位池內遞補宗。
+ 
+     ── 為何存在 ────────────────────────────────────────────────────────────────
+@@ -11139,14 +11139,16 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
+     for _sd_e, _has_e in (('left', bool(has_side_left)), ('right', bool(has_side_right))):
+         if _has_e:
+             continue                                     # 條件1 不成立（該側有街角）→ 非末端側
++        # 🆕 `W-G.9-391`（`K-9-80` ④）：未臨正街之多邊形（`_block_strip` 之第一個回傳）留之，供下之 `_end_region_R`。
+         if _sd_e == 'left':
+-            _unfront = (float(_block_strip(blk_poly, d_hat, _cp + _s_dom_min * _dh,
+-                                           -_s_dom_min, allocation_dir=allocation_dir)[1] or 0.0)
+-                        if _s_dom_min < -1e-6 else 0.0)
++            _unf_strip391 = (_block_strip(blk_poly, d_hat, _cp + _s_dom_min * _dh,
++                                          -_s_dom_min, allocation_dir=allocation_dir)
++                             if _s_dom_min < -1e-6 else (None, 0.0))
+         else:
+-            _unfront = (float(_block_strip(blk_poly, d_hat, _cp + _s_p2 * _dh,
+-                                           _s_dom_max - _s_p2, allocation_dir=allocation_dir)[1] or 0.0)
+-                        if _s_dom_max > _s_p2 + 1e-6 else 0.0)
++            _unf_strip391 = (_block_strip(blk_poly, d_hat, _cp + _s_p2 * _dh,
++                                          _s_dom_max - _s_p2, allocation_dir=allocation_dir)
++                             if _s_dom_max > _s_p2 + 1e-6 else (None, 0.0))
++        _unfront = float(_unf_strip391[1] or 0.0)
+         if _unfront <= 1e-3:                             # 條件2 不成立（末端邊∥ALLOCLINE）→ 無末端區
+             continue
+         if not alloc_dir_cad or float(min_width or 0.0) <= 0:
+@@ -11154,9 +11156,12 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
+                 f"🔴 _place_pool_parcels[{blk_label}]：{_sd_e} 側末端 gate 成立"
+                 f"（無SIDELINE＋未臨正街 {_unfront:.3f}㎡）但缺 cad_alloc/min_width"
+                 f"（alloc={alloc_dir_cad!r} mw={min_width!r}）·末端保留不可定義，停")
+-        _band = _end_band(blk_poly, alloc_dir_cad,
+-                          (_cp if _sd_e == 'left' else _cp + _s_p2 * _dh),
+-                          float(min_width), _label=f"{blk_label}·{_sd_e}·P2f")
++        # 🆕 `W-G.9-391`（`K-9-80` ④·末端保留之同源）：末端帶 ＝ `_end_region_R` 之第一個回傳（與末端塊之評選之
++        #   `R_end` 同一帶寬：未輸入 ⇒ 畸零地寬〔逐位⛔ 變〕；有輸入 ⇒ 擴大後之帶寬）——⛔ 直呼 `_end_band`。
++        _band = _end_region_R(blk_poly, alloc_dir_cad,
++                              (_cp if _sd_e == 'left' else _cp + _s_p2 * _dh),
++                              float(min_width), _unf_strip391[0], _label=f"{blk_label}·{_sd_e}·P2f",
++                              min_build_area=min_build_area)[0]
+         _br = _strip_s_range(_band, d_hat, corner_pt, allocation_dir)
+         if _br is None:
+             raise RuntimeError(
+@@ -11377,7 +11382,68 @@ def _end_band(block_poly, cad_alloc, end_pt, min_width, _label=''):
+     return band
+ 
+ 
+-def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''):
++def end_block_band_width(block_poly, cad_alloc, end_pt, min_width, frag_poly, min_build_area, _label=''):
++    """`W-G.9-391`（`K-9-80` ④·末端塊範圍之擴大）：末端帶之帶寬（`_end_band` 之寬之引數·⊥ALLOC 之垂距）。
++
++    - `R_end`（＝ `frag_poly` ∪ 寬 `min_width` 之末端帶）之面積已 ≥ 最小建築面積 `− K980_AREA_EPS` ⇒ 回 `min_width`。
++    - 否則末端帶之內側界（∥ 宗地分配線）續往街廓內平移（末端塊無退縮），回帶寬 `w` 使
++      `0 ≤ area(frag_poly ∪ _end_band(…, w)) − 最小建築面積 ≤ K980_AREA_TOL`。
++    - 求解：自 `min_width` 起倍增至達（上界 ＝ 街廓之外接矩形之對角線·逾之而仍未達 ⇒ 停機）；再於末二值間二分（至多 200 次·⛔ 收斂 ⇒ 停機）。
++    - `min_width` 缺或 ≤ 0、`min_build_area` ⛔ ＞ 0（未輸入者⛔ 入本函式）⇒ 停機。
++    - 街廓之面積 ＜ 最小建築面積（擴至他端仍未達）⇒ 停機（`K-9-80` ⑥·短街廓）。
++    """
++    import math as _m391
++    from shapely.ops import unary_union as _uu391
++    if min_width is None or float(min_width) <= 0:
++        raise RuntimeError(f"🔴 end_block_band_width[{_label}]：min_width={min_width!r}（畸零地寬須 > 0·禁預設）")
++    if min_build_area is None or not (float(min_build_area) > 0):
++        raise RuntimeError(f"🔴 end_block_band_width[{_label}]：min_build_area={min_build_area!r}"
++                           "（須 > 0·未輸入者⛔ 入本函式）")
++    if frag_poly is None or getattr(frag_poly, 'is_empty', True):
++        raise RuntimeError(f"🔴 end_block_band_width[{_label}]：frag_poly 空——未臨正街面積實體缺")
++    _mba391 = float(min_build_area)
++
++    def _area_at391(_w391):
++        _b391 = _end_band(block_poly, cad_alloc, end_pt, _w391, _label=_label)
++        return float(_uu391([_g391 for _g391 in (frag_poly, _b391) if not _g391.is_empty]).area)
++
++    _lo391 = float(min_width)
++    if _area_at391(_lo391) >= _mba391 - K980_AREA_EPS:
++        return min_width
++    if float(block_poly.area) < _mba391:
++        raise RuntimeError(
++            f"🔴 [K-9-80 ⑥ 短街廓·{_label}] 末端塊範圍擴至全街廓（{float(block_poly.area):.2f} ㎡）"
++            f"仍未達最小建築面積 {_mba391:.2f} ㎡ ⇒ 警示停止：請重新檢視街廓之劃設或最小建築面積之輸入（⛔ 自動處理）")
++    _minx391, _miny391, _maxx391, _maxy391 = block_poly.bounds
++    _diag391 = float(_m391.hypot(_maxx391 - _minx391, _maxy391 - _miny391))
++    _hi391 = _lo391
++    while True:
++        _hi391 = 2.0 * _hi391
++        if _area_at391(_hi391) >= _mba391:
++            break
++        _lo391 = _hi391
++        if _hi391 > _diag391:
++            raise RuntimeError(
++                f"🔴 [K-9-80 ⑥ 短街廓·{_label}] 末端帶之帶寬倍增至 {_hi391:.4f} m（逾街廓之外接矩形之對角線 "
++                f"{_diag391:.4f} m）仍未達最小建築面積 {_mba391:.2f} ㎡ ⇒ 警示停止："
++                "請重新檢視街廓之劃設或最小建築面積之輸入（⛔ 自動處理）")
++    if _area_at391(_hi391) - _mba391 <= K980_AREA_TOL:
++        return _hi391
++    for _it391 in range(200):
++        _mid391 = 0.5 * (_lo391 + _hi391)
++        _am391 = _area_at391(_mid391)
++        if _am391 < _mba391:
++            _lo391 = _mid391
++        elif _am391 - _mba391 <= K980_AREA_TOL:
++            return _mid391
++        else:
++            _hi391 = _mid391
++    raise RuntimeError(
++        f"🔴 end_block_band_width[{_label}]：帶寬之二分⛔ 收斂（[{_lo391!r}, {_hi391!r}]·"
++        f"最小建築面積 {_mba391:.2f} ㎡）——⛔ 靜默取近似值")
++
++
++def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label='', min_build_area=None):
+     """§4 末端塊 R_end 構造（補丁十 §一·canonical）：`R_end = 未臨正街 ∪ 末端帶`。
+ 
+     · **未臨正街「面積實體」= `frag_poly`**（＝`_poly_of` 之實際碎片·補丁十「乙」；「半平面僅判別、
+@@ -11396,6 +11462,11 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
+         raise RuntimeError(f"🔴 _end_region_R[{_label}]：frag_poly 空——未臨正街面積實體缺（gate 應已確認存在）")
+     # 末端帶＝`_end_band`（P2-f 抽出·**單一真相源**；本函式僅加「未臨正街」構件之聯集）。
+     #   其 cad_alloc／min_width 之 loud 守衛一併內含（訊息前綴改 `_end_band`·語意等價）。
++    # 🆕 `W-G.9-391`（`K-9-80` ④）：有最小建築面積之輸入者，帶寬 ＝ `end_block_band_width`（自畸零地寬增之·
++    #   末端塊無退縮）；`None` 或 `0`（未輸入）⇒ 帶寬 ＝ `min_width`（逐位⛔ 變）。下句之 `min_width` 即帶寬。
++    if min_build_area is not None and float(min_build_area) != 0:
++        min_width = end_block_band_width(block_poly, cad_alloc, end_pt, min_width, frag_poly,
++                                         min_build_area, _label=_label)
+     band = _end_band(block_poly, cad_alloc, end_pt, min_width, _label=_label)
+     r_end = unary_union([g for g in (frag_poly, band) if not g.is_empty])
+     if r_end.is_empty:
+@@ -11434,7 +11505,7 @@ SS_END_BLOCK_MERGE = 'f3_end_block_merge'    # 🆕 `W-G.9-353`：合併再試
+ 
+ 
+ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+-                        min_width, side, _label=''):
++                        min_width, side, _label='', min_build_area=None):
+     """一端之末端塊幾何（純函式）。回 dict：`gate`、`unfront`（未臨正街面積）；`gate` 真另有
+     `s_back`（未臨正街沿 s 之寬）、`r_end`（多邊形）、`r_end_area`、`band_area`。"""
+     import numpy as np
+@@ -11467,7 +11538,7 @@ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, alloc
+     if _unf <= END_BLOCK_UNFRONT_EPS:
+         return {'gate': False, 'unfront': _unf}
+     _band, _r_end, _a = _end_region_R(block_poly, cad_alloc, _end_pt, min_width, _unf_poly,
+-                                      _label=f"{_label}·{side}")
++                                      _label=f"{_label}·{side}", min_build_area=min_build_area)
+     # 🆕 `W-G.9-353`：強制抵費地（末）之鏈起點——`R_end` 之內側界（∥ 分配線）於 s 軸之位置；
+     #   `buf` ＝ 該側之鏈須先讓出之 s 長（左 ＝ s_hi(R_end)；右 ＝ s(p2) − s_lo(R_end)）。
+     _rr = _strip_s_range(_r_end, d_hat, corner_pt, allocation_dir)
+@@ -11542,7 +11613,7 @@ def end_block_pin(ordered, side, pid, _label=''):
+ 
+ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p2, cad_alloc,
+                     allocation_dir, min_width, has_side_pk, has_side_cad, corner_range_polys,
+-                    trial, cache, allow_forced=None):
++                    trial, cache, allow_forced=None, min_build_area=None):
+     """一街廓之末端塊：評選（首趟）或沿用（`cache` 已有本街廓）＋ 落位。
+     `trial(tp, side, s_back) -> (G, 臨正街寬)`；`cache` ＝ `SS_END_BLOCK_EVAL` 之 dict（就地寫）。
+     🆕 `W-G.9-353`：`allow_forced(side) -> bool`（缺 ⇒ 恆偽）——各筆單獨皆未達者，真 ⇒ 強制抵費地（末）
+@@ -11561,7 +11632,7 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
+         if _pk:
+             continue
+         _g = end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+-                                 min_width, _sd, _label=blk_label)
++                                 min_width, _sd, _label=blk_label, min_build_area=min_build_area)
+         if not _g['gate']:
+             _rec[_sd] = {'觸發': False, '未臨正街(㎡)': round(float(_g['unfront']), 4)}
+             continue
+@@ -11616,7 +11687,7 @@ def end_block_forced_bands(eb_info):
+ 
+ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2, alloc_dir_cad,
+                    allocation_dir, session, corner_range_polys, solve_one, l_front, avg_depth,
+-                   S_block_max, post_price, pre_price_by_zone):
++                   S_block_max, post_price, pre_price_by_zone, min_build_area=None):
+     """`W-G.9-352`：二宿主（畫面 `f3_screen_stepg_run`／harness `_run_step_g_impl`）之共同入口（單一真相源·#20）。
+     讀 session 之畸零地寬、街角選位表之有無側街、CAD 之 SIDELINE；試算之 G 經宿主之 `_solve_one`
+     （與配地同一解算路徑）。回 `end_block_apply` 之回傳。"""
+@@ -11662,6 +11733,7 @@ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2,
+                            corner_pt=corner_pt, front_p2=front_p2, cad_alloc=alloc_dir_cad,
+                            allocation_dir=allocation_dir, min_width=_mw, has_side_pk=_has_pk,
+                            has_side_cad=_has_cad, corner_range_polys=corner_range_polys,
++                           min_build_area=min_build_area,
+                            trial=_trial, cache=_cache, allow_forced=_allow)
+ 
+ 
+@@ -13050,6 +13122,46 @@ def k91_effective_min_build_area(label, category, by_label, by_category):
+     return _v if _v > 0 else 0.0
+ 
+ 
++# 🆕 `W-G.9-391`（`K-9-80` ④⑤⑥·`K-9-34`）：範圍依最小建築面積之擴大與短街廓之警示停止之三常數。
++K980_AREA_TOL = 0.01        # ㎡·擴大後之範圍之面積之上餘：`0 ≤ 面積 − 最小建築面積 ≤ K980_AREA_TOL`（寧大勿小）
++K980_AREA_EPS = 1e-6        # ㎡·「範圍之面積已 ≥ 最小建築面積」之判之浮點餘裕（⛔ 法定之量）
++K980_TOUCH_TOL = 0.01       # m·一街廓之二範圍之距 ≤ 本值 ⇒ 相接或重疊（法定粒度）
++
++
++def k980_mba(session, label, category):
++    """`W-G.9-391`（`K-9-80` ④⑤·`K-9-1` ⑨ 裁丙）：某街廓之最小建築面積之有效值之單一入口（畫面與 harness 同一二鍵）。
++
++    `session` 之街廓覆寫鍵（`K91_SS_MBA_BY_LABEL`）與分區底鍵（`K91_SS_MBA_BY_CATEGORY`）之值交
++    `k91_effective_min_build_area`；`session` 為 `None` 者視同空之 dict；二鍵缺者 ＝ 未輸入（回 `0`·⛔ 停機）。
++    """
++    _ss391 = session if session is not None else {}
++    return k91_effective_min_build_area(label, category,
++                                        _ss391.get(K91_SS_MBA_BY_LABEL) or {},
++                                        _ss391.get(K91_SS_MBA_BY_CATEGORY) or {})
++
++
++def k980_range_touch_check(blk_label, ranges):
++    """`W-G.9-391`（`K-9-80` ⑥·短街廓）：一街廓之二範圍（街角與街角、街角與末端塊、末端塊與末端塊）之相接或重疊之判。
++
++    `ranges` ＝ {範圍之名: 多邊形或 `None`}；`None`／空者不計。任二者之距 ≤ `K980_TOUCH_TOL` ⇒ 相接或重疊
++    ⇒ 警示停止（比照前置地基檢查·⛔ 自動調整範圍、⛔ 擇一而續）；他 ⇒ 回 `None`。
++    """
++    _items391 = [(_k391, _p391) for _k391, _p391 in (ranges or {}).items()
++                 if _p391 is not None and not getattr(_p391, 'is_empty', True)]
++    for _i391 in range(len(_items391)):
++        for _j391 in range(_i391 + 1, len(_items391)):
++            _na391, _pa391 = _items391[_i391]
++            _nb391, _pb391 = _items391[_j391]
++            _d391 = float(_pa391.distance(_pb391))
++            if _d391 <= K980_TOUCH_TOL:
++                _x391 = float(_pa391.intersection(_pb391).area)
++                raise RuntimeError(
++                    f"🔴 [K-9-80 ⑥ 短街廓·{blk_label}] {_na391}與{_nb391}相接或重疊"
++                    f"（距 {_d391:.4f} m·相接之距 {K980_TOUCH_TOL} m·交之面積 {_x391:.2f} ㎡）"
++                    "⇒ 警示停止：請重新檢視街廓之劃設或最小建築面積之輸入（⛔ 自動處理）")
++    return None
++
++
+ def k91_min_alloc_contrib_by_blk(min_alloc_area_by_blk, eff_min_build_by_blk):
+     """`K-9-1` ⑧：逐街廓對全區 `MinA` 之**貢獻**。
+ 
+@@ -18152,7 +18264,7 @@ def _lot_gate(res, tp, blk_ctx, is_corner_first=False,
+ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_pts,
+                            side_line_pts, alloc_dir, block_depth, setback, min_width,
+                            chamfer_tri=None, dxf_quantum=None, _label='', _side='',
+-                           _t_override=None):
++                           _t_override=None, min_build_area=None):
+     """**(Ⅰ) 街角規定範圍**（🆕 K-8 §三〜§五 新構造·KL 裁 2026-07-31·canonical）。
+ 
+     法源：花蓮縣畸零地使用規則 §4③④及末段、§3① 附表。
+@@ -18433,6 +18545,61 @@ def _build_corner_range_v3(block_vertices, block_centroid, front_pts, baseline_p
+         rng = rng.buffer(0)
+     if rng.is_empty or rng.area <= 0:
+         _stop("扣截角後範圍為空")
++    # 🆕 `W-G.9-391`（`K-9-34` ②·`K-9-80` ④）：有最小建築面積之輸入（有效值 ＞ 0）而範圍之面積 ＜ 之 ⇒ 上之平移後
++    #   SIDELINE 續沿 `sigma·d̂` 平移（路平行距 ＞ `S1_par`·⇒ 仍 ∥ SIDELINE），範圍 ＝ 街廓為該線所切之片之中距
++    #   `_anchor` 最近者扣截角三角形（同上之構造），至 `0 ≤ 面積 − 有效值 ≤ K980_AREA_TOL`。
++    #   `None`／`0`／面積已 ≥ 有效值 `− K980_AREA_EPS` ⇒ 上之範圍逐位⛔ 變；`< 0` ⇒ 停機。
++    #   求解：上界 ＝ 該線過街廓之最遠頂點之平移量（逾之即⛔ 切到街廓）；於 `[S1_par, 上界]` 二分（至多 200 次）。
++    if min_build_area is not None:
++        _mba391 = float(min_build_area)
++        if _mba391 < 0:
++            _stop(f"K-9-80 ④：最小建築面積 {_mba391!r} ＜ 0（輸入有誤·⛔ 禁兜底）")
++        if _mba391 > 0 and float(rng.area) < _mba391 - K980_AREA_EPS:
++            from shapely import get_coordinates as _gc391
++
++            def _piece391(_p391):
++                _tp391 = (S1[0] + sigma * _p391 * dx, S1[1] + sigma * _p391 * dy)
++                _ln391 = _LS3([(_tp391[0] - sux * _ext, _tp391[1] - suy * _ext),
++                               (_tp391[0] + sux * _ext, _tp391[1] + suy * _ext)])
++                _pcs391 = list(_split3(blk, _ln391).geoms)
++                if len(_pcs391) < 2:
++                    return None
++                _r391 = min(_pcs391, key=lambda _g391: _g391.distance(_anchor)).difference(chamfer_tri)
++                if not _r391.is_valid:
++                    _r391 = _r391.buffer(0)
++                return _r391
++
++            _full391 = float(blk.difference(chamfer_tri).area)
++            if _full391 < _mba391:
++                raise RuntimeError(
++                    f"🔴 [K-9-80 ⑥ 短街廓·{_label}·{_side}] 街角規定範圍之遠側界線續 ∥ SIDE_LINE 平移至該線⛔ 再切到街廓"
++                    f"（全街廓扣截角 {_full391:.2f} ㎡）仍未達最小建築面積 {_mba391:.2f} ㎡ ⇒ 警示停止："
++                    "請重新檢視街廓之劃設或最小建築面積之輸入（⛔ 自動處理）")
++            _kk391 = sigma * (dx * snx + dy * sny)
++            _hi391 = max(((float(_v391[0]) - S1[0]) * snx + (float(_v391[1]) - S1[1]) * sny) / _kk391
++                         for _v391 in _gc391(blk))
++            _lo391 = S1_par
++            _best391 = None
++            for _it391 in range(200):
++                _mid391 = 0.5 * (_lo391 + _hi391)
++                _rm391 = _piece391(_mid391)
++                if _rm391 is None or _rm391.is_empty:
++                    _hi391 = _mid391
++                    continue
++                _am391 = float(_rm391.area)
++                if _am391 < _mba391:
++                    _lo391 = _mid391
++                elif _am391 - _mba391 <= K980_AREA_TOL:
++                    _best391 = _rm391
++                    break
++                else:
++                    _hi391 = _mid391
++            if _best391 is None:
++                _stop(f"K-9-80 ④：街角規定範圍之擴大之二分⛔ 收斂（[{_lo391!r}, {_hi391!r}]·"
++                      f"最小建築面積 {_mba391:.2f} ㎡）")
++            if not _best391.buffer(eps).contains(rng):
++                _stop("K-9-80 ④：擴大後之範圍⛔ 含擴大前之範圍（非凸之多片等·二分之單調之設失之）")
++            rng = _best391
+     return rng
+ 
+ 
+@@ -18652,12 +18819,15 @@ def select_corner_lots_both_sides_v12(
+         _chamfer_left_wb = _make_chamfer_tri_wb(_blk_meta_wb, 'left') if _blk_meta_wb else None
+         _chamfer_right_wb = _make_chamfer_tri_wb(_blk_meta_wb, 'right') if _blk_meta_wb else None
+         _ss_q_wb = _st_wb5.session_state
++        # 🆕 `W-G.9-391`（`K-9-80` ⑤）：跨占之名單與三指數之範圍 ＝ 擴大後之街角規定範圍（最小建築面積之有效值）。
++        _mba_pk = k980_mba(_st_wb5.session_state, _this_blk_B4, (_blk_meta_wb or {}).get('category', ''))
+     except Exception:
+         _slbs_wb = {}; _adir_wb = {}; _side_wb = {}; _alloc_wb = None
+         _fl_wb = {}; _mb_wb = {}; _depth_wb = None
+         _blk_verts_wb = []; _blk_cen_wb = (0.0, 0.0)
+         _chamfer_left_wb = None; _chamfer_right_wb = None
+         _ss_q_wb = {}
++        _mba_pk = None
+     _fpts_wb = ([_fl_wb['p1'], _fl_wb['p2']]
+                 if (_fl_wb.get('p1') and _fl_wb.get('p2')) else None)
+     _bpts_wb = _baseline_pts_from_manual(_mb_wb, _blk_verts_wb)
+@@ -18674,11 +18844,15 @@ def select_corner_lots_both_sides_v12(
+                 _blk_verts_wb, _blk_cen_wb, _fpts_wb, _bpts_wb,
+                 [_sd_wb['p1'], _sd_wb['p2']], _alloc_wb, _depth_wb,
+                 _setback_B4, _legal_min_width_B4, _cham_wb,
++                min_build_area=_mba_pk,
+                 dxf_quantum=_q_wb, _label=_this_blk_B4, _side=_which_wb)
+             if _which_wb == 'left':
+                 _corner_range_left = _rng_wb
+             else:
+                 _corner_range_right = _rng_wb
++    # 🆕 `W-G.9-391`（`K-9-80` ⑥·短街廓）：街角與街角之二範圍（擴大後）相接或重疊 ⇒ 警示停止。
++    k980_range_touch_check(_this_blk_B4, {'左側街角規定範圍': _corner_range_left,
++                                          '右側街角規定範圍': _corner_range_right})
+     if _alloc_wb is None and _this_blk_B4:
+         try:
+             import streamlit as _st_warn_wb
+@@ -20033,6 +20207,8 @@ _WF_NS_NAMES = [
+     "end_block_host", "end_block_assert_head", "SS_END_BLOCK_EVAL",
+     # 🆕 `W-G.9-353`：強制抵費地（末）之二名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費）。
+     "end_block_forced_buf", "end_block_forced_bands",
++    # 🆕 `W-G.9-391`：`K-9-80` ④⑤⑥ 之二名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費·漏列即 app 路徑 KeyError）。
++    "k980_mba", "k980_range_touch_check",
+     # 🆕 B-5（plan v3 §四·D-3 寬度制）：平移切帶範圍多邊形**即算即用**之單一真相源。
+     #   ⚠️ 走 ns 函式、**不**存 session 新鍵——session 資料走 `_WFSessionShim`，
+     #      且 harness（run_verification）從不算負擔範圍，存鍵在 harness 路徑必缺。
+@@ -21570,7 +21746,13 @@ def f3_screen_stepg_run(st, *,
+                 corner_range_polys=_eb_crp, solve_one=_solve_one, l_front=l_front,
+                 avg_depth=avg_depth_default, S_block_max=S_block_max,
+                 post_price=post_price_by_block.get(blk_label, 0.0),
++                min_build_area=k980_mba(st.session_state, blk_label, blk_meta.get('category', '')),
+                 pre_price_by_zone=pre_price_by_zone)
++            # 🆕 `W-G.9-391`（`K-9-80` ⑥·短街廓）：街角與末端塊、末端塊與末端塊之範圍（擴大後）相接或重疊 ⇒ 警示停止。
++            k980_range_touch_check(blk_label, {'左側街角規定範圍': _eb_crp['left'],
++                                               '右側街角規定範圍': _eb_crp['right'],
++                                               '左端末端塊範圍': (_eb_info['left'] or {}).get('r_end'),
++                                               '右端末端塊範圍': (_eb_info['right'] or {}).get('r_end')})
+ 
+         # 🆕 W-D.2 §3：註記原位次 index（基準趟寬度→_select_pool_slot 映射用）。
+         #   k 切分與 side 標籤依 k 而變 → 移入 _advance_block_with_split（趟內建）。
+@@ -22256,6 +22438,7 @@ def f3_screen_stepg_run(st, *,
+                 has_side_left=bool(_fo_block.get('left_has_side', True)),
+                 has_side_right=bool(_fo_block.get('right_has_side', True)),
+                 min_width=_mw_blk, s_front_p2=S_block_max,
++                min_build_area=k980_mba(st.session_state, blk_label, blk_meta.get('category', '')),
+             )
+             _adv_final['rows'] = (list(_adv_final['rows'])
+                                   + list(_s2['rows']))
+@@ -29018,6 +29201,7 @@ def main():
+                                     [_sd_cr['p1'], _sd_cr['p2']], _alloc_cr, _depth_use,
+                                     _setback_default, _legal_w_disp,
+                                     _make_chamfer_tri_wb(b, _wh_cr),
++                                    min_build_area=k980_mba(st.session_state, _lbl, b.get('category', '')),
+                                     dxf_quantum=_q_cr, _label=_lbl, _side=_wh_cr)
+                                 if _wh_cr == 'left':
+                                     _left_min = round(float(_rng_cr.area), 2)
+diff --git a/verify/run_verification.py b/verify/run_verification.py
+index f5b896e..ef043da 100644
+--- a/verify/run_verification.py
++++ b/verify/run_verification.py
+@@ -259,6 +259,7 @@ def build_param_table(ns, fake_st, cb_by, cad, snapshot, setback):
+             r = ns["_build_corner_range_v3"](
+                 verts, cen, _fpts, _bpts, [side[which]["p1"], side[which]["p2"]],
+                 alloc.get(lbl), depth, setback, legal_w, chi,
++                min_build_area=ns["k980_mba"](fake_st.session_state, lbl, b.get("category", "")),
+                 dxf_quantum=_q, _label=lbl, _side=which)
+             return round(float(r.area), 2) if r is not None else None
+         rows.append({
+diff --git a/verify/stepg_pipeline.py b/verify/stepg_pipeline.py
+index 2bb2f56..b2f6622 100644
+--- a/verify/stepg_pipeline.py
++++ b/verify/stepg_pipeline.py
+@@ -473,6 +473,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                     block_depth=float(SB[_crp_lbl]['街廓分配深度_m']),
+                     setback=setback, min_width=_crp_mw,
+                     chamfer_tri=ns['_make_chamfer_tri_wb'](_crp_b, _crp_wh),
++                    min_build_area=ns['k980_mba'](ss, _crp_lbl, _crp_b.get('category', '')),
+                     dxf_quantum=(_crp_mb.get('_match') or {}).get('q_detected'),
+                     _label=_crp_lbl, _side=_crp_wh)
+             except Exception as _e_crp:            # noqa: BLE001
+@@ -672,7 +673,14 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                                     for _w_eb in ('left', 'right')},
+                 solve_one=_solve_one, l_front=l_front, avg_depth=avg_depth_default,
+                 S_block_max=S_block_max, post_price=post_price_by_block.get(blk_label, 0.0),
++                min_build_area=ns['k980_mba'](ss, blk_label, blk_meta.get('category', '')),
+                 pre_price_by_zone=pre_price_by_zone)
++            # 🆕 `W-G.9-391`（`K-9-80` ⑥·短街廓）：街角與末端塊、末端塊與末端塊之範圍（擴大後）相接或重疊 ⇒ 警示停止。
++            ns['k980_range_touch_check'](blk_label, {
++                '左側街角規定範圍': ctx['corner_range_polys'].get((blk_label, 'left')),
++                '右側街角規定範圍': ctx['corner_range_polys'].get((blk_label, 'right')),
++                '左端末端塊範圍': (_eb_info['left'] or {}).get('r_end'),
++                '右端末端塊範圍': (_eb_info['right'] or {}).get('r_end')})
+         for _i_ov2, _e_ov2 in enumerate(ordered_v2):
+             _e_ov2['_ov2_idx'] = _i_ov2
+ 
+@@ -1233,6 +1241,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                 has_side_left=bool(_fo_block.get('left_has_side', True)),
+                 has_side_right=bool(_fo_block.get('right_has_side', True)),
+                 min_width=_mw_blk, s_front_p2=S_block_max,
++                min_build_area=ns['k980_mba'](ss, blk_label, blk_meta.get('category', '')),
+             )
+             _adv_final['rows'] = list(_adv_final['rows']) + list(_s2['rows'])
+             _adv_final['left_results'] = (list(_adv_final['left_results'])
