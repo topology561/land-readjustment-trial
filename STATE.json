@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-21T08:06:00+08:00",
+  "status": "running",
+  "status_since": "2026-10-21T08:06:41+08:00",
   "order": "W-G.9-390_補令四.md",
   "order_bytes": 24277,
   "order_sha256": "9a0e876c95b90d559cc58498481d4c01d0b09b5d1845924da86c1f2abb5a2c36",
@@ -564,6 +564,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-390_補令三 通過（94 呼叫皆合期·stderr 0 B·k6s3 cmp 相異 0·F8 逐位同·parity 代 HEAD 後同·收工閘 1⁗〜8⁗ 合·差異逐行讀合 R-1⁗／R-4⁗／R-9‴／R-5⁗）⇒ 出 W-G.9-390_補令四.md（入主線之短單·快轉 2aa6302 → 工項零⁗′ 之 commit·24277 B·9a0e876c95b9…·expects_allocation_change=false·attempt 1）"
+    },
+    {
+      "at": "2026-10-21T08:06:41+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-390_補令四（bytes 24277·sha256 9a0e876c95b9… 合·SELF_SHA256 9ead1ba9… 合）"
     }
   ]
 }
