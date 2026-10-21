@@ -473,6 +473,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     block_depth=float(SB[_crp_lbl]['街廓分配深度_m']),
                     setback=setback, min_width=_crp_mw,
                     chamfer_tri=ns['_make_chamfer_tri_wb'](_crp_b, _crp_wh),
+                    min_build_area=ns['k980_mba'](ss, _crp_lbl, _crp_b.get('category', '')),
                     dxf_quantum=(_crp_mb.get('_match') or {}).get('q_detected'),
                     _label=_crp_lbl, _side=_crp_wh)
             except Exception as _e_crp:            # noqa: BLE001
@@ -672,7 +673,14 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                                     for _w_eb in ('left', 'right')},
                 solve_one=_solve_one, l_front=l_front, avg_depth=avg_depth_default,
                 S_block_max=S_block_max, post_price=post_price_by_block.get(blk_label, 0.0),
+                min_build_area=ns['k980_mba'](ss, blk_label, blk_meta.get('category', '')),
                 pre_price_by_zone=pre_price_by_zone)
+            # 🆕 `W-G.9-391`（`K-9-80` ⑥·短街廓）：街角與末端塊、末端塊與末端塊之範圍（擴大後）相接或重疊 ⇒ 警示停止。
+            ns['k980_range_touch_check'](blk_label, {
+                '左側街角規定範圍': ctx['corner_range_polys'].get((blk_label, 'left')),
+                '右側街角規定範圍': ctx['corner_range_polys'].get((blk_label, 'right')),
+                '左端末端塊範圍': (_eb_info['left'] or {}).get('r_end'),
+                '右端末端塊範圍': (_eb_info['right'] or {}).get('r_end')})
         for _i_ov2, _e_ov2 in enumerate(ordered_v2):
             _e_ov2['_ov2_idx'] = _i_ov2
 
@@ -1233,6 +1241,7 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                 has_side_left=bool(_fo_block.get('left_has_side', True)),
                 has_side_right=bool(_fo_block.get('right_has_side', True)),
                 min_width=_mw_blk, s_front_p2=S_block_max,
+                min_build_area=ns['k980_mba'](ss, blk_label, blk_meta.get('category', '')),
             )
             _adv_final['rows'] = list(_adv_final['rows']) + list(_s2['rows'])
             _adv_final['left_results'] = (list(_adv_final['left_results'])

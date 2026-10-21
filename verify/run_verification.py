@@ -259,6 +259,7 @@ def build_param_table(ns, fake_st, cb_by, cad, snapshot, setback):
             r = ns["_build_corner_range_v3"](
                 verts, cen, _fpts, _bpts, [side[which]["p1"], side[which]["p2"]],
                 alloc.get(lbl), depth, setback, legal_w, chi,
+                min_build_area=ns["k980_mba"](fake_st.session_state, lbl, b.get("category", "")),
                 dxf_quantum=_q, _label=lbl, _side=which)
             return round(float(r.area), 2) if r is not None else None
         rows.append({
