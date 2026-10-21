@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-21T10:41:34+08:00",
-  "order": "W-G.9-390_補令四.md",
-  "order_bytes": 24277,
-  "order_sha256": "9a0e876c95b90d559cc58498481d4c01d0b09b5d1845924da86c1f2abb5a2c36",
-  "order_kind": "短單",
+  "status": "pending",
+  "status_since": "2026-10-21T15:12:48+08:00",
+  "order": "W-G.9-391_規格單.md",
+  "order_bytes": 151956,
+  "order_sha256": "22ef8a8c84f52b1d9ed0443705c87e685fefacafbd3134ec6aa82fb86f386c53",
+  "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-390_補令四_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -599,6 +599,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-G.9-391（K-9-80 ④〜⑥ 與 K-9-34：範圍依最小建築面積之擴大、短街廓之警示停止）上鎖"
+    },
+    {
+      "at": "2026-10-21T15:12:48+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-391_規格單.md（規格單·151956 B·22ef8a8c84f5…·expects_allocation_change=false·attempt 1）：K-9-80 ④⑤⑥ 與 K-9-34（範圍依最小建築面積之擴大、短街廓之警示停止）；新側支 verify/W-G.9-391-k980x"
     }
   ]
 }
