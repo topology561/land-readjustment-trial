@@ -1,6 +1,6 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-22T03:34:11+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-22T03:35:00+08:00",
   "order": "W-G.9-391_補令一.md",
   "order_bytes": 25718,
   "order_sha256": "ca7d777ca189fbc2fa27f08dd083a6009dda14ce2df99c3832d4872dd85380fe",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-391_補令一_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "2026-10-22_街角地評選與實配之面積差.md",
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
     {
@@ -683,6 +683,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-G.9-392 上鎖（待落地序 25·K-9-80 ③ 之微差；擬單前之調查已於本輪之復驗中並行）"
+    },
+    {
+      "at": "2026-10-22T03:35:00+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "await_kl",
+      "note": "W-G.9-392（K-9-80 ③）擬單前之調查：取得之宗之評選與實配二次求解之末位之差（本案 R6 628-18(1) 307.79／307.78）；甲（全面試算至穩定）／乙（實配沿用評選之算法）之土地之果相異 ⇒ 請示（README 二·停止條件 1）"
     }
   ]
 }
