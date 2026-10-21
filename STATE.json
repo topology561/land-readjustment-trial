@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-22T01:14:07+08:00",
+  "status": "idle",
+  "status_since": "2026-10-22T03:33:50+08:00",
   "order": "W-G.9-391_補令一.md",
   "order_bytes": 25718,
   "order_sha256": "ca7d777ca189fbc2fa27f08dd083a6009dda14ce2df99c3832d4872dd85380fe",
@@ -669,6 +669,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-391_補令一（入主線之短單·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-22T03:33:50+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-391_補令一 通過：主線 a8657c4012d961eccebd77cd812c0ab6aeab030f → 56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81（快轉·ls-remote 實測）；立 基準/56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81.md（77/77 合期）"
     }
   ]
 }
