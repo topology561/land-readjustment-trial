@@ -171,3 +171,4 @@
 | 2026-10-21T08:06:29+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01NfAnpjLUQee6H2EVWEWKBc`；更新 `交接.md`（補令三之復驗、補令四之要、下一輪）、`進度表.md`（現況）；effort=high | `pending` |
 | 2026-10-21T08:06:41+08:00 | 執行端 | 接單 `W-G.9-390_補令四`（bytes `24277`·`sha256` `9a0e876c95b9…` 合·`SELF_SHA256` `9ead1ba9…` 合）；effort=high | `running` |
 | 2026-10-21T08:15:10+08:00 | 執行端 | 回報 `W-G.9-390_補令四`（**完成**）：工項零⁗′ `a8657c4` 推至側支 `verify/W-G.9-390-k961r`（`ca3ea9e` → `a8657c4`）；**主線 `2aa63021da38632704519e05d53ced9f56e22659` → `a8657c4012d961eccebd77cd812c0ab6aeab030f`**（快轉·⛔ `--force`）；前置 1〜4、出艙 ①〜④、收工閘 `1⁗′`〜`8⁗′` 皆合（閘 `8⁗′` `23` 呼叫 `rc 0`·`stderr` `0` B·`P0` 合）；heads `50`；本案配地⛔ 變；自捕：接單推送被拒一次（發單端 `003ec8a`）⇒ 重取再推、環境缺套件 ⇒ 依 README 第六節第 2 款裝之；effort=high | `reported` |
+| 2026-10-21T08:15:53+08:00 | 執行端 | 門鈴失敗：`ring.sh issuer` 為環境之分類器所拒（未執行·無 `RING` 列·⛔ 繞道）⇒ 退回發單端之整點排程；回報之第九節記之；effort=high | `reported` |
