@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-21T15:12:48+08:00",
+  "status": "running",
+  "status_since": "2026-10-21T15:14:04+08:00",
   "order": "W-G.9-391_規格單.md",
   "order_bytes": 151956,
   "order_sha256": "22ef8a8c84f52b1d9ed0443705c87e685fefacafbd3134ec6aa82fb86f386c53",
@@ -606,6 +606,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-391_規格單.md（規格單·151956 B·22ef8a8c84f5…·expects_allocation_change=false·attempt 1）：K-9-80 ④⑤⑥ 與 K-9-34（範圍依最小建築面積之擴大、短街廓之警示停止）；新側支 verify/W-G.9-391-k980x"
+    },
+    {
+      "at": "2026-10-21T15:14:04+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-391_規格單.md（bytes 151956／sha256 22ef8a8c…／SELF_SHA256 afb401e3… 三者皆合）"
     }
   ]
 }
