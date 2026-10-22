@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-22T13:35:15+08:00",
-  "order": "W-G.9-392_規格單.md",
-  "order_bytes": 144622,
-  "order_sha256": "5ff3ea900591027f1df35d33f17b9828c9331d9acf88fea2d2f704667a1dfe3c",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-22T17:00:19+08:00",
+  "order": "W-G.9-392_補令一.md",
+  "order_bytes": 95051,
+  "order_sha256": "1d9a2eae95e9f09ef473f2df89c31a7342893059a88ad806c71ebd4793eca3cb",
+  "order_kind": "補令",
   "expects_allocation_change": true,
-  "attempt": 1,
-  "report": "W-G.9-392_規格單_回報.md",
-  "result": "停機上呈",
+  "attempt": 2,
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -739,6 +739,13 @@
       "from": "verifying",
       "to": "drafting",
       "note": "復驗 W-G.9-392 之停機上呈：(A-1) 屬實（評選之式⛔ 帶 w0_start＝0·K-9-41 ①「首宗之寬度一律自側面道路邊線（0 公尺）起算」已定 ⇒ 規格之漏·發單端之誤）；(A-2) 屬實而⛔ 及（土地歸戶分頁之閉式估算表·⛔ 供配地）⇒ ⛔ 新域問 ⇒ 擬 W-G.9-392_補令一"
+    },
+    {
+      "at": "2026-10-22T17:00:19+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-392_補令一（原趟之碼之重施 ＋ R-7″：評選之式之起算點 0·K-9-41 ①／K-9-5-12·自誤 635·塊 Fy48/K39/E37/P50·本案配地之改變 ＝ 原單 §一 項 5·⛔ 增減）"
     }
   ]
 }
