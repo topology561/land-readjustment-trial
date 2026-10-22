@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-22T17:07:20+08:00",
-  "order": "W-G.9-392_補令一.md",
-  "order_bytes": 95051,
-  "order_sha256": "1d9a2eae95e9f09ef473f2df89c31a7342893059a88ad806c71ebd4793eca3cb",
+  "status": "pending",
+  "status_since": "2026-10-22T17:21:19+08:00",
+  "order": "W-G.9-392_補令二.md",
+  "order_bytes": 26525,
+  "order_sha256": "d442bc4f66fac771997990b0e3e656bff3fc6c1132eb131c9e73fd09c91205a0",
   "order_kind": "補令",
   "expects_allocation_change": true,
-  "attempt": 2,
-  "report": "W-G.9-392_補令一_回報.md",
-  "result": "停機上呈",
+  "attempt": 3,
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -767,6 +767,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-392_補令一（停機上呈·停機款 4″·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-22T17:21:19+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "pending",
+      "note": "復驗 W-G.9-392_補令一 之停機上呈（停機款 4″·前置″ 項 4 之期漏計補令一之入倉·發單端之誤 自誤 636·⛔ 涉土地後果）⇒ 出 W-G.9-392_補令二（代換表 D-1〜D-12·續自 f12824f·生產碼之規格⛔ 改一字·本案配地之改變 ＝ 原單 §一 項 5）"
     }
   ]
 }
