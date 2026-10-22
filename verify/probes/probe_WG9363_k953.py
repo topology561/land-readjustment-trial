@@ -1529,6 +1529,7 @@ APP_ALLOW |= set(W391)
 # 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
 NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
 W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
+W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
 KEEP_APP = tuple(x for x in KEEP_APP if x not in W392)
 APP_ALLOW |= set(W392)
 

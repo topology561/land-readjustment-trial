@@ -20,6 +20,12 @@
               「GB-206」「K-9-80 ③」與宗之暫編地號、二值，且 `K6_PROGRAM_STOPS` 增恰一（其全文 ＝ 訊息）；H3 未捨入異而取至 2 位同
               （307.7849、307.7751）⇒ None；H4 取至 2 位恰差 0.01（300.02、300.01·浮點之差 ≤ 0.01）⇒ 停；H5 末端塊、右側之形 ⇒
               停且訊息含「末端塊」「right」。
+           J1 右側之街角第 1 宗（`W-G.9-392` 補令一·`K-9-41` ①）：玩具街廓 GJ（矩形 x∈[0,60]、y∈[0,20]·正面 y ＝ 0·SIDE_LINE ∥ y 軸而
+              偏 δ ∈ {0, 0.001, 0.05, 0.3, −0.05}·二座標系·二 a）⇒ 評選之式（`_corner_first_lot_G`·其右之上界 ＝ 63）之 G ＝ 實配之鏈首之解
+              （`_solve_G_one`·起點 FRONT p2·方向 −d̂·上界 60·`w0_start=0.0`·`is_chain_head=True`）取至 2 位（期值 ＝ 實配之解·⛔ 由評選產）；
+           J2 左側同 J1（起點 FRONT p1·方向 d̂）；
+           J3 判別之前提（⛔ 恆綠）：J1／J2 之比之數 ＝ 40，且 δ ＝ 0.3 之右側之實配之解以幾何之起算點（⛔ 傳 `w0_start`）重解者與 J1 之期
+              取至 2 位相異（玩具之 δ 足使二起算點異其 G）。
            E1 `end_block_trial_G` 之左端：以替身之 `solve_one` 錄其引數 ⇒ (a, A, l₂, 0, 0, 街廓, d̂, p1, max(0.1,S), False, '無', 深度)
               與 `_allocation_dir`、`_side_mid=None`、`_W_prev=0`、`_w0_start=0`、`_near_dir=None`、`_is_chain_head=True`、`_s_back`；
            E2 右端 ⇒ 方向 −d̂、起點 p1 ＋ S·d̂；E3 S ＝ 0.05 ⇒ 上界 0.1；E4 側別非 left／right ⇒ 停機；E5 回 (G, S_raw)。
@@ -34,7 +40,9 @@
            W4 `verify/stepg_pipeline.py` 經 `ns[…]` 取之新名皆在 `app.py` 之 `_WF_NS_NAMES`；
            W5 `app.py` 之頂層之名之增恰 `{K980_G_TOL, K980_G_MAX_ITER, end_block_trial_G, k980_acq_check}`、無減；
            W6 `k980_acq_check` 之內呼叫 `k6_program_stop` 且含字面「GB-206」；
-           W7 新增或改之頂層節點內⛔ 新增案件字面。
+           W7 新增或改之頂層節點內⛔ 新增案件字面；
+           W8 `_corner_first_lot_G` 之 `_solve_G_one(` 之呼叫恰一，以 `is_corner=True`、`w0_start=0.0`（字面之常數）傳之（`W-G.9-392`
+              補令一·`K-9-41` ①「首宗之寬度一律自側面道路邊線（0 公尺）起算」）。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`·段三之入口 `run_corner_pk_k6b` ＋ `run_step_g`）：
            R1 取得之宗之自我檢查之呼叫 ≥ 1（街角第 1 宗、末端塊各 ≥ 1）且皆過、⛔ 停機；評選（`_corner_first_lot_G` 之所錄）與
@@ -125,6 +133,47 @@ def _sweep(ns, D, lf, avals):
     return n, skip, bad
 
 
+def _corner_j(ns):
+    """`W-G.9-392` 補令一：街角第 1 宗之評選之式（`_corner_first_lot_G`）對實配之鏈首之解（`K-9-41` ①·`w0_start=0.0`）。"""
+    import numpy as np
+    from shapely.geometry import Polygon
+    import streamlit as _stj
+    L, D, A, B, C, lf, ls, F = 60.0, 20.0, 1.2, 0.3, 0.25, 60.0, 20.0, 0.5
+    bad = {"左": [], "右": []}
+    n, ctrl = 0, None
+    for fr in (_xf(0, False, 0.0, 0.0), _xf(37, True, 307123.4, 2654321.7)):
+        f, v = fr
+        poly = Polygon([f(p) for p in [(0, 0), (L, 0), (L, D), (0, D)]])
+        dh = np.array(v((1, 0)), dtype=float)
+        p1, p2 = np.array(f((0, 0)), dtype=float), np.array(f((L, 0)), dtype=float)
+        ad = ns["alloc_normal_axis"](v((0, 1)))
+        for side in ("右", "左"):
+            for dl in (0.0, 0.001, 0.05, 0.3, -0.05):
+                x = (L + dl) if side == "右" else (-dl)
+                sd = {"p1": f((x, 0.0)), "p2": f((x, D)), "mid": f((x, D / 2.0))}
+                _stj.session_state["f3_cad_side_lines_by_side"] = {"GJ": {"right" if side == "右" else "left": sd}}
+                mid = np.array(sd["mid"], dtype=float)
+                for a in (300.0, 517.3):
+                    ge = ns["_corner_first_lot_G"](
+                        a_m2=a, A_ratio=A, B=B, C=C, l_front=lf, l_side=ls, F=F, block_poly=poly, d_hat=dh,
+                        corner_pt=p1, s_max_left=L, s_max_right=L + 3.0, side=side, allocation_dir=ad, side_mid=mid,
+                        avg_depth=D, tab6_burden=B + C, front_p2=p2, _label="GJ·J·" + side)
+                    kw = dict(a_m2=a, A=A, l_front=lf, l_side=ls, F=F, blk_poly=poly,
+                              d_hat=(-dh if side == "右" else dh), baseline_pt=(p2 if side == "右" else p1), S_max=L,
+                              is_corner=True, side=side + "側", avg_depth=D, B=B, C=C, tab6_burden=B + C,
+                              allocation_dir=ad, side_mid=mid, W_prev=0.0, near_dir=None, is_chain_head=True, s_back=0.0)
+                    r, _ = ns["_solve_G_one"](w0_start=0.0, **kw)
+                    gx = round(float(r["G"]), 2)
+                    n += 1
+                    if round(float(ge), 2) != gx:
+                        bad[side].append((dl, a, round(float(ge), 2), gx))
+                    if side == "右" and dl == 0.3 and a == 300.0 and ctrl is None:
+                        r0, _ = ns["_solve_G_one"](**kw)
+                        ctrl = round(float(r0["G"]), 2) != gx
+    _stj.session_state.pop("f3_cad_side_lines_by_side", None)
+    return bad, n, bool(ctrl)
+
+
 def selftest(repo):
     ns, _ = _harvest(repo)
     need = ["_solve_G_one", "k980_acq_check", "end_block_trial_G", "K980_G_TOL", "K980_G_MAX_ITER",
@@ -207,6 +256,10 @@ def selftest(repo):
         e4 = "停"
     C.append(("E4 側別非 left／right ⇒ 停機", e4, "停"))
     C.append(("E5 回 (G, S_raw)", tuple(r1), (123.456, 7.89)))
+    jb, jn, jc = _corner_j(ns)
+    C.append(("J1 右側之街角第 1 宗：評選之式 ＝ 實配之鏈首（SIDE_LINE 偏 δ·二座標系·二 a）", jb["右"], []))
+    C.append(("J2 左側之街角第 1 宗：同 J1", jb["左"], []))
+    C.append(("J3 判別之前提：比之數 40·δ 0.3 之幾何之起算點異其 G", (jn, jc), (40, True)))
     red = []
     for name, got, exp in C:
         ok = got == exp
@@ -392,6 +445,16 @@ def wiring(repo, base):
     print(("  ✅" if ok7 else "  🔴") + f" W7 新增或改之頂層節點（{len(chg)}）內新增之案件字面 {lits}")
     if not ok7:
         red.append("W7")
+    # W8（`W-G.9-392` 補令一）
+    cf = _fn_node(ta, "_corner_first_lot_G")
+    c8 = _calls(cf, "_solve_G_one") if cf else []
+    k8 = {k.arg: k.value for k in c8[0].keywords} if len(c8) == 1 else {}
+    ok8 = (len(c8) == 1 and isinstance(k8.get("w0_start"), ast.Constant) and k8["w0_start"].value == 0.0
+           and type(k8["w0_start"].value) is float and isinstance(k8.get("is_corner"), ast.Constant)
+           and k8["is_corner"].value is True)
+    print(("  ✅" if ok8 else "  🔴") + f" W8 _corner_first_lot_G 之 _solve_G_one 以 is_corner=True、w0_start=0.0（呼叫 {len(c8)}）")
+    if not ok8:
+        red.append("W8")
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
 
