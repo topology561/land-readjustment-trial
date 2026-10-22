@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-22T17:22:55+08:00",
+  "status": "reported",
+  "status_since": "2026-10-22T21:18:47+08:00",
   "order": "W-G.9-392_補令二.md",
   "order_bytes": 26525,
   "order_sha256": "d442bc4f66fac771997990b0e3e656bff3fc6c1132eb131c9e73fd09c91205a0",
   "order_kind": "補令",
   "expects_allocation_change": true,
   "attempt": 3,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-392_補令二_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -781,6 +781,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-392_補令二（bytes 26525、sha256 d442bc4f…、SELF_SHA256 83eab58b…〔P-5〕皆符）"
+    },
+    {
+      "at": "2026-10-22T21:18:47+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-392_補令二（完成）：側支 verify/W-G.9-392-k980g f12824f → 0826577（工項零‴ c0ec2a5、二″ d3d8f46、三″ 43ea230、四″ 0826577）；V-1″〜V-9″ 皆合期·本案配地之改變 ＝ 原單 §一 項 5（3.5 m 6 項、0 m 5 項）；唯讀審查 (A) 0／(B) 0；收工閘 1″〜8″ 皆合；主線⛔ 動（56c77fd）"
     }
   ]
 }
