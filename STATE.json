@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-22T08:33:05+08:00",
+  "status": "running",
+  "status_since": "2026-10-22T08:33:54+08:00",
   "order": "W-G.9-392_規格單.md",
   "order_bytes": 144622,
   "order_sha256": "5ff3ea900591027f1df35d33f17b9828c9331d9acf88fea2d2f704667a1dfe3c",
@@ -711,6 +711,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-392_規格單.md（規格單·144622 B·5ff3ea900591…·attempt 1·expects_allocation_change ＝ true·K-9-80 ③ 之甲之落地：求解之容差 1e-6·取得之宗之自我檢查 GB-206·end_block_trial_G；本案配地 ±0.01 ⇒ 施後側支保留、⛔ 入主線，待復驗後呈 KL 核）"
+    },
+    {
+      "at": "2026-10-22T08:33:54+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-392_規格單.md（bytes 144622／sha256 5ff3ea900591… 相符；SELF_SHA256 124adb779367… 依 P-5 口徑自驗相符）"
     }
   ]
 }
