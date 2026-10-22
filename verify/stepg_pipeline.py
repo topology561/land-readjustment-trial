@@ -817,6 +817,13 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     f"條件③ J 非零看守破：街廓 {blk_label} {_side_nm_w2}側有 SIDE_LINE 但 "
                     f"F×l₁={_F_w2:.2f}×{_l1_w2:.2f}=0（快照 負擔尺度_輸入 未正確消費？）")
 
+        # 🆕 `W-G.9-392`（`K-9-80` ③·`R-4`）：取得之宗之自我檢查之評選之式之二上界（＝ `run_corner_pk` 之評選之同式·每街廓算一次·app 同構）。
+        _sl392 = (float(_np_d.linalg.norm(_np_d.asarray(_front_p2_blk, dtype=float)[:2]
+                                          - _np_d.asarray(corner_pt, dtype=float)[:2]))
+                  if (_front_p2_blk is not None and corner_pt is not None) else None)
+        _smr392 = ((ns["_oblique_s_max"](blk_meta.get('vertices'), d_hat, corner_pt, allocation_dir_block) or _sl392)
+                   if allocation_dir_block is not None else _sl392)
+
         # ── 可重入推進（app _advance_block_with_split 逐行複刻；headless 無 st 訊息） ──
         def _advance_block_with_split(_k_split, _commit):
             _N_f = len(ordered_v2)
@@ -924,6 +931,19 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重·app 同構）
                         ns['k917_note_drop'](blk_label, 'left', k, res, tp)
                     continue
+                # 🆕 `W-G.9-392`（`K-9-80` ③·KL 05:22 甲）：取得之宗之自我檢查（app 同構·三名經 ns）
+                if _commit and is_first_corner_l:
+                    ns['k980_acq_check']('街角第1宗', blk_label, 'left', k, ns['_corner_first_lot_G'](
+                        a_m2=a_m2, A_ratio=A_ratio, B=B_value, C=C_for_calc, l_front=l_front, l_side=l_side_use,
+                        F=F_use, block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt, s_max_left=_sl392,
+                        s_max_right=_smr392, side='左', allocation_dir=allocation_dir_block, side_mid=_side_mid_left,
+                        avg_depth=avg_depth_default, tab6_burden=_tab6_burden, front_p2=_front_p2_blk,
+                        _label=f'{blk_label}·{k}·左·W-G.9-392'), res.get('G', 0.0))
+                elif _commit and _lg_idx_left == 0 and entry.get('is_end_block') and _eb_info['left'] is not None:
+                    ns['k980_acq_check']('末端塊', blk_label, 'left', k, ns['end_block_trial_G'](
+                        _solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max,
+                        avg_depth_default, allocation_dir_block, 'left', float(_eb_info['left']['s_back']))[0],
+                        res.get('G', 0.0))
                 _lg_idx_left += 1
                 if _has_left_corner:
                     if not _W0_left_set:
@@ -1060,6 +1080,19 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
                     if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重·app 同構）
                         ns['k917_note_drop'](blk_label, 'right', k, res, tp)
                     continue
+                # 🆕 `W-G.9-392`（`K-9-80` ③·KL 05:22 甲）：取得之宗之自我檢查（右鏈·於 `_adj` 之重試之後之定案之 `res`·app 同構）
+                if _commit and is_first_corner_r:
+                    ns['k980_acq_check']('街角第1宗', blk_label, 'right', k, ns['_corner_first_lot_G'](
+                        a_m2=a_m2, A_ratio=A_ratio, B=B_value, C=C_for_calc, l_front=l_front, l_side=l_side_use,
+                        F=F_use, block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt, s_max_left=_sl392,
+                        s_max_right=_smr392, side='右', allocation_dir=allocation_dir_block, side_mid=_side_mid_right,
+                        avg_depth=avg_depth_default, tab6_burden=_tab6_burden, front_p2=_front_p2_blk,
+                        _label=f'{blk_label}·{k}·右·W-G.9-392'), res.get('G', 0.0))
+                elif _commit and _lg_idx_right == 0 and entry.get('is_end_block') and _eb_info['right'] is not None:
+                    ns['k980_acq_check']('末端塊', blk_label, 'right', k, ns['end_block_trial_G'](
+                        _solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max,
+                        avg_depth_default, allocation_dir_block, 'right', float(_eb_info['right']['s_back']))[0],
+                        res.get('G', 0.0))
                 _lg_idx_right += 1
                 if _has_right_corner:
                     if not _W0_right_set:
