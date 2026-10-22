@@ -1,0 +1,215 @@
+diff --git a/app.py b/app.py
+index b591d76..b4cee75 100644
+--- a/app.py
++++ b/app.py
+@@ -11685,6 +11685,40 @@ def end_block_forced_bands(eb_info):
+     return _out
+ 
+ 
++def k980_acq_check(kind, blk_label, side, pid, g_eval, g_actual):
++    """🆕 `W-G.9-392`（`K-9-80` ③·KL `2026-10-22 05:22`「甲」之「自我檢查」）：取得之宗（街角第 1 宗、末端塊之當選者）之二次所算之比。
++    `g_eval` ＝ 評選之式依實配之輸入重算之值、`g_actual` ＝ 實配之值；各取至 2 位（`round(·, 2)`）不同 ⇒ 立程式之停機
++    `GB-206`（經 `k6_program_stop` 登記·試算之內亦上拋·⛔ 靜默取其一）；同 ⇒ 回 `None`（⛔ 登記）。"""
++    _ge392 = round(float(g_eval), 2)
++    _ga392 = round(float(g_actual), 2)
++    if _ge392 != _ga392:
++        raise k6_program_stop(
++            f"🔴 [GB-206·K-9-80 ③] 街廓 {blk_label}·{side}·{kind} {pid}：評選之所算 {_ge392:.2f} ㎡ ≠ "
++            f"實配之所算 {_ga392:.2f} ㎡（取得之宗之二次所算取至 2 位不同 ⇒ 停機·⛔ 靜默取其一）")
++    return None
++
++
++def end_block_trial_G(solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max, avg_depth,
++                      allocation_dir, side, s_back):
++    """🆕 `W-G.9-392`（`K-9-80` ③·KL `2026-10-22 05:22`「甲」）：末端塊之評選之試算之單一真相源（#20）。
++    `end_block_host` 之評選與二宿主之取得之宗之自我檢查皆經本函式；左 ⇒ 方向 d̂、起點 `corner_pt`；
++    `右 ⇒ 方向 −d̂、起點 corner_pt ＋ S_block_max·d̂`；上界 `max(0.1, S_block_max)`。回 `(G, S_raw)`。"""
++    if side not in ('left', 'right'):
++        raise RuntimeError(
++            f"🔴 `W-G.9-392`：end_block_trial_G 之側別 {side!r} 非 left／right ⇒ 停（no-silent-fallback）")
++    _d392 = np.asarray(d_hat, dtype=float)
++    _c392 = np.asarray(corner_pt, dtype=float)
++    if side == 'left':
++        _dd392, _bp392 = _d392, _c392
++    else:
++        _dd392, _bp392 = -_d392, _c392 + float(S_block_max) * _d392
++    _r392, _ = solve_one(a_m2, A_ratio, l_front, 0.0, 0.0, blk_poly, _dd392, _bp392,
++                         max(0.1, float(S_block_max)), False, '無', avg_depth, _allocation_dir=allocation_dir,
++                         _side_mid=None, _W_prev=0.0, _w0_start=0.0, _near_dir=None,
++                         _is_chain_head=True, _s_back=s_back)
++    return float(_r392.get('G', 0.0)), float(_r392.get('S_raw', _r392.get('S', 0.0)))
++
++
+ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2, alloc_dir_cad,
+                    allocation_dir, session, corner_range_polys, solve_one, l_front, avg_depth,
+                    S_block_max, post_price, pre_price_by_zone, min_build_area=None):
+@@ -11719,15 +11753,9 @@ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2,
+         _pre = float(pre_price_by_zone.get(tp.get('重劃前地價區段', ''), 0.0) or 0.0)
+         _post = float(post_price or 0.0)
+         _A = (_post / _pre) if (_pre > 0 and _post > 0) else 1.0
+-        if side == 'left':
+-            _dd, _bp = _d, _cp
+-        else:
+-            _dd, _bp = -_d, _cp + float(S_block_max) * _d
+-        _res, _ = solve_one(_a, _A, l_front, 0.0, 0.0, blk_poly, _dd, _bp, max(0.1, float(S_block_max)),
+-                            False, '無', avg_depth,
+-                            _allocation_dir=allocation_dir, _side_mid=None, _W_prev=0.0,
+-                            _w0_start=0.0, _near_dir=None, _is_chain_head=True, _s_back=s_back)
+-        return float(_res.get('G', 0.0)), float(_res.get('S_raw', _res.get('S', 0.0)))
++        # 🆕 `W-G.9-392`：評選之試算委派單一真相源 `end_block_trial_G`（二宿主之取得之宗之自我檢查同之）
++        return end_block_trial_G(solve_one, _a, _A, l_front, blk_poly, _d, _cp, S_block_max, avg_depth,
++                                 allocation_dir, side, s_back)
+ 
+     return end_block_apply(ordered, blk_label=blk_label, block_poly=blk_poly, d_hat=d_hat,
+                            corner_pt=corner_pt, front_p2=front_p2, cad_alloc=alloc_dir_cad,
+@@ -13127,6 +13155,10 @@ K980_AREA_TOL = 0.01        # ㎡·擴大後之範圍之面積之上餘：`0 ≤
+ K980_AREA_EPS = 1e-6        # ㎡·「範圍之面積已 ≥ 最小建築面積」之判之浮點餘裕（⛔ 法定之量）
+ K980_TOUCH_TOL = 0.01       # m·一街廓之二範圍之距 ≤ 本值 ⇒ 相接或重疊（法定粒度）
+ 
++# 🆕 `W-G.9-392`（`K-9-80` ③·KL `2026-10-22 05:22`「是」·甲）：每宗之應分配面積試算至穩定後取至小數 2 位（評選與實配同值）。
++K980_G_TOL = 1e-6           # ㎡·應分配面積（G）之二分之收斂之容差（`_solve_G_one` → `solve_G_binary`·舊 0.01）
++K980_G_MAX_ITER = 200       # 次·其二分之次數之上限（舊 80；`K980_G_TOL` 之下之所需遠小於此）
++
+ 
+ def k980_mba(session, label, category):
+     """`W-G.9-391`（`K-9-80` ④⑤·`K-9-1` ⑨ 裁丙）：某街廓之最小建築面積之有效值之單一入口（畫面與 harness 同一二鍵）。
+@@ -19719,7 +19751,7 @@ def _solve_G_one(*, a_m2, A, l_front, l_side, F, blk_poly, d_hat, baseline_pt,
+                 is_corner=is_corner,
+                 is_chain_head=is_chain_head,             # 🆕 W-G.9-261：鏈頭旗標（薄殼直通·⛔ 在此推導）
+                 side_label=side if side in ('左側', '右側') else '左側',
+-                tol=0.01, max_iter=80,
++                tol=K980_G_TOL, max_iter=K980_G_MAX_ITER,   # 🆕 W-G.9-392：試算至穩定（K-9-80 ③·KL 05:22 甲）
+                 allocation_dir=allocation_dir,
+                 side_mid=side_mid, W_prev=W_prev,
+                 near_dir=near_dir,                       # 🆕 D-2b-23【甲】：界面單線（⛔ 不在此推導）
+@@ -19842,7 +19874,8 @@ def _corner_first_lot_G(*, a_m2, A_ratio, B, C, l_front, l_side, F,
+         blk_poly=block_poly, d_hat=_dh_use, baseline_pt=_bp,
+         S_max=max(0.1, _s_max), is_corner=True, side=_side_cn, avg_depth=avg_depth,
+         B=B, C=C, tab6_burden=tab6_burden,
+-        allocation_dir=allocation_dir, side_mid=side_mid, W_prev=0.0)
++        allocation_dir=allocation_dir, side_mid=side_mid, W_prev=0.0,
++        w0_start=0.0)  # W-G.9-392 補令一（R-7″·K-9-41 ①）：評選之式之起算點 ＝ 0
+     return float(_res.get('G', 0.0) or 0.0)
+ 
+ 
+@@ -20258,6 +20291,8 @@ _WF_NS_NAMES = [
+     #      （逐字「實拋 KeyError @ stepg_pipeline.py:699｜'k91_effective_min_build_area'」）
+     #      ⇒ app 生產路徑之 `_wf_ns()` 必崩（`自誤 302` 之形·CC 自犯）。
+     "k91_effective_min_build_area",
++    # 🆕 `W-G.9-392`（`K-9-80` ③）：取得之宗之自我檢查與末端塊之評選之試算之二名（引擎 `verify/stepg_pipeline.py` 經 `ns` 消費·漏列即 app 路徑 KeyError）。
++    "k980_acq_check", "end_block_trial_G",
+ ]
+ 
+ 
+@@ -21906,6 +21941,13 @@ def f3_screen_stepg_run(st, *,
+                                  if (_mw_blk > 0 and _pw < _mw_blk) else '')
+             return _res
+ 
++        # 🆕 `W-G.9-392`（`K-9-80` ③·`R-4`）：取得之宗之自我檢查之評選之式之二上界（＝ Step L 之評選之同式·每街廓算一次）。
++        _sl392 = (float(_np_d.linalg.norm(_np_d.asarray(_front_p2_blk, dtype=float)[:2]
++                                          - _np_d.asarray(corner_pt, dtype=float)[:2]))
++                  if (_front_p2_blk is not None and corner_pt is not None) else None)
++        _smr392 = ((_oblique_s_max(blk_meta.get('vertices'), d_hat, corner_pt, allocation_dir_block) or _sl392)
++                   if allocation_dir_block is not None else _sl392)
++
+         # ── 🆕 W-D.2 §3（D-1 bootstrap 載體）：單塊可重入推進 ──
+         def _advance_block_with_split(_k_split, _commit):
+             """依池槽 _k_split 切分後執行雙向推進（Task D-2 左右迴圈整段內移）。
+@@ -22090,6 +22132,19 @@ def f3_screen_stepg_run(st, *,
+                     if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
+                         k917_note_drop(blk_label, 'left', k, res, tp)
+                     continue
++                # 🆕 `W-G.9-392`（`K-9-80` ③·KL 05:22 甲）：取得之宗之自我檢查（末趟·鏈首·評選之式依實配之輸入重算·取至 2 位異 ⇒ GB-206）
++                if _commit and is_first_corner_l:
++                    k980_acq_check('街角第1宗', blk_label, 'left', k, _corner_first_lot_G(
++                        a_m2=a_m2, A_ratio=A_ratio, B=B_value, C=C_for_calc, l_front=l_front, l_side=l_side_use,
++                        F=F_use, block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt, s_max_left=_sl392,
++                        s_max_right=_smr392, side='左', allocation_dir=allocation_dir_block, side_mid=_side_mid_left,
++                        avg_depth=avg_depth_default, tab6_burden=_tab6_burden, front_p2=_front_p2_blk,
++                        _label=f'{blk_label}·{k}·左·W-G.9-392'), res.get('G', 0.0))
++                elif _commit and _lg_idx_left == 0 and entry.get('is_end_block') and _eb_info['left'] is not None:
++                    k980_acq_check('末端塊', blk_label, 'left', k, end_block_trial_G(
++                        _solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max,
++                        avg_depth_default, allocation_dir_block, 'left', float(_eb_info['left']['s_back']))[0],
++                        res.get('G', 0.0))
+                 _lg_idx_left += 1
+                 if _has_left_corner:   # thread 累積 W_前 給下一筆
+                     _W_prev_left = float(res.get('W_far', _W_prev_left))
+@@ -22240,6 +22295,19 @@ def f3_screen_stepg_run(st, *,
+                     if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重）
+                         k917_note_drop(blk_label, 'right', k, res, tp)
+                     continue
++                # 🆕 `W-G.9-392`（`K-9-80` ③·KL 05:22 甲）：取得之宗之自我檢查（右鏈·於 `_adj` 之重試之後之定案之 `res`）
++                if _commit and is_first_corner_r:
++                    k980_acq_check('街角第1宗', blk_label, 'right', k, _corner_first_lot_G(
++                        a_m2=a_m2, A_ratio=A_ratio, B=B_value, C=C_for_calc, l_front=l_front, l_side=l_side_use,
++                        F=F_use, block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt, s_max_left=_sl392,
++                        s_max_right=_smr392, side='右', allocation_dir=allocation_dir_block, side_mid=_side_mid_right,
++                        avg_depth=avg_depth_default, tab6_burden=_tab6_burden, front_p2=_front_p2_blk,
++                        _label=f'{blk_label}·{k}·右·W-G.9-392'), res.get('G', 0.0))
++                elif _commit and _lg_idx_right == 0 and entry.get('is_end_block') and _eb_info['right'] is not None:
++                    k980_acq_check('末端塊', blk_label, 'right', k, end_block_trial_G(
++                        _solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max,
++                        avg_depth_default, allocation_dir_block, 'right', float(_eb_info['right']['s_back']))[0],
++                        res.get('G', 0.0))
+                 _lg_idx_right += 1
+                 if _has_right_corner:   # thread 累積 W_前 給下一筆
+                     _W_prev_right = float(res.get('W_far', _W_prev_right))
+diff --git a/verify/stepg_pipeline.py b/verify/stepg_pipeline.py
+index b2f6622..0cd22fc 100644
+--- a/verify/stepg_pipeline.py
++++ b/verify/stepg_pipeline.py
+@@ -817,6 +817,13 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                     f"條件③ J 非零看守破：街廓 {blk_label} {_side_nm_w2}側有 SIDE_LINE 但 "
+                     f"F×l₁={_F_w2:.2f}×{_l1_w2:.2f}=0（快照 負擔尺度_輸入 未正確消費？）")
+ 
++        # 🆕 `W-G.9-392`（`K-9-80` ③·`R-4`）：取得之宗之自我檢查之評選之式之二上界（＝ `run_corner_pk` 之評選之同式·每街廓算一次·app 同構）。
++        _sl392 = (float(_np_d.linalg.norm(_np_d.asarray(_front_p2_blk, dtype=float)[:2]
++                                          - _np_d.asarray(corner_pt, dtype=float)[:2]))
++                  if (_front_p2_blk is not None and corner_pt is not None) else None)
++        _smr392 = ((ns["_oblique_s_max"](blk_meta.get('vertices'), d_hat, corner_pt, allocation_dir_block) or _sl392)
++                   if allocation_dir_block is not None else _sl392)
++
+         # ── 可重入推進（app _advance_block_with_split 逐行複刻；headless 無 st 訊息） ──
+         def _advance_block_with_split(_k_split, _commit):
+             _N_f = len(ordered_v2)
+@@ -924,6 +931,19 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                     if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重·app 同構）
+                         ns['k917_note_drop'](blk_label, 'left', k, res, tp)
+                     continue
++                # 🆕 `W-G.9-392`（`K-9-80` ③·KL 05:22 甲）：取得之宗之自我檢查（app 同構·三名經 ns）
++                if _commit and is_first_corner_l:
++                    ns['k980_acq_check']('街角第1宗', blk_label, 'left', k, ns['_corner_first_lot_G'](
++                        a_m2=a_m2, A_ratio=A_ratio, B=B_value, C=C_for_calc, l_front=l_front, l_side=l_side_use,
++                        F=F_use, block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt, s_max_left=_sl392,
++                        s_max_right=_smr392, side='左', allocation_dir=allocation_dir_block, side_mid=_side_mid_left,
++                        avg_depth=avg_depth_default, tab6_burden=_tab6_burden, front_p2=_front_p2_blk,
++                        _label=f'{blk_label}·{k}·左·W-G.9-392'), res.get('G', 0.0))
++                elif _commit and _lg_idx_left == 0 and entry.get('is_end_block') and _eb_info['left'] is not None:
++                    ns['k980_acq_check']('末端塊', blk_label, 'left', k, ns['end_block_trial_G'](
++                        _solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max,
++                        avg_depth_default, allocation_dir_block, 'left', float(_eb_info['left']['s_back']))[0],
++                        res.get('G', 0.0))
+                 _lg_idx_left += 1
+                 if _has_left_corner:
+                     if not _W0_left_set:
+@@ -1060,6 +1080,19 @@ def _run_step_g_impl(ns, fake_st, cb, cad, snapshot, param_rows, build_parcels,
+                     if _commit:   # 🆕 `W-G.9-333` `c3`：試推進⛔ 記（去重·app 同構）
+                         ns['k917_note_drop'](blk_label, 'right', k, res, tp)
+                     continue
++                # 🆕 `W-G.9-392`（`K-9-80` ③·KL 05:22 甲）：取得之宗之自我檢查（右鏈·於 `_adj` 之重試之後之定案之 `res`·app 同構）
++                if _commit and is_first_corner_r:
++                    ns['k980_acq_check']('街角第1宗', blk_label, 'right', k, ns['_corner_first_lot_G'](
++                        a_m2=a_m2, A_ratio=A_ratio, B=B_value, C=C_for_calc, l_front=l_front, l_side=l_side_use,
++                        F=F_use, block_poly=blk_poly, d_hat=d_hat, corner_pt=corner_pt, s_max_left=_sl392,
++                        s_max_right=_smr392, side='右', allocation_dir=allocation_dir_block, side_mid=_side_mid_right,
++                        avg_depth=avg_depth_default, tab6_burden=_tab6_burden, front_p2=_front_p2_blk,
++                        _label=f'{blk_label}·{k}·右·W-G.9-392'), res.get('G', 0.0))
++                elif _commit and _lg_idx_right == 0 and entry.get('is_end_block') and _eb_info['right'] is not None:
++                    ns['k980_acq_check']('末端塊', blk_label, 'right', k, ns['end_block_trial_G'](
++                        _solve_one, a_m2, A_ratio, l_front, blk_poly, d_hat, corner_pt, S_block_max,
++                        avg_depth_default, allocation_dir_block, 'right', float(_eb_info['right']['s_back']))[0],
++                        res.get('G', 0.0))
+                 _lg_idx_right += 1
+                 if _has_right_corner:
+                     if not _W0_right_set:
