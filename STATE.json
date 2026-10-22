@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-22T17:21:19+08:00",
+  "status": "running",
+  "status_since": "2026-10-22T17:22:55+08:00",
   "order": "W-G.9-392_補令二.md",
   "order_bytes": 26525,
   "order_sha256": "d442bc4f66fac771997990b0e3e656bff3fc6c1132eb131c9e73fd09c91205a0",
@@ -774,6 +774,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-392_補令一 之停機上呈（停機款 4″·前置″ 項 4 之期漏計補令一之入倉·發單端之誤 自誤 636·⛔ 涉土地後果）⇒ 出 W-G.9-392_補令二（代換表 D-1〜D-12·續自 f12824f·生產碼之規格⛔ 改一字·本案配地之改變 ＝ 原單 §一 項 5）"
+    },
+    {
+      "at": "2026-10-22T17:22:55+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-392_補令二（bytes 26525、sha256 d442bc4f…、SELF_SHA256 83eab58b…〔P-5〕皆符）"
     }
   ]
 }
