@@ -1526,6 +1526,11 @@ W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels
 F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 KEEP_APP = tuple(x for x in KEEP_APP if x not in W391)
 APP_ALLOW |= set(W391)
+# 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
+NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
+W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
+KEEP_APP = tuple(x for x in KEEP_APP if x not in W392)
+APP_ALLOW |= set(W392)
 
 
 def _top_dump(tree):
@@ -1668,6 +1673,10 @@ R3_EXPECT = {
         '628-7(1)': ('R6', 'right', 1007.91), '628-7(2)': ('R5', 'left', 712.26),
     }, {'R1': 851.67, 'R2': 1823.3, 'R3': 1659.05, 'R4': 697.4, 'R5': 1221.47, 'R6': 980.59}),
 }
+# 🔧 `W-G.9-392`（`K-9-80` ③·KL `2026-10-22 05:22`「甲」·⛔ 上列一字不刪）：每宗之應分配面積試算至穩定（求解之容差 `1e-6 ㎡`）之後，
+#   `R1` 之抵費地逾本器之容差者之更（源 ＝ 主線 `56c77fd` 之碼而唯其求解之容差換為 `1e-6`·發單端之實跑；＝ KL 所核之請示表之甲之欄）。
+R3_EXPECT[3.5][1]['R1'] = 851.69
+R3_EXPECT[0.0][1]['R1'] = 851.69
 # 調配之輸入之類（切片數, 原有面積合計 ㎡）
 R4_EXPECT = {
     3.5: {'共同負擔用地·入合併單位': (32, 7116.89), '原位次配地': (73, 26311.71), '建築街廓內不能分配': (13, 1432.13), '無地號之殘料': (8, 0.0)},

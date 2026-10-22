@@ -47,6 +47,9 @@ NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_wi
 W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
                  "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
 F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
+# 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
+NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
+W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 TAG_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])|【未裁】")
 TRIAL_CALLS = {"f3_screen_stepg_run", "run_step_g", "trial", "alloc_eval"}
 CATCH = {"RuntimeError", "_K6BTrialStop", "Exception"}
@@ -512,8 +515,13 @@ def wiring(repo, base):
     # X1
     n_ok, bad, other = _x1(tree)
     bn_ok, bbad, _bo = _x1(btree)
-    res.append(("X1 帶號之 raise 皆 k6_program_stop·⛔ 他用", (not bad) and (not other) and n_ok == bn_ok + len(bbad)
-                and n_ok > 0, f"帶號 {n_ok}（基準之帶號 {bn_ok + len(bbad)}）／非者 {bad}／他用 {other}"))
+    # 🔧 `W-G.9-392`：其後之單之 `k980_acq_check`（`GB-206`）之帶號之 raise 恰一亦許（其行為由 F36 量之）
+    _kc392 = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "k980_acq_check"), None)
+    _n392 = 0 if _kc392 is None else sum(1 for n in ast.walk(_kc392) if isinstance(n, ast.Raise)
+                                         and isinstance(n.exc, ast.Call) and getattr(n.exc.func, "id", None) == "k6_program_stop")
+    res.append(("X1 帶號之 raise 皆 k6_program_stop·⛔ 他用", (not bad) and (not other)
+                and (n_ok == bn_ok + len(bbad) or (_n392 == 1 and n_ok == bn_ok + len(bbad) + 1))
+                and n_ok > 0, f"帶號 {n_ok}（基準之帶號 {bn_ok + len(bbad)}·k980_acq_check {_n392}）／非者 {bad}／他用 {other}"))
     # X2
     try:
         ssrc = _read(repo, "verify/selection_pipeline.py")
@@ -542,6 +550,9 @@ def wiring(repo, base):
     ok3 = add == NEW_TOP and not gone and set(dif) <= ALLOW | ALLOW390 and not why
     # 🔧 `W-G.9-391`：其新名與所改之頂層節點亦許（⛔ 及 ALLOW 之二形之查·F35 量之）
     ok3 = ok3 or (add == NEW_TOP | set(NEW391) and not gone and set(dif) <= ALLOW | ALLOW390 | set(W391) and not why)
+    # 🔧 `W-G.9-392`：同（F36 量之）
+    ok3 = ok3 or (add == NEW_TOP | set(NEW391) | set(NEW392) and not gone
+                  and set(dif) <= ALLOW | ALLOW390 | set(W391) | set(W392) and not why)
     res.append(("X3 頂層：新名 ＝ 五·相異 ⊆ 本單之許·其差唯二形", ok3,
                 f"增 {sorted(add)}／去 {sorted(gone)}／相異 {dif}／不合 {why}"))
     # X4

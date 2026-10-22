@@ -45,6 +45,9 @@ NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_wi
 W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
                  "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
 F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
+# 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
+NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
+W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 # 外部錨（R3）：主線 `34736ab` 之 `probe_WG9351_intake.py run <repo>` 之「單位」列之原街廓（發單端 2026-10-17 實跑）
 EXPECT_RUN = {
@@ -278,6 +281,8 @@ def wiring(repo, base):
                       and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389))   # 🔧 `W-G.9-389`：同（F33 量之）
         ok3 = ok3 or (set(ct) - set(bt) == set(NEW389) | set(NEW391) and set(bt) <= set(ct)
                       and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389) | set(W391))   # 🔧 `W-G.9-391`：同（F35 量之）
+        ok3 = ok3 or (set(ct) - set(bt) == set(NEW389) | set(NEW391) | set(NEW392) and set(bt) <= set(ct)
+                      and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389) | set(W391) | set(W392))   # 🔧 `W-G.9-392`：同（F36 量之）
         res.append(("X3 頂層之名之集⛔ 變·相異之節點 ⊆ {adj_intake}", ok3,
                     f"增 {sorted(set(ct) - set(bt))}／去 {sorted(set(bt) - set(ct))}／相異 {dif}"))
         ls = subprocess.run(["git", "-C", repo, "ls-tree", "--name-only", base, "verify/"], capture_output=True,

@@ -50,6 +50,9 @@ NEW391 = ("K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_wi
 W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels", "end_block_apply", "end_block_host",
                  "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
 F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
+# 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
+NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
+W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 
 
 def _harvest(repo):
@@ -409,6 +412,9 @@ def wiring(repo, base):
     # 🔧 `W-G.9-391`：其後之單之新名與所改之頂層節點亦許（F35 量之）
     ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) and set(tb) <= set(ta)
                   and set(diff) <= {"k6b_stage3_run"} | set(W391))
+    # 🔧 `W-G.9-392`：同（F36 量之）
+    ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) | set(NEW392) and set(tb) <= set(ta)
+                  and set(diff) <= {"k6b_stage3_run"} | set(W391) | set(W392))
     print(("  ✅" if ok2 else "  🔴") + f" X2 頂層之相異 {diff}（期 ['k6b_stage3_run']）、名之集同 {set(ta) == set(tb)}")
     if not ok2:
         red.append("X2")

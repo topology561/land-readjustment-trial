@@ -45,6 +45,7 @@
            `k974_read_junctions`、`k974_burden_scales`、`k974_screen_scales`、`calc_special_burden_total`、`main`（其接線與
            二函式之唯增列由 F30 之 wiring 量之）。
   🔧 `W-G.9-391`（`K-9-34`·`K-9-80` ④⑥·⛔ 上列一字不刪）：wiring 之 W5 之許增範圍之擴大之六新名與九函式（其行為與接線由 F35 量之）。
+  🔧 `W-G.9-392`（`K-9-80` ③·⛔ 上列一字不刪）：wiring 之 W5 之許增試算至穩定與取得之宗之自我檢查之四新名與四節點（其行為與接線由 F36 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, difflib, io, os, re, subprocess, sys, warnings
@@ -779,6 +780,10 @@ W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels
                  "end_block_side_geom", "f3_screen_stepg_run", "main", "select_corner_lots_both_sides_v12", "_WF_NS_NAMES")
 F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 ALLOW375_APP += W391
+# 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
+NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
+W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
+ALLOW375_APP += W392
 
 
 def _git_show(repo, rev, rel):
@@ -1009,6 +1014,10 @@ R3_EXPECT = {
     3.5: ({"628-34(2)": (250.24, 257.91)}, {"R3": (1659.06, 1651.41)}),
     0.0: ({"628-34(2)": (250.24, 257.91)}, {"R3": (1659.05, 1651.41)}),
 }
+# 🔧 `W-G.9-392`（`K-9-80` ③·KL `2026-10-22 05:22`「甲」·⛔ 上列一字不刪）：每宗之應分配面積試算至穩定（求解之容差 `1e-6 ㎡`）之後之 `R3` 之抵費地之錨之更
+#   （源 ＝ 主線 `56c77fd` 之碼而唯其求解之容差換為 `1e-6`·發單端之實跑；on 之值 ＝ KL 所核之請示表之甲之欄）。
+R3_EXPECT[3.5] = (R3_EXPECT[3.5][0], {"R3": (1659.06, 1651.40)})
+R3_EXPECT[0.0] = (R3_EXPECT[0.0][0], {"R3": (1659.06, 1651.40)})
 # 調配之輸入之類（切片數, 原有面積合計 ㎡）與合併單位數；off → on 之去者（歸戶）
 _R4_TOT = {"共同負擔用地·入合併單位": (31, 7103.74), "原位次配地": (74, 26324.86),
            "建築街廓內不能分配": (13, 1432.13), "無地號之殘料": (8, 0.0)}

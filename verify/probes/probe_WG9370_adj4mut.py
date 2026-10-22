@@ -119,6 +119,10 @@ W391 = NEW391 + ("_build_corner_range_v3", "_end_region_R", "_place_pool_parcels
 F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 ALLOW373_APP += W391
 ALLOW375_FILES += F391
+# 🔧 `W-G.9-392`：其後之單之新名與所改之頂層節點（每宗之應分配面積之試算至穩定·取得之宗之自我檢查·F36 量之）
+NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
+W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
+ALLOW373_APP += W392
 
 
 def _strip_fns(src, names):
