@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-22T17:00:19+08:00",
+  "status": "running",
+  "status_since": "2026-10-22T17:01:00+08:00",
   "order": "W-G.9-392_補令一.md",
   "order_bytes": 95051,
   "order_sha256": "1d9a2eae95e9f09ef473f2df89c31a7342893059a88ad806c71ebd4793eca3cb",
@@ -746,6 +746,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-392_補令一（原趟之碼之重施 ＋ R-7″：評選之式之起算點 0·K-9-41 ①／K-9-5-12·自誤 635·塊 Fy48/K39/E37/P50·本案配地之改變 ＝ 原單 §一 項 5·⛔ 增減）"
+    },
+    {
+      "at": "2026-10-22T17:01:00+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-392_補令一（bytes 95051・sha256 1d9a2eae95e9…・SELF_SHA256 6f75b64a0243…〔P-5 口徑〕皆符）"
     }
   ]
 }
