@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-22T05:57:12+08:00",
-  "order": "W-G.9-391_補令一.md",
-  "order_bytes": 25718,
-  "order_sha256": "ca7d777ca189fbc2fa27f08dd083a6009dda14ce2df99c3832d4872dd85380fe",
-  "order_kind": "短單",
-  "expects_allocation_change": false,
+  "status": "pending",
+  "status_since": "2026-10-22T08:33:05+08:00",
+  "order": "W-G.9-392_規格單.md",
+  "order_bytes": 144622,
+  "order_sha256": "5ff3ea900591027f1df35d33f17b9828c9331d9acf88fea2d2f704667a1dfe3c",
+  "order_kind": "規格單",
+  "expects_allocation_change": true,
   "attempt": 1,
-  "report": "W-G.9-391_補令一_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "a8657c4012d961eccebd77cd812c0ab6aeab030f",
   "history": [
@@ -704,6 +704,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-G.9-392 上鎖（K-9-80 ③·KL 05:22「是」⇒ 甲：每宗試算至穩定後取兩位·評選與實配同值·二次不同即停機；新規格單而本案配地 ±0.01 ⇒ 施後側支保留待 KL 核）；末端塊之實量（KL 05:40 必辦）於擬單之長跑中並行"
+    },
+    {
+      "at": "2026-10-22T08:33:05+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-392_規格單.md（規格單·144622 B·5ff3ea900591…·attempt 1·expects_allocation_change ＝ true·K-9-80 ③ 之甲之落地：求解之容差 1e-6·取得之宗之自我檢查 GB-206·end_block_trial_G；本案配地 ±0.01 ⇒ 施後側支保留、⛔ 入主線，待復驗後呈 KL 核）"
     }
   ]
 }
