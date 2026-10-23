@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-23T17:58:18+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-23T17:58:46+08:00",
   "order": "W-G.9-393_規格單.md",
   "order_bytes": 134050,
   "order_sha256": "23aee54d2f4ea9a3e2764499d43598c2b159d166c0b510b3b542bad12962de8f",
@@ -886,6 +886,13 @@
       "from": "running",
       "to": "reported",
       "note": "回報 W-G.9-393_規格單.md（完成）：新側支 verify/W-G.9-393-endall ＝ b40d838（工項零〜四：0e4cc73、9f825b3、df2ba32、078fc27、b40d838）；主線 cf1b415 ⛔ 動；驗 84 呼叫皆合期（stderr 0 B）；F36 diff 二退縮 全比相異 0；F8 47683d1c／884e9171 前後同；parity 代 HEAD 後同；收工閘 1〜8 皆合；審查 (A-1) R2 之宗地頂點之微變（≤1.5e-4 ㎡·取 2 位⛔ 變）判為單 §一 項 7／K40 之三所載·請發單端特核"
+    },
+    {
+      "at": "2026-10-23T17:58:46+08:00",
+      "by": "發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "接手復驗 W-G.9-393_規格單（完成·⛔ 採自報）"
     }
   ]
 }
