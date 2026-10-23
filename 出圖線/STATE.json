@@ -1,15 +1,15 @@
 {
-  "status": "running",
-  "status_since": "2026-10-23T21:19:22+08:00",
+  "status": "reported",
+  "status_since": "2026-10-23T21:36:20+08:00",
   "order": "W-P.001_重劃前三圖層與附表2-3.md",
   "order_bytes": 10716,
   "order_sha256": "636b393d5b12a50b92dab46aaffc0eaba589f4f8aad029f906baefbb1976c7d1",
   "order_kind": "新單",
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "出圖線/reports/W-P.001_回報.md",
+  "result": "完成",
   "kl_question": null,
-  "wip_plots": null,
+  "wip_plots": "f00dabae89c3f84263f35dbf35c1bcdd6668f134",
   "history": [
     {
       "at": "2026-10-23T17:50:00+08:00",
@@ -45,6 +45,13 @@
       "from": "pending",
       "to": "running",
       "note": "接 W-P.001（單檔 10716 bytes·sha256 636b393d…c7d1 相符；許可 N=393·核心線 order W-G.9-393_補令一）"
+    },
+    {
+      "at": "2026-10-23T21:36:20+08:00",
+      "by": "出圖線·執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "W-P.001 完成：側支 verify/W-P.001-prelim＝f00daba；wip/plots 建於 5d2a283 後快轉至 f00daba；量測 12/12 綠、故意錯誤 8 種皆紅、差異閘綠（對照組紅）；預覽 2 PNG 入 出圖線/成果/；自捕 M6 之系統圖層之讀法待發單端復核"
     }
   ]
 }
