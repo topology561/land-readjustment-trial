@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-23T14:48:19+08:00",
+  "status": "running",
+  "status_since": "2026-10-23T14:48:50+08:00",
   "order": "W-G.9-393_規格單.md",
   "order_bytes": 134050,
   "order_sha256": "23aee54d2f4ea9a3e2764499d43598c2b159d166c0b510b3b542bad12962de8f",
@@ -872,6 +872,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-393_規格單.md（規格單·134050 B·expects_allocation_change ＝ false·attempt 1）：無側面道路之端一律為末端塊（KL 2026-10-23 07:39（二））＋ GB-207（K-9-60 ① 未落地之停機）＋ 自誤 637；新側支 verify/W-G.9-393-endall"
+    },
+    {
+      "at": "2026-10-23T14:48:50+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-393_規格單.md：bytes 134050／sha256 23aee54d…／SELF_SHA256 36e01148… 皆相符"
     }
   ]
 }
