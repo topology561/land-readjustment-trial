@@ -110,3 +110,10 @@ idle ──發單端出單──▶ pending ──執行端接單──▶ runni
 4. 依狀態判斷本輪是否有事；無事者，⛔ 任何 `commit`，以一句話結束（避免無謂之通知）。
 5. 存取被 Git 代理拒絕（「not in this session's authorized repository set」等）⇒ 以 `add_repo`（`owner` ＝ `topology561`、`repo` ＝ `land-readjustment-trial`、`access` ＝ `push`）附掛後重試一次；仍不能 ⇒ ⛔ 繞道，於最後之回覆說明「本輪無法存取倉庫」並結束（完成通知即告 KL）。
 6. 附掛倉庫之工具若提示「登錄倉庫根目錄」（`register_repo_root`）：**發單端⛔ 登錄**（`CLAUDE.md` 為執行端之規則，發單端以讀檔參照即可）；執行端依 `執行端.md` 丙之第 2 步。
+
+## 九、出圖線（第二條自動線·KL 2026-10-23 17:31 立）
+
+- `ops/queue/出圖線/` 為另一條並行之自動線（公告圖冊之出圖），有其自身之 README、步驟檔、`STATE.json`、`orders/`、`log.md`；其排程為「出圖線·發單端」「出圖線·執行端」。
+- 核心線之兩端⛔ 讀寫 `出圖線/` 之檔（唯讀參考除外）；出圖線亦⛔ 讀寫核心線之檔（唯讀參考除外）。
+- 出圖線唯寫主倉之新目錄（`plots/`、`verify/plots/`、`docs/出圖/`），其分支為 `wip/plots` 與 `verify/W-P.*`，⛔ 動主線。核心線之遠端分支之閘排除此二者（`發單端.md` 丙之 3）。
+- 兩線共用 `ops/queue` 分支：推送被拒（非快轉）係常態，依第五節之鎖 `pull --rebase` 後重判，⛔ `--force`。
