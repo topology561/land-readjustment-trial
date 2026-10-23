@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-23T08:06:20+08:00",
+  "status": "running",
+  "status_since": "2026-10-23T08:07:29+08:00",
   "order": "W-G.9-392_補令三.md",
   "order_bytes": 23399,
   "order_sha256": "342c2cbba01adff70b1df4531cea472c35ba16a1a0beb698dc67d926924c8b7a",
@@ -823,6 +823,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-392_補令三（入主線之短單·快轉 56c77fd → 工項零⁗ 之 commit·KL 07:39（一）是·基線⛔ 重烤〔序 28 留專單·§一⁗ 項 4〕）"
+    },
+    {
+      "at": "2026-10-23T08:07:29+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-392_補令三（bytes 23399、sha256 342c2cbb…、SELF_SHA256 581148fd…〔P-5〕皆符）"
     }
   ]
 }
