@@ -1,6 +1,6 @@
 {
-  "status": "idle",
-  "status_since": "2026-10-23T11:09:41+08:00",
+  "status": "drafting",
+  "status_since": "2026-10-23T11:10:15+08:00",
   "order": "W-G.9-392_補令三.md",
   "order_bytes": 23399,
   "order_sha256": "342c2cbba01adff70b1df4531cea472c35ba16a1a0beb698dc67d926924c8b7a",
@@ -858,6 +858,13 @@
       "from": "verifying",
       "to": "idle",
       "note": "復驗 W-G.9-392_補令三 通過：ls-remote 主線 wip/s1-endpart ＝ 側支 ＝ cf1b41545dc0228a01102e1052d79b1184bff3fc（前值 56c77fd·快轉·快轉前之記 c325ab5 先於回報）；heads 52；新主線之端之拋棄式樹重跑 80 呼叫皆合期（stderr 0 B）；F36 diff ＝ 原單 §一 項 5（6／5 項·對照組 45）；F8 47683d1c／884e9171；closegate 636 634 rc 0（對照 rc 7）；anchor 四簿 ＝ 期 ⇒ 立 基準/cf1b41545dc0228a01102e1052d79b1184bff3fc.md；README 第六節第 5 款之 F8 之值隨之更新"
+    },
+    {
+      "at": "2026-10-23T11:10:15+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "drafting",
+      "note": "上鎖：擬 W-G.9-393（末端塊之認定之更正·KL 2026-10-23 07:39（二）「是」）"
     }
   ]
 }
