@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-23T18:25:00+08:00",
+  "status": "running",
+  "status_since": "2026-10-23T21:19:22+08:00",
   "order": "W-P.001_重劃前三圖層與附表2-3.md",
   "order_bytes": 10716,
   "order_sha256": "636b393d5b12a50b92dab46aaffc0eaba589f4f8aad029f906baefbb1976c7d1",
@@ -38,6 +38,13 @@
       "from": "pending",
       "to": "pending",
       "note": "錄 KL 21:18 之答（問一 甲·單獨在前；問二 甲）入 出圖線/KL答覆/2026-10-23_2118.md；問二同單之預設 ⇒ 無補令；問一納 W-P.002。推分支之許可已具（分支許可.md N=393；核心線 order W-G.9-393_補令一 ≥ 393）⇒ W-P.001 可接"
+    },
+    {
+      "at": "2026-10-23T21:19:22+08:00",
+      "by": "出圖線·執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接 W-P.001（單檔 10716 bytes·sha256 636b393d…c7d1 相符；許可 N=393·核心線 order W-G.9-393_補令一）"
     }
   ]
 }
