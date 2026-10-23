@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-23T22:19:21+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-23T22:24:43+08:00",
   "order": "W-P.001_重劃前三圖層與附表2-3.md",
   "order_bytes": 10716,
   "order_sha256": "636b393d5b12a50b92dab46aaffc0eaba589f4f8aad029f906baefbb1976c7d1",
@@ -8,7 +8,7 @@
   "attempt": 1,
   "report": "出圖線/reports/W-P.001_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "出圖線/待KL/2026-10-23_W-P.001_第一版之確認.md",
   "wip_plots": "f00dabae89c3f84263f35dbf35c1bcdd6668f134",
   "history": [
     {
@@ -59,6 +59,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "復驗 W-P.001"
+    },
+    {
+      "at": "2026-10-23T22:24:43+08:00",
+      "by": "出圖線·發單端",
+      "from": "verifying",
+      "to": "await_kl",
+      "note": "復驗 W-P.001 合：差異閘綠（對照組紅）；發單端重跑出圖與量測 12/12 綠、故意錯誤 8 種皆紅；另以獨立之法覆核 53 宗、33 戶、95 列、持分面積和＝面積、同戶同色、相鄰異戶異色、地價註記；M6 之系統圖層之讀法可。第一版 ⇒ 請 KL 確認（README 第二節停止條件 2·出圖線/待KL/2026-10-23_W-P.001_第一版之確認.md）"
     }
   ]
 }
