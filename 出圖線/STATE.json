@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-24T02:29:39+08:00",
+  "status": "running",
+  "status_since": "2026-10-24T03:48:33+08:00",
   "order": "W-P.001_補令一_附表2-3手冊表樣.md",
   "order_bytes": 16639,
   "order_sha256": "2af3c5d6cac08c5ca1ad03fba5ad45fdc292b6661b156fd1e27e3bb99d9d756a",
@@ -87,6 +87,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-P.001_補令一（附表 2、3 改照手冊表樣·KL 02:14 之乙）：側支 verify/W-P.001-tables；量測 T1〜T6 之程式由發單端撰、附錄甲逐位元組照錄（sha256 997cde00…fdba）；原型：成果綠、⓪⑧′⑨〜⑬ 皆紅；許可已具（N＝393）"
+    },
+    {
+      "at": "2026-10-24T03:48:33+08:00",
+      "by": "出圖線·執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接 W-P.001_補令一（單檔 16639 bytes·sha256 2af3c5d6…d75a6 相符；許可 N=393·核心線 order W-G.9-393_補令一）"
     }
   ]
 }
