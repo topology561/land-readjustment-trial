@@ -1,15 +1,15 @@
 {
-  "status": "running",
-  "status_since": "2026-10-24T03:48:33+08:00",
+  "status": "reported",
+  "status_since": "2026-10-24T04:02:10+08:00",
   "order": "W-P.001_補令一_附表2-3手冊表樣.md",
   "order_bytes": 16639,
   "order_sha256": "2af3c5d6cac08c5ca1ad03fba5ad45fdc292b6661b156fd1e27e3bb99d9d756a",
   "order_kind": "補令",
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "出圖線/reports/W-P.001_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
-  "wip_plots": "f00dabae89c3f84263f35dbf35c1bcdd6668f134",
+  "wip_plots": "7827368fda88058f8e978e27956640d2e0f56abc",
   "history": [
     {
       "at": "2026-10-23T17:50:00+08:00",
@@ -94,6 +94,13 @@
       "from": "pending",
       "to": "running",
       "note": "接 W-P.001_補令一（單檔 16639 bytes·sha256 2af3c5d6…d75a6 相符；許可 N=393·核心線 order W-G.9-393_補令一）"
+    },
+    {
+      "at": "2026-10-24T04:02:10+08:00",
+      "by": "出圖線·執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "W-P.001_補令一 完成：側支 verify/W-P.001-tables＝7827368；wip/plots f00daba→7827368（快轉）；附錄甲 sha256 相符；量測 12/12（T1〜T6 皆過）；故意錯誤 14 種皆紅、成果綠；差異閘綠（對照組紅）；預覽 W-P.001_補令一_附表2-3.png"
     }
   ]
 }
