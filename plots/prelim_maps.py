@@ -9,7 +9,8 @@ W-P.001　重劃前三圖層（地籍線·歸戶圖·地價圖）＋顏色對照
   附表02_重劃前土地地號摘錄簿.xlsx
   附表03_重劃前土地清冊.xlsx
 
-所據：出圖線/orders/W-P.001_重劃前三圖層與附表2-3.md（§一、§二）。
+所據：出圖線/orders/W-P.001_重劃前三圖層與附表2-3.md（§一、§二）；
+      附表 2、3 之版式：出圖線/orders/W-P.001_補令一_附表2-3手冊表樣.md（§二·照手冊表樣）。
 宗地幾何唯以 app.py 之三函式（經 verify/app_harvest.harvest 取之·⛔ 改 app.py）：
   parse_ua_cadastral_dxf → reconstruct_parcel_polygons → validate_parcel_assignments_by_area。
 缺值一律報錯停止（⛔ 靜默補值）；匯入資料所無之欄留空（⛔ 杜撰）。
@@ -246,40 +247,141 @@ def write_color_table(path, lots, owners, key_of, hh_order, hh_color, zone_of, z
     ])
 
 
-APPX2_HEAD = ("鄉鎮市區", "段", "小段", "地號", "備註")
-APPX3_HEAD = ("鄉鎮市區", "段", "小段", "地號", "面積（㎡）", "持分", "持分面積（㎡）", "姓名",
-              "國民身分證統一編號", "住所", "當期公告現值（元/㎡）", "當期申報地價（元/㎡）",
-              "原規定地價或前次移轉現值（元/㎡）", "管理人（代表人）", "他項權利", "建物",
-              "限制登記", "備註")
+# ---------------------------------------------------------------- 附表 2、3（手冊表樣·W-P.001 補令一）
+SIGN_LABELS = ("編造：", "校對：", "承辦人：", "科長：", "日期：")
+APPX2_TITLE = "○○縣(市)第○○期○○市地重劃區地號摘錄簿"
+APPX3_TITLE1 = "○○縣(市)第○○期○○市地重劃區"
+APPX3_TITLE2 = "重劃前土地清冊"
+APPX2_NCOL = 8
+APPX3_NCOL = 15
+APPX3_ROW4 = ((1, 2, "土地標示"), (3, 4, "持分面積"), (5, 7, "所有權人"))
+APPX3_ROW5 = ("地號", "面積（㎡）", "持分", "面積（㎡）", "姓名", "國民身分證統一編號", "住所")
+APPX3_TALL = ("當期公告現值（元/㎡）", "當期申報地價（元/㎡）", "原規定地價或前次移轉現值（元/㎡）",
+              "管理人（代表人）", "他項權利", "建物", "限制登記", "備註")   # 欄 H〜O，縱併列 4〜5
+
+
+def group_lots(lots):
+    """依（鄉鎮市區, 段, 小段）分組（手冊：按鄉鎮市區、段別、小段別，依地號順序摘錄）。"""
+    groups = {}
+    for x in lots:
+        if _blank(x["鄉鎮市區"]) or _blank(x["段"]):
+            raise SourceError(f"{x['地號']} 之鄉鎮市區或段為空")
+        k = (x["鄉鎮市區"], x["段"], x.get("小段"))
+        groups.setdefault(k, []).append(x)
+    out = []
+    for k in sorted(groups, key=lambda k: tuple("" if v is None else str(v) for v in k)):
+        out.append((k, sorted(groups[k], key=lambda x: landno_key(x["地號"]))))
+    return out
+
+
+def _sheet_name(key):
+    _, sec, sub = key
+    return (str(sec) + ("" if _blank(sub) else str(sub)))[:31]
+
+
+def _place_row(ws, row, key):
+    town, sec, sub = key
+    for c, v in enumerate(("鄉鎮市區", town, "段", sec, "小段", None if _blank(sub) else sub), start=1):
+        ws.cell(row, c, v)
+
+
+def _sign_row(ws, row, ncol):
+    step = max(1, ncol // 5)
+    for i, lab in enumerate(SIGN_LABELS):
+        ws.cell(row, 1 + i * step, lab)
+
+
+def _page(ws, title_rows, landscape):
+    ws.print_title_rows = title_rows
+    ws.page_setup.paperSize = ws.PAPERSIZE_A4
+    ws.page_setup.orientation = "landscape" if landscape else "portrait"
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+
+
+def _grid(ws, r1, r2, ncol):
+    from openpyxl.styles import Border, Side
+    s = Side(style="thin")
+    for r in range(r1, r2 + 1):
+        for c in range(1, ncol + 1):
+            ws.cell(r, c).border = Border(left=s, right=s, top=s, bottom=s)
 
 
 def write_appx2(path, lots):
-    rows = [(x["鄉鎮市區"], x["段"], None, x["地號"], None)
-            for x in sorted(lots, key=lambda x: landno_key(x["地號"]))]
-    _xlsx(path, [("附表2", APPX2_HEAD, rows)])
+    import openpyxl
+    from openpyxl.styles import Alignment
+    center = Alignment(horizontal="center", vertical="center")
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    rows = []
+    for key, grp in group_lots(lots):
+        ws = wb.create_sheet(_sheet_name(key))
+        ws.cell(1, 1, APPX2_TITLE).alignment = center
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=APPX2_NCOL)
+        _place_row(ws, 2, key)
+        for c, v in enumerate(("地號", "備註") * 4, start=1):
+            ws.cell(3, c, v).alignment = center
+        lns = [x["地號"] for x in grp]
+        r = 3
+        for i, ln in enumerate(lns):
+            r, j = 4 + i // 4, i % 4
+            ws.cell(r, 1 + 2 * j, ln)          # 備註（B、D、F、H）留空
+            rows.append((key, ln))
+        _grid(ws, 3, r, APPX2_NCOL)
+        _sign_row(ws, r + 2, APPX2_NCOL)
+        _page(ws, "1:3", landscape=False)
+    wb.save(path)
     return rows
 
 
 def write_appx3(path, lots, owners, area):
+    import openpyxl
+    from openpyxl.styles import Alignment
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
     rows = []
-    for x in sorted(lots, key=lambda x: landno_key(x["地號"])):
-        ln = x["地號"]
-        all_rows = [r for seq in owners[ln].values() for r in seq]
-        has_right = any(not _blank(r[C_RIGHT_KIND]) for r in all_rows)
-        for r in owner_rows(owners, ln):
-            den, num = int(r[C_DEN]), int(r[C_NUM])
-            if den <= 0:
-                raise SourceError(f"{ln} 之權利範圍分母非正：{den}")
-            rows.append((
-                x["鄉鎮市區"], x["段"], None, ln, area[ln], f"{num}/{den}",
-                round_half_up(area[ln] * num / den, 2),
-                _val(r[C_NAME]), _val(r[C_UID]), _val(r[C_ADDR]),
-                _val(r[C_CURVAL]), _val(r[C_DECL]), None,
-                "ˇ" if not _blank(r[C_MGR_UID]) else None,
-                "ˇ" if has_right else None,
-                None, None, None,
-            ))
-    _xlsx(path, [("附表3", APPX3_HEAD, rows)])
+    for key, grp in group_lots(lots):
+        ws = wb.create_sheet(_sheet_name(key))
+        ws.cell(1, 1, APPX3_TITLE1).alignment = center
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=APPX3_NCOL)
+        ws.cell(2, 1, APPX3_TITLE2).alignment = center
+        ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=APPX3_NCOL)
+        _place_row(ws, 3, key)
+        for c1, c2, lab in APPX3_ROW4:
+            ws.cell(4, c1, lab).alignment = center
+            ws.merge_cells(start_row=4, start_column=c1, end_row=4, end_column=c2)
+        for c, lab in enumerate(APPX3_ROW5, start=1):
+            ws.cell(5, c, lab).alignment = center
+        for c, lab in enumerate(APPX3_TALL, start=8):
+            ws.cell(4, c, lab).alignment = center
+            ws.merge_cells(start_row=4, start_column=c, end_row=5, end_column=c)
+        r = 5
+        for x in grp:
+            ln = x["地號"]
+            all_rows = [o for seq in owners[ln].values() for o in seq]
+            has_right = any(not _blank(o[C_RIGHT_KIND]) for o in all_rows)
+            for o in owner_rows(owners, ln):
+                den, num = int(o[C_DEN]), int(o[C_NUM])
+                if den <= 0:
+                    raise SourceError(f"{ln} 之權利範圍分母非正：{den}")
+                vals = (
+                    ln, area[ln], f"{num}/{den}", round_half_up(area[ln] * num / den, 2),
+                    _val(o[C_NAME]), _val(o[C_UID]), _val(o[C_ADDR]),
+                    _val(o[C_CURVAL]), _val(o[C_DECL]), None,
+                    "ˇ" if not _blank(o[C_MGR_UID]) else None,
+                    "ˇ" if has_right else None,
+                    None, None, None,
+                )
+                r += 1
+                for c, v in enumerate(vals, start=1):
+                    ws.cell(r, c, v)
+                rows.append((key,) + vals)
+        _grid(ws, 4, r, APPX3_NCOL)
+        _sign_row(ws, r + 2, APPX3_NCOL)
+        _page(ws, "1:5", landscape=True)
+    wb.save(path)
     return rows
 
 

@@ -7,7 +7,7 @@ W-P.001 之出圖量測（獨立於 plots/prelim_maps.py：⛔ import 之；期�
 任一量測不過 ⇒ 結束碼 1。
 
 量測（單 §三 3）：M0 讀回；M1 宗數與地號集合；M2 註記點與宗一一相符；M3 面積錨；
-M3b 頂點距原圖界址線 ≤ 0.01 m；M4/M4b/M4c 歸戶圖；M5/M5b 地價圖；M6 圖層；M7 附表 2、3。
+M3b 頂點距原圖界址線 ≤ 0.01 m；M4/M4b/M4c 歸戶圖；M5/M5b 地價圖；M6 圖層；M7 附表 2、3（補令一：呼叫 check_W-P001_tables.run，T1〜T6 皆過為過）。
 M6 之讀法：系統圖層「0」（DXF 規格強制）與「Defpoints」（ezdxf 存檔時必補·AutoCAD 之系統圖層）不計，
   惟其上須無任何圖元；其餘圖層表與圖元所用之圖層皆恰為三層。
 """
@@ -221,39 +221,20 @@ def run(dxf_path, appx3_path):
     rec("M6", tbl == {L_CAD, L_OWN, L_PRICE} and usedl == {L_CAD, L_OWN, L_PRICE},
         f"圖層表 {sorted(tbl)}；圖元所用 {sorted(usedl)}")
 
-    # M7 附表 2、3
-    import openpyxl
-    ok7, msg7 = True, []
-    try:
-        r3 = list(openpyxl.load_workbook(appx3_path, read_only=True).active.iter_rows(values_only=True))
-        h3 = r3[0]
-        i_ln = h3.index("地號")
-        body3 = [r for r in r3[1:] if any(c is not None for c in r)]
-        exp_rows = sum(len(v) for v in owners.values())
-        lots3 = {str(r[i_ln]) for r in body3}
-        per = defaultdict(int)
-        for r in body3:
-            per[str(r[i_ln])] += 1
-        bad_per = [ln for ln in lots if per[ln] != len(owners[ln])]
-        if not (len(body3) == exp_rows == EXPECTED_APPX3_ROWS and lots3 == lotset and not bad_per):
-            ok7 = False
-        msg7.append(f"附表3 {len(body3)} 列（期望 {exp_rows}）；每宗人數不符 {bad_per[:5]}")
-    except Exception as e:  # noqa: BLE001
-        ok7 = False
-        msg7.append(f"附表3 讀取失敗 {type(e).__name__}: {e}")
+    # M7 附表 2、3（W-P.001 補令一：改以 check_W-P001_tables.run 之 T1〜T6 皆過為過·期望值唯由彼檔取之）
+    import importlib.util
     p2 = os.path.join(os.path.dirname(os.path.abspath(appx3_path)), "附表02_重劃前土地地號摘錄簿.xlsx")
     try:
-        r2 = list(openpyxl.load_workbook(p2, read_only=True).active.iter_rows(values_only=True))
-        i2 = r2[0].index("地號")
-        seq = [str(r[i2]) for r in r2[1:] if any(c is not None for c in r)]
-        exp_seq = sorted(lots, key=lkey)
-        if seq != exp_seq:
-            ok7 = False
-        msg7.append(f"附表2 {len(seq)} 列；序 {'合' if seq == exp_seq else '不合'}")
+        spec = importlib.util.spec_from_file_location(
+            "check_W_P001_tables", os.path.join(os.path.dirname(os.path.abspath(__file__)), "check_W-P001_tables.py"))
+        tmod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tmod)
+        tres = tmod.run(p2, appx3_path)
+        ok7 = len(tres) == tmod.N_T and all(x[1] for x in tres)
+        msg7 = f"T 項 {sum(1 for x in tres if x[1])}/{tmod.N_T} 過；不過 {[x[0] for x in tres if not x[1]]}"
     except Exception as e:  # noqa: BLE001
-        ok7 = False
-        msg7.append(f"附表2 讀取失敗 {type(e).__name__}: {e}")
-    rec("M7", ok7, "；".join(msg7))
+        ok7, msg7 = False, f"附表 2、3 之量測失敗 {type(e).__name__}: {e}"
+    rec("M7", ok7, msg7)
     return results
 
 

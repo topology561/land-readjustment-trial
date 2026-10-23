@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-W-P.001 之故意錯誤之測（單 §三 4）：成果須綠、8 種變異體須各紅。
+W-P.001 之故意錯誤之測（單 §三 4；補令一 §三 4 擴之）：成果須綠、①〜⑦、⑧′、⓪、⑨〜⑬ 共 14 種變異體須各紅。
 
 命令列：python verify/plots/mutate_W-P001.py <成果目錄> <拋棄式之工作目錄>
   成果目錄 ＝ plots/prelim_maps.py --out 之目錄（⛔ 改之；變異體皆寫於工作目錄之複本）。
-結束碼：成果綠且 8 種皆紅 ⇒ 0；否則 1。
+結束碼：成果綠且 14 種皆紅 ⇒ 0；否則 1。
 """
 import importlib.util
 import os
@@ -134,18 +134,80 @@ def m7_empty(d):
     open(os.path.join(d, DXF), "wb").close()
 
 
-def m8_drop_coowner_row(d):
+def _edit_xlsx(d, name, fn):
     import openpyxl
-    p = os.path.join(d, A3)
+    p = os.path.join(d, name)
     wb = openpyxl.load_workbook(p)
-    ws = wb.active
-    i_ln = [c.value for c in ws[1]].index("地號")
-    lots = [ws.cell(r, i_ln + 1).value for r in range(2, ws.max_row + 1)]
-    for r, ln in enumerate(lots, start=2):
-        if lots.count(ln) >= 2:
-            ws.delete_rows(r, 1)
-            break
+    fn(wb.worksheets[0])
     wb.save(p)
+
+
+def m8p_drop_coowner_row(d):
+    """⑧′ 附表 3 於列 6 起之資料中刪一共有人之列（補令一）。"""
+    def f(ws):
+        lots = [ws.cell(r, 1).value for r in range(6, ws.max_row + 1)]
+        for r, ln in enumerate(lots, start=6):
+            if ln is not None and lots.count(ln) >= 2:
+                ws.delete_rows(r, 1)
+                return
+        raise RuntimeError("找不到共有之宗")
+    _edit_xlsx(d, A3, f)
+
+
+OLD_SHA = "f00dabae89c3f84263f35dbf35c1bcdd6668f134"
+
+
+def m0_old_layout(d):
+    """⓪ 以 wip/plots＝f00daba 之 plots/prelim_maps.py 所出之附表 2、3 代之（補令一）。"""
+    import subprocess
+    repo = os.path.dirname(os.path.dirname(HERE))
+    src = subprocess.run(["git", "-C", repo, "show", f"{OLD_SHA}:plots/prelim_maps.py"],
+                         check=True, capture_output=True).stdout.decode("utf-8")
+    ns = {"__name__": "prelim_maps_f00daba", "__file__": os.path.join(repo, "plots", "prelim_maps.py")}
+    exec(compile(src, f"{OLD_SHA}:plots/prelim_maps.py", "exec"), ns)
+    lots, owners, area = ns["load_cadastre"]()
+    ns["write_appx2"](os.path.join(d, A2), lots)
+    ns["write_appx3"](os.path.join(d, A3), lots, owners, area)
+
+
+def m9_three_groups(d):
+    """⑨ 附表 2 一列三組（清列 3 起之 G、H 欄）。"""
+    def f(ws):
+        for r in range(3, ws.max_row + 1):
+            ws.cell(r, 7).value = None
+            ws.cell(r, 8).value = None
+    _edit_xlsx(d, A2, f)
+
+
+def m10_no_chief(d):
+    """⑩ 附表 2 之簽欄缺「科長：」。"""
+    def f(ws):
+        for row in ws.iter_rows():
+            for c in row:
+                if c.value == "科長：":
+                    c.value = None
+                    return
+        raise RuntimeError("找不到「科長：」")
+    _edit_xlsx(d, A2, f)
+
+
+def m11_unmerge_owner(d):
+    """⑪ 附表 3 拆 E4:G4 之合併。"""
+    _edit_xlsx(d, A3, lambda ws: ws.unmerge_cells("E4:G4"))
+
+
+def m12_no_print_titles(d):
+    """⑫ 附表 3 失列印標題（ws.print_title_rows = None 於 openpyxl 無效，故清 _print_rows）。"""
+    def f(ws):
+        ws._print_rows = None
+    _edit_xlsx(d, A3, f)
+
+
+def m13_place_in_body(d):
+    """⑬ 附表 3 之列 6 之 O 欄填「德安段」。"""
+    def f(ws):
+        ws.cell(6, 15).value = "德安段"
+    _edit_xlsx(d, A3, f)
 
 
 MUTANTS = [
@@ -156,7 +218,13 @@ MUTANTS = [
     ("⑤ 同戶之一宗改色", m5_recolor),
     ("⑥ 一宗之地價差 1 元", m6_price_off_by_one),
     ("⑦ 空檔", m7_empty),
-    ("⑧ 附表 3 漏一共有人之列", m8_drop_coowner_row),
+    ("⑧′ 附表 3 列 6 起刪一共有人之列", m8p_drop_coowner_row),
+    ("⓪ 舊版式（f00daba 之附表 2、3）", m0_old_layout),
+    ("⑨ 附表 2 一列三組", m9_three_groups),
+    ("⑩ 附表 2 簽欄缺「科長：」", m10_no_chief),
+    ("⑪ 附表 3 拆 E4:G4 之合併", m11_unmerge_owner),
+    ("⑫ 附表 3 失列印標題", m12_no_print_titles),
+    ("⑬ 附表 3 列 6 之 O 欄填「德安段」", m13_place_in_body),
 ]
 
 
