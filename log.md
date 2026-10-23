@@ -279,3 +279,4 @@
 | 2026-10-23T21:13:22+08:00 | 執行端 | 快轉前之記 `W-G.9-393_補令一`：主線 `cf1b41545dc0228a01102e1052d79b1184bff3fc` → `5d2a2836617bc2aea57f0c7513e67d9b2313f7f7`（將快轉）；工項零″ 已推側支 `verify/W-G.9-393-endall`（`b40d838` → `5d2a283`）；前置 `1`〜`4` 皆合期；effort=high | `running` |
 | 2026-10-23T21:22:08+08:00 | 執行端 | `W-G.9-393_補令一`：接單（`db15465`）→ 工項零″ `5d2a283`（側支 `verify/W-G.9-393-endall` `b40d838` → `5d2a283`）→ 快轉前之記（`0e1d909`）→ **主線 `cf1b41545dc0228a01102e1052d79b1184bff3fc` → `5d2a2836617bc2aea57f0c7513e67d9b2313f7f7`**（快轉·⛔ `--force`）→ 回報（**完成**）：heads 濾後 `53`／`53`；出艙 ①〜④ 合；收工閘 `1″`〜`8″` 皆合（閘 `8″` `31` 呼叫 `rc 0`·`stderr` `0` B·`P0` 皆合期·耗時之和 `750` s）；本案配地⛔ 變；自捕 heredoc 一處（倉外清單·已重寫）；effort=high | `reported` |
 | 2026-10-23T21:22:21+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_0189jjkEgiEJaVjNXZefjxaW`（`W-G.9-393_補令一` 回報之後）；effort=high | `reported` |
+| 2026-10-23T21:23:00+08:00 | 發單端 | 接手復驗 `W-G.9-393_補令一`（入主線之短單·完成·⛔ 採自報）；effort=high | `verifying` |
