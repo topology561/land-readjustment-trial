@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-23T11:10:15+08:00",
-  "order": "W-G.9-392_補令三.md",
-  "order_bytes": 23399,
-  "order_sha256": "342c2cbba01adff70b1df4531cea472c35ba16a1a0beb698dc67d926924c8b7a",
-  "order_kind": "補令",
-  "expects_allocation_change": true,
+  "status": "pending",
+  "status_since": "2026-10-23T14:48:19+08:00",
+  "order": "W-G.9-393_規格單.md",
+  "order_bytes": 134050,
+  "order_sha256": "23aee54d2f4ea9a3e2764499d43598c2b159d166c0b510b3b542bad12962de8f",
+  "order_kind": "規格單",
+  "expects_allocation_change": false,
   "attempt": 1,
-  "report": "reports/W-G.9-392_補令三_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81",
   "history": [
@@ -865,6 +865,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "上鎖：擬 W-G.9-393（末端塊之認定之更正·KL 2026-10-23 07:39（二）「是」）"
+    },
+    {
+      "at": "2026-10-23T14:48:19+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-393_規格單.md（規格單·134050 B·expects_allocation_change ＝ false·attempt 1）：無側面道路之端一律為末端塊（KL 2026-10-23 07:39（二））＋ GB-207（K-9-60 ① 未落地之停機）＋ 自誤 637；新側支 verify/W-G.9-393-endall"
     }
   ]
 }
