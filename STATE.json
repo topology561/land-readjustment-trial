@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-24T05:33:44+08:00",
+  "status": "running",
+  "status_since": "2026-10-24T05:34:38+08:00",
   "order": "W-G.9-394_規格單.md",
   "order_bytes": 128277,
   "order_sha256": "d5f25291933534156a055e325d819947da3cd81db597ddc69997f506f0073539",
@@ -956,6 +956,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-394_規格單.md（規格單·128277 B·d5f252919335…·attempt 1·expects_allocation_change false）：K-9-61 ⑤ 與 GB-205 之試算之內之處置（候選之試算 ⇒ 不過·採用之配地 ⇒ 停機）"
+    },
+    {
+      "at": "2026-10-24T05:34:38+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-394_規格單.md（bytes 128277·sha256 d5f252919335… 合；SELF_SHA256 0a8e4622d1c4… 自驗合）"
     }
   ]
 }
