@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-23T21:08:17+08:00",
+  "status": "running",
+  "status_since": "2026-10-23T21:10:33+08:00",
   "order": "W-G.9-393_補令一.md",
   "order_bytes": 22246,
   "order_sha256": "b8943a42311e18e8ba997aaeaf2dfa4788150b0f3a4768c3f60c9d14dd55b634",
@@ -907,6 +907,13 @@
       "from": "idle",
       "to": "pending",
       "note": "出 W-G.9-393_補令一（入主線之短單·快轉 cf1b415 → 側支之端·遠端分支之閘排除出圖線之分支·首張）"
+    },
+    {
+      "at": "2026-10-23T21:10:33+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-393_補令一.md：bytes 22246／sha256 b8943a42…／SELF_SHA256 0b99ce6d… 皆相符"
     }
   ]
 }
