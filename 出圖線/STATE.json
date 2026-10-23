@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-24T04:19:00+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-24T04:35:00+08:00",
   "order": "W-P.001_補令一_附表2-3手冊表樣.md",
   "order_bytes": 16639,
   "order_sha256": "2af3c5d6cac08c5ca1ad03fba5ad45fdc292b6661b156fd1e27e3bb99d9d756a",
@@ -8,7 +8,7 @@
   "attempt": 1,
   "report": "出圖線/reports/W-P.001_補令一_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "出圖線/待KL/2026-10-24_W-P.001_補令一_附表2-3表樣之確認.md",
   "wip_plots": "7827368fda88058f8e978e27956640d2e0f56abc",
   "history": [
     {
@@ -108,6 +108,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "復驗 W-P.001_補令一"
+    },
+    {
+      "at": "2026-10-24T04:35:00+08:00",
+      "by": "出圖線·發單端",
+      "from": "verifying",
+      "to": "await_kl",
+      "note": "復驗 W-P.001_補令一 合：wip/plots＝側支＝7827368（祖含主線 5d2a283）；差異閘綠（唯新目錄五檔·對照組改 app.py 紅）；附錄甲 sha256 997cde00…fdba 相符；發單端重出成果，量測 12/12 綠、故意錯誤 14 種皆紅；另以舊版 f00daba 之輸出逐格對照：附表 3 之 95 列、附表 2 之 53 地號之序皆同（唯版式變）；程式差異合單 §二。附表之第一版 ⇒ 請 KL 確認（出圖線/待KL/2026-10-24_W-P.001_補令一_附表2-3表樣之確認.md）"
     }
   ]
 }
