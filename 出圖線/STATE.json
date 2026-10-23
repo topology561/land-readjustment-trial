@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-24T04:02:10+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-24T04:19:00+08:00",
   "order": "W-P.001_補令一_附表2-3手冊表樣.md",
   "order_bytes": 16639,
   "order_sha256": "2af3c5d6cac08c5ca1ad03fba5ad45fdc292b6661b156fd1e27e3bb99d9d756a",
@@ -101,6 +101,13 @@
       "from": "running",
       "to": "reported",
       "note": "W-P.001_補令一 完成：側支 verify/W-P.001-tables＝7827368；wip/plots f00daba→7827368（快轉）；附錄甲 sha256 相符；量測 12/12（T1〜T6 皆過）；故意錯誤 14 種皆紅、成果綠；差異閘綠（對照組紅）；預覽 W-P.001_補令一_附表2-3.png"
+    },
+    {
+      "at": "2026-10-24T04:19:00+08:00",
+      "by": "出圖線·發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "復驗 W-P.001_補令一"
     }
   ]
 }
