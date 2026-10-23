@@ -474,12 +474,14 @@ def _one(ns, fst, sb, mba_by):
             out["param"] = {(r["街廓"], s): r.get(f"【{c}】街角最小面積(㎡)") for r in params
                             for s, c in (("left", "左"), ("right", "右")) if r.get(f"【{c}】街角最小面積(㎡)") is not None}
             try:
-                res = sp.run_corner_pk(ns, fst, list(cb_by.values()), cad, params, tp, bp, sb, snapshot=snap)
+                # 🔧 `W-G.9-393`：段三之入口（`run_corner_pk_k6b`·含末端塊之合併再試）——無側街之端一律為末端塊之後，
+                #   輸入之最小建築面積可使無三角地之端之各筆單獨皆未達，其處置（合併再試 ⇒ 強制抵費地）唯此入口有之。
+                os.environ["WV_K6B_STAGE3"] = "on"
+                res = sp.run_corner_pk_k6b(ns, fst, list(cb_by.values()), cad, params, tp, bp, sb, snapshot=snap)
                 ra = fst.session_state.get("f3_corner_range_areas", {}) or {}
                 out["pk"] = {(b, s): v.get(s) for b, v in ra.items() for s in ("left", "right") if v.get(s) is not None}
                 ns["K917_DROPPED"].clear()
-                fst.session_state.pop(ns["SS_END_BLOCK_EVAL"], None)
-                sg = run_step_g(ns, fst, list(cb_by.values()), cad, snap, params, bp, res[3], res[4], sb,
+                sg = run_step_g(ns, fst, list(cb_by.values()), cad, snap, params, res[6], res[3], res[4], sb,
                                 eff_min_build_by_blk={})
                 out["ctx"] = {k: round(float(v.area), 2) for k, v in (sg.get("corner_range_polys") or {}).items()
                               if v is not None}

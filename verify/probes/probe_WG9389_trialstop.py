@@ -520,9 +520,15 @@ def wiring(repo, base):
     _kc392 = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "k980_acq_check"), None)
     _n392 = 0 if _kc392 is None else sum(1 for n in ast.walk(_kc392) if isinstance(n, ast.Raise)
                                          and isinstance(n.exc, ast.Call) and getattr(n.exc.func, "id", None) == "k6_program_stop")
+    # 🔧 `W-G.9-393`：`end_block_apply` 之 `GB-207`（`K-9-60` ① 未落地）之帶號之 raise 恰一亦許（其行為由 F37 量之）
+    _ea393 = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "end_block_apply"), None)
+    _n393 = 0 if _ea393 is None else sum(1 for n in ast.walk(_ea393) if isinstance(n, ast.Raise)
+                                         and isinstance(n.exc, ast.Call) and getattr(n.exc.func, "id", None) == "k6_program_stop")
     res.append(("X1 帶號之 raise 皆 k6_program_stop·⛔ 他用", (not bad) and (not other)
-                and (n_ok == bn_ok + len(bbad) or (_n392 == 1 and n_ok == bn_ok + len(bbad) + 1))
-                and n_ok > 0, f"帶號 {n_ok}（基準之帶號 {bn_ok + len(bbad)}·k980_acq_check {_n392}）／非者 {bad}／他用 {other}"))
+                and (n_ok == bn_ok + len(bbad) or (_n392 == 1 and n_ok == bn_ok + len(bbad) + 1)
+                     or (_n392 == 1 and _n393 == 1 and n_ok == bn_ok + len(bbad) + 2))
+                and n_ok > 0, f"帶號 {n_ok}（基準之帶號 {bn_ok + len(bbad)}·k980_acq_check {_n392}·end_block_apply {_n393}）"
+                f"／非者 {bad}／他用 {other}"))
     # X2
     try:
         ssrc = _read(repo, "verify/selection_pipeline.py")

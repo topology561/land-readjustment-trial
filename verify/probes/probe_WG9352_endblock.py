@@ -4,7 +4,7 @@
 子命令（一律 python verify/probes/probe_WG9352_endblock.py <子命令> …）：
   selftest <repo>
            合成對照（⛔ 讀本案資料·以 AST 自 `app.py` 抽出 `END_BLOCK_*`／`SS_END_BLOCK_EVAL` 與 `end_block_*`、
-           `solve_G_binary`、`_select_pool_slot` 及其幾何基元）：觸發（左、右鏡像、未臨正街 ≤ ε 不觸發）、R_end 之面積、
+           `solve_G_binary`、`_select_pool_slot` 及其幾何基元）：觸發（左、右鏡像、未臨正街 ≤ ε 亦觸發〔W-G.9-393〕）、R_end 之面積、
            評選（往後找、等號當選、跨占 ≤ 門檻者非候選、跨占街角規定範圍者歸街角側、皆未達停機）、落位（左首、右末、
            入池閘合併單元、街角第 1 宗停機）、首趟評選之沿用、二源不一致停機、選槽之 pin、顯示、定案趟之檢、
            `s_back`（宗地 ＝ 未臨正街 ∪ 正街段；G 公式之 S 只計正街段；`s_back=0` 逐位同）。
@@ -108,7 +108,7 @@ def _cases(ns):
     run("S1 左端觸發（未臨正街 45·s_back 3·末端帶 105·R_end 150）", lambda: gl(G, "left"),
         (True, 45.0, 3.0, 150.0, 105.0))
     run("S2 右端觸發（鏡像）", lambda: gl(GM, "right"), (True, 45.0, 3.0, 150.0, 105.0))
-    run("S3 未臨正街 0 ⇒ 不觸發（左端鉛直）", lambda: gl(GM, "left")[0], False)
+    run("S3 未臨正街 0 ⇒ 亦觸發（左端鉛直·R_end ＝ 末端帶·W-G.9-393）", lambda: gl(GM, "left"), (True, 0.0, 0.0, 105.0, 105.0))
 
     gg = geo(G["blk"], G["d"], G["p1"], G["p2"], G["cad"], G["ad"], 3.5, "left", _label="T")
     # 原位次序列（自左端起）：a 跨占 R_end（6 ㎡）、b 跨占（G 恰 150）、c 跨占、d 不跨占
@@ -488,12 +488,13 @@ def run(repo, sbs):
                     else:
                         unf = bp.intersection(_halfplane(p1, d, u, L, smax + 1.0, big)) if smax > L + 1e-6 else Polygon()
                         endp = p2
-                    trig = unf.area > 1e-3
+                    if unf.area <= 1e-3:                     # 🆕 W-G.9-393：無三角地之端亦為末端塊（R_end ＝ 末端帶）
+                        unf = Polygon()
+                    trig = True
                     ok1 = rec is not None and bool(rec.get("觸發")) == trig
-                    if not trig:
-                        print(("  ✅" if ok1 else "  🔴") + f" R1 {blk} {side}：未臨正街 {unf.area:.4f} ㎡ ⇒ 不觸發（評選紀錄 {rec}）")
-                        if not ok1:
-                            red.append(f"R1@{sb}:{blk}{side}")
+                    if not ok1:                              # 🆕 W-G.9-393：無側街之端皆須觸發
+                        print(f"  🔴 R1 {blk} {side}：未臨正街 {unf.area:.4f} ㎡ ⇒ 期觸發（評選紀錄 {rec}）")
+                        red.append(f"R1@{sb}:{blk}{side}")
                         continue
                     nrm = np.array([-u[1], u[0]])
                     if np.dot(np.asarray(bp.centroid.coords[0]) - endp, nrm) < 0:
@@ -533,7 +534,7 @@ def run(repo, sbs):
                         a = round(float(t.get("分攤登記面積_m2", 0) or 0) + float(t.get("面積_m2", 0) or 0), 2)
                         pre = float(fin["pre_price_by_zone"].get(t.get("重劃前地價區段", ""), 0.0) or 0.0)
                         A = post / pre if pre > 0 else 1.0
-                        w = (-smin) if side == "left" else (smax - L)
+                        w = 0.0 if unf.is_empty else ((-smin) if side == "left" else (smax - L))
 
                         def area_at(S):
                             if side == "left":
