@@ -1,16 +1,16 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-23T17:58:46+08:00",
-  "order": "W-G.9-393_規格單.md",
-  "order_bytes": 134050,
-  "order_sha256": "23aee54d2f4ea9a3e2764499d43598c2b159d166c0b510b3b542bad12962de8f",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-23T21:08:17+08:00",
+  "order": "W-G.9-393_補令一.md",
+  "order_bytes": 22246,
+  "order_sha256": "b8943a42311e18e8ba997aaeaf2dfa4788150b0f3a4768c3f60c9d14dd55b634",
+  "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-393_規格單_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
-  "main_before": "56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81",
+  "main_before": "cf1b41545dc0228a01102e1052d79b1184bff3fc",
   "history": [
     {
       "at": "2026-10-17T08:15:58+08:00",
@@ -893,6 +893,20 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-393_規格單（完成·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-23T21:08:17+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-393_規格單 通過（施後 84 ＋ 前態 11 呼叫合期·stderr 0 B·F36 diff 二退縮相異 0·F8 前後同·parity 代 HEAD 後同·收工閘皆合）；本案配地⛔ 變 ⇒ 自動入主線（README 二·自動處理 1）"
+    },
+    {
+      "at": "2026-10-23T21:08:17+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "pending",
+      "note": "出 W-G.9-393_補令一（入主線之短單·快轉 cf1b415 → 側支之端·遠端分支之閘排除出圖線之分支·首張）"
     }
   ]
 }
