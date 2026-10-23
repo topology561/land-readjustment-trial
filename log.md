@@ -281,3 +281,4 @@
 | 2026-10-23T21:22:21+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_0189jjkEgiEJaVjNXZefjxaW`（`W-G.9-393_補令一` 回報之後）；effort=high | `reported` |
 | 2026-10-23T21:23:00+08:00 | 發單端 | 接手復驗 `W-G.9-393_補令一`（入主線之短單·完成·⛔ 採自報）；effort=high | `verifying` |
 | 2026-10-23T21:59:13+08:00 | 發單端 | 復驗 `W-G.9-393_補令一` 進行中（進度列·防逾時之誤判）：`ls-remote` 主線 ＝ 側支 ＝ `5d2a2836617bc2aea57f0c7513e67d9b2313f7f7`、heads 濾後 `53`（未濾亦 `53`）；`cf1b415..5d2a283` `6` 筆·反向 `0`·`--merges` 空·命中唯 `df2ba32`（`app.py`）；`app.py` `d91f6ee8…`；閘 `1″`〜`4″`、`6″`、`7″` 皆合（`closegate 637 636` `rc 0`／`638 637` `rc 7`）；環境釘回 `ae1438da…`；新主線之端之拋棄式樹重跑 `84` 呼叫（兼閘 `8″` 與立基準）已畢 `30`（皆 `rc 0`·`stderr` `0` B）；effort=high | `verifying` |
+| 2026-10-23T22:49:19+08:00 | 發單端 | 復驗 `W-G.9-393_補令一` 進行中（進度列）：新主線之端之重跑已畢 `57`／`84` 呼叫（皆 `rc 0`·`stderr` `0` B）；effort=high | `verifying` |
