@@ -84,7 +84,7 @@ idle ──發單端出單──▶ pending ──執行端接單──▶ runni
 2. 依賴：`python3 -c "import shapely,streamlit,pandas,openpyxl,ezdxf,geopandas"` 失敗者 ⇒ `python3 -m pip install -r requirements.txt --break-system-packages`（⛔ 用裸 `pip`：其可能屬他版之直譯器·`W-G.9-386` 執行端之自捕 1）。
 3. 機器約 2〜4 核（`W-G.9-386` 實測 `nproc` ＝ `4`）：驗之命令之並行數 ≤ **2**（KL 之「≤ 6」為上限，⛔ 為下限）。
 4. Git 代理對本倉同時至多 2 個連線；⛔ 同時發多個 `clone`／`fetch`／`push`。
-5. `F8` 之落檔 hash 依平台而異：雲端（Linux）之值 ＝ `8be0160b…`／`6fb86647…`；`V-6` 唯要求同一機之前後相等。
+5. `F8` 之落檔 hash 依平台而異：雲端（Linux）之值 ＝ `47683d1c…`／`884e9171…`（主線 `cf1b415` 起·`W-G.9-392` 之配地之微變·KL `2026-10-23 07:39` 所核；其前 ＝ `8be0160b…`／`6fb86647…`）；`V-6` 唯要求同一機之前後相等。
 6. **KL 之主 checkout**（其 Windows 電腦）⛔ 由排程同步；KL 欲看畫面時自行 `git pull --ff-only`。凡以往單中「工項：主 checkout 之同步」者，於自動化下省之，並於回報中記「主 checkout 之同步由 KL 自行為之」。
 7. 單中「KL 所貼之訊之 bytes／sha256」⇒ 讀為 `STATE.json` 之 `order_bytes`／`order_sha256`。
 8. 單之來源檔之取處 ⇒ `ops/queue` 之 `orders/<單名>.md`，二進位複製至施工樹之根。
