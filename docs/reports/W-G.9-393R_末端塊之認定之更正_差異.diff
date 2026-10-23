@@ -1,0 +1,194 @@
+diff --git a/app.py b/app.py
+index b4cee75..d91f6ee 100644
+--- a/app.py
++++ b/app.py
+@@ -11131,6 +11131,10 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
+     #   gate 二條件（補丁十 §一·side-parametrized·與 wf_f4 `_reshape_block` **同式**）：
+     #     條件1：該側**無 SIDELINE**（`has_side_{side}` False·資料驅動）
+     #     條件2：該側「未臨正街半平面」>ε ⇒ left：`block∩{s<0}`；right：`block∩{s>s(p2)}`
++    #   🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：條件2 去之——無 SIDELINE 之側**一律**保留其末端帶
++    #     （與末端塊之評選同源·`end_block_side_geom`）；未臨正街 ≤ `END_BLOCK_UNFRONT_EPS`（無三角地）⇒ 傳
++    #     `_end_region_R` 之未臨正街之多邊形 ＝ `None`（`R_end` ＝ 末端帶）。自此與 wf_f4 `_reshape_block`（舊七級調配
++    #     引擎·其閘仍以三角地為要件·待落地）⛔ 同式。
+     _reserve = {'lo': None, 'hi': None}
+     _end_diag = []
+     _dom = _strip_s_range(blk_poly, d_hat, corner_pt, allocation_dir)
+@@ -11149,18 +11153,21 @@ def _place_pool_parcels(*, stage2_parcels, adv_final, blk_poly, blk_area, blk_la
+                                           _s_dom_max - _s_p2, allocation_dir=allocation_dir)
+                              if _s_dom_max > _s_p2 + 1e-6 else (None, 0.0))
+         _unfront = float(_unf_strip391[1] or 0.0)
+-        if _unfront <= 1e-3:                             # 條件2 不成立（末端邊∥ALLOCLINE）→ 無末端區
+-            continue
++        # 🆕 `W-G.9-393`（R-4）：未臨正街 ≤ ε ⇒ 無三角地——⛔ `continue`（末端帶照保留），其多邊形以 `None` 傳之。
++        _frag393 = _unf_strip391[0]
++        if _unfront <= END_BLOCK_UNFRONT_EPS:
++            _frag393 = None
+         if not alloc_dir_cad or float(min_width or 0.0) <= 0:
+             raise RuntimeError(                          # gate 已成立卻缺建構輸入 → 禁靜默不保留
+                 f"🔴 _place_pool_parcels[{blk_label}]：{_sd_e} 側末端 gate 成立"
+                 f"（無SIDELINE＋未臨正街 {_unfront:.3f}㎡）但缺 cad_alloc/min_width"
+-                f"（alloc={alloc_dir_cad!r} mw={min_width!r}）·末端保留不可定義，停")
++                f"（alloc={alloc_dir_cad!r} mw={min_width!r}）·末端保留不可定義，停"
++                f"（`W-G.9-393`：無 SIDELINE 之側一律末端塊·無三角地者亦及之）")
+         # 🆕 `W-G.9-391`（`K-9-80` ④·末端保留之同源）：末端帶 ＝ `_end_region_R` 之第一個回傳（與末端塊之評選之
+         #   `R_end` 同一帶寬：未輸入 ⇒ 畸零地寬〔逐位⛔ 變〕；有輸入 ⇒ 擴大後之帶寬）——⛔ 直呼 `_end_band`。
+         _band = _end_region_R(blk_poly, alloc_dir_cad,
+                               (_cp if _sd_e == 'left' else _cp + _s_p2 * _dh),
+-                              float(min_width), _unf_strip391[0], _label=f"{blk_label}·{_sd_e}·P2f",
++                              float(min_width), _frag393, _label=f"{blk_label}·{_sd_e}·P2f",
+                               min_build_area=min_build_area)[0]
+         _br = _strip_s_range(_band, d_hat, corner_pt, allocation_dir)
+         if _br is None:
+@@ -11391,6 +11398,8 @@ def end_block_band_width(block_poly, cad_alloc, end_pt, min_width, frag_poly, mi
+     - 求解：自 `min_width` 起倍增至達（上界 ＝ 街廓之外接矩形之對角線·逾之而仍未達 ⇒ 停機）；再於末二值間二分（至多 200 次·⛔ 收斂 ⇒ 停機）。
+     - `min_width` 缺或 ≤ 0、`min_build_area` ⛔ ＞ 0（未輸入者⛔ 入本函式）⇒ 停機。
+     - 街廓之面積 ＜ 最小建築面積（擴至他端仍未達）⇒ 停機（`K-9-80` ⑥·短街廓）。
++    - 🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：`frag_poly` 為 `None` 或空（無三角地之端）⇒ ⛔ 停機，
++      `R_end` ＝ 末端帶，帶寬以末端帶之面積求之（上之 `frag_poly ∪` 自此唯及有三角地者）。
+     """
+     import math as _m391
+     from shapely.ops import unary_union as _uu391
+@@ -11399,12 +11408,14 @@ def end_block_band_width(block_poly, cad_alloc, end_pt, min_width, frag_poly, mi
+     if min_build_area is None or not (float(min_build_area) > 0):
+         raise RuntimeError(f"🔴 end_block_band_width[{_label}]：min_build_area={min_build_area!r}"
+                            "（須 > 0·未輸入者⛔ 入本函式）")
+-    if frag_poly is None or getattr(frag_poly, 'is_empty', True):
+-        raise RuntimeError(f"🔴 end_block_band_width[{_label}]：frag_poly 空——未臨正街面積實體缺")
++    # 🆕 `W-G.9-393`（R-3）：無三角地（`frag_poly` 為 `None` 或空）⇒ ⛔ 停機；其面積 ＝ 末端帶之面積（同 `_end_region_R`）。
++    _nofrag393 = frag_poly is None or getattr(frag_poly, 'is_empty', True)
+     _mba391 = float(min_build_area)
+ 
+     def _area_at391(_w391):
+         _b391 = _end_band(block_poly, cad_alloc, end_pt, _w391, _label=_label)
++        if _nofrag393:
++            return float(_b391.area)
+         return float(_uu391([_g391 for _g391 in (frag_poly, _b391) if not _g391.is_empty]).area)
+ 
+     _lo391 = float(min_width)
+@@ -11456,10 +11467,12 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
+     回傳 `(末端帶, R_end, area(R_end))`。缺 `cad_alloc`／零向量／`frag_poly` 空／`min_width`≤0／
+     末端帶∩block 空 → **loud raise**（no-silent-fallback）。`B`（帶沿 ALLOC 之半長）由 block
+     bounds 導·**禁硬編 500**。
++    🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：無側街之端一律為末端塊——
++    `frag_poly` 為 `None` 或空（無三角地）⇒ ⛔ 停機，`R_end` ＝ 末端帶（上之「`frag_poly` 空 → loud raise」自此⛔ 適用）。
+     """
+     from shapely.ops import unary_union
+-    if frag_poly is None or getattr(frag_poly, 'is_empty', True):
+-        raise RuntimeError(f"🔴 _end_region_R[{_label}]：frag_poly 空——未臨正街面積實體缺（gate 應已確認存在）")
++    # 🆕 `W-G.9-393`（R-2）：無三角地（`frag_poly` 為 `None` 或空）⇒ `R_end` ＝ 末端帶（⛔ 停機）。
++    _nofrag393 = frag_poly is None or getattr(frag_poly, 'is_empty', True)
+     # 末端帶＝`_end_band`（P2-f 抽出·**單一真相源**；本函式僅加「未臨正街」構件之聯集）。
+     #   其 cad_alloc／min_width 之 loud 守衛一併內含（訊息前綴改 `_end_band`·語意等價）。
+     # 🆕 `W-G.9-391`（`K-9-80` ④）：有最小建築面積之輸入者，帶寬 ＝ `end_block_band_width`（自畸零地寬增之·
+@@ -11468,7 +11481,10 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
+         min_width = end_block_band_width(block_poly, cad_alloc, end_pt, min_width, frag_poly,
+                                          min_build_area, _label=_label)
+     band = _end_band(block_poly, cad_alloc, end_pt, min_width, _label=_label)
+-    r_end = unary_union([g for g in (frag_poly, band) if not g.is_empty])
++    if _nofrag393:
++        r_end = band
++    else:
++        r_end = unary_union([g for g in (frag_poly, band) if not g.is_empty])
+     if r_end.is_empty:
+         raise RuntimeError(f"🔴 _end_region_R[{_label}]：R_end 空")
+     return band, r_end, float(r_end.area)
+@@ -11480,6 +11496,9 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
+ #  觸發（該端·二條件皆真）：① 該端無側街（街角選位表之 `{側}_has_side` 與 CAD 之 SIDELINE 二源須一致·
+ #    不一致 ⇒ 停機）；② 該端之未臨正街土地（左 ＝ block∩{s<0}、右 ＝ block∩{s>s(p2)}·s 相對 FRONT p1）
+ #    ＞ `END_BLOCK_UNFRONT_EPS`。
++#    🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：條件 ② 去之——無側街之端**一律**為末端塊；未臨正街
++#    ≤ `END_BLOCK_UNFRONT_EPS`（無三角地）⇒ `R_end` ＝ 末端帶、`s_back` ＝ `0`；二端皆為末端塊而一筆同時跨占二端之
++#    `R_end` ⇒ 停機（`GB-207`·`K-9-60 ①` 未落地·`end_block_apply`）。
+ #  R_end ＝ 未臨正街 ∪ 末端帶（`_end_region_R`·帶寬 ＝ 畸零地寬）。
+ #  候選 ＝ 本街廓原位次序列之宗，其重劃前多邊形 ∩ R_end ＞ `END_BLOCK_CROSS_MIN_AREA`；
+ #    跨占本街廓任一街角規定範圍（＞ 同門檻）者⛔ 為候選（`K-9-49 ③`：同時跨占二者之土地歸街角側）。
+@@ -11507,7 +11526,10 @@ SS_END_BLOCK_MERGE = 'f3_end_block_merge'    # 🆕 `W-G.9-353`：合併再試
+ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+                         min_width, side, _label='', min_build_area=None):
+     """一端之末端塊幾何（純函式）。回 dict：`gate`、`unfront`（未臨正街面積）；`gate` 真另有
+-    `s_back`（未臨正街沿 s 之寬）、`r_end`（多邊形）、`r_end_area`、`band_area`。"""
++    `s_back`（未臨正街沿 s 之寬）、`r_end`（多邊形）、`r_end_area`、`band_area`。
++    🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：本函式唯為無側街之端所呼，無側街之端一律為末端塊 ⇒
++    `gate` 恆真（⛔ 回偽）；未臨正街之 s 寬 ≤ `0` 或其面積 ≤ `END_BLOCK_UNFRONT_EPS`（無三角地）⇒ 未臨正街之多邊形
++    `None`、`s_back` ＝ `0`、`R_end` ＝ 末端帶（`unfront` 為其實量）；＞ ε 者照舊。"""
+     import numpy as np
+     if side not in ('left', 'right'):
+         raise RuntimeError(f"🔴 end_block_side_geom[{_label}]：side={side!r}（只接受 left／right）")
+@@ -11531,12 +11553,14 @@ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, alloc
+         _w = (_smax - _sp2) if _smax > _sp2 + 1e-6 else 0.0
+         _start = _p1 + _sp2 * _d
+         _end_pt = _p1 + _sp2 * _d
++    # 🆕 `W-G.9-393`（R-1）：無三角地 ⇒ 未臨正街之多邊形 `None`、`s_back` ＝ `0`（⛔ 回 gate 偽）；ε 以下之碎片⛔ 計。
+     if _w <= 0.0:
+-        return {'gate': False, 'unfront': 0.0}
+-    _unf_poly, _unf = _block_strip(block_poly, d_hat, _start, _w, allocation_dir=allocation_dir)
+-    _unf = float(_unf or 0.0)
++        _unf_poly, _unf = None, 0.0
++    else:
++        _unf_poly, _unf = _block_strip(block_poly, d_hat, _start, _w, allocation_dir=allocation_dir)
++        _unf = float(_unf or 0.0)
+     if _unf <= END_BLOCK_UNFRONT_EPS:
+-        return {'gate': False, 'unfront': _unf}
++        _unf_poly, _w = None, 0.0
+     _band, _r_end, _a = _end_region_R(block_poly, cad_alloc, _end_pt, min_width, _unf_poly,
+                                       _label=f"{_label}·{side}", min_build_area=min_build_area)
+     # 🆕 `W-G.9-353`：強制抵費地（末）之鏈起點——`R_end` 之內側界（∥ 分配線）於 s 軸之位置；
+@@ -11618,11 +11642,44 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
+     `trial(tp, side, s_back) -> (G, 臨正街寬)`；`cache` ＝ `SS_END_BLOCK_EVAL` 之 dict（就地寫）。
+     🆕 `W-G.9-353`：`allow_forced(side) -> bool`（缺 ⇒ 恆偽）——各筆單獨皆未達者，真 ⇒ 強制抵費地（末）
+     （⛔ 落位·紀錄 `當選` ＝ `None`、`強制抵費地` ＝ 真），偽 ⇒ 停機。
+-    回 `(ordered′, {'left': {'s_back','winner','forced','buf','r_end'}|None, 'right': …})`。"""
++    回 `(ordered′, {'left': {'s_back','winner','forced','buf','r_end'}|None, 'right': …})`。
++    🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：無側街之端一律為末端塊（⛔ 有「未觸發」之紀錄）；
++    `end_block_side_geom` 於二端之評選之前每端取一次；二端皆無側街而 `ordered` 之一宗之重劃前多邊形同時跨占左、右
++    `R_end`（皆 ＞ `END_BLOCK_CROSS_MIN_AREA`）⇒ 停機（`GB-207`·`K-9-60 ①` 未落地·經 `k6_program_stop`）。"""
+     _info = {'left': None, 'right': None}
+     _cached = cache.get(blk_label)
+     _rec = {}
+     _out = list(ordered)
++    # 🆕 `W-G.9-393`（R-5 ①）：二端之評選之前，每一無側街之端取 `end_block_side_geom` 之所回一次（其後⛔ 再呼）。
++    #   二源不一致之端 ⇒ 止於此（下之迴圈照舊停機·⛔ 先算其後之端）。
++    _geo393 = {}
++    for _sd393 in ('left', 'right'):
++        _pk393 = bool((has_side_pk or {}).get(_sd393))
++        if _pk393 != bool((has_side_cad or {}).get(_sd393)):
++            break
++        if not _pk393:
++            _geo393[_sd393] = end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
++                                                  min_width, _sd393, _label=blk_label,
++                                                  min_build_area=min_build_area)
++    # 🆕 `W-G.9-393`（R-5 ②·`GB-207`）：二端皆無側街 ⇒ 一宗之重劃前多邊形同時跨占二端之 `R_end` 者停機
++    #   （`K-9-60 ①` 已裁而未落地·⛔ 靜默歸一端、⛔ 二端皆當選）；取法同 `end_block_pick`。
++    if 'left' in _geo393 and 'right' in _geo393:
++        from shapely.geometry import Polygon as _P393
++        for _e393 in _out:
++            _tp393 = _e393['tp']
++            _cs393 = _tp393.get('polygon_coords') or []
++            if len(_cs393) < 3:
++                continue
++            _pg393 = _P393(_cs393)
++            if not _pg393.is_valid:
++                _pg393 = _pg393.buffer(0)
++            _ovl393 = float(_pg393.intersection(_geo393['left']['r_end']).area)
++            _ovr393 = float(_pg393.intersection(_geo393['right']['r_end']).area)
++            if _ovl393 > END_BLOCK_CROSS_MIN_AREA and _ovr393 > END_BLOCK_CROSS_MIN_AREA:
++                raise k6_program_stop(
++                    f"🔴 [GB-207·K-9-60 ①] 街廓 {blk_label}：二端皆無側街（皆為末端塊）而重劃前土地 "
++                    f"{str(_tp393.get('暫編地號', ''))} 同時跨占左、右二端之末端塊範圍（左 {_ovl393:.2f} ㎡、"
++                    f"右 {_ovr393:.2f} ㎡）——其處置（K-9-60 ①）未落地 ⇒ 停機（`W-G.9-393`·⛔ 靜默歸一端、⛔ 二端皆當選）")
+     for _sd in ('left', 'right'):
+         _pk = bool((has_side_pk or {}).get(_sd))
+         _cad = bool((has_side_cad or {}).get(_sd))
+@@ -11631,11 +11688,7 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
+                 f"🔴 end_block_apply[{blk_label}·{_sd}]：有無側街之二源不一致（街角選位表 {_pk}／CAD {_cad}）")
+         if _pk:
+             continue
+-        _g = end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+-                                 min_width, _sd, _label=blk_label, min_build_area=min_build_area)
+-        if not _g['gate']:
+-            _rec[_sd] = {'觸發': False, '未臨正街(㎡)': round(float(_g['unfront']), 4)}
+-            continue
++        _g = _geo393[_sd]                 # 🆕 `W-G.9-393`（R-5 ①③）：前取之所回；未觸發之支去之（gate 恆真）
+         _allow = bool(allow_forced(_sd)) if allow_forced is not None else False
+         if _cached is not None:
+             _c = _cached.get(_sd) or {}
