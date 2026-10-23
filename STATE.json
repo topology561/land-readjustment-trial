@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-23T21:10:33+08:00",
+  "status": "reported",
+  "status_since": "2026-10-23T21:22:08+08:00",
   "order": "W-G.9-393_補令一.md",
   "order_bytes": 22246,
   "order_sha256": "b8943a42311e18e8ba997aaeaf2dfa4788150b0f3a4768c3f60c9d14dd55b634",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-393_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "cf1b41545dc0228a01102e1052d79b1184bff3fc",
   "history": [
@@ -921,6 +921,13 @@
       "from": "running",
       "to": "running",
       "note": "快轉前之記 W-G.9-393_補令一：主線 cf1b41545dc0228a01102e1052d79b1184bff3fc → 5d2a2836617bc2aea57f0c7513e67d9b2313f7f7（將快轉）；前置 1〜4 皆合期（側支 ＝ C、rev-list 6／0、merges 空、命中唯 df2ba32〔app.py〕、app.py blob d91f6ee8…、對 df2ba32 相異空）"
+    },
+    {
+      "at": "2026-10-23T21:22:08+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-393_補令一.md（完成）：工項零″ 5d2a283 推側支（b40d838 → 5d2a283）；快轉前之記 0e1d909；主線 cf1b41545dc0228a01102e1052d79b1184bff3fc → 5d2a2836617bc2aea57f0c7513e67d9b2313f7f7（快轉）；heads 53／53；出艙 ①〜④ 合；收工閘 1″〜8″ 皆合（31 呼叫 rc 0·stderr 0 B·P0 皆合期）；自捕 heredoc 一處（倉外清單·已重寫）"
     }
   ]
 }
