@@ -830,6 +830,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-392_補令三（bytes 23399、sha256 342c2cbb…、SELF_SHA256 581148fd…〔P-5〕皆符）"
+    },
+    {
+      "at": "2026-10-23T08:10:48+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "running",
+      "note": "快轉前之記：主線 56c77fd10f8cc35e8e02d7f7b86a75d9b0b40d81 → cf1b41545dc0228a01102e1052d79b1184bff3fc（將快轉）·工項零⁗ cf1b415 已推側支 verify/W-G.9-392-k980g（0826577 → cf1b415）·前置 1〜4 皆符"
     }
   ]
 }
