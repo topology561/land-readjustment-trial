@@ -1,0 +1,63 @@
+diff --git a/app.py b/app.py
+index d91f6ee..b39dfc4 100644
+--- a/app.py
++++ b/app.py
+@@ -9778,6 +9778,7 @@ K917_DROPPED = {}
+ #   🔒 帶號之停機一律經 `k6_program_stop` 立之（登記其全文）；吞試算之中止之處，試算之前取 `k6_trial_mark()`，
+ #   其後 `k6_trial_raise_since(…)` 見有新登記者即上拋其首者之全文——⛔ 判為「不過」「未成」「試算中止」而續辦。
+ #   🛑 他之試算中止（無號·配地上不可）照舊為「不過」（`K-9-53` ① 之工程讀法之庚）。
++#   🔧 `W-G.9-394`（`K-9-61` ⑤·`K-9-48` 其三·`K-6` 典 `W-G.9-394` 之節之二）：`GB-205`（受併宗含非其成員之受併之土地而須依手冊部分併出）之新登記，於試算之殼（`adopted` 為偽）⛔ 上拋——候選之試算之中止由呼叫端判為不過（回到收受之前）；採用之配地之試算之後（`adopted=True`）照舊上拋。
+ 
+ #: 🔒 程式之停機之登記（全文·⛔ 截）；⛔ 清、⛔ 刪其項——巢狀之試算以長度分之。
+ K6_PROGRAM_STOPS = []
+@@ -9801,10 +9802,14 @@ def k6_trial_mark():
+     return len(K6_PROGRAM_STOPS)
+ 
+ 
+-def k6_trial_raise_since(mark, where):
+-    """🆕 `W-G.9-389`：登記之長度 ＞ `mark` ⇒ 上拋其首一新登記者之全文（⛔ 截）；否則回 `None`。"""
+-    if len(K6_PROGRAM_STOPS) > int(mark):
+-        raise RuntimeError(f"🔴 [試算內之程式之停機·{where}] {K6_PROGRAM_STOPS[int(mark)]}")
++def k6_trial_raise_since(mark, where, *, adopted=False):
++    """🆕 `W-G.9-389`：登記之長度 ＞ `mark` ⇒ 上拋其首一新登記者之全文（⛔ 截）；否則回 `None`。
++    🔧 `W-G.9-394`（`K-9-61` ⑤·`K-9-48` 其三）：新登記依其序逐一——
++    `adopted` 為偽（試算之殼·候選之試算之中止由呼叫端判為不過）⇒ 上拋其首一非帶 `GB-205` 之號者（帶之者⛔ 上拋）；
++    `adopted` 為真（採用之配地之試算之後）⇒ 上拋其首一者。所免之號唯 `GB-205`。"""
++    for _s394 in K6_PROGRAM_STOPS[int(mark):]:
++        if adopted or not re.search(r"(?<![0-9A-Za-z\-])GB-205(?![0-9])", _s394):
++            raise RuntimeError(f"🔴 [試算內之程式之停機·{where}] {_s394}")
+     return None
+ 
+ 
+@@ -11919,6 +11924,7 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+     except RuntimeError as _e:
+         _rec['標的'] = None
+         k6_trial_raise_since(_m389, '末端塊合併再試·試算')
++        k6_trial_raise_since(_m389, '末端塊合併再試·現態之試算·W-G.9-394', adopted=True)   # 🔧 K-9-61 ⑤：現態 ⇒ 停機（⛔ 記試算中止）
+         _rec['試算中止'] = str(_e).split("\n")[0][:300]
+         return temp_parcels, build_parcels, [], _rec
+     _tg = []
+@@ -15074,7 +15080,13 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+ 
+     def _noaff(before, after, blks, removed):
+         _sb = alloc_state(before["temp"], before["build"])
++        # 🔧 `W-G.9-394`（`K-9-61` ⑤·`K-9-48` 其三）：併入前無中止、併入後之試算之中止由其間之新登記（`GB-205`·受併宗須依
++        #   手冊部分併出）致 ⇒ 該候選不過（回到收受之前）；其餘之中止照舊停機（「無從判定」）
++        _m394 = k6_trial_mark()
+         _sa = alloc_state(after["temp"], after["build"])
++        _eb394, _ea394 = _sb.get("err"), _sa.get("err")
++        if (not _eb394) and _ea394 and len(K6_PROGRAM_STOPS) > _m394:
++            return False
+         if _sb.get("err") or _sa.get("err"):
+             raise RuntimeError(
+                 f"🔴 [K-6-B 段三] 「不影響原位次」無從判定（配地中止）：併入前 {_sb.get('err')!r}｜"
+@@ -16486,7 +16498,9 @@ def k953_manual_run(temp_parcels, build_parcels, own_map, blocks, centerlines, a
+         _nb953 = [str(_bq953['暫編地號']) for _bq953 in state["build"]
+                   if str(_bq953['暫編地號']) not in _oth953]
+         _cand_st = _mk953(_nt953, _nb953)
++        _mk394 = k6_trial_mark()   # 🔧 `W-G.9-394`（K-9-61 ⑤）：取代之試算屬採用之配地之查（非候選）
+         _ok953 = _same953(_sim953(_cand_st))
++        k6_trial_raise_since(_mk394, f"{_hdr953} R-5 之取代之試算·W-G.9-394", adopted=True)   # GB-205 ⇒ 停機（⛔ 記未取代）
+         _put_row953(序='單元', 歸戶=_gown953(state["by"][_h953]), 街廓=_home953[_h953], 片=_h953,
+                     結果=('取代' if _ok953 else '未取代（取代後之配地相異）'))
+         if _ok953:
