@@ -1054,6 +1054,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-394_補令三.md（23531 B·sha256 5d4ad99e…＝STATE·SELF_SHA256 2bb95ba7…自驗合 P-5 口徑）"
+    },
+    {
+      "at": "2026-10-24T18:20:12+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "running",
+      "note": "快轉前之記 W-G.9-394_補令三：主線 5d2a2836617bc2aea57f0c7513e67d9b2313f7f7 → d4928d4845513a42fb1ac826a63167a38c78d4fb（將快轉）；工項零⁗ d4928d4 已推側支 verify/W-G.9-394-k9615（b922ae0→d4928d4）；前置 1〜4 皆合期"
     }
   ]
 }
