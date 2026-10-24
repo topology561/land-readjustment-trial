@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-24T13:06:14+08:00",
+  "status": "reported",
+  "status_since": "2026-10-24T15:09:16+08:00",
   "order": "W-G.9-394_補令二.md",
   "order_bytes": 28330,
   "order_sha256": "3efbbf13d412d6ef326d8c5e14dac1f9fe2164bd4281b0bfa3e5becac6a871c9",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-394_補令二_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1026,6 +1026,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-394_補令二（bytes 28330／sha256 3efbbf13…／SELF_SHA256 c5f69236… 皆合；補令一 91807 B／4daafece…／SELF 7cce1d0f… 皆合）"
+    },
+    {
+      "at": "2026-10-24T15:09:16+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-394_補令二（完成）：工項零‴ 04d0757、二″ 3f36450（app.py b39dfc45…）、三″ 94b1280、四″ b922ae0 推新側支 verify/W-G.9-394-k9615（快轉·9a952c9→b922ae0）；前置″（D-3 甲乙）與 14 呼叫合期；驗 87 呼叫從頭皆 rc 0·對拍不符 0；V-4″〜V-6″ 本案配地⛔ 變；審查 (A)(B) 無；收工閘 1″〜8″ 皆合；主線 5d2a283 ⛔ 動"
     }
   ]
 }
