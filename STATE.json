@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-24T12:22:34+08:00",
+  "status": "running",
+  "status_since": "2026-10-24T12:23:23+08:00",
   "order": "W-G.9-394_補令一.md",
   "order_bytes": 91807,
   "order_sha256": "4daafece1c62bf6feb1715a6cdd6cc86b11559d330593b76b90a5f92ee0349d4",
@@ -991,6 +991,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-394_補令一.md（補令·91807 B·4daafece1c62…·SELF_SHA256 7cce1d0facedb0f3…·attempt 1·expects_allocation_change false）：W-1（GB-205 之不過之後依 K-9-66 按比例）、W-2（K-9-50 題一 4 之 (ii) ⇒ 不過）＝ 既裁之合讀（K-9-48 其三、K-9-65 ①、K-9-66）·⛔ 新域問；R-0″ 原趟之碼之重施（b39dfc45·⛔ 改一字）；塊 Fy51（F38 T12〜T14）、K42、P53、E41（自誤 639）；續原單工項二〜四"
+    },
+    {
+      "at": "2026-10-24T12:23:23+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-394_補令一.md（91807 B·sha256 4daafece…＝STATE·SELF_SHA256 7cce1d0f…自驗合 P-5 口徑）"
     }
   ]
 }
