@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-24T18:27:34+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-24T22:00:57+08:00",
   "order": "W-G.9-394_補令三.md",
   "order_bytes": 23531,
   "order_sha256": "5d4ad99e2edc88b3e5a3e5d5ebbb73a74d7fee54ba6d695762ecfe0140aea617",
@@ -9,7 +9,7 @@
   "attempt": 1,
   "report": "W-G.9-394_補令三_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "2026-10-24_K-9-60之三題.md",
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
     {
@@ -1075,6 +1075,20 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-394_補令三（入主線之短單·完成·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-24T22:00:57+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-394_補令三 通過：主線 5d2a283 → d4928d4（快轉·ls-remote 實測·快轉前之記 40bcf5d）；閘 1⁗〜8⁗ 自倉重跑皆合；立 基準/d4928d4….md（87 呼叫合期·stderr 0 B·F8 47683d1c…／884e9171…）"
+    },
+    {
+      "at": "2026-10-24T22:00:57+08:00",
+      "by": "發單端",
+      "from": "idle",
+      "to": "await_kl",
+      "note": "擬 W-G.9-395（K-9-60）前之請示：② 三端以上之整片道路土地之先後、③ 兩端原位次相反時先處理誰（① 依題二先兩端試算·通知）；README 二·停止條件 1"
     }
   ]
 }
