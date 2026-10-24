@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-24T12:23:23+08:00",
+  "status": "reported",
+  "status_since": "2026-10-24T12:49:42+08:00",
   "order": "W-G.9-394_補令一.md",
   "order_bytes": 91807,
   "order_sha256": "4daafece1c62bf6feb1715a6cdd6cc86b11559d330593b76b90a5f92ee0349d4",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-394_補令一_回報.md",
+  "result": "停機上呈",
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -998,6 +998,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-394_補令一.md（91807 B·sha256 4daafece…＝STATE·SELF_SHA256 7cce1d0f…自驗合 P-5 口徑）"
+    },
+    {
+      "at": "2026-10-24T12:49:42+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-394_補令一（停機上呈·停機款 4″）：前置″ 項 4 之 git diff --stat 9e25177 HEAD 期「唯塊 Fy51 之 1 檔」、實 2 檔（工項零″ 入倉之本補令＋F38）；新側支 bf363f4（工項零″）、9a952c9（工項一″）已推·⛔ 撤；工項二″ 未施；前置″ (甲)(乙) 14 呼叫皆合期；主線 5d2a283 ⛔ 動；土地後果無"
     }
   ]
 }
