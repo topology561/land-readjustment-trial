@@ -25,6 +25,16 @@
            T10 末端塊合併再試（`end_block_merge_run`）之現態之試算以 `GB-205` 中止 ⇒ 停機（訊息含「末端塊合併再試·現態之試算」與 GB-205）；
                T10b 其中止無號 ⇒ ⛔ 停機（記「試算中止」而回·照舊）；
            T11 T9 之換名、左右鏡射、旋轉 37° 並移至 TWD97 之尺度 ⇒ 同 T9。
+           🔧 `W-G.9-394` 補令一（審查之 W-1／W-2·`K-6` 典 `W-G.9-394` 補令一之節）：
+           T12 段三 `K-9-50` 題一 4（`F34` 之 L6／L14 之玩具·門檻 145）：只 F1(1) 之端成（150）而 A1(1) 連同其半（140）⛔ 能依
+               原位次配地 ⇒ 其「連同其半併入已取得之一端」（併入 F1(1)）之試算以 `GB-205` 中止（F1(1) 之 G ＞ 200）⇒ 不過（⛔ 停機）
+               ⇒ `K-9-66`（題一 4 之列）：建地 A1(1) 按比例部分併入 50（＝ 200 − 150）、道路片 D(1) 未成；F1(1) 之 G ＝ 200；
+           T12b T12 之換名、左右鏡射、旋轉 37° 並移至 TWD97 之尺度 ⇒ 同 T12；
+           T13 段三後處理 (b)（`F34` 之 L7 之玩具）：A1(1) 之 ①（160）成後，同一地主之道路片 A9(1)（40）之併入之試算以
+               `GB-205` 中止（A1(1) 之 G ＞ 180）⇒ 不過 ⇒ `K-9-66` 按比例部分併入 20（＝ 180 − 160）；A1(1) 之 G ＝ 180；
+           T13b 同而觸發 ＝ G ＞ 200（全併恰 200·門檻上）⇒ 全併（成·40）；T13c 同而觸發 ＝ G ＞ 160（任一格即觸）⇒ 未成（0）；
+           T14 手冊先行（`F27` 之 K16 之玩具·其中止改以 `GB-205` 之登記致·其結果之形 ＝ `F27` K16〔`F27` 唯斷言其形〕·其量為本器之手算）：整批不過 ⇒ 建地 X1(1)
+               成（60）、道路片 R1(1) 按比例部分併入 40（＝ 100 − 60）、其餘入合併單位。
            （判別力之證 ＝ 單之突變之表〔發單端施於其原型〕與主線 `5d2a283` 之紅·本器⛔ 含突變。）
   wiring   <repo> <基準 commit>
            W1 `app.py` 之頂層之名⛔ 增減；頂層節點之相異 ＝ `{k6_trial_raise_since, k6b_stage3_run, end_block_merge_run,
@@ -56,6 +66,9 @@ CHG_TOP = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k95
 NEED = ["k6_program_stop", "k6_trial_mark", "k6_trial_raise_since", "K6_PROGRAM_STOPS", "k929_6_fixpoint",
         "k6b_stage3_run", "end_block_merge_run"]
 TWD = (37.0, True, (302512.0, 2650318.0))
+# 🔧 補令一：玩具之觸發之容差（㎡）——TWD97 之尺度之旋轉使道路片之切半之面積之浮點之差約 1.3e-9（發單端實量）；
+#   K-9-66 之格 0.01 ≫ 1e-6 ≫ 其差 ⇒ 格之判⛔ 受影響
+EPS12 = 1e-6
 
 
 def _harvest(repo):
@@ -200,6 +213,127 @@ def _t10(ns, kind):
     return ("回", rec.get("標的"), bool(rec.get("試算中止")))
 
 
+def _stop205(ns, where):
+    """試算之殼之替身（同畫面與 harness：mark → 帶 `GB-205` 之登記 → raise_since）·回中止之訊息。"""
+    mk = ns["k6_trial_mark"]()
+    try:
+        raise ns["k6_program_stop"]("🔴 合成之停機（GB-205）⇒ 停機")
+    except RuntimeError as e:
+        err = str(e)
+    ns["k6_trial_raise_since"](mk, where)
+    return err
+
+
+def _s3go(ns, parcels, own, od1, thr, drop, trig, *, contests=None, T=(0.0, False, (0.0, 0.0)), names=None):
+    """🔧 補令一：`F34` 之 `_go` 之變體——alloc_state 於 trig(G 之表) 為真時以 `GB-205` 之登記中止（其殼同畫面與 harness）；
+    drop(pid, G) 為真者⛔ 保留。回 (後處理之列 (候選, 層級, 結果, 受併宗, 併入量 2 位), {宗: G})；停機 ⇒ ('停機', 訊息)。"""
+    import probe_WG9390_k961r as F34
+    nm = names or {}
+    inv = {v: k for k, v in nm.items()}
+    temp, own2, blocks, cl = F34._world(parcels, own, T, names)
+    build = [t for t in temp if t["街廓分類"] == F34.H]
+
+    def back(pid):
+        base, _, rest = pid.partition("(")
+        return inv.get(base, base) + "(" + rest
+
+    def alloc_state(temp_, build_):
+        gm = {back(b["暫編地號"]): F34._g(b) for b in build_}
+        if trig(gm):
+            return {"kept": {}, "bad_pools": {}, "err": _stop205(ns, "合成·段三之試算"), "G": {}}
+        kept, G = {}, {}
+        for b in build_:
+            if drop(back(b["暫編地號"]), F34._g(b)):
+                continue
+            kept.setdefault(b["所屬街廓"], set()).add(b["暫編地號"])
+            G[b["暫編地號"]] = F34._g(b)
+        return {"kept": kept, "bad_pools": {}, "err": None, "G": G}
+
+    def trial_winner(temp_, build_, blk, end, cand):
+        by = {b["暫編地號"]: b for b in build_}
+        gg = F34._g(by[cand]) if cand in by else 0.0
+        return (cand if gg >= thr else None), round(gg, 2), thr
+
+    def fw(p):
+        base, _, rest = p.partition("(")
+        return nm.get(base, base) + "(" + rest
+    od = [dict(r, 街廓=nm.get(r["街廓"], r["街廓"]), 暫編地號=fw(r["暫編地號"])) for r in od1]
+    ct = None
+    if contests:
+        ct = [{"形": c["形"], "列": [(nm.get(b, b), e, fw(p), a) for b, e, p, a in c["列"]]} for c in contests]
+    try:
+        t2, _b2, log = ns["k6b_stage3_run"](od, set(), own2, temp, build, blocks, cl, lambda s, d: F34._g(s), trial_winner,
+                                            alloc_state, log_print=lambda *x: None, blk5=lambda: {}, contests=ct)
+    except RuntimeError as e:
+        return ("停機", str(e).split("\n")[0][:300])
+    post = []
+    for r in log:
+        if r.get("序") != "後處理":
+            continue
+        rv = r.get("受併宗")
+        post.append((back(r["候選"]), r.get("層級"), r.get("結果"), back(rv) if isinstance(rv, str) and rv != "—" else rv,
+                     round(sum(float(v) for v in (r.get("併入量") or {}).values()), 2)))
+    return post, {back(t["暫編地號"]): round(F34._g(t), 2) for t in t2}
+
+
+def _t12(ns, T=(0.0, False, (0.0, 0.0)), names=None):
+    # `F34` 之 L6／L14 之地：BA 之 g1 之 A1(1)[0,10]（100）、他人 M(1)；BB 之 g1 之 F1(1)（110）、他人 N(1)；g1 之道路片 D(1)
+    #   （RD·x∈[0,10]·80·依中心線分北半、南半各 40）；競合（題一）
+    import probe_WG9390_k961r as F34
+    H, RDC, R = F34.H, F34.RDC, F34._R
+    p = [("A1(1)", "BA", H, R(0, 10, 0, 30), 100), ("M(1)", "BA", H, R(10, 50, 0, 30), 500),
+         ("D(1)", "RD", RDC, R(0, 10, -10, 0), 80),
+         ("F1(1)", "BB", H, R(0, 10, -40, -10), 110), ("N(1)", "BB", H, R(10, 50, -40, -10), 500)]
+    own = {"A1": "g1", "D": "g1", "F1": "g1", "M": "g9", "N": "g8"}
+    ct = [{"形": "一", "列": [("BA", "左", "A1(1)", 30.0), ("BB", "左", "F1(1)", 20.0)]}]
+    r = _s3go(ns, p, own, F34._O(("BA", "左", "A1(1)"), ("BB", "左", "F1(1)")), 145.0,
+              lambda pid, g: pid == "A1(1)" and g > 100.0 + EPS12, lambda gm: gm.get("F1(1)", 0.0) > 200.0 + EPS12,
+              contests=ct, T=T, names=names)
+    if r and r[0] == "停機":
+        return r
+    post, G = r
+    return [x for x in post if x[1] == "題一 4"], G.get("F1(1)")
+
+
+def _t13(ns, t):
+    # `F34` 之 L7 之地：g1 之 A1(1)[0,10]（100）／A2(1)[10,20]（60）、道路片 A9(1)（RD·x∈[0,10]·40）、他人 M(1)
+    import probe_WG9390_k961r as F34
+    H, RDC, R = F34.H, F34.RDC, F34._R
+    p = [("A1(1)", "BA", H, R(0, 10, 0, 30), 100), ("A2(1)", "BA", H, R(10, 20, 0, 30), 60),
+         ("A9(1)", "RD", RDC, R(0, 10, -10, 0), 40), ("M(1)", "BA", H, R(20, 50, 0, 30), 500)]
+    own = {"A1": "g1", "A2": "g1", "A9": "g1", "M": "g9"}
+    r = _s3go(ns, p, own, F34._O(("BA", "左", "A1(1)")), 150.0, lambda pid, g: False,
+              lambda gm: gm.get("A1(1)", 0.0) > t + EPS12)
+    if r and r[0] == "停機":
+        return r
+    post, G = r
+    return [x for x in post if x[1] == "後處理(b)"], G.get("A1(1)")
+
+
+def _t14(ns):
+    # `F27` 之 K16 之玩具（世界一·`own_upd={"C1": "gC1"}`·去 P1(1)·BB 之受併 ＞ 100 ⇒ 中止），其中止改為 `GB-205` 之登記
+    import probe_WG9363_k953 as F27
+    F27._NS["fn"] = F27._fn384(ns[F27.FN])
+    orig = F27._cbs
+
+    def cbs205(*a, **k):
+        ap, st = orig(*a, **k)
+
+        def st2(temp, build):
+            r = st(temp, build)
+            if r.get("err"):
+                r = dict(r, err=_stop205(ns, "合成·手冊先行之試算"))
+            return r
+        return ap, st2
+    F27._cbs = cbs205
+    try:
+        return F27._rows(F27._go(F27._w1, own_upd={"C1": "gC1"}, rm=("P1(1)",), err_cap={"BB": 100.0}))
+    except RuntimeError as e:
+        return ("停機", str(e).split("\n")[0][:300])
+    finally:
+        F27._cbs = orig
+
+
 def _cases(ns):
     out = []
 
@@ -236,6 +370,29 @@ def _cases(ns):
     nm = {"A1": "QX7", "A9": "QX9", "B1": "PW3", "B2": "PW4", "C1": "ZZ1", "BA": "街甲", "BB": "街乙", "RD": "路丙",
           "g1": "主一", "g2": "主二", "g3": "主三"}
     run("T11 T9 之換名、鏡射、旋轉 37°、TWD97 ⇒ 同 T9", lambda: _go394(ns, "GB-205", T=TWD, names=nm), exp9)
+    # 🔧 補令一：手算——F1(1) 之 ②半 ＝ 110 ＋ 40 ＝ 150 ≥ 145（成）、A1(1) 之 ②半 ＝ 100 ＋ 40 ＝ 140 ＜ 145（未成）；題一 4：A1(1)
+    #   連同其半（140）⛔ 保留 ⇒ 併入 F1(1)（150 ＋ 140 ＝ 290 ＞ 200 ⇒ GB-205 ⇒ 不過）⇒ K-9-66：建地 A1(1) 全量（250）不過、
+    #   按比例（0.01 之格）之最大 ＝ 200 − 150 ＝ 50.00（200 ⛔ ＞ 200）、道路類⛔ 併（建地類已按比例）⇒ D(1) 未成；F1(1) ＝ 200
+    exp12 = ([("A1(1)", "題一 4", "部分成", "F1(1)", 50.0), ("D(1)", "題一 4", "未成", "F1(1)", 0.0)], 200.0)
+    run("T12 題一 4 之「連同其半併入已取得之一端」之試算以 GB-205 中止 ⇒ 不過 ⇒ K-9-66 按比例（⛔ 停機）",
+        lambda: _t12(ns), exp12)
+    nm12 = {"A1": "KQ3", "D": "KQ8", "F1": "LW5", "M": "MM9", "N": "NN9", "BA": "街丙", "BB": "街丁", "RD": "路戊",
+            "g1": "主四", "g8": "主八", "g9": "主九"}
+    run("T12b T12 之換名、鏡射、旋轉 37°、TWD97 ⇒ 同 T12", lambda: _t12(ns, T=TWD, names=nm12), exp12)
+    # 手算：A1(1) 之 ① ＝ 100 ＋ 60 ＝ 160（成·免）；後處理 (b) 道路片 A9(1)（40）⇒ A1(1)：觸發 G ＞ t；t ＝ 180 ⇒ 最大 20.00；
+    #   t ＝ 200 ⇒ 全併 40（200 ⛔ ＞ 200）；t ＝ 160 ⇒ 0.01 即觸 ⇒ 未成
+    run("T13 段三後處理 (b) 之道路片之併入以 GB-205 中止 ⇒ 不過 ⇒ K-9-66 按比例 20",
+        lambda: _t13(ns, 180.0), ([("A9(1)", "後處理(b)", "部分成", "A1(1)", 20.0)], 180.0))
+    run("T13b 觸發 ＝ G ＞ 200（全併恰在門檻上）⇒ 全併 40", lambda: _t13(ns, 200.0),
+        ([("A9(1)", "後處理(b)", "成", "A1(1)", 40.0)], 200.0))
+    run("T13c 觸發 ＝ G ＞ 160（任一格即觸）⇒ 未成", lambda: _t13(ns, 160.0),
+        ([("A9(1)", "後處理(b)", "未成", "A1(1)", 0.0)], 160.0))
+    # 結果之形 ＝ `F27`（`probe_WG9363_k953.py`）K16（`F27` 唯斷言其形）；其量之手算：BB 之受併 ＞ 100 ⇒ 中止；X1(1) 60 ＋ R1(1) 100 ＝ 160 ⇒ 整批不過；
+    #   建地 X1(1) 60（成）；道路 R1(1) 全量 160 ＞ 100 ⇒ 按比例最大 40.00；其餘 60 ⇒ K-9-51 ⇒ 無 ⇒ 入合併單位
+    run("T14 手冊先行之候選之併入後之試算以 GB-205 中止 ⇒ 不過 ⇒ K-9-66（＝ F27 K16 之形·⛔ 停機）", lambda: _t14(ns),
+        ([("手冊", "X1(1)", "a", "X1(2)", (("X1(2)", 60.0),), "成"),
+          ("手冊", "R1(1)", "b", "X1(2)", (("X1(2)", 40.0),), "部分成"),
+          ("K-9-51", "R1(1)", "b", "—", (), "入合併單位")]))
     return out
 
 
