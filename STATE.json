@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-24T05:34:38+08:00",
+  "status": "reported",
+  "status_since": "2026-10-24T08:41:06+08:00",
   "order": "W-G.9-394_規格單.md",
   "order_bytes": 128277,
   "order_sha256": "d5f25291933534156a055e325d819947da3cd81db597ddc69997f506f0073539",
   "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-394_規格單_回報.md",
+  "result": "停機上呈",
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -963,6 +963,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-394_規格單.md（bytes 128277·sha256 d5f252919335… 合；SELF_SHA256 0a8e4622d1c4… 自驗合）"
+    },
+    {
+      "at": "2026-10-24T08:41:06+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "停機上呈（停機款 12）：唯讀獨立審查之 WARNING 二項（W-2：K-9-50 題一 4 之「連同其半併入已取得之一端」〔app.py 15333〕經 _noaff ⇒ R-2 使其 GB-205 之中止由停機變為不過，與 §三 用語「題一 4 之試算……照舊停機」有二讀；W-1：GB-205 之不過餵入 K-9-66 之按比例二分〔部分併入〕·單未載）。工項零 866f2d5、工項一 9e25177 已推新側支；工項二 bfb8fb9 ⛔ 推（驗 V-1〜V-9 皆合期·本案配地⛔ 變）；工項三、四 ⛔ 為；主線 5d2a283 ⛔ 動"
     }
   ]
 }
