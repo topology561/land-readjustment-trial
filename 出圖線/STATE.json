@@ -1,13 +1,13 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-25T04:19:00+08:00",
-  "order": "W-P.001_補令一_附表2-3手冊表樣.md",
-  "order_bytes": 16639,
-  "order_sha256": "2af3c5d6cac08c5ca1ad03fba5ad45fdc292b6661b156fd1e27e3bb99d9d756a",
-  "order_kind": "補令",
+  "status": "pending",
+  "status_since": "2026-10-25T04:45:00+08:00",
+  "order": "W-P.002_歸戶號與附表26.md",
+  "order_bytes": 24928,
+  "order_sha256": "dc88715a89e4146e18262308cddecbd6f51df7fd0c264d525dbb70a7471f18e8",
+  "order_kind": "單",
   "attempt": 1,
-  "report": "出圖線/reports/W-P.001_補令一_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "wip_plots": "7827368fda88058f8e978e27956640d2e0f56abc",
   "history": [
@@ -150,6 +150,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-P.002（附表 26 ＋ 重劃前歸戶圖之歸戶號·KL 02:30「一甲 二乙 三甲 四可·甲」、02:33）"
+    },
+    {
+      "at": "2026-10-25T04:45:00+08:00",
+      "by": "出圖線·發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-P.002（歸戶號註於重劃前歸戶圖＋顏色對照表之歸戶號＋附表 26·KL 02:30、02:33）：側支 verify/W-P.002-owner-index；量測 check_W-P002.py 由發單端撰、附錄甲逐位元組照錄（sha256 4d430476…c4f3）；原型：Q0〜Q5 綠、故意錯誤 Ⓐ〜Ⓔ 皆紅、W-P.001 之 12/12 與 14 紅照舊；主線已進至 d4928d4（試併無衝突）；許可已具（N＝393）"
     }
   ]
 }
