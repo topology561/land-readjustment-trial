@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-24T18:18:07+08:00",
+  "status": "reported",
+  "status_since": "2026-10-24T18:26:50+08:00",
   "order": "W-G.9-394_補令三.md",
   "order_bytes": 23531,
   "order_sha256": "5d4ad99e2edc88b3e5a3e5d5ebbb73a74d7fee54ba6d695762ecfe0140aea617",
   "order_kind": "短單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-394_補令三_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1061,6 +1061,13 @@
       "from": "running",
       "to": "running",
       "note": "快轉前之記 W-G.9-394_補令三：主線 5d2a2836617bc2aea57f0c7513e67d9b2313f7f7 → d4928d4845513a42fb1ac826a63167a38c78d4fb（將快轉）；工項零⁗ d4928d4 已推側支 verify/W-G.9-394-k9615（b922ae0→d4928d4）；前置 1〜4 皆合期"
+    },
+    {
+      "at": "2026-10-24T18:26:50+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-394_補令三（完成）：工項零⁗ d4928d4 推側支 verify/W-G.9-394-k9615（b922ae0→d4928d4）；快轉前之記 40bcf5d；主線 wip/s1-endpart 5d2a2836617bc2aea57f0c7513e67d9b2313f7f7 → d4928d4845513a42fb1ac826a63167a38c78d4fb（快轉·⛔ --force）；出艙①〜④皆合；收工閘 1⁗〜8⁗ 皆合（33 呼叫 rc 0·stderr 0 B）；本案配地⛔ 變"
     }
   ]
 }
