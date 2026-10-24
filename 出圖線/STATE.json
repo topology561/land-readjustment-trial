@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-25T04:45:00+08:00",
+  "status": "running",
+  "status_since": "2026-10-25T05:48:01+08:00",
   "order": "W-P.002_歸戶號與附表26.md",
   "order_bytes": 24928,
   "order_sha256": "dc88715a89e4146e18262308cddecbd6f51df7fd0c264d525dbb70a7471f18e8",
@@ -157,6 +157,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-P.002（歸戶號註於重劃前歸戶圖＋顏色對照表之歸戶號＋附表 26·KL 02:30、02:33）：側支 verify/W-P.002-owner-index；量測 check_W-P002.py 由發單端撰、附錄甲逐位元組照錄（sha256 4d430476…c4f3）；原型：Q0〜Q5 綠、故意錯誤 Ⓐ〜Ⓔ 皆紅、W-P.001 之 12/12 與 14 紅照舊；主線已進至 d4928d4（試併無衝突）；許可已具（N＝393）"
+    },
+    {
+      "at": "2026-10-25T05:48:01+08:00",
+      "by": "出圖線·執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接 W-P.002（單檔 24928 bytes·sha256 dc88715a…e18e8 相符；許可 N=393·核心線 order W-G.9-394_補令三）"
     }
   ]
 }
