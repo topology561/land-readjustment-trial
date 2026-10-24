@@ -294,3 +294,4 @@
 | 2026-10-24T05:34:36+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01XajooFhytLrkXt3WMUTdN6`（`W-G.9-394` 出單之後）；更新 `交接.md`（394 之要、自捕、留次單、下一輪、待 KL 知悉）、`進度表.md`、`skill/retro.md`；effort=high | `pending` |
 | 2026-10-24T05:34:38+08:00 | 執行端 | 接單 `W-G.9-394_規格單.md`（bytes `128277`／sha256 `d5f252919335…` 合 STATE；SELF_SHA256 `0a8e4622d1c4…` 自驗合）；effort=high | `running` |
 | 2026-10-24T06:24:18+08:00 | 執行端 | `W-G.9-394` 施工中（進度列）：工項零 `866f2d5`、工項一 `9e25177` 已推新側支 `verify/W-G.9-394-k9615`；前置 (甲)(乙) `14` 呼叫皆合期·(丙) 沿用基準（三比對皆同）；工項二 `bfb8fb9` 已 `commit`（⛔ 推）·驗之 `87` 呼叫全跑中（並行 `2`）；effort=high | `running` |
+| 2026-10-24T08:26:53+08:00 | 執行端 | `W-G.9-394` 施工中（進度列）：驗之 `87` 呼叫皆合期（`stderr` `0` B·耗時之和 `16781` s）·`V-4`〜`V-6` 合（`F36 diff` 二退縮 `全比相異 0 項`·對照 `44`·`F8` ＝ 期）；唯讀獨立審查中；工項二 `bfb8fb9` 未推；effort=high | `running` |
