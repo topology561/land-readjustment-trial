@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-24T15:10:27+08:00",
-  "order": "W-G.9-394_補令二.md",
-  "order_bytes": 28330,
-  "order_sha256": "3efbbf13d412d6ef326d8c5e14dac1f9fe2164bd4281b0bfa3e5becac6a871c9",
-  "order_kind": "補令",
+  "status": "pending",
+  "status_since": "2026-10-24T18:16:05+08:00",
+  "order": "W-G.9-394_補令三.md",
+  "order_bytes": 23531,
+  "order_sha256": "5d4ad99e2edc88b3e5a3e5d5ebbb73a74d7fee54ba6d695762ecfe0140aea617",
+  "order_kind": "短單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-394_補令二_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1040,6 +1040,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-394_補令二（完成·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-24T18:16:05+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "pending",
+      "note": "復驗 W-G.9-394_補令二 通過（101 呼叫從頭重跑皆合期·本案配地⛔ 變）⇒ 出 W-G.9-394_補令三（入主線之短單·快轉 5d2a283 → 側支之端）"
     }
   ]
 }
