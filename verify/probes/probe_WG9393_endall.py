@@ -59,6 +59,8 @@ except Exception:  # noqa: BLE001
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 FRAG_EMPTY = "frag_poly" + " 空"          # 舊之停機之訊息之子字串（以二常數之和書之·⛔ 為 F23／F24 之字樣之錨）
 CHG_TOP = {"end_block_side_geom", "_end_region_R", "end_block_band_width", "_place_pool_parcels", "end_block_apply"}
+# 🔧 `W-G.9-394`：其後之單所改之頂層節點（K-9-61 ⑤·GB-205 之試算之內之處置·F38 量之·⛔ 新名）
+W394 = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k953_manual_run"}
 MW, DEP, LEN = 3.5, 30.0, 40.0
 
 
@@ -399,7 +401,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W5", not add and not rem and chg == CHG_TOP, f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
+    rep("W5", not add and not rem and chg in (CHG_TOP, CHG_TOP | W394), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
     # W6
     tbo = ast.parse(old)
     lits = []

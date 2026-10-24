@@ -54,6 +54,8 @@ F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
 W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
+# 🔧 `W-G.9-394`：其後之單所改之頂層節點（K-9-61 ⑤·GB-205 之試算之內之處置·F38 量之·⛔ 新名）
+W394 = ("k6_trial_raise_since", "end_block_merge_run", "k953_manual_run")
 
 
 def _harvest(repo):
@@ -416,6 +418,9 @@ def wiring(repo, base):
     # 🔧 `W-G.9-392`：同（F36 量之）
     ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) | set(NEW392) and set(tb) <= set(ta)
                   and set(diff) <= {"k6b_stage3_run"} | set(W391) | set(W392))
+    # 🔧 `W-G.9-394`：同（F38 量之）
+    ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) | set(NEW392) and set(tb) <= set(ta)
+                  and set(diff) <= {"k6b_stage3_run"} | set(W391) | set(W392) | set(W394))
     print(("  ✅" if ok2 else "  🔴") + f" X2 頂層之相異 {diff}（期 ['k6b_stage3_run']）、名之集同 {set(ta) == set(tb)}")
     if not ok2:
         red.append("X2")

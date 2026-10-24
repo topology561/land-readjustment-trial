@@ -295,13 +295,15 @@ def cases(ns, F29):
     # K15 先前之登記（試算之前已在）⇒ ⛔ 致其後之試算上拋（以長度分之）：K1〜K5 所留之登記在，K7 仍照舊
     C.append(("K15 試算之前之登記⛔ 波及（K7 於 K1〜K5 之登記之後）", len(STOPS) > 0 and _canon(r7, n7) == EXP7, True))
     # K16 程式之停機上拋時，訊息之全文（含號之後之字）⛔ 截：長訊之號在第 1500 字之後
+    #   🔧 `W-G.9-394`：其號改為 `GB-104`（`GB-205` 之登記於試算之內⛔ 上拋·K-9-61 ⑤·F38 量之）
+    long16 = "🔴 " + "長" * 1500 + "（GB-104）⇒ 停機"
     m0 = mark()
-    ps(long)
+    ps(long16)
     try:
         since(m0, "長")
         g16 = "⛔ 拋"
     except RuntimeError as e9:
-        g16 = str(e9).endswith(long)
+        g16 = str(e9).endswith(long16)
     C.append(("K16 上拋之訊息為全文（號在 1500 字之後）", g16, True))
     return C
 
