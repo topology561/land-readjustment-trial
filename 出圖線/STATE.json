@@ -1,6 +1,6 @@
 {
-  "status": "await_kl",
-  "status_since": "2026-10-24T16:35:00+08:00",
+  "status": "idle",
+  "status_since": "2026-10-25T02:31:00+08:00",
   "order": "W-P.001_補令一_附表2-3手冊表樣.md",
   "order_bytes": 16639,
   "order_sha256": "2af3c5d6cac08c5ca1ad03fba5ad45fdc292b6661b156fd1e27e3bb99d9d756a",
@@ -8,7 +8,7 @@
   "attempt": 1,
   "report": "出圖線/reports/W-P.001_補令一_回報.md",
   "result": "完成",
-  "kl_question": "出圖線/待KL/2026-10-24_W-P.002_歸戶號與索引表之排序.md",
+  "kl_question": null,
   "wip_plots": "7827368fda88058f8e978e27956640d2e0f56abc",
   "history": [
     {
@@ -136,6 +136,13 @@
       "from": "drafting",
       "to": "await_kl",
       "note": "擬 W-P.002 之調查：筆劃之資料得之（教育部重編國語辭典修訂本之單字筆劃·npm @leonsilicon/moedict-data 0.202603.0·dict-revised.json sha256 f68fc3df…a7ad；KL 之例皆合）；歸戶號與附表 26 之排序手冊未定四點（比法、公司與公有之位置、共有人數之向、索引表之列與冊頁）⇒ 一次請示（README 第二節停止條件 1）；W-P.002 未出單"
+    },
+    {
+      "at": "2026-10-25T02:31:00+08:00",
+      "by": "監看窗",
+      "from": "await_kl",
+      "to": "idle",
+      "note": "KL 02:30「一甲 二乙 三甲 四可·甲」（出圖線/KL答覆/2026-10-25_0230.md）⇒ 出 W-P.002（附表 26 ＋ 重劃前歸戶圖之歸戶號）"
     }
   ]
 }
