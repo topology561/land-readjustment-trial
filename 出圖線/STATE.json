@@ -1,15 +1,15 @@
 {
-  "status": "running",
-  "status_since": "2026-10-25T05:48:01+08:00",
+  "status": "reported",
+  "status_since": "2026-10-25T06:00:30+08:00",
   "order": "W-P.002_歸戶號與附表26.md",
   "order_bytes": 24928,
   "order_sha256": "dc88715a89e4146e18262308cddecbd6f51df7fd0c264d525dbb70a7471f18e8",
   "order_kind": "單",
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "出圖線/reports/W-P.002_回報.md",
+  "result": "完成",
   "kl_question": null,
-  "wip_plots": "7827368fda88058f8e978e27956640d2e0f56abc",
+  "wip_plots": "9c0b51c295345eed9d2b4798f37eaff9f5121485",
   "history": [
     {
       "at": "2026-10-23T17:50:00+08:00",
@@ -164,6 +164,13 @@
       "from": "pending",
       "to": "running",
       "note": "接 W-P.002（單檔 24928 bytes·sha256 dc88715a…e18e8 相符；許可 N=393·核心線 order W-G.9-394_補令三）"
+    },
+    {
+      "at": "2026-10-25T06:00:30+08:00",
+      "by": "出圖線·執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "W-P.002 完成：側支 verify/W-P.002-owner-index＝9c0b51c（併主線 d4928d4 無衝突）；wip/plots 7827368→9c0b51c（快轉）；附錄甲 sha256 相符；check_W-P002 7/7、check_W-P001 12/12；故意錯誤 Ⓐ〜Ⓔ 皆紅、W-P.001 之 14 種皆紅、成果綠；差異閘綠（對照組紅）；預覽 W-P.002_歸戶號與附表26.png"
     }
   ]
 }
