@@ -306,3 +306,4 @@
 | 2026-10-24T12:23:06+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_018NSkugTTDZJ1vmMjgPH6tH`（`W-G.9-394_補令一` 出單之後）；更新 `交接.md`（394 停機上呈之復驗、補令一之要、原型之錨、審查之記而⛔ 改、下一輪、待 KL 知悉）、`進度表.md`；effort=high | `pending` |
 | 2026-10-24T12:49:42+08:00 | 執行端 | 接單 `W-G.9-394_補令一`（bytes／sha256／SELF_SHA256 皆合）；開場閘皆合；工項零″ `bf363f4`、工項一″ `9a952c9` 推新側支 `verify/W-G.9-394-k9615`（快轉）；前置″ 項 `4` 之 `git diff --stat 9e25177 HEAD` 期「唯塊 `Fy51` 之 `1` 檔」、實 `2` 檔（含工項零″ 入倉之本補令）⇒ **停機上呈·停機款 `4″`**（⛔ 自裁）；前置″ (甲)(乙) `14` 呼叫皆合期；工項二″ 未施；主線 `5d2a283` ⛔ 動；回報 `reports/W-G.9-394_補令一_回報.md`；effort=high | `reported` |
 | 2026-10-24T12:49:55+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_014HnT8BgANYoR7XT6C1pFwk`（`W-G.9-394_補令一` 回報之後）；effort=high | `reported` |
+| 2026-10-24T12:50:21+08:00 | 發單端 | 接手復驗 `W-G.9-394_補令一`（停機上呈·停機款 `4″`·⛔ 採自報）；effort=high | `verifying` |
