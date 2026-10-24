@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-24T13:05:18+08:00",
+  "status": "running",
+  "status_since": "2026-10-24T13:06:14+08:00",
   "order": "W-G.9-394_補令二.md",
   "order_bytes": 28330,
   "order_sha256": "3efbbf13d412d6ef326d8c5e14dac1f9fe2164bd4281b0bfa3e5becac6a871c9",
@@ -1019,6 +1019,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-394_補令一 之停機上呈（停機款 4″·前置″ 項 4 之期漏計補令一之入倉＝發單端之誤·自誤 640·零土地後果）⇒ 出 W-G.9-394_補令二.md（補令·28330 B·3efbbf13d412…·SELF_SHA256 c5f692363b7cd6e8…·expects_allocation_change＝false）"
+    },
+    {
+      "at": "2026-10-24T13:06:14+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-394_補令二（bytes 28330／sha256 3efbbf13…／SELF_SHA256 c5f69236… 皆合；補令一 91807 B／4daafece…／SELF 7cce1d0f… 皆合）"
     }
   ]
 }
