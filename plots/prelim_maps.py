@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-W-P.001　重劃前三圖層（地籍線·歸戶圖·地價圖）＋顏色對照表＋附表 2、3。
+W-P.001　重劃前三圖層（地籍線·歸戶圖·地價圖）＋顏色對照表＋附表 2、3；
+W-P.002　歸戶號（註於重劃前歸戶圖·入顏色對照表）＋附表 26 土地所有權人索引表。
 
-命令列：python plots/prelim_maps.py --out <目錄>
+命令列：python plots/prelim_maps.py --out <目錄> --moedict <dict-revised.json>
+  --moedict ＝ plots/fetch_moedict.py 所取之教育部辭典之 JSON（倉外·⛔ 入倉）。
 輸出（皆寫至 --out，⛔ 入倉）：
   重劃前圖.dxf（DXF R2010·三圖層）
   顏色對照表_重劃前.xlsx
   附表02_重劃前土地地號摘錄簿.xlsx
   附表03_重劃前土地清冊.xlsx
+  附表26_土地所有權人索引表.xlsx
 
 所據：出圖線/orders/W-P.001_重劃前三圖層與附表2-3.md（§一、§二）；
-      附表 2、3 之版式：出圖線/orders/W-P.001_補令一_附表2-3手冊表樣.md（§二·照手冊表樣）。
+      附表 2、3 之版式：出圖線/orders/W-P.001_補令一_附表2-3手冊表樣.md（§二·照手冊表樣）；
+      歸戶號與附表 26：出圖線/orders/W-P.002_歸戶號與附表26.md（§二·排序見 plots/owner_index.py）。
 宗地幾何唯以 app.py 之三函式（經 verify/app_harvest.harvest 取之·⛔ 改 app.py）：
   parse_ua_cadastral_dxf → reconstruct_parcel_polygons → validate_parcel_assignments_by_area。
 缺值一律報錯停止（⛔ 靜默補值）；匯入資料所無之欄留空（⛔ 杜撰）。
@@ -24,6 +28,9 @@ from decimal import Decimal, ROUND_HALF_UP
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "verify"))
+sys.path.insert(0, os.path.join(REPO, "plots"))
+
+import owner_index  # noqa: E402  （W-P.002·以模組之屬性呼叫，供故意錯誤之測掛換）
 
 DXF_SRC = os.path.join(REPO, "data", "V6_1.dxf")
 XLSX_SRC = os.path.join(REPO, "data", "地籍資料來源_匿名版.xlsx")
@@ -161,6 +168,27 @@ def households(lots, owners):
     return key_of, order
 
 
+def household_members(owners, key_of):
+    """戶鍵 → [(統編, 姓名, 群)]（群依 owner_index.group_of·§一 4）；戶鍵 → [地號]。"""
+    hh_lots, members = {}, {}
+    for ln in sorted(key_of, key=landno_key):
+        k = key_of[ln]
+        hh_lots.setdefault(k, []).append(ln)
+        grp = {}
+        for r in owner_rows(owners, ln):
+            m = (str(r[C_UID]), str(r[C_NAME]))
+            g = owner_index.group_of(r)
+            if grp.get(m, g) != g:
+                raise SourceError(f"{ln} 之所有權人 {m} 之群不一")
+            grp[m] = g
+        if k in members:
+            if {(u, n): g for u, n, g in members[k]} != grp:
+                raise SourceError(f"戶 {sorted(k)} 之各宗之群不一（{ln}）")
+        else:
+            members[k] = sorted((u, n, g) for (u, n), g in grp.items())
+    return hh_lots, members
+
+
 def distinct_palette(n):
     cols = []
     for i in range(n):
@@ -178,7 +206,7 @@ ZONE_COLORS = [(106, 70, 190), (46, 204, 64), (240, 160, 40), (60, 140, 220)]
 
 
 # ---------------------------------------------------------------- 輸出
-def write_dxf(path, parcels, key_of, hh_color, zone_of, zone_color, price):
+def write_dxf(path, parcels, key_of, hh_color, zone_of, zone_color, price, hh_no):
     import ezdxf
     from ezdxf.enums import TextEntityAlignment
     from shapely.geometry import Polygon
@@ -203,6 +231,9 @@ def write_dxf(path, parcels, key_of, hh_color, zone_of, zone_color, price):
         h = msp.add_hatch(dxfattribs={"layer": LAYER_OWN})
         h.set_solid_fill(rgb=hh_color[key_of[ln]])
         h.paths.add_polyline_path(coords, is_closed=True)
+        t1 = msp.add_text(str(hh_no[key_of[ln]]), height=TEXT_HEIGHT,
+                          dxfattribs={"layer": LAYER_OWN, "style": TEXT_STYLE})
+        t1.set_placement((rp.x, rp.y), align=TextEntityAlignment.MIDDLE_CENTER)
 
         z = zone_of[ln]
         h2 = msp.add_hatch(dxfattribs={"layer": LAYER_PRICE})
@@ -230,19 +261,19 @@ def owner_label(r):
     return f"{r[C_NAME]}（{r[C_UID]}）"
 
 
-def write_color_table(path, lots, owners, key_of, hh_order, hh_color, zone_of, zone_color, price):
+def write_color_table(path, lots, owners, key_of, hh_order, hh_color, zone_of, zone_color, price, hh_no):
     rows_own = []
-    for k in hh_order:
+    for k in sorted(hh_order, key=lambda kk: hh_no[kk]):      # 列依歸戶號升冪（W-P.002）
         lns = sorted([ln for ln, kk in key_of.items() if kk == k], key=landno_key)
         first = owner_rows(owners, lns[0])
         names = "、".join(owner_label(r) for r in sorted(first, key=lambda r: str(r[C_UID])))
-        rows_own.append((LAYER_OWN, "{},{},{}".format(*hh_color[k]), names, "、".join(lns)))
+        rows_own.append((LAYER_OWN, hh_no[k], "{},{},{}".format(*hh_color[k]), names, "、".join(lns)))
     rows_price = []
     for z in sorted(zone_color):
         lns = sorted([ln for ln, zz in zone_of.items() if zz == z and ln in key_of], key=landno_key)
         rows_price.append((LAYER_PRICE, "{},{},{}".format(*zone_color[z]), z, price[z], "、".join(lns)))
     _xlsx(path, [
-        ("重劃前歸戶圖", ("圖層", "顏色 R,G,B", "所有權人", "地號"), rows_own),
+        ("重劃前歸戶圖", ("圖層", "歸戶號", "顏色 R,G,B", "所有權人", "地號"), rows_own),
         ("重劃前地價圖", ("圖層", "顏色 R,G,B", "區段", "宗地地價（元/㎡）", "地號"), rows_price),
     ])
 
@@ -390,13 +421,16 @@ OUT_NAMES = {
     "color": "顏色對照表_重劃前.xlsx",
     "appx2": "附表02_重劃前土地地號摘錄簿.xlsx",
     "appx3": "附表03_重劃前土地清冊.xlsx",
+    "appx26": "附表26_土地所有權人索引表.xlsx",
 }
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="W-P.001 重劃前三圖層＋顏色對照表＋附表 2、3")
+    ap = argparse.ArgumentParser(description="W-P.001/002 重劃前三圖層＋顏色對照表＋附表 2、3、26")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--moedict", required=True, help="plots/fetch_moedict.py 所取之 dict-revised.json")
     a = ap.parse_args(argv)
+    strokes = owner_index.load_strokes(a.moedict)
     os.makedirs(a.out, exist_ok=True)
 
     lots, owners, area = load_cadastre()
@@ -410,20 +444,26 @@ def main(argv=None):
         raise SourceError(f"幾何之宗與「重劃區地籍」不符：{sorted(pset ^ {x['地號'] for x in lots})}")
 
     key_of, hh_order = households(lots, owners)
-    hh_color = dict(zip(hh_order, distinct_palette(len(hh_order))))
+    hh_color = dict(zip(hh_order, distinct_palette(len(hh_order))))   # 色盤仍依原之戶序（W-P.002 §二 2）
+    hh_lots, members = household_members(owners, key_of)
+    hh_no = owner_index.number_households(hh_lots, members, strokes, landno_key)
+    idx_rows = owner_index.index_rows(members, hh_no, strokes)
     zones = sorted(set(zone_of[x["地號"]] for x in lots))
     if len(zones) > len(ZONE_COLORS):
         raise SourceError("區段數逾色盤")
     zone_color = dict(zip(zones, ZONE_COLORS))
 
     p = {k: os.path.join(a.out, v) for k, v in OUT_NAMES.items()}
-    write_dxf(p["dxf"], parcels, key_of, hh_color, zone_of, zone_color, price)
-    write_color_table(p["color"], lots, owners, key_of, hh_order, hh_color, zone_of, zone_color, price)
+    write_dxf(p["dxf"], parcels, key_of, hh_color, zone_of, zone_color, price, hh_no)
+    write_color_table(p["color"], lots, owners, key_of, hh_order, hh_color, zone_of, zone_color, price, hh_no)
     r2 = write_appx2(p["appx2"], lots)
     r3 = write_appx3(p["appx3"], lots, owners, area)
+    owner_index.write_appx26(p["appx26"], idx_rows)
     print(f"宗數 {len(parcels)}；交換 {[(s['parcel_a_orig'], s['parcel_b_orig']) for s in swaps]}")
     print(f"戶數 {len(hh_order)}；區段 {zones}；宗地地價 {price}（來源 verify/case_params_UC9898.json 財務接線_v3）")
-    print(f"附表2 {len(r2)} 列；附表3 {len(r3)} 列")
+    print(f"附表2 {len(r2)} 列；附表3 {len(r3)} 列；附表26 {len(idx_rows)} 組")
+    n_single = sum(1 for k in members if len(members[k]) == 1)
+    print(f"歸戶號 1〜{len(hh_no)}（單獨 {n_single}、共有 {len(hh_no) - n_single}）")
     for k, v in p.items():
         print(f"輸出 {v}")
     return 0
