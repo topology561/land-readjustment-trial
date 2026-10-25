@@ -1,13 +1,13 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-25T12:18:00+08:00",
-  "order": "W-P.002_歸戶號與附表26.md",
-  "order_bytes": 24928,
-  "order_sha256": "dc88715a89e4146e18262308cddecbd6f51df7fd0c264d525dbb70a7471f18e8",
-  "order_kind": "單",
+  "status": "pending",
+  "status_since": "2026-10-25T12:35:00+08:00",
+  "order": "W-P.002_補令一_附表26先左後右.md",
+  "order_bytes": 30539,
+  "order_sha256": "4d7b1b05fde315a1988111a9d747c492eefc6ed2d5df2ac954d49ff0552db14b",
+  "order_kind": "補令",
   "attempt": 1,
-  "report": "出圖線/reports/W-P.002_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "wip_plots": "9c0b51c295345eed9d2b4798f37eaff9f5121485",
   "history": [
@@ -199,6 +199,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "擬 W-P.002_補令一（附表 26 之兩組改每頁先左欄由上而下、再右欄·KL 10:22）"
+    },
+    {
+      "at": "2026-10-25T12:35:00+08:00",
+      "by": "出圖線·發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-P.002_補令一（附表 26 之兩組改每頁先左欄由上而下、再右欄·KL 10:22；每頁每組 40 列＋手動分頁符）：側支 verify/W-P.002a-index-columns；附錄甲 check_W-P002.py（sha256 a8f94207…5a87·8 項）、乙 synth_W-P002a.py（5d56a639…d270）、丙 mutate_W-P002.py（761a76c4…05a3）；原型：8/8 綠、Ⓐ〜Ⓗ 皆紅、W-P.001 12/12、他輸出與 9c0b51c 逐格同、舊輸出 Q3 紅；主線仍 d4928d4；許可已具（N＝393）"
     }
   ]
 }
