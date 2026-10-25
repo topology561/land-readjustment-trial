@@ -11504,6 +11504,9 @@ def _end_region_R(block_poly, cad_alloc, end_pt, min_width, frag_poly, _label=''
 #    🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：條件 ② 去之——無側街之端**一律**為末端塊；未臨正街
 #    ≤ `END_BLOCK_UNFRONT_EPS`（無三角地）⇒ `R_end` ＝ 末端帶、`s_back` ＝ `0`；二端皆為末端塊而一筆同時跨占二端之
 #    `R_end` ⇒ 停機（`GB-207`·`K-9-60 ①` 未落地·`end_block_apply`）。
+#    🔧 `W-G.9-395`（`K-9-60 ①`·KL 裁 `2026-10-05 22:59`）：上開之停機去之——二端各依原位次試（`end_block_apply` 之二端預選）。
+#      KL `2026-10-25 03:58` 之答（其請示之通知一·KL 未示異議）：只一端拿得下 ⇒ 歸該端；二端皆拿得下 ⇒ 歸交面積大之一端、
+#      相同 ⇒ p1 側；二端皆拿不下 ⇒ 二端皆不歸；「一筆」＝ 一個暫編地號之宗。
 #  R_end ＝ 未臨正街 ∪ 末端帶（`_end_region_R`·帶寬 ＝ 畸零地寬）。
 #  候選 ＝ 本街廓原位次序列之宗，其重劃前多邊形 ∩ R_end ＞ `END_BLOCK_CROSS_MIN_AREA`；
 #    跨占本街廓任一街角規定範圍（＞ 同門檻）者⛔ 為候選（`K-9-49 ③`：同時跨占二者之土地歸街角側）。
@@ -11650,7 +11653,16 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
     回 `(ordered′, {'left': {'s_back','winner','forced','buf','r_end'}|None, 'right': …})`。
     🆕 `W-G.9-393`（KL `2026-10-23 07:39`（二）·`K-9-31`）：無側街之端一律為末端塊（⛔ 有「未觸發」之紀錄）；
     `end_block_side_geom` 於二端之評選之前每端取一次；二端皆無側街而 `ordered` 之一宗之重劃前多邊形同時跨占左、右
-    `R_end`（皆 ＞ `END_BLOCK_CROSS_MIN_AREA`）⇒ 停機（`GB-207`·`K-9-60 ①` 未落地·經 `k6_program_stop`）。"""
+    `R_end`（皆 ＞ `END_BLOCK_CROSS_MIN_AREA`）⇒ 停機（`GB-207`·`K-9-60 ①` 未落地·經 `k6_program_stop`）。
+    🔧 `W-G.9-395`（`K-9-60 ①`·KL 裁 `2026-10-05 22:59`「比照 `K-9-50` 題二」）：上開之停機去之——二端皆無側街且 `cache`
+    無本街廓者，二端之評選於落位之前各行一次（**二端預選**·左之序 ＝ `ordered`、右之序 ＝ 其反序·皆未落位之序）；二端之
+    當選為同一暫編地號（衝突）⇒ 交面積（該宗於該端之列之 `跨占R_end(㎡)`·既取至 2 位）大之一端得之、相同 ⇒ 左端（p1 側）；
+    他端視為未被此筆跨占：除該宗（以暫編地號比·⛔ 以原地號）之序重行 `end_block_pick`，其所回之列於原評選之列中該宗之位插入
+    該宗之列（其值同原列而 `結果` ＝ `'歸他端'`）；二端之最終之當選既定之後，一端之當選於他端之列而為 `'未達'` 者 ⇒
+    `'歸他端'`（合併再試⛔ 以之為候選）。其後之紀錄、落位（先左後右）、回傳照舊；非二端預選之街廓（一端有側街、或有
+    `cache`）逐位同改前。重選而皆未達且⛔ 准強制 ⇒ `end_block_pick` 之既有之停機（其訊息之列 ＝ 重選之列）。
+    所據之讀：KL `2026-10-25 03:58` 之答（其請示之通知一·KL 未示異議）——這筆土地在兩端各依原位次試一次；只一端拿得下
+    ⇒ 歸該端；兩端皆拿得下 ⇒ 歸落於範圍內面積（取至 2 位）較大之一端、相同歸 p1 側；兩端皆拿不下 ⇒ 兩端皆不歸。"""
     _info = {'left': None, 'right': None}
     _cached = cache.get(blk_label)
     _rec = {}
@@ -11666,25 +11678,41 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
             _geo393[_sd393] = end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
                                                   min_width, _sd393, _label=blk_label,
                                                   min_build_area=min_build_area)
-    # 🆕 `W-G.9-393`（R-5 ②·`GB-207`）：二端皆無側街 ⇒ 一宗之重劃前多邊形同時跨占二端之 `R_end` 者停機
-    #   （`K-9-60 ①` 已裁而未落地·⛔ 靜默歸一端、⛔ 二端皆當選）；取法同 `end_block_pick`。
-    if 'left' in _geo393 and 'right' in _geo393:
-        from shapely.geometry import Polygon as _P393
-        for _e393 in _out:
-            _tp393 = _e393['tp']
-            _cs393 = _tp393.get('polygon_coords') or []
-            if len(_cs393) < 3:
-                continue
-            _pg393 = _P393(_cs393)
-            if not _pg393.is_valid:
-                _pg393 = _pg393.buffer(0)
-            _ovl393 = float(_pg393.intersection(_geo393['left']['r_end']).area)
-            _ovr393 = float(_pg393.intersection(_geo393['right']['r_end']).area)
-            if _ovl393 > END_BLOCK_CROSS_MIN_AREA and _ovr393 > END_BLOCK_CROSS_MIN_AREA:
-                raise k6_program_stop(
-                    f"🔴 [GB-207·K-9-60 ①] 街廓 {blk_label}：二端皆無側街（皆為末端塊）而重劃前土地 "
-                    f"{str(_tp393.get('暫編地號', ''))} 同時跨占左、右二端之末端塊範圍（左 {_ovl393:.2f} ㎡、"
-                    f"右 {_ovr393:.2f} ㎡）——其處置（K-9-60 ①）未落地 ⇒ 停機（`W-G.9-393`·⛔ 靜默歸一端、⛔ 二端皆當選）")
+    # 🔧 `W-G.9-395`（R-1 ①②③·`K-9-60 ①`）：二端預選——二端皆無側街且 `cache` 無本街廓者，二端之評選於落位之前各行一次
+    #   （左之序 ＝ `_out`、右之序 ＝ 其反序）；衝突（二端之當選為同一暫編地號）⇒ 交面積大者／相同 ⇒ 左端得之，他端除之而
+    #   重選並於原列之該宗之位插入其「歸他端」之列；其後一端之當選於他端之列之「未達」⇒「歸他端」。下之迴圈取其結果
+    #   （⛔ 再評選）。准強制之否之取與評選之先後同改前（左之取 → 左之評選 → 右之取 → 右之評選）。
+    #   所據之讀 ＝ KL `2026-10-25 03:58` 之答（其請示之通知一·KL 未示異議）。
+    _pre395 = {}
+    if 'left' in _geo393 and 'right' in _geo393 and _cached is None:
+        _al395, _tr395 = {}, {}
+        _sq395 = {'left': list(_out), 'right': list(reversed(_out))}
+        for _sd395 in ('left', 'right'):
+            _al395[_sd395] = bool(allow_forced(_sd395)) if allow_forced is not None else False
+            _tr395[_sd395] = (lambda _tp395, _sx395=_sd395, _bk395=_geo393[_sd395]['s_back']:
+                              trial(_tp395, _sx395, _bk395))
+            _pre395[_sd395] = end_block_pick(_sd395, _geo393[_sd395], _sq395[_sd395], corner_range_polys,
+                                             _tr395[_sd395], _label=blk_label, allow_forced=_al395[_sd395])
+        _wn395 = _pre395['left']['winner']
+        if _wn395 is not None and _wn395 == _pre395['right']['winner']:
+            _ov395 = {_sd395: [float(_x395['跨占R_end(㎡)']) for _x395 in _pre395[_sd395]['rows']
+                               if _x395['暫編地號'] == _wn395][0] for _sd395 in ('left', 'right')}
+            _lo395 = 'right' if _ov395['left'] >= _ov395['right'] else 'left'
+            _at395 = [_i395 for _i395, _x395 in enumerate(_pre395[_lo395]['rows']) if _x395['暫編地號'] == _wn395][0]
+            _gv395 = dict(_pre395[_lo395]['rows'][_at395], 結果='歸他端')
+            _re395 = end_block_pick(_lo395, _geo393[_lo395],
+                                    [_e395 for _e395 in _sq395[_lo395]
+                                     if str(_e395['tp'].get('暫編地號', '')) != _wn395],
+                                    corner_range_polys, _tr395[_lo395], _label=blk_label,
+                                    allow_forced=_al395[_lo395])
+            _rw395 = list(_re395['rows'])
+            _rw395.insert(_at395, _gv395)
+            _pre395[_lo395] = {'winner': _re395['winner'], 'rows': _rw395}
+        for _sd395, _ot395 in (('left', 'right'), ('right', 'left')):
+            _w395 = _pre395[_ot395]['winner']
+            for _x395 in _pre395[_sd395]['rows']:
+                if _w395 is not None and _x395['暫編地號'] == _w395 and _x395.get('結果') == '未達':
+                    _x395['結果'] = '歸他端'
     for _sd in ('left', 'right'):
         _pk = bool((has_side_pk or {}).get(_sd))
         _cad = bool((has_side_cad or {}).get(_sd))
@@ -11706,9 +11734,12 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
             _rec[_sd] = _c
         else:
             _seq = _out if _sd == 'left' else list(reversed(_out))
-            _pk_res = end_block_pick(_sd, _g, _seq, corner_range_polys,
-                                     (lambda tp, _s=_sd, _w=_g['s_back']: trial(tp, _s, _w)),
-                                     _label=blk_label, allow_forced=_allow)
+            if _sd in _pre395:            # 🔧 `W-G.9-395`（R-1 ④）：二端預選之結果（⛔ 再評選）
+                _pk_res = _pre395[_sd]
+            else:
+                _pk_res = end_block_pick(_sd, _g, _seq, corner_range_polys,
+                                         (lambda tp, _s=_sd, _w=_g['s_back']: trial(tp, _s, _w)),
+                                         _label=blk_label, allow_forced=_allow)
             _win = _pk_res['winner']
             _rec[_sd] = {'觸發': True, '未臨正街(㎡)': round(float(_g['unfront']), 2),
                          '末端帶(㎡)': round(float(_g['band_area']), 2),
@@ -11916,7 +11947,15 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
     回 `(temp_out, build_out, log, rec)`；`rec` ＝ `{'退縮': setback, '標的': [[街廓, 端]…],
     '皆未達': {街廓: [端…]}}`（試算中止 ⇒ `'標的'` ＝ `None`、另載 `'試算中止'`；有競合 ⇒ 另載 `'競合'`）。
     🔧 `W-G.9-384`（`K-9-71`）：`blk5` ＝ 五級之街廓屬性之回呼（`k971_blk5`），逕傳予 `k6b_stage3_run`（其後處理之第 `5` 項之
-      建地之片之他街廓之候選依五級與深度再排·見其 docstring）。"""
+      建地之片之他街廓之候選依五級與深度再排·見其 docstring）。
+    🔧 `W-G.9-395`（`K-9-60 ①③`·KL 裁 `2026-10-05 22:59`；KL `2026-10-25 03:58`「二是、三丙」、`10:13`、`10:18`「一甲、二甲」）：
+      ② 之「一端屬二以上之競合」「同一候選同時跨占二末端塊之 `R_end`」之停機去之——後者之群依既有之法成競合（同一街廓之
+      二端 ⇒ 題二），前者交 `k6b_stage3_run` 依原位次逐一處之；分屬三個以上之末端塊者照舊停機（`K-9-60 ②`·另單）。
+      每一競合另載 `'序鍵'` ＝ `k967_rank(ΣG, ΣA, p)`（互相等待之先後·`k6b_stage3_run` 之 `_k950_rows`）：受詞 ＝ 該群於其
+      二標的之首次之試算之候選之列中 `結果` ＝ `'未達'` 而暫編地號屬該群者（街廓內之土地·一宗於二端皆有列者其 G 各計）；
+      ΣG ＝ 其 `試算G(㎡)` 之和；ΣA ＝ `k967_pre_area`（其暫編地號之集·表 ＝ 每片之分攤登記面積 − 段三之部分併出之和）；
+      p ＝ 其最小之暫編地號。`rec['競合']` 之形照舊（⛔ 載序鍵）。
+      ③ 之併入之除外另增首次之試算之各端之當選（取得即鎖定·`K-9-80`·全街廓）。"""
     _rec = {'退縮': setback, '標的': [], '皆未達': {}}
     _m389 = k6_trial_mark()
     try:
@@ -11950,11 +11989,10 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
     _pk = [{'原地號': t.get('原地號', ''),
             'polygon': (_Pg_ebm(t['polygon_coords']) if len(t.get('polygon_coords') or []) >= 3 else None)}
            for t in temp_parcels]
-    _dup = {p: tg for p, tg in _cand_of.items() if len(tg) >= 2}
-    if _dup:
-        raise RuntimeError(f"🔴 [末端塊合併再試] 候選 {sorted(_dup)} 同時跨占二以上末端塊之 R_end——"
-                           "一筆土地同時跨占二末端塊（K-9-50 射程 ③·逐案呈核）")
-    _ct, _tgc = [], {}
+    # 🔧 `W-G.9-395`（R-2 ①②·`K-9-60 ①③`）：同一候選為二標的之未達候選者成競合（下·⛔ 停機）；一標的屬二競合者⛔ 停機
+    _ct = []
+    _pa395 = {_t395['暫編地號']: float(_t395.get('分攤登記面積_m2', 0) or 0)
+              - sum(float(_v395) for _v395 in (_t395.get('段三部分併出') or {}).values()) for _t395 in temp_parcels}
     for _g in k6_merge_groups(_pk, own_map):
         _ids = sorted(temp_parcels[i]['暫編地號'] for i in _g)
         _hit = sorted({x for p in _ids for x in _cand_of.get(p, ())})
@@ -11965,18 +12003,20 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
             _gid = own_map.get(str(temp_parcels[_g[0]].get('原地號', '')))
             _ent = []
             for _blk, _sd in _hit:
-                if (_blk, _sd) in _tgc:
-                    raise RuntimeError(
-                        f"🔴 [末端塊合併再試] 末端塊 {(_blk, _sd)} 屬二以上之競合（K-9-50 射程 ③·逐案呈核）")
                 _first = next(r for r in _rows if (r['街廓'], _SIDE[r['端']]) == (_blk, _sd)
                               and r['暫編地號'] in set(_ids))
                 _area = sum(float(_c.get('跨占R_end(㎡)', 0) or 0) for _c in (_ev[_blk][_sd].get('候選') or [])
                             if _gid is not None and own_map.get(str(_c.get('原地號', ''))) == _gid)
                 _ent.append((_first['最終序位'], (_blk, _END[_sd], _first['暫編地號'], round(_area, 2))))
-            for _blk, _sd in _hit:
-                _tgc[(_blk, _sd)] = len(_ct)
             _ent.sort()
-            _ct.append({'形': ('二' if _hit[0][0] == _hit[1][0] else '一'), '列': [e for _, e in _ent]})
+            # 🔧 `W-G.9-395`（R-2 ③）：序鍵之受詞 ＝ 二標的之首次之試算之列之未達而屬本群者（一宗於二端皆有列者其 G 各計）
+            _sx395 = set(_ids)
+            _un395 = [_c395 for _b395, _s395 in _hit for _c395 in (_ev[_b395][_s395].get('候選') or [])
+                      if _c395.get('結果') == '未達' and _c395['暫編地號'] in _sx395]
+            _ms395 = sorted({str(_c395['暫編地號']) for _c395 in _un395})
+            _ct.append({'形': ('二' if _hit[0][0] == _hit[1][0] else '一'), '列': [e for _, e in _ent],
+                        '序鍵': k967_rank(sum(float(_c395['試算G(㎡)']) for _c395 in _un395),
+                                          k967_pre_area(_ms395[0], _ms395, _pa395), _ms395[0])})
     if _ct:
         _rec['競合'] = [{'形': c['形'], '列': [list(e) for e in c['列']]} for c in _ct]
     _L = (set(locked or ()) | set(corner_lots or ())
@@ -11987,6 +12027,9 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
     _L = _L - {t['暫編地號'] for t in temp_parcels
                if t.get('段三併出') and (t['暫編地號'] in _bin_ebm or round(float(t.get('段三餘量') or 0), 4) > 0)
                and t['暫編地號'] not in set(locked or ()) and t['暫編地號'] not in set(corner_lots or ())}
+    # 🔧 `W-G.9-395`（R-2 ④·取得即鎖定·`K-9-80`）：首次之試算之各端之當選（全街廓）⛔ 為合併再試所併
+    _L = _L | {((_ev.get(_b395) or {}).get(_s395) or {}).get('當選') for _b395 in _ev
+               for _s395 in ('left', 'right')} - {None}
 
     def _trial(temp, build, blk, end, cand):
         _e = ((alloc_eval(temp, build) or {}).get(blk) or {}).get(_SIDE[end]) or {}
@@ -14937,6 +14980,17 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
       `R-4⁗` `W-G.9-388` `R-5` 之停機（步驟 10 之受併宗之查）去之，由 `R-1⁗` 代之。
       `R-9‴` 題一第 3 點（整片各試而二端皆成）⇒ 歸題一 3 之序之先者——序鍵 ＝ `k967_rank`（該端之試之 `G` → 重劃前面積
       → 暫編地號·小者先）；重劃前面積之成員 ＝ 候選 ∪ 該試之整筆併入之片，表 ＝ 現態之分攤登記面積 − 段三部分併出；題二⛔ 改。
+    🔧 `W-G.9-395`（`K-9-60 ③`·KL 裁 `2026-10-05 22:59`；KL `2026-10-25 03:58`「三丙」·`10:18`「二甲」）：`_k950_rows` 之「一端屬
+      二以上之競合」之停機去之——該端仍依原投影序逐一試其跨占者，輪到者始處理其競合（停候之競合之首列之後之同端之列為其候列）。
+      消滅：一競合處理之後、或一列使其端定案之後，凡停候之競合之首列之端或其夥伴之端已定案者 ⇒ 消滅（首列與候列皆回列）。
+      回列：與列中之餘依其排序之位（`最終序位`；延後之首列依其新位）合排（升序）。互相等待：每取一列之前（含列空之時），以
+      「停候之競合 → 其夥伴之列所在之候列之競合」為邊，有環 ⇒ 環中 `'序鍵'`（`end_block_merge_run` 所載·`k967_rank`）最小之
+      競合（先處理者）仍停候，持其夥伴之列之競合之停候消滅（⛔ 為其競合之畢），其首列（被延後之地主之列）記其夥伴之列而
+      退至該夥伴之列之現位之緊後（補令一 ″·塊 `K44`：排序之位 ＝ 一串數——未延後之列 ＝（其 `最終序位`）、延後之首列 ＝
+      其夥伴之列之當時之排序之位接其自身之 `最終序位`；每次排序時依夥伴之鏈求之 ⇒ 夥伴之列其後再移者隨之；逐項比、前綴者
+      在前；同退於一列之後者依其 `最終序位`；再延後者改記新之夥伴之列；夥伴之鏈成環 ⇒ 停機），首列與候列皆回列——夾於
+      夥伴之列之前之他人照原位次先試；記一列（`層級` ＝ `'K-9-60 ③'`、`結果` ＝ `'互相等待 ⇒ 先處理'`）；再判之。環中有缺
+      `'序鍵'` 之競合 ⇒ 停機。各端至多一競合之輸入逐位同改前（無延後 ⇒ 一切位皆一項之串 ⇒ 其序 ＝ `最終序位` 之序）。
     """
     import copy as _cp
     from shapely.geometry import Polygon as _Pg, LineString as _Ls
@@ -15417,16 +15471,16 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
             return
         from collections import deque as _dq
         _kf = lambda r: (r['街廓'], r['端'], r['暫編地號'])
-        _cmap, _tgc = {}, {}
+        _cmap = {}
         for _ci, _ct in enumerate(contests):
             if len(_ct.get('列') or []) != 2:
                 raise RuntimeError(
                     f"🔴 [K-6-B 段三 K-9-50] 競合 {_ci} 之列數 ≠ 2（三個以上之末端塊·K-9-50 射程 ③·停機款 9）")
             for _e in _ct['列']:
-                if tuple(_e[:3]) in _cmap or (tuple(_e[:2]) in _tgc and _tgc[tuple(_e[:2])] != _ci):
-                    raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] {tuple(_e[:3])} 屬二以上之競合（K-9-50 射程 ③·停機款 9）")
+                # 🔧 `W-G.9-395`（R-3 ①·`K-9-60 ③`）：一端屬二以上之競合⛔ 停機；同一列見於二競合照舊停機
+                if tuple(_e[:3]) in _cmap:
+                    raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 列 {tuple(_e[:3])} 見於二競合（K-9-60 ③·停機款 9）")
                 _cmap[tuple(_e[:3])] = _ci
-                _tgc[tuple(_e[:2])] = _ci
         _ks = {_kf(r) for r in rows}
         _pt = {}
         for _k, _ci in _cmap.items():
@@ -15435,7 +15489,73 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
             _pt[_k] = [tuple(e[:3]) for e in contests[_ci]['列'] if tuple(e[:3]) != _k][0]
         _cdone, _susp = set(), {}
         _q = _dq(rows)
-        while _q:
+        # 🔧 `W-G.9-395`（R-3 ②③④·`K-9-60 ③`）：回列 ＝ 依排序之位合排（_np395 ＝ 延後之首列 → 其夥伴之列）；消滅；互相等待之環
+        #   補令一 ″（塊 `K44`）：排序之位 ＝ 一串數——未延後之列 ＝（其最終序位）；延後之首列 ＝ 其夥伴之列之當時之排序之位，
+        #   其後接其自身之最終序位（每次排序時依夥伴之鏈求之·夥伴之列其後再移者隨之）；逐項比、前綴者在前 ⇒ 恆在夥伴之列之
+        #   緊後、原排其後之一切列之前；同退於一列之後者依其最終序位。夥伴之鏈成環 ⇒ 停機（程式之錯）。
+        _np395 = {}
+
+        def _ps395(r):
+            _k395, _seen395, _rk395 = _kf(r), [], [r['最終序位']]
+            while _k395 in _np395:
+                _seen395.append(_k395)
+                _y395 = _np395[_k395]
+                _k395 = _kf(_y395)
+                if _k395 in _seen395:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 K-9-60 ③] 延後之首列之夥伴之鏈成環 {_seen395 + [_k395]}（程式之錯·停機款 9）")
+                _rk395.append(_y395['最終序位'])
+            return tuple(reversed(_rk395))
+
+        def _back395(lst):
+            nonlocal _q
+            _q = _dq(sorted(list(_q) + list(lst), key=_ps395))
+
+        def _gone395():
+            # 停候之競合之首列之端或其夥伴之端已定案 ⇒ 消滅（其競合之畢·首列與候列皆回列）
+            for _cx395 in sorted(_susp):
+                _hd395 = _kf(_susp[_cx395][0])
+                if _hd395[:2] in won or _pt[_hd395][:2] in won:
+                    _cdone.add(_cx395)
+                    _back395(_susp.pop(_cx395))
+
+        def _ring395():
+            # 每取一列之前：邊 ＝ 停候之競合 → 其夥伴之列所在之候列之競合；有環 ⇒ 序鍵最小者仍停候、持其夥伴之列者延後
+            while True:
+                _in395 = {_kf(_x395): _cx395 for _cx395, _ls395 in _susp.items() for _x395 in _ls395[1:]}
+                _nx395 = {_cx395: _in395.get(_pt[_kf(_ls395[0])]) for _cx395, _ls395 in _susp.items()}
+                _cy395 = None
+                for _st395 in sorted(_nx395):
+                    _wy395, _cu395 = [], _st395
+                    while _cu395 is not None and _cu395 not in _wy395:
+                        _wy395.append(_cu395)
+                        _cu395 = _nx395[_cu395]
+                    if _cu395 is not None:
+                        _cy395 = _wy395[_wy395.index(_cu395):]
+                        break
+                if _cy395 is None:
+                    return
+                _nk395 = [_cx395 for _cx395 in _cy395 if '序鍵' not in contests[_cx395]]
+                if _nk395:
+                    raise RuntimeError(
+                        f"🔴 [K-6-B 段三 K-9-60 ③] 互相等待之環 {_cy395} 之競合 {_nk395} 缺序鍵——先後無從定（停機款 9）")
+                _fr395 = min(_cy395, key=lambda _cx395: tuple(contests[_cx395]['序鍵']))
+                _dl395 = _nx395[_fr395]
+                _pk395 = _pt[_kf(_susp[_fr395][0])]
+                _lst395 = _susp.pop(_dl395)
+                _pr395 = [_x395 for _x395 in _lst395[1:] if _kf(_x395) == _pk395][0]
+                _np395[_kf(_lst395[0])] = _pr395            # 補令一 ″：退至夥伴之列之現位之緊後·隨之而移（再延後 ⇒ 改記新者）
+                _back395(_lst395)
+                _f395, _d395 = _susp[_fr395][0], _lst395[0]
+                _row(序=_f395['最終序位'], 街廓=_f395['街廓'], 端=_f395['端'], 候選=_f395['暫編地號'],
+                     層級='K-9-60 ③', 結果='互相等待 ⇒ 先處理',
+                     競合=(f"先處理 {_f395['暫編地號']}（序鍵 {tuple(contests[_fr395]['序鍵'])}）；延後 "
+                         f"{_d395['暫編地號']}（序鍵 {tuple(contests[_dl395]['序鍵'])}）退至 {_pr395['暫編地號']} 之後"))
+
+        while True:
+            _ring395()
+            if not _q:
+                break
             _r = _q.popleft()
             _k = _kf(_r)
             _tg = _k[:2]
@@ -15457,19 +15577,13 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, 
                     _other = _susp.pop(_ci)
                     _contest(contests[_ci], _other[0], _r)
                     _cdone.add(_ci)
-                    for _x in reversed(_other[1:]):
-                        _q.appendleft(_x)
+                    _back395(_other[1:])
+                    _gone395()
                     continue
             _was = _tg in won
             yield _r
             if (not _was) and _tg in won:
-                for _ci2 in sorted(_susp):
-                    _lst = _susp[_ci2]
-                    if _pt[_kf(_lst[0])][:2] == _tg:
-                        _cdone.add(_ci2)
-                        del _susp[_ci2]
-                        for _x in reversed(_lst):
-                            _q.appendleft(_x)
+                _gone395()
         if _susp:
             raise RuntimeError(
                 f"🔴 [K-6-B 段三 K-9-50] 競合之列 {[_kf(l[0]) for l in _susp.values()]} 候其夥伴而夥伴未至（停機款 9）")
