@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-25T14:18:30+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-25T14:40:00+08:00",
   "order": "W-P.002_補令一_附表26先左後右.md",
   "order_bytes": 30539,
   "order_sha256": "4d7b1b05fde315a1988111a9d747c492eefc6ed2d5df2ac954d49ff0552db14b",
@@ -8,7 +8,7 @@
   "attempt": 1,
   "report": "出圖線/reports/W-P.002_補令一_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "出圖線/待KL/2026-10-25_W-P.002_補令一_附表26排列之確認.md",
   "wip_plots": "cb55e0b396f15179b48f24170bc37683383d4c75",
   "history": [
     {
@@ -227,6 +227,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "復驗 W-P.002_補令一"
+    },
+    {
+      "at": "2026-10-25T14:40:00+08:00",
+      "by": "出圖線·發單端",
+      "from": "verifying",
+      "to": "await_kl",
+      "note": "復驗 W-P.002_補令一 合：wip/plots＝側支＝cb55e0b（快轉自 9c0b51c·祖含主線 d4928d4·主線未前進）；差異閘綠（對 d4928d4 唯三新目錄 14 檔；對 9c0b51c 唯單所列五檔；對照組改 app.py 紅）；附錄甲乙丙 bytes 與 sha256 相符；fetch_moedict 之 JSON sha256 合；發單端重出成果，check_W-P002 8/8（Q3 末列 43、簽欄 45；Q6 分頁符 [43, 83]）、check_W-P001 12/12；Ⓐ〜Ⓗ 皆紅、W-P.001 之 14 種皆紅；對照組（9c0b51c 之舊輸出）Q3 紅；另獨立比對：新表先左後右之讀序＝舊表逐列之序（67 筆同）、DXF 318 圖元與顏色對照表、附表 2、3 與 9c0b51c 逐格同；程式差異合單 §二。新排列請 KL 確認（出圖線/待KL/2026-10-25_W-P.002_補令一_附表26排列之確認.md）"
     }
   ]
 }
