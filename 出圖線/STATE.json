@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-25T12:35:00+08:00",
+  "status": "running",
+  "status_since": "2026-10-25T13:48:30+08:00",
   "order": "W-P.002_補令一_附表26先左後右.md",
   "order_bytes": 30539,
   "order_sha256": "4d7b1b05fde315a1988111a9d747c492eefc6ed2d5df2ac954d49ff0552db14b",
@@ -206,6 +206,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-P.002_補令一（附表 26 之兩組改每頁先左欄由上而下、再右欄·KL 10:22；每頁每組 40 列＋手動分頁符）：側支 verify/W-P.002a-index-columns；附錄甲 check_W-P002.py（sha256 a8f94207…5a87·8 項）、乙 synth_W-P002a.py（5d56a639…d270）、丙 mutate_W-P002.py（761a76c4…05a3）；原型：8/8 綠、Ⓐ〜Ⓗ 皆紅、W-P.001 12/12、他輸出與 9c0b51c 逐格同、舊輸出 Q3 紅；主線仍 d4928d4；許可已具（N＝393）"
+    },
+    {
+      "at": "2026-10-25T13:48:30+08:00",
+      "by": "出圖線·執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接 W-P.002_補令一（單檔 30539 bytes·sha256 4d7b1b05…b14b 相符；許可 N=393·核心線 order W-G.9-394_補令三）"
     }
   ]
 }
