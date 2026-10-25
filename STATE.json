@@ -1,14 +1,14 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-25T10:57:22+08:00",
-  "order": "W-G.9-394_補令三.md",
-  "order_bytes": 23531,
-  "order_sha256": "5d4ad99e2edc88b3e5a3e5d5ebbb73a74d7fee54ba6d695762ecfe0140aea617",
-  "order_kind": "短單",
+  "status": "pending",
+  "status_since": "2026-10-25T16:21:00+08:00",
+  "order": "W-G.9-395_規格單.md",
+  "order_bytes": 164843,
+  "order_sha256": "a324d71e8bba42b2725f4cafd011d5d011686e7c1bbbab3bbef694414860208f",
+  "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": "W-G.9-394_補令三_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1124,6 +1124,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "上鎖：擬 W-G.9-395（K-9-60 ①②③ 之落地·依 KL 03:58「二是、三丙」與 10:13、10:18「一甲、二甲」）"
+    },
+    {
+      "at": "2026-10-25T16:21:00+08:00",
+      "by": "發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-G.9-395 規格單（K-9-60 ①③·取得即鎖定之於末端塊之合併再試·pre-flight P-7 與其自檢之修·expects_allocation_change=false·新側支 verify/W-G.9-395-k960）"
     }
   ]
 }
