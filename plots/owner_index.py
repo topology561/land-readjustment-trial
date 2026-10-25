@@ -130,11 +130,18 @@ def index_rows(members, no_of_hh, strokes):
 APPX26_TITLE = "土地所有權人索引表"
 APPX26_NCOL = 8
 APPX26_SIGN = ("承辦:", "股長:", "科長:", "製表日期: 年 月 日")   # 置 A、C、E、G（照手冊·半形冒號）
+APPX26_PER_PAGE = 40   # 每頁每欄之列數（W-P.002_補令一·KL 2026-10-25 10:22：每頁先左欄由上而下、再右欄）
+
+
+def appx26_slot(i, per):
+    p, k = divmod(i, 2 * per)
+    return 4 + p * per + k % per, k // per
 
 
 def write_appx26(path, rows):
     import openpyxl
     from openpyxl.styles import Alignment, Border, Side
+    from openpyxl.worksheet.pagebreak import Break
 
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     wb = openpyxl.Workbook()
@@ -154,11 +161,16 @@ def write_appx26(path, rows):
         ws.cell(2, c + 3, "附註").alignment = center
         ws.merge_cells(start_row=2, start_column=c + 3, end_row=3, end_column=c + 3)
 
+    per = APPX26_PER_PAGE
     r = 3
     for i, (nm, no) in enumerate(rows):
-        r, j = 4 + i // 2, i % 2
-        ws.cell(r, 1 + 4 * j, nm)          # 冊、頁（B、C／F、G）留空
-        ws.cell(r, 4 + 4 * j, int(no))
+        rr_, j = appx26_slot(i, per)
+        r = max(r, rr_)
+        ws.cell(rr_, 1 + 4 * j, nm)        # 冊、頁（B、C／F、G）留空
+        ws.cell(rr_, 4 + 4 * j, int(no))
+    n_pages = (len(rows) + 2 * per - 1) // (2 * per)
+    for p in range(1, n_pages):
+        ws.row_breaks.append(Break(id=3 + p * per))
 
     s = Side(style="thin")
     for rr in range(2, r + 1):

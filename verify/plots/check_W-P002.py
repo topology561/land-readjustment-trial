@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-W-P.002：歸戶號（重劃前歸戶圖之註記）、顏色對照表之歸戶號、附表 26 土地所有權人索引表之量測。
+W-P.002（含補令一）：歸戶號（重劃前歸戶圖之註記）、顏色對照表之歸戶號、附表 26 土地所有權人索引表之量測。
 獨立於 plots/：⛔ import 之；期望取自倉內原始資料、教育部筆劃之資料（dict-revised.json）、手冊與 KL 之答。
 
-命令列：python verify/plots/check_W-P002.py <成果目錄> <dict-revised.json>
+命令列：python verify/plots/check_W-P002.py <成果目錄> <dict-revised.json> <示範多頁之附表26.xlsx>
   成果目錄 ＝ plots/prelim_maps.py --out 之目錄（讀 重劃前圖.dxf、顏色對照表_重劃前.xlsx、附表26_土地所有權人索引表.xlsx）。
-任一不過 ⇒ 結束碼 1。Q0 筆劃之資料；Q1/Q1b 歸戶圖之歸戶號；Q2〜Q4 附表 26；Q5 顏色對照表。
+  示範多頁之附表26.xlsx ＝ verify/plots/synth_W-P002a.py 之輸出（170 筆之示範名·驗跨頁之排列）。
+任一不過 ⇒ 結束碼 1。Q0 筆劃之資料；Q1/Q1b 歸戶圖之歸戶號；Q2〜Q4 附表 26；Q5 顏色對照表；Q6 跨頁之排列。
 排序之所據：KL 2026-10-23 21:18（單獨在前）、2026-10-25 02:30（一甲 二乙 三甲 四可·甲）、02:33（共有戶以自然人為主）。
+排列之所據（W-P.002_補令一）：KL 2026-10-25 10:22「是，索引表改為先左欄由上而下、再右欄」——每頁先左組由上而下排滿
+  A26_PER 列、再右組由上而下；次頁接續；每頁之末一列之後置手動分頁符。
 """
 import functools
 import hashlib
@@ -35,6 +38,39 @@ A26_ROW3 = [None, "第 冊", "第 頁", None] * 2
 A26_SIGN = ["承辦:", "股長:", "科長:", "製表日期: 年 月 日"]
 COLOR_HEAD = ["圖層", "歸戶號", "顏色 R,G,B", "所有權人", "地號"]
 N_HH, N_INDEX = 33, 67
+A26_PER = 40                       # 每頁每欄之列數（W-P.002_補令一 §二 1）
+SYNTH = [(f"示範{i:03d}", i) for i in range(1, 171)]   # synth_W-P002a.py 之輸入（170 筆 ⇒ 3 頁：80、80、10）
+
+
+def a26_slot(i, per=A26_PER):
+    p, k = divmod(i, 2 * per)
+    return 4 + p * per + k % per, k // per
+
+
+def a26_layout(ws, seq, per=A26_PER):
+    """附表 26 之資料區（列 4 起）之逐格比對、簽欄之列、手動分頁符。⇒ (ok, 訊息)"""
+    want = {}
+    for i, (nm, no) in enumerate(seq):
+        want[a26_slot(i, per)] = (nm, no)
+    body_last = max(r for r, _ in want)
+    last = _last_row(ws)
+    bad = []
+    for r in range(4, last):
+        for j in range(2):
+            got = tuple(ws.cell(r, 1 + 4 * j + d).value for d in range(4))
+            if (r, j) in want:
+                nm, no = want[(r, j)]
+                ok = str(got[0]) == nm and got[3] == no and _blank(got[1]) and _blank(got[2])
+            else:
+                ok = all(_blank(v) for v in got)
+            if not ok:
+                bad.append(((r, j), got[0], got[3], want.get((r, j))))
+    n_pages = (len(seq) + 2 * per - 1) // (2 * per)
+    brk_want = [3 + p * per for p in range(1, n_pages)]
+    brk_got = sorted(b.id for b in ws.row_breaks.brk)
+    ok = not bad and last == body_last + 2 and brk_got == brk_want
+    return ok, (f"筆 {len(seq)}；不符 {len(bad)} {bad[:3]}；資料末列 {body_last}、簽欄列 {last}（期望 {body_last + 2}）；"
+                f"分頁符 {brk_got}（期望 {brk_want}）")
 
 
 def _blank(v):
@@ -130,7 +166,7 @@ def _last_row(ws):
                if any(not _blank(ws.cell(r, c).value) for c in range(1, ws.max_column + 1)))
 
 
-def run(out_dir, moe_path):
+def run(out_dir, moe_path, synth_path):
     import openpyxl
     res = []
 
@@ -189,25 +225,8 @@ def run(out_dir, moe_path):
             and r3 == A26_ROW3 and str(ws.print_title_rows).replace("$", "") == "1:3" and ws.max_column == 8,
             f"題 {ws['A1'].value!r}；併格差 {sorted(merges ^ A26_MERGES)}；列2 {r2}；列3 {r3}；列印標題 {ws.print_title_rows}；欄數 {ws.max_column}")
         last = _last_row(ws)
-        seq, filled_bad, holes = [], [], []
-        for r in range(4, last):
-            for j in range(2):
-                nm, bk, pg, nt = (ws.cell(r, 1 + 4 * j + d).value for d in range(4))
-                if _blank(nm):
-                    if not (_blank(bk) and _blank(pg) and _blank(nt)):
-                        filled_bad.append(r)
-                    holes.append((r, j))
-                    continue
-                if not (_blank(bk) and _blank(pg)):
-                    filled_bad.append(r)
-                seq.append((str(nm), nt))
-        body_last = 4 + (N_INDEX - 1) // 2
-        holes_ok = all(r > body_last or (r == body_last and j == 1 and N_INDEX % 2 == 1) for r, j in holes)
-        diff = next(((i, seq[i] if i < len(seq) else None, index[i] if i < len(index) else None)
-                     for i in range(max(len(seq), len(index)))
-                     if i >= len(seq) or i >= len(index) or seq[i] != index[i]), None)
-        rec("Q3", seq == index and len(index) == N_INDEX and not filled_bad and holes_ok,
-            f"列 {len(seq)}（期望 {len(index)}）；首差 {diff}；冊頁非空 {filled_bad[:3]}；空位 {holes[:3]}")
+        ok3, msg3 = a26_layout(ws, index)
+        rec("Q3", ok3 and len(index) == N_INDEX, msg3)
         vals = [ws.cell(last, c).value for c in range(1, ws.max_column + 1) if not _blank(ws.cell(last, c).value)]
         rec("Q4", vals == A26_SIGN, f"末列 {vals}")
     except Exception as e:  # noqa: BLE001
@@ -234,12 +253,22 @@ def run(out_dir, moe_path):
             f"表頭 {head}；歸戶號 {nos[:3]}…{nos[-2:]}（{len(nos)}）；地號合 {lot_ok}；色與圖不符 {col_bad[:3]}")
     except Exception as e:  # noqa: BLE001
         rec("Q5", False, f"顏色對照表讀取失敗 {type(e).__name__}: {e}")
+
+    # Q6 跨頁之排列（示範 170 筆·synth_W-P002a.py）
+    try:
+        ws = openpyxl.load_workbook(synth_path).worksheets[0]
+        ok6, msg6 = a26_layout(ws, SYNTH)
+        vals = [ws.cell(_last_row(ws), c).value for c in range(1, 9) if not _blank(ws.cell(_last_row(ws), c).value)]
+        rec("Q6", ok6 and vals == A26_SIGN and str(ws.print_title_rows).replace("$", "") == "1:3",
+            f"{msg6}；末列 {vals}；列印標題 {ws.print_title_rows}")
+    except Exception as e:  # noqa: BLE001
+        rec("Q6", False, f"示範多頁之附表 26 讀取失敗 {type(e).__name__}: {e}")
     return res
 
 
-N_Q = 7
+N_Q = 8
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
-    r = run(*sys.argv[1:3])
+    r = run(*sys.argv[1:4])
     sys.exit(0 if len(r) == N_Q and all(x[1] for x in r) else 1)
