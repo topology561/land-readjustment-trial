@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-25T19:24:40+08:00",
+  "status": "reported",
+  "status_since": "2026-10-25T22:24:28+08:00",
   "order": "W-G.9-395_補令一.md",
   "order_bytes": 82262,
   "order_sha256": "65fc0656a101ab8a92170a3951af745e0ef9dccec48c008965b2eda86b23c268",
   "order_kind": "補令",
   "expects_allocation_change": false,
   "attempt": 2,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-395_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1166,6 +1166,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-395_補令一.md（82262 B·sha256 65fc0656…＝STATE·SELF_SHA256 130ac7d6…自驗合 P-5 口徑）"
+    },
+    {
+      "at": "2026-10-25T22:24:28+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-395_補令一（完成）：新側支 verify/W-G.9-395-k960 ＝ 591806b（工項零″ d509a1c、一″ 19dc0a7、二″ c84a48f·app.py 07dfd835、三″ 5fd7eb9、四″ 591806b）；驗 91／91 合·本案配地⛔ 變（F36 0 項·cmp 同·F8 逐位同·parity 代 HEAD 後同）；唯讀審查無涉域／漏載、無實作之瑕；收工閘 1″〜8″ 皆合；主線 d4928d4 ⛔ 動"
     }
   ]
 }
