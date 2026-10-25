@@ -1,6 +1,6 @@
 {
-  "status": "await_kl",
-  "status_since": "2026-10-25T06:28:15+08:00",
+  "status": "idle",
+  "status_since": "2026-10-25T10:23:00+08:00",
   "order": "W-P.002_歸戶號與附表26.md",
   "order_bytes": 24928,
   "order_sha256": "dc88715a89e4146e18262308cddecbd6f51df7fd0c264d525dbb70a7471f18e8",
@@ -8,7 +8,7 @@
   "attempt": 1,
   "report": "出圖線/reports/W-P.002_回報.md",
   "result": "完成",
-  "kl_question": "出圖線/待KL/2026-10-25_W-P.002_第一版之確認.md",
+  "kl_question": null,
   "wip_plots": "9c0b51c295345eed9d2b4798f37eaff9f5121485",
   "history": [
     {
@@ -185,6 +185,13 @@
       "from": "verifying",
       "to": "await_kl",
       "note": "復驗 W-P.002 合：wip/plots＝側支＝9c0b51c（快轉自 7827368·祖含主線 d4928d4）；差異閘綠（唯新目錄 12 檔·對照組改 app.py 紅）；附錄甲 sha256 4d430476…c4f3 相符；fetch_moedict 重取 tarball 與 JSON sha256 合；發單端重出成果，check_W-P002 7/7、check_W-P001 12/12；故意錯誤 Ⓐ〜Ⓔ 皆紅、W-P.001 之 14 種皆紅；另以舊版 7827368 之輸出比對：DXF 唯增 53 個歸戶號 TEXT、他圖元全同，附表 2、3 逐格同；程式全文差異合單 §二；排序逐戶手核合 KL 之答。第一版 ⇒ 請 KL 確認（出圖線/待KL/2026-10-25_W-P.002_第一版之確認.md）"
+    },
+    {
+      "at": "2026-10-25T10:23:00+08:00",
+      "by": "監看窗",
+      "from": "await_kl",
+      "to": "idle",
+      "note": "KL 10:22「是，索引表改為先左欄由上而下、再右欄」（出圖線/KL答覆/2026-10-25_1022.md）⇒ W-P.002 定版；附表 26 之排列方向以補令或併入 W-P.003 改之"
     }
   ]
 }
