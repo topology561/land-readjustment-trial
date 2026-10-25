@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-25T22:25:40+08:00",
-  "order": "W-G.9-395_補令一.md",
-  "order_bytes": 82262,
-  "order_sha256": "65fc0656a101ab8a92170a3951af745e0ef9dccec48c008965b2eda86b23c268",
-  "order_kind": "補令",
+  "status": "pending",
+  "status_since": "2026-10-26T01:22:00+08:00",
+  "order": "W-G.9-395_補令二.md",
+  "order_bytes": 25419,
+  "order_sha256": "c36cafff68ee82b94c918499cc24390f492cb9c4c7fdad2805cde58f701a4303",
+  "order_kind": "短單",
   "expects_allocation_change": false,
-  "attempt": 2,
-  "report": "W-G.9-395_補令一_回報.md",
-  "result": "完成",
+  "attempt": 1,
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1180,6 +1180,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-395_補令一之回報（完成·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-26T01:22:00+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "pending",
+      "note": "復驗 W-G.9-395_補令一（⛔ 採自報）通過：七筆之實物合單；app.py 07dfd835 逐行讀合 R-1〜R-4、R-0″〜R-4″；施後 91 ＋ 前態 18 呼叫從頭重跑皆合期（stderr 0 B）；本案配地⛔ 變（F36 diff 0 項·對照 44·cmp 同·F8 47683d1c／884e9171 前後同·parity 代 HEAD 後同）；獨立模型對真碼之 _k950_rows 隨機 20300 例逐事件同；收工閘 1″〜8″ 合（closegate 641 640）⇒ 出 W-G.9-395_補令二（入主線之短單·快轉 d4928d4 → 工項零‴ 之 commit·expects_allocation_change=false）"
     }
   ]
 }
