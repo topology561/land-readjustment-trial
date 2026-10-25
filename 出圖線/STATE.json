@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-25T18:06:00+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-25T18:19:00+08:00",
   "order": "W-P.003_附表4-14-15-18-19-21-25.md",
   "order_bytes": 53863,
   "order_sha256": "2f236497711622c543ec450fc7a813b3d8bbee71daba4e5867e1f75df7b1cebe",
@@ -269,6 +269,13 @@
       "from": "running",
       "to": "reported",
       "note": "W-P.003 完成：側支 verify/W-P.003-tables-a＝1670550（主線 d4928d4 未前進）；wip/plots cb55e0b→1670550（快轉）；附錄甲〜丁 sha256 相符；check_W-P003 8/8（Σ面積 22803.33·Σ總價 1643176255.06）、check_W-P001 12/12、check_W-P002 8/8；Ⓐ〜Ⓖ 皆紅、成果綠；差異閘綠（對照組紅）；預覽 W-P.003_附表4-14-15-18-19-21-25.png"
+    },
+    {
+      "at": "2026-10-25T18:19:00+08:00",
+      "by": "出圖線·發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "復驗 W-P.003"
     }
   ]
 }
