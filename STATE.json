@@ -1,14 +1,14 @@
 {
-  "status": "running",
-  "status_since": "2026-10-25T16:21:56+08:00",
+  "status": "reported",
+  "status_since": "2026-10-25T17:10:28+08:00",
   "order": "W-G.9-395_規格單.md",
   "order_bytes": 164843,
   "order_sha256": "a324d71e8bba42b2725f4cafd011d5d011686e7c1bbbab3bbef694414860208f",
   "order_kind": "規格單",
   "expects_allocation_change": false,
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "W-G.9-395_規格單_回報.md",
+  "result": "停機上呈",
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1138,6 +1138,13 @@
       "from": "pending",
       "to": "running",
       "note": "接單 W-G.9-395_規格單.md（164843 B·sha256 a324d71e…＝STATE·SELF_SHA256 7c9a3181…自驗合 P-5 口徑）"
+    },
+    {
+      "at": "2026-10-25T17:10:28+08:00",
+      "by": "執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "回報 W-G.9-395_規格單（停機上呈·停機款 12）：唯讀獨立審查揭 R-3 ④ 之二處規格之漏載——A-1 照字面（夥伴之列之最終序位＋0.5）於一端多競合之某形無限迴圈；A-2 排序之位相同時之先後未定（他案土地之果異）；本案競合 0 ⇒ ⛔ 觸本案。側支 verify/W-G.9-395-k960 ＝ db0d0d0（工項零、一）；工項二 d000be0 未推（差異附 reports/）；主線 d4928d4 ⛔ 動"
     }
   ]
 }
