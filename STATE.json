@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-25T16:21:00+08:00",
+  "status": "running",
+  "status_since": "2026-10-25T16:21:56+08:00",
   "order": "W-G.9-395_規格單.md",
   "order_bytes": 164843,
   "order_sha256": "a324d71e8bba42b2725f4cafd011d5d011686e7c1bbbab3bbef694414860208f",
@@ -1131,6 +1131,13 @@
       "from": "drafting",
       "to": "pending",
       "note": "出 W-G.9-395 規格單（K-9-60 ①③·取得即鎖定之於末端塊之合併再試·pre-flight P-7 與其自檢之修·expects_allocation_change=false·新側支 verify/W-G.9-395-k960）"
+    },
+    {
+      "at": "2026-10-25T16:21:56+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-395_規格單.md（164843 B·sha256 a324d71e…＝STATE·SELF_SHA256 7c9a3181…自驗合 P-5 口徑）"
     }
   ]
 }
