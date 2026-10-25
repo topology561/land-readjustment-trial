@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-26T01:35:25+08:00",
+  "status": "idle",
+  "status_since": "2026-10-26T03:43:49+08:00",
   "order": "W-G.9-395_補令二.md",
   "order_bytes": 25419,
   "order_sha256": "c36cafff68ee82b94c918499cc24390f492cb9c4c7fdad2805cde58f701a4303",
@@ -1215,6 +1215,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-395_補令二之回報（入主線之短單·完成·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-26T03:43:49+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "idle",
+      "note": "復驗 W-G.9-395_補令二（⛔ 採自報）通過：主線 wip/s1-endpart d4928d4845513a42fb1ac826a63167a38c78d4fb → 20e03bfd57f69b42ff9db0eff0fad9d90ed00f1f（快轉·快轉前之記 924e73f 先於之）＝ 側支；閘 1‴〜7‴ 合；閘 8‴ 之 36 呼叫含於新主線之端從頭重跑之 91 呼叫（91／91 合期·stderr 0 B·P0 合期）；本案配地⛔ 變（F8 47683d1c／884e9171 ＝ 前基準·F36 對照 44）；立 基準/20e03bfd57f69b42ff9db0eff0fad9d90ed00f1f.md"
     }
   ]
 }
