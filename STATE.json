@@ -1,14 +1,14 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-25T17:11:30+08:00",
-  "order": "W-G.9-395_規格單.md",
-  "order_bytes": 164843,
-  "order_sha256": "a324d71e8bba42b2725f4cafd011d5d011686e7c1bbbab3bbef694414860208f",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-25T19:23:49+08:00",
+  "order": "W-G.9-395_補令一.md",
+  "order_bytes": 82262,
+  "order_sha256": "65fc0656a101ab8a92170a3951af745e0ef9dccec48c008965b2eda86b23c268",
+  "order_kind": "補令",
   "expects_allocation_change": false,
-  "attempt": 1,
-  "report": "W-G.9-395_規格單_回報.md",
-  "result": "停機上呈",
+  "attempt": 2,
+  "report": null,
+  "result": null,
   "kl_question": null,
   "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
   "history": [
@@ -1152,6 +1152,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "接手復驗 W-G.9-395_規格單之回報（停機上呈·停機款 12·⛔ 採自報）"
+    },
+    {
+      "at": "2026-10-25T19:23:49+08:00",
+      "by": "發單端",
+      "from": "verifying",
+      "to": "pending",
+      "note": "復驗 W-G.9-395_規格單之停機上呈：A-1（照 R-3 ④ 之字面 ⇒ 無限迴圈）、A-2（同位之先後未定）皆屬實·皆規格之漏（自誤 641）·既裁（K-9-60 ③、二甲「處理後不重排」）與 K43 三之乙已定其義 ⇒ ⛔ 新域問 ⇒ 出 W-G.9-395_補令一（被延後者退至其夥伴之列之現位之緊後·隨之而移·同退者依原位次；F39 V9〜V13；原趟之碼為底·expects_allocation_change=false）"
     }
   ]
 }
