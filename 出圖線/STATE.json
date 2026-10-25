@@ -1,15 +1,15 @@
 {
-  "status": "running",
-  "status_since": "2026-10-25T13:48:30+08:00",
+  "status": "reported",
+  "status_since": "2026-10-25T13:58:53+08:00",
   "order": "W-P.002_補令一_附表26先左後右.md",
   "order_bytes": 30539,
   "order_sha256": "4d7b1b05fde315a1988111a9d747c492eefc6ed2d5df2ac954d49ff0552db14b",
   "order_kind": "補令",
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "出圖線/reports/W-P.002_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
-  "wip_plots": "9c0b51c295345eed9d2b4798f37eaff9f5121485",
+  "wip_plots": "cb55e0b396f15179b48f24170bc37683383d4c75",
   "history": [
     {
       "at": "2026-10-23T17:50:00+08:00",
@@ -213,6 +213,13 @@
       "from": "pending",
       "to": "running",
       "note": "接 W-P.002_補令一（單檔 30539 bytes·sha256 4d7b1b05…b14b 相符；許可 N=393·核心線 order W-G.9-394_補令三）"
+    },
+    {
+      "at": "2026-10-25T13:58:53+08:00",
+      "by": "出圖線·執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "W-P.002_補令一 完成：側支 verify/W-P.002a-index-columns＝cb55e0b（主線 d4928d4 未前進）；wip/plots 9c0b51c→cb55e0b（快轉）；附錄甲乙丙 sha256 相符；check_W-P002 8/8（Q3 末列 43、簽欄 45；Q6 分頁符 [43, 83]）、check_W-P001 12/12；Ⓐ〜Ⓗ 皆紅、W-P.001 之 14 種皆紅、成果綠；對照組（9c0b51c 之舊輸出）Q3 紅；差異閘綠（對照組紅）；DXF 318 圖元、顏色對照表、附表 2、3 與 9c0b51c 逐格同；預覽 W-P.002_補令一_附表26先左後右.png"
     }
   ]
 }
