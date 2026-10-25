@@ -1,6 +1,6 @@
 {
-  "status": "pending",
-  "status_since": "2026-10-25T19:23:49+08:00",
+  "status": "running",
+  "status_since": "2026-10-25T19:24:40+08:00",
   "order": "W-G.9-395_補令一.md",
   "order_bytes": 82262,
   "order_sha256": "65fc0656a101ab8a92170a3951af745e0ef9dccec48c008965b2eda86b23c268",
@@ -1159,6 +1159,13 @@
       "from": "verifying",
       "to": "pending",
       "note": "復驗 W-G.9-395_規格單之停機上呈：A-1（照 R-3 ④ 之字面 ⇒ 無限迴圈）、A-2（同位之先後未定）皆屬實·皆規格之漏（自誤 641）·既裁（K-9-60 ③、二甲「處理後不重排」）與 K43 三之乙已定其義 ⇒ ⛔ 新域問 ⇒ 出 W-G.9-395_補令一（被延後者退至其夥伴之列之現位之緊後·隨之而移·同退者依原位次；F39 V9〜V13；原趟之碼為底·expects_allocation_change=false）"
+    },
+    {
+      "at": "2026-10-25T19:24:40+08:00",
+      "by": "執行端",
+      "from": "pending",
+      "to": "running",
+      "note": "接單 W-G.9-395_補令一.md（82262 B·sha256 65fc0656…＝STATE·SELF_SHA256 130ac7d6…自驗合 P-5 口徑）"
     }
   ]
 }
