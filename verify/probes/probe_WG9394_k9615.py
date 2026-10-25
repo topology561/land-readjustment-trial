@@ -51,6 +51,8 @@
            R1 `err` 為 None；`k965_part_split` 之回 None（宗含非其成員之土地）之次數 ＝ 0；程式之停機之登記之增 ＝ 0；
            R2 段三、末端塊合併再試、手冊先行、第一趟之受併宗（切片之 `段三併出` 之列與 `段三部分併出` 之鍵·其數出艙）⛔ 空，
               且皆為最後之配地之保留之宗（`驗_總判` ＝ 保留）——`K-9-61` ⑤ 之受詞於本案為空。
+🔧 `W-G.9-395`（`K-9-60` ①③·⛔ 上列一字不刪）：其後之單所改之頂層節點 `end_block_apply` 亦許（W1 之相異 ＝ 上之四 ∪
+  `{end_block_apply}`·其行為與接線由 F39 量之）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import ast, contextlib, copy, io, os, re, subprocess, sys
@@ -63,6 +65,7 @@ except Exception:  # noqa: BLE001
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 GB_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])")
 CHG_TOP = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k953_manual_run"}
+W395 = {"end_block_apply"}      # 🔧 `W-G.9-395`：其後之單所改之頂層節點（F39 量之·⛔ 新名）
 NEED = ["k6_program_stop", "k6_trial_mark", "k6_trial_raise_since", "K6_PROGRAM_STOPS", "k929_6_fixpoint",
         "k6b_stage3_run", "end_block_merge_run"]
 TWD = (37.0, True, (302512.0, 2650318.0))
@@ -479,7 +482,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W1", not add and not rem and chg == CHG_TOP, f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
+    rep("W1", not add and not rem and chg in (CHG_TOP, CHG_TOP | W395), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
     # W2
     rs = _fn_node(ta, "k6_trial_raise_since")
     gb2 = None

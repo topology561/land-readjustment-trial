@@ -47,6 +47,10 @@
               `R6` 左 252.28（`K-6` 典 `W-G.9-352` 之節之「本案之量」）；
            R3 當選者：`R2` 右 `628-34(1)`、`R3` 左 `628-34(2)`、`R5` 右 `628-23(2)`（同 R2 之源）、`R6` 左 `628-4(1)`（同）；
            R4 終態之配地之列：各觸發之端之鏈首之宗（該側之列之首）＝ 其當選者；`err` 為 None。
+🔧 `W-G.9-395`（`K-9-60` ①·KL `2026-10-25 03:58` 通知一·⛔ 上列一字不刪）：`GB-207` 之停機去之——二端各依原位次評選，同一宗
+  為二端之當選 ⇒ 交面積大之一端（相同 ⇒ 左）、他端除之重選（F39 量之）。T12 改期為「過」（右端之 B(1) 先當選·A(1) 未於右
+  試·⛔ 衝突）；T12b 改期為「停」而訊息含「各筆單獨試算皆未達」「·right]」「：[]」（右之重選之列空）、登記⛔ 增（A(1) 歸左·右除之重選而無
+  他宗·⛔ 准強制）；W9 改期為 `0`（`end_block_apply` 內⛔ 有帶 `GB-207` 之 `raise k6_program_stop`）。
 rc：0 相符／1 不符／2 用法錯。
 """
 import ast, contextlib, copy, io, math, os, re, subprocess, sys
@@ -155,8 +159,9 @@ def _apply(ns, has_left, has_right, Gv):
             {sd: (None if info[sd] is None else (info[sd]["winner"], round(info[sd]["s_back"], 6))) for sd in ("left", "right")})
 
 
-def _both(ns, lots, length=20.0):
-    """二端皆無側街之短街廓（長 `length`）：回 (過／停, 訊息之合或序, 登記之增)。"""
+def _both(ns, lots, length=20.0, toks=None):
+    """二端皆無側街之短街廓（長 `length`）：回 (過／停, 訊息之合或序, 登記之增)。
+    🔧 `W-G.9-395`：`toks` 給之 ⇒ 停之第二欄 ＝ 各字樣之在否（tuple）。"""
     import numpy as np
     blk = _blk([(0, 0), (length, 0), (length, DEP), (0, DEP)])
     seq = [_e(_tp(p, [(a, 0), (b, 0), (b, DEP), (a, DEP)])) for p, a, b in lots]
@@ -172,6 +177,8 @@ def _both(ns, lots, length=20.0):
         return ("過", [x["tp"]["暫編地號"] for x in out], len(stops) - n0)
     except RuntimeError as e:
         m = str(e)
+        if toks is not None:
+            return ("停", tuple(t in m for t in toks), (len(stops) - n0, bool(stops) and stops[-1] == m))
         return ("停", all(t in m for t in ("GB-207", "K-9-60 ①", lots[0][0])),
                 (len(stops) - n0, bool(stops) and stops[-1] == m))
 
@@ -281,10 +288,12 @@ def _cases(ns):
         lambda: _apply(ns, False, False, Gv),
         (["B(1)", "A(1)", "C(1)", "E(1)", "D(1)"], {"left": (True, band, "B(1)"), "right": (True, band, "D(1)")},
          {"left": ("B(1)", 0.0), "right": ("D(1)", 0.0)}))
-    run("T12 二端皆無側街而一筆同時跨占二端之 R_end（長 20·A 寬 18）⇒ 停機（GB-207·K-9-60 ①·登記增恰一）",
-        lambda: _both(ns, [("A(1)", 0, 18), ("B(1)", 18, 20)]), ("停", True, (1, True)))
-    run("T12b 一宗之街廓（長 20）二端皆無側街 ⇒ 同 T12",
-        lambda: _both(ns, [("A(1)", 0, 20)]), ("停", True, (1, True)))
+    # 🔧 `W-G.9-395`（K-9-60 ①）：T12／T12b 之期改之（GB-207 去之）
+    run("T12 二端皆無側街而一筆同時跨占二端之 R_end（長 20·A 寬 18）⇒ 過（右之 B(1) 先當選·A(1) 歸左·W-G.9-395）",
+        lambda: _both(ns, [("A(1)", 0, 18), ("B(1)", 18, 20)]), ("過", ["A(1)", "B(1)"], 0))
+    run("T12b 一宗之街廓（長 20）⇒ A(1) 歸左；右除之重選而無他宗·⛔ 准強制 ⇒ 停（各筆單獨試算皆未達·right·登記⛔ 增）",
+        lambda: _both(ns, [("A(1)", 0, 20)], toks=("各筆單獨試算皆未達", "·right]", "：[]")),
+        ("停", (True, True, True), (0, False)))
     run("T12c 長 20 而無一筆同時跨占（A 寬 10、B 寬 10）⇒ 過（二端各當選）",
         lambda: _both(ns, [("A(1)", 0, 10), ("B(1)", 10, 20)]), ("過", ["A(1)", "B(1)"], 0))
     run("T10 末端保留（無三角地）：左無側街 ⇒ 池窗起點 0 → 3.5；有側街 ⇒ 0",
@@ -437,7 +446,7 @@ def wiring(repo, base):
         n9 = sum(1 for n in ast.walk(ea) if isinstance(n, ast.Raise) and isinstance(n.exc, ast.Call)
                  and getattr(n.exc.func, "id", None) == "k6_program_stop"
                  and any("GB-207" in x for x in _strs(n.exc)))
-    rep("W9", n9 == 1, f"end_block_apply 之 `raise k6_program_stop(…GB-207…)` {n9}（期 1）")
+    rep("W9", n9 == 0, f"end_block_apply 之 `raise k6_program_stop(…GB-207…)` {n9}（期 0·W-G.9-395 去之）")
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
 

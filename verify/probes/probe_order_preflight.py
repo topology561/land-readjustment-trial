@@ -20,6 +20,17 @@ r"""**`W-G.9-190R` `§九（甲）`**：施工單 **pre-flight 機檢器**（⛔
 `P-4` 須**提示**；另以 `W-G.9-191` 交接文之 `§六-3`（「實質差須由 `20` 降為 `19`」**未具名實測出處**）
 為 `P-6` 之靶，須**提示**。**三者任一不觸 ⇒ 檢查器紅、⛔ 不得入倉。**
 
+## 🔧 `W-G.9-395`（待落地序 `32`、`37`·⛔ 上文一字不刪）
+
+- **`P-7`（🟡·文字啟發式）**：單有「原封入倉」之工項（工項零·單之入倉之 `commit`）而其文含以 `HEAD` 為一端之差異之式
+  （`<sha>..HEAD`、`<sha>...HEAD`、`<sha> HEAD`、`HEAD..<sha>`·`HEAD_RANGE`）者 ⇒ 逐處提示——其區間或含單之入倉之一筆
+  （`自誤 629`、`632`、`636`、`640` 之同形）；本器⛔ 有豁免之機制：以 `HEAD` 為一端而其期唯限於單之入倉之一筆者，由受單側於
+  開工閘逐項具名豁免（同 `P-1`／`P-2`／`P-4`／`P-6`）。
+- **`--selftest` 之靶①**（`P-3`）以靶單**入倉之時**之 `app.py`（`git log --diff-filter=A` 所得之 `commit`）之 `def main` 之區間
+  判之（靶單之 `app.py:N` 係其時之列號·現行之 `app.py` 增長後其區間移而靶① 不觸·待落地序 `37`）；取不到 ⇒ 檢查器紅。
+  另增靶④：`W-G.9-392_補令一` 之 `P-7` 須**提示**（`c4666ab HEAD`）；反靶 `W-G.9-190`／`W-G.9-191`／`W-G.9-190R` 之 `P-7`
+  須**無**——皆計入判別力造之判（任一不合 ⇒ 檢查器紅）。
+
 ## ⛔ 本檔不做
 
 ⛔ 不改生產碼一字。⛔ 不寫死本機絕對路徑。⛔ 不改任何既有閘。
@@ -39,13 +50,19 @@ REPO = os.path.dirname(VERIFY)          # 🔒 自 `__file__` 推得·⛔ 不寫
 ORDERS = os.path.join(REPO, "docs", "orders")
 
 CHANNEL = ("run_step_g", "run_all", "[T2-DIAG]", "逐街廓")
+# 🔧 `W-G.9-395`（`P-7`）：單之入倉之工項之字樣；以 HEAD 為一端之差異之式（`<sha>..HEAD`、`<sha> HEAD`）
+HEAD_ENTRY = "原封入倉"
+HEAD_RANGE = re.compile(r"(?<![0-9A-Za-z])(?:[0-9a-f]{7,40}(?:\.\.\.?| +)HEAD|HEAD\.\.\.?[0-9a-f]{7,40})(?![0-9A-Za-z_:^~@])")
 NEG = ("查無", "不存在", "無任何")
 STOPW = ("停機", "🛑")
 
 
-def main_range():
-    """`app.py` 之 `def main` 之 AST 區間（🛑 實查·⛔ 不得硬編·單 `P-3` 逐字）。"""
-    t = ast.parse(open(os.path.join(REPO, "app.py"), encoding="utf-8").read())
+def main_range(app_src=None):
+    """`app.py` 之 `def main` 之 AST 區間（🛑 實查·⛔ 不得硬編·單 `P-3` 逐字）。
+    🔧 `W-G.9-395`：`app_src` 給之 ⇒ 以之為受詞（`--selftest` 之靶單入倉之時之 `app.py`）；缺 ⇒ 現行之 `app.py`。"""
+    if app_src is None:
+        app_src = open(os.path.join(REPO, "app.py"), encoding="utf-8").read()
+    t = ast.parse(app_src)
     for n in ast.walk(t):
         if isinstance(n, ast.FunctionDef) and n.name == "main":
             return n.lineno, n.end_lineno
@@ -102,7 +119,7 @@ def paras(text):
     return out
 
 
-def check(path):                                                 # noqa: C901
+def check(path, app_src=None):                                   # noqa: C901
     raw = open(path, "rb").read()
     txt = raw.decode("utf-8")
     R = {"red": [], "warn": [], "info": []}
@@ -127,7 +144,7 @@ def check(path):                                                 # noqa: C901
                 got[:16], dec[:16])))
 
     # ── P-3（🔴 機械）主閘之受詞是否落於 `app.py` 之 `def main` ────────
-    lo, hi = main_range()
+    lo, hi = main_range(app_src)
     R["info"].append(("P-3", 0, "`app.py` 之 `def main` 區間（AST 實查）＝ `%d`-`%d`" % (lo, hi)))
     for title, s0, s1, body in sections(txt):
         refs = [(m.group(0), int(m.group(1)))
@@ -197,12 +214,36 @@ def check(path):                                                 # noqa: C901
                                       "🟡 停機款所繫之數⛔ 未具名實測出處：%s"
                                       % p.splitlines()[0][:90]))
 
+    # ── P-7（🟡）以 HEAD 為一端之差異之式，而其單有單之入倉之工項（`W-G.9-395`·待落地序 `32`）──────────
+    if HEAD_ENTRY in txt:
+        for ln, l in enumerate(txt.splitlines(), 1):
+            for m in HEAD_RANGE.finditer(l):
+                R["warn"].append(("P-7", ln, "🟡 以 HEAD 為一端之差異（`%s`）而本單有單之入倉之工項（「%s」）⇒ 其區間或含"
+                                  "單之入倉之一筆（自誤 629／632／636／640）：%s" % (m.group(0), HEAD_ENTRY, l.strip()[:90])))
+
     for k, tag in (("red", "🔴 機械·停機款"), ("warn", "🟡 提示·須逐項處置"), ("info", "ℹ️ 記錄")):
         print("\n── %s：%d 項 ──" % (tag, len(R[k])))
         for c, ln, msg in R[k]:
             print("  [%s] :%-4s %s" % (c, ln or "-", msg))
     print()
     return R
+
+
+def _era_app(path):
+    """🔧 `W-G.9-395`（待落地序 `37`）：靶單入倉之時之 `app.py` 之全文（`git log --diff-filter=A -n 1` 所得之 `commit`·即該檔
+    最近一次之新增·靶三檔自入倉以來⛔ 刪而復增）；
+    取不到 ⇒ `None`（呼叫端判紅·⛔ 以現行之 `app.py` 代之）。"""
+    import subprocess
+    rel = os.path.relpath(path, REPO)
+    r = subprocess.run(["git", "-C", REPO, "log", "--diff-filter=A", "--format=%H", "-n", "1", "--", rel],
+                       capture_output=True)
+    sha = r.stdout.decode("utf-8", "replace").strip()
+    if r.returncode != 0 or not sha:
+        return None
+    r2 = subprocess.run(["git", "-C", REPO, "show", "%s:app.py" % sha], capture_output=True)
+    if r2.returncode != 0:
+        return None
+    return r2.stdout.decode("utf-8")
 
 
 def selftest():
@@ -213,21 +254,30 @@ def selftest():
     t190 = os.path.join(ORDERS, "W-G.9-190_施工單_族二三切換.md")
     t191 = os.path.join(ORDERS, "W-G.9-191_發單側交接文.md")
     t190r = os.path.join(ORDERS, "W-G.9-190R_族二三切換.md")
+    t392 = os.path.join(ORDERS, "W-G.9-392_補令一.md")         # 🔧 `W-G.9-395`：`P-7` 之靶
     bad = []
-    for p in (t190, t191, t190r):
+    for p in (t190, t191, t190r, t392):
         if not os.path.exists(p):
             bad.append("🛑 靶不存在：%s" % p)
+    era = {}
+    for p in (t190, t190r):                                      # 🔧 `W-G.9-395`：`P-3` 之靶以其入倉之時之 app.py
+        era[p] = _era_app(p) if os.path.exists(p) else None
+        if era[p] is None:
+            bad.append("🛑 靶入倉之時之 app.py 取不到：%s" % p)
     if bad:
         for b in bad:
             print(b)
         return 1
-    a = check(t190)
+    a = check(t190, era[t190])
     p3 = [x for x in a["red"] if x[0] == "P-3"]
     p4 = [x for x in a["warn"] if x[0] == "P-4"]
     b = check(t191)
     p6 = [x for x in b["warn"] if x[0] == "P-6"]
-    c = check(t190r)
+    c = check(t190r, era[t190r])
     c3 = [x for x in c["red"] if x[0] == "P-3"]
+    d = check(t392)
+    p7 = [x for x in d["warn"] if x[0] == "P-7"]
+    n7 = [x for r_ in (a, b, c) for x in r_["warn"] if x[0] == "P-7"]
     print("=" * 116)
     print("【判別力造之判】")
     ok = True
@@ -235,7 +285,10 @@ def selftest():
             ("靶① `W-G.9-190` 之 `P-3` 須**紅**", bool(p3), "主閘架於 `run_step_g` 而受詞在 `main()` 內"),
             ("靶② `W-G.9-190` 之 `P-4` 須**提示**", bool(p4), "三量方向未具名座標系"),
             ("靶③ `W-G.9-191 §六-3` 之 `P-6` 須**提示**", bool(p6), "「由 `20` 降為 `19`」未具名實測出處"),
-            ("反靶 `W-G.9-190R` 之 `P-3` 須**不紅**", not c3, "其主閘已改源碼層 ⇒ 證本器⛔ 非恆紅")):
+            ("反靶 `W-G.9-190R` 之 `P-3` 須**不紅**", not c3, "其主閘已改源碼層 ⇒ 證本器⛔ 非恆紅"),
+            ("靶④ `W-G.9-392_補令一` 之 `P-7` 須**提示**", any("c4666ab HEAD" in x[2] for x in p7),
+             "前置″ 項 `4` 之 `c4666ab HEAD` 而其單有工項零″（自誤 636）"),
+            ("反靶 `W-G.9-190`／`191`／`190R` 之 `P-7` 須**無**", not n7, "其單無「原封入倉」之工項 ⇒ 證 `P-7` ⛔ 恆提示")):
         ok &= cond
         print("  %s %s —— %s" % ("✅" if cond else "🔴", nm, why))
     print("=" * 116)
