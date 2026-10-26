@@ -1,14 +1,14 @@
 {
- "status": "drafting",
- "status_since": "2026-10-26T10:59:21+08:00",
- "order": "W-G.9-395_補令二.md",
- "order_bytes": 25419,
- "order_sha256": "c36cafff68ee82b94c918499cc24390f492cb9c4c7fdad2805cde58f701a4303",
- "order_kind": "短單",
- "expects_allocation_change": false,
+ "status": "pending",
+ "status_since": "2026-10-26T16:22:12+08:00",
+ "order": "W-G.9-398_規格單.md",
+ "order_bytes": 150064,
+ "order_sha256": "beb469830bda6218299a0e0b7ea24c3794765bc079441235c43a959f1d052d18",
+ "order_kind": "規格單",
+ "expects_allocation_change": true,
  "attempt": 1,
- "report": "W-G.9-395_補令二_回報.md",
- "result": "完成",
+ "report": null,
+ "result": null,
  "kl_question": "2026-10-26_K-9-60②之二處兩讀.md",
  "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
  "history": [
@@ -1243,6 +1243,13 @@
    "from": "await_kl",
    "to": "drafting",
    "note": "KL答覆/2026-10-26_0953.md（新於 status_since）⇒ 依其第 3 點（396 久候 KL 逾 7 時·二者不相依）上鎖擬「側面道路負擔百分率改照手冊附表 25」之規格單；396 之請示（2026-10-26_K-9-60②之二處兩讀.md）仍候 KL，記於 kl_pending"
+  },
+  {
+   "at": "2026-10-26T16:22:12+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-G.9-398_規格單.md（150064 B·beb469830bda…·SELF_SHA256 8229402e0856…·attempt 1·expects_allocation_change ＝ true）：街角地側面道路負擔百分率改照手冊附表 25（KL 2026-10-26 09:53）；新側支 verify/W-G.9-398-rw25；入主線待 KL 核（README 二·停止條件 2）；396 之請示仍候 KL（kl_pending）"
   }
  ],
  "kl_pending": [
