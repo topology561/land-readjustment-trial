@@ -84,6 +84,7 @@ KEEP_HIT3 = "".join(("三個以", "上之末", "端塊"))
 KEEP_ROWS = "".join(("列數", " ≠ ", "2"))
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 CHG_TOP = {"end_block_apply", "end_block_merge_run", "k6b_stage3_run"}
+NEW398, W398 = {"RW_TABLE_25"}, {"RW_TABLE_25", "rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之頂層節點（側面道路負擔百分率之附表 25·F41 量之）
 MW, DEP = 3.5, 30.0
 H = "住宅區"
 
@@ -653,9 +654,9 @@ def wiring(repo, base):
     rep("W3", len(k950) == 1 and not any(GONE_TGC in s for s in s3) and any(KEEP_ROWS in s for s in s3),
         "_k950_rows：⛔ 有「屬二以上之競合」之停機、仍有「列數 ≠ 2」之停機")
     a, b = _top(src), _top(bsrc)
-    names_ok = set(a) == set(b)
+    names_ok = set(a) == set(b) or (set(a) - set(b) == NEW398 and set(b) <= set(a))   # 🔧 `W-G.9-398`：其後之單之許
     diff = {k for k in a if a.get(k) != b.get(k)}
-    rep("W4", names_ok and diff == CHG_TOP,
+    rep("W4", names_ok and diff in (CHG_TOP, CHG_TOP | W398),
         f"頂層之名之增減 {sorted(set(a) ^ set(b))}（期 []）；頂層節點之相異 {sorted(diff)}（期 {sorted(CHG_TOP)}）")
     lits = []
     for nm in sorted(CHG_TOP):

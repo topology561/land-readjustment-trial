@@ -124,6 +124,9 @@ NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check"
 W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
 ALLOW373_APP += W392
+# 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·KL `2026-10-26 09:53`·⛔ 上列一字不刪）：X2 之許增其新常數與所改之函式（F41 量之）。
+W398 = ("RW_TABLE_25", "rw_from_width")
+ALLOW373_APP += W398
 
 
 def _strip_fns(src, names):

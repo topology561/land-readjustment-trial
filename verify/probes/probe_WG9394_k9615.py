@@ -66,6 +66,7 @@ CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 GB_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])")
 CHG_TOP = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k953_manual_run"}
 W395 = {"end_block_apply"}      # 🔧 `W-G.9-395`：其後之單所改之頂層節點（F39 量之·⛔ 新名）
+NEW398, W398 = {"RW_TABLE_25"}, {"rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之函式（側面道路負擔百分率之附表 25·F41 量之）
 NEED = ["k6_program_stop", "k6_trial_mark", "k6_trial_raise_since", "K6_PROGRAM_STOPS", "k929_6_fixpoint",
         "k6b_stage3_run", "end_block_merge_run"]
 TWD = (37.0, True, (302512.0, 2650318.0))
@@ -482,7 +483,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W1", not add and not rem and chg in (CHG_TOP, CHG_TOP | W395), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
+    rep("W1", add in (set(), NEW398) and not rem and chg in (CHG_TOP, CHG_TOP | W395, CHG_TOP | W395 | W398), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")   # 🔧 `W-G.9-398`：其後之單之許
     # W2
     rs = _fn_node(ta, "k6_trial_raise_since")
     gb2 = None

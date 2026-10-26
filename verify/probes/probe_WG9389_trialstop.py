@@ -56,6 +56,7 @@ W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_N
 W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
 # 🔧 `W-G.9-395`：其後之單所改之頂層節點（K-9-60 ①③·二形之查⛔ 及之·F39 量之）
 W395 = {"end_block_apply", "end_block_merge_run", "k6b_stage3_run"}
+NEW398, W398 = {"RW_TABLE_25"}, {"RW_TABLE_25", "rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之頂層節點（側面道路負擔百分率之附表 25·F41 量之）
 TAG_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])|【未裁】")
 TRIAL_CALLS = {"f3_screen_stepg_run", "run_step_g", "trial", "alloc_eval"}
 CATCH = {"RuntimeError", "_K6BTrialStop", "Exception"}
@@ -571,6 +572,8 @@ def wiring(repo, base):
     why395 = [w for w in why if w.split("：")[0] not in W395]
     ok3 = ok3 or (add == NEW_TOP | set(NEW391) | set(NEW392) and not gone
                   and set(dif) <= ALLOW | ALLOW390 | set(W391) | set(W392) | W395 and not why395)
+    ok3 = ok3 or (add == NEW_TOP | set(NEW391) | set(NEW392) | NEW398 and not gone
+                  and set(dif) <= ALLOW | ALLOW390 | set(W391) | set(W392) | W395 | W398 and not why395)   # 🔧 `W-G.9-398`：同（F41 量之）
     res.append(("X3 頂層：新名 ＝ 五·相異 ⊆ 本單之許·其差唯二形", ok3,
                 f"增 {sorted(add)}／去 {sorted(gone)}／相異 {dif}／不合 {why}"))
     # X4

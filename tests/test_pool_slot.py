@@ -27,6 +27,8 @@ _FUNCS = ("rw_from_width", "_select_pool_slot")
 #   ⚠️ 本清單**手動維護**——新增常數引用時要同步，缺漏會 loud（見下 `missing_c`），
 #      不會靜默回舊值。
 _CONSTS = ("RW_SATURATION_WIDTH_M",)
+# 🔧 `W-G.9-398`：`rw_from_width` 改照手冊附表 25（KL 2026-10-26 09:53）後引用其表之常數 `RW_TABLE_25` ⇒ 一併抽出。
+_CONSTS = _CONSTS + ("RW_TABLE_25",)
 
 
 def _extract():
@@ -83,14 +85,16 @@ def run_all_cases():
     r = slot([8], _side(True, b=10.0), _side(False))
     got = round(r["table"][-1]["ΣRw_L"], 4)
     exp = round(R(18) - R(10), 4)
-    assert got == exp == 28.9, f"案5 ΣRw 應={exp}（R(18)−R(10)），實得 {got}"
+    # 🔧 `W-G.9-398`：附表 25 之 R(10) ＝ 71.11 ⇒ 100 − 71.11 ＝ 28.89（舊簡表 71.1 ⇒ 28.9）
+    assert got == exp == 28.89, f"案5 ΣRw 應={exp}（R(18)−R(10)），實得 {got}"
     assert r["k"] == 1, f"案5 k* 應=1，實得 {r['k']}"
 
     # 案6（E5 單筆過寬越 18m）：w=[40,5,5] 雙側 → 飽和側邊際 0 →
     #   J(1)=(100+R(10))/100=1.711 > J(2)=(100+R(5))/100=1.44 → k*=1
     r = slot([40, 5, 5], _side(True), _side(True))
     jb = {t["k"]: round(t["J"], 4) for t in r["table"]}
-    assert jb == {1: 1.711, 2: 1.44}, f"案6 J 表應 {{1:1.711, 2:1.44}}，實得 {jb}"
+    # 🔧 `W-G.9-398`：附表 25 之 R(10) ＝ 71.11、R(5) ＝ 44.03 ⇒ 1.7111／1.4403（舊簡表 1.711／1.44）
+    assert jb == {1: 1.7111, 2: 1.4403}, f"案6 J 表應 {{1:1.7111, 2:1.4403}}，實得 {jb}"
     assert r["k"] == 1, f"案6 k* 應=1，實得 {r['k']}"
 
     # 案7（E6 pinned）：n=2 雙側 → K={1} 唯一（釘選街角不可被池頂掉）
@@ -103,7 +107,8 @@ def run_all_cases():
     #   reviewer NOTE：直接鎖 k 值不依賴 J 大小關係）
     r = slot([4, 4, 4], _side(True, F=2.0, l1=1.0), _side(True, F=1.0, l1=1.0))
     jb = {t["k"]: round(t["J"], 4) for t in r["table"]}
-    assert jb == {1: 1.367, 2: 1.6}, f"案8 J 表應 {{1:1.367, 2:1.6}}，實得 {jb}"
+    # 🔧 `W-G.9-398`：附表 25 之 R(4) ＝ 37.78、R(8) ＝ 61.11 ⇒ (2·37.78＋61.11)／100 ＝ 1.3667、(2·61.11＋37.78)／100 ＝ 1.6
+    assert jb == {1: 1.3667, 2: 1.6}, f"案8 J 表應 {{1:1.3667, 2:1.6}}，實得 {jb}"
     assert r["k"] == 2, f"案8 k* 應=2（加權最大側優先），實得 {r['k']}"
 
     return 8

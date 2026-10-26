@@ -54,6 +54,7 @@ except Exception:  # noqa: BLE001
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 K6 = "K-9-80 ⑥"
 NEW392 = {"K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check"}   # 🔧 `W-G.9-392`
+NEW398 = {"RW_TABLE_25"}   # 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·F41 量之）
 NEW_TOP = {"K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check",
            "k980_mba"}
 
@@ -398,6 +399,7 @@ def wiring(repo, base):
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     ok6 = add == NEW_TOP and not rem
     ok6 = ok6 or (add == NEW_TOP | NEW392 and not rem)   # 🔧 `W-G.9-392`：其後之單之四新名亦許（F36 量之）
+    ok6 = ok6 or (add == NEW_TOP | NEW392 | NEW398 and not rem)   # 🔧 `W-G.9-398`：其後之單之新常數亦許（F41 量之）
     print(("  ✅" if ok6 else "  🔴") + f" W6 頂層之名之增 {sorted(add)}（期 {sorted(NEW_TOP)}）、減 {sorted(rem)}")
     if not ok6:
         red.append("W6")

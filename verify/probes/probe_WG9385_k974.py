@@ -67,6 +67,8 @@ F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
 W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
+# 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·KL `2026-10-26 09:53`·⛔ 上列一字不刪）：W7 之頂層之相異之許增其新常數與所改之函式（F41 量之）。
+W398 = ("RW_TABLE_25", "rw_from_width")
 TOL = 1e-9
 
 
@@ -513,6 +515,9 @@ def wiring(repo, base):
         ok7 = (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"} | {"adj_intake"} | {"k6b_stage3_run"}
                | set(W389_APP) | set(W391) | set(W392)
                and sorted(h for _, h in dels) == sorted(REPL385) and all(k == "main" for k, _ in dels))
+        ok7 = ok7 or (set(dif) <= set(NEW_NAMES) | {"main", "calc_special_burden_total"} | {"adj_intake"} | {"k6b_stage3_run"}
+               | set(W389_APP) | set(W391) | set(W392) | set(W398)
+               and sorted(h for _, h in dels) == sorted(REPL385) and all(k == "main" for k, _ in dels))   # 🔧 `W-G.9-398`：同（F41 量之）
         res.append(("W7 main／calc 唯增列（具名之換列三）·頂層之相異", ok7, f"相異 {dif}／刪列 {len(dels)}"))
     except Exception as e:
         res.append(("W7 main／calc 唯增列（具名之換列三）·頂層之相異", False, f"{type(e).__name__}: {e}"))

@@ -56,6 +56,9 @@ F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
 W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
+# 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·KL `2026-10-26 09:53`·⛔ 上列一字不刪）：其新常數與所改之函式（F41 量之）。
+NEW398 = ("RW_TABLE_25",)
+W398 = NEW398 + ("rw_from_width",)
 
 try:
     sys.stdout.reconfigure(encoding="utf-8")
@@ -547,6 +550,9 @@ def wiring(repo, base):
     # 🔧 `W-G.9-392`：同（F36 量之）
     ok3 = ok3 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW389) | set(NEW391) | set(NEW392)
                   and set(tb) <= set(ta) and set(diff) <= {"k6b_stage3_run"} | set(W389) | set(W391) | set(W392))
+    # 🔧 `W-G.9-398`：同（F41 量之）
+    ok3 = ok3 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW389) | set(NEW391) | set(NEW392) | set(NEW398)
+                  and set(tb) <= set(ta) and set(diff) <= {"k6b_stage3_run"} | set(W389) | set(W391) | set(W392) | set(W398))
     print(("  ✅" if ok3 else "  🔴") + f" X3 頂層之相異 {diff}（期 ['k6b_stage3_run']）、名之集同 {set(ta) == set(tb)}")
     if not ok3:
         red.append("X3")

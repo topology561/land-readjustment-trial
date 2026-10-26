@@ -65,6 +65,7 @@ FRAG_EMPTY = "frag_poly" + " 空"          # 舊之停機之訊息之子字串�
 CHG_TOP = {"end_block_side_geom", "_end_region_R", "end_block_band_width", "_place_pool_parcels", "end_block_apply"}
 # 🔧 `W-G.9-394`：其後之單所改之頂層節點（K-9-61 ⑤·GB-205 之試算之內之處置·F38 量之·⛔ 新名）
 W394 = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k953_manual_run"}
+NEW398, W398 = {"RW_TABLE_25"}, {"rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之函式（側面道路負擔百分率之附表 25·F41 量之）
 MW, DEP, LEN = 3.5, 30.0, 40.0
 
 
@@ -410,7 +411,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W5", not add and not rem and chg in (CHG_TOP, CHG_TOP | W394), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
+    rep("W5", add in (set(), NEW398) and not rem and chg in (CHG_TOP, CHG_TOP | W394, CHG_TOP | W394 | W398), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")   # 🔧 `W-G.9-398`：其後之單之許
     # W6
     tbo = ast.parse(old)
     lits = []
