@@ -1,14 +1,14 @@
 {
- "status": "running",
- "status_since": "2026-10-26T16:23:13+08:00",
+ "status": "reported",
+ "status_since": "2026-10-26T21:14:22+08:00",
  "order": "W-G.9-398_規格單.md",
  "order_bytes": 150064,
  "order_sha256": "beb469830bda6218299a0e0b7ea24c3794765bc079441235c43a959f1d052d18",
  "order_kind": "規格單",
  "expects_allocation_change": true,
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "W-G.9-398_規格單_回報.md",
+ "result": "完成",
  "kl_question": "2026-10-26_K-9-60②之二處兩讀.md",
  "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
  "history": [
@@ -1257,6 +1257,13 @@
    "from": "pending",
    "to": "running",
    "note": "接單 W-G.9-398_規格單.md（bytes 150064·sha256 beb469830bda…·SELF_SHA256 8229402e0856… 皆自驗相符）"
+  },
+  {
+   "at": "2026-10-26T21:14:22+08:00",
+   "by": "執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "回報 W-G.9-398_規格單.md（完成）：新側支 verify/W-G.9-398-rw25 ＝ f74837098ad2…（工項零 96c06e9·一 07d1202·二 c35d32a·三 0dad1a00·四 f748370）；V-1〜V-9 皆合、本案配地之改變 ＝ §一 項 5（3.5 m 7 項／0 m 12 項）、收工閘 1〜8 皆合；主線⛔ 動（20e03bf）；審查之 (B) 二項呈發單端（報告 四）"
   }
  ],
  "kl_pending": [
