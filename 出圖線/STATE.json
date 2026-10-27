@@ -1,15 +1,15 @@
 {
- "status": "running",
- "status_since": "2026-10-28T01:48:35+08:00",
+ "status": "reported",
+ "status_since": "2026-10-28T01:57:52+08:00",
  "order": "W-P.004_附表20-22.md",
  "order_bytes": 67630,
  "order_sha256": "fdf334f8a786a2970b8b5111493ecf4761f58eca17f59b3196da5b723972cff8",
  "order_kind": "規格單",
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "出圖線/reports/W-P.004_回報.md",
+ "result": "完成",
  "kl_question": null,
- "wip_plots": "16705506114aa13d67a346eb20173694dd7a23bf",
+ "wip_plots": "9a3cb61bd5397ecaca62ca30b5c32d57a03b8fd8",
  "history": [
   {
    "at": "2026-10-23T17:50:00+08:00",
@@ -332,6 +332,13 @@
    "from": "pending",
    "to": "running",
    "note": "接 W-P.004（單檔 67630 bytes·sha256 fdf334f8…cff8 相符；許可 N=393·核心線 order W-G.9-398_規格單）"
+  },
+  {
+   "at": "2026-10-28T01:57:52+08:00",
+   "by": "出圖線·執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "W-P.004 完成：側支 verify/W-P.004-burden-tables＝9a3cb61（併主線 20e03bf 於 f53ec43·無衝突）；wip/plots 1670550→9a3cb61（快轉）；附錄甲〜戊 sha256 相符；check_W-P004 8/8、check_W-P003 8/8、check_W-P001 12/12、check_W-P002 8/8；Ⓐ〜Ⓕ 皆紅、成果綠；差異閘綠（對照組紅）；預覽 W-P.004_附表20-22.png（與原型逐位元組同）"
   }
  ]
 }
