@@ -1,6 +1,6 @@
 {
- "status": "verifying",
- "status_since": "2026-10-28T02:18:16+08:00",
+ "status": "await_kl",
+ "status_since": "2026-10-28T02:27:16+08:00",
  "order": "W-P.004_附表20-22.md",
  "order_bytes": 67630,
  "order_sha256": "fdf334f8a786a2970b8b5111493ecf4761f58eca17f59b3196da5b723972cff8",
@@ -8,7 +8,7 @@
  "attempt": 1,
  "report": "出圖線/reports/W-P.004_回報.md",
  "result": "完成",
- "kl_question": null,
+ "kl_question": "出圖線/待KL/2026-10-28_W-P.004_第一版之確認.md",
  "wip_plots": "9a3cb61bd5397ecaca62ca30b5c32d57a03b8fd8",
  "history": [
   {
@@ -346,6 +346,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "復驗 W-P.004"
+  },
+  {
+   "at": "2026-10-28T02:27:16+08:00",
+   "by": "出圖線·發單端",
+   "from": "verifying",
+   "to": "await_kl",
+   "note": "復驗 W-P.004 合：wip/plots＝側支＝9a3cb61（快轉自 1670550·祖含主線 20e03bf·主線未前進）；差異閘綠（對 20e03bf 之 24 列皆在三新目錄；對 1670550 限三目錄唯五 A；對照組改 app.py 紅）；附錄甲〜戊 bytes 與 sha256 相符（自單重擷取 cmp 同）；發單端重出成果，check_W-P004 8/8、check_W-P003 8/8、check_W-P001 12/12、check_W-P002 8/8（fetch_moedict JSON sha256 合）；Ⓐ〜Ⓕ 皆紅、成果綠；預覽重出與 成果/ 及原型逐位元組同；另獨立覆核：自 U_LAND（德安段 53 宗）重算第五項 1336204754／34706／38500.68、私 31341／公 3365、私有 61 人＋公 2、差 243.89；上漲率、B、C、比率以十進位重算合。第一版 ⇒ 請 KL 確認（出圖線/待KL/2026-10-28_W-P.004_第一版之確認.md）"
   }
  ]
 }
