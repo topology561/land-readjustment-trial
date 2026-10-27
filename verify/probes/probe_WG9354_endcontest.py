@@ -39,6 +39,10 @@
   ⛔ 用）；TJ 之名改（交面積並列而 G 大者）；增 TT（G 相同 ⇒ 重劃前面積大者·X2 之 面積_m2 之初值 10 計於 a′ 而⛔ 計於重劃前面積）、
   TU（G 與重劃前面積皆相同 ⇒ 暫編地號小者·交面積反之）。突變 M3 改錨於 `k967_rank`（末鍵去之）、增 M15（首鍵反向）、M16（次鍵
   反向）——原 M3 之錨（題一之並列之支）隨其碼去之。題二（TO〜TS·M4）⛔ 變。
+🔧 `W-G.9-395`（`K-9-60` ①③·KL `2026-10-25 03:58`「三丙」·`10:18`「二甲」·⛔ 上列一字不刪）：H2、H3 之停機去之——H2 改為
+  「一筆土地為同一街廓二端之未達候選 ⇒ 題二之競合：二端皆拿不下 ⇒ 皆⛔ 併、二端皆未達」；H3 改為「一端屬二競合而二端之
+  順序一致 ⇒ 依原位次逐一處之（⛔ 停機）：二競合皆不成、三端皆未達」（二者唯比主列與皆未達）。突變 M8 去之（其錨〔一端二
+  競合之停機〕隨其碼去之·其新形由 F39 量之）；W1 去「一端二競合之停機」之查（三以上之停機照舊·`K-9-60` ② 另單）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, io, os, re, sys
@@ -355,16 +359,21 @@ def _cases(ns):
          lambda: _halt(ns, w, {A1: dict(thr=500, cands=["X1(1)"]), B1: dict(thr=500, cands=["Y1(1)"]),
                                ("BY", "right"): dict(thr=500, cands=["Y2(1)"])}, "[末端塊合併再試] 同一合併群"),
          ("停機", True))
-    _run(out, "H2 一筆土地同時跨占二末端塊 ⇒ 停機",
-         lambda: _halt(ns, w, {A1: dict(thr=500, cands=["X1(1)"]), ("BX", "right"): dict(thr=500, cands=["X1(1)"])},
-                       "一筆土地同時跨占二末端塊"), ("停機", True))
+    # 🔧 `W-G.9-395`（K-9-60 ①）：H2 之停機去之 ⇒ 題二之競合（主列與皆未達）
+    _run(out, "H2 一筆土地為同一街廓二端之未達候選 ⇒ 題二之競合：二端皆拿不下 ⇒ 皆⛔ 併",
+         lambda: (lambda r: (r[0], r[2]))(
+             _go(ns, w, {A1: dict(thr=500, cands=["X1(1)"]), ("BX", "right"): dict(thr=500, cands=["X1(1)"])})),
+         ([("X1(1)", "—", "未成", "—"), ("X1(1)", "—", "未成", "—")], {"BX": ["left", "right"]}))
     wk = _world1(extra=[_tp("KR(1)", "RX", "道路", _R(40, 45, -10, 0), 20), _tp("K3(1)", "BY", H, _R(40, 45, -40, -10), 20),
                         _tp("K4(1)", "BX", H, _R(40, 45, 0, 30), 20)],
                  own_extra={"KR": "gK", "K3": "gK", "K4": "gK"})
-    _run(out, "H3 一末端塊屬二競合 ⇒ 停機",
-         lambda: _halt(ns, wk, {A1: dict(thr=500, cands=["X1(1)", "K4(1)"]), B1: dict(thr=500, cands=["Y1(1)"]),
-                                ("BY", "right"): dict(thr=500, cands=["K3(1)"])}, "屬二以上之競合（K-9-50 射程 ③·逐案呈核）"),
-         ("停機", True))
+    # 🔧 `W-G.9-395`（K-9-60 ③）：H3 之停機去之 ⇒ 依原位次逐一處之（主列與皆未達）
+    _run(out, "H3 一末端塊屬二競合而順序一致 ⇒ 依原位次（甲之競合先、K 之競合後）·皆不成",
+         lambda: (lambda r: (r[0], r[2]))(
+             _go(ns, wk, {A1: dict(thr=500, cands=["X1(1)", "K4(1)"]), B1: dict(thr=500, cands=["Y1(1)"]),
+                          ("BY", "right"): dict(thr=500, cands=["K3(1)"])})),
+         ([("X1(1)", "②", "未成", "—"), ("Y1(1)", "②", "未成", "—"), ("K4(1)", "②", "未成", "—"),
+           ("K3(1)", "②", "未成", "—")], {"BX": ["left"], "BY": ["left", "right"]}))
     # ── 後處理之承前 ──
     wp1 = _world1(extra=[_tp("W5(1)", "BW", H, _R(5, 10, -60, -40), 30)], own_extra={"W5": "g1"})
     _run(out, "P1 他街廓依原位次配得之宗照配（⛔ 動·⛔ 停機）",
@@ -416,7 +425,6 @@ SELF_MUTS = [
     ("M6 未得之一端恆併入已取得之一端", "k6b_stage3_run", "if (Lo['c'] in _kb1 and not (_kb0 - _kb1)",
      "if (False and Lo['c'] in _kb1 and not (_kb0 - _kb1)"),
     ("M7 ⛔ 查三以上", "end_block_merge_run", "            if len(_hit) >= 3:", "            if False:"),
-    ("M8 ⛔ 查一端二競合", "end_block_merge_run", "                if (_blk, _sd) in _tgc:", "                if False:"),
     ("M9 未得之一端⛔ 略同群之候選", "k6b_stage3_run",
      "            _skip.setdefault((e['blk'], e['end']), set()).update(_mem)", "            pass"),
     ("M10 無受併宗街廓之配得者⛔ 照配", "k6b_stage3_run", "        R = R - _stay\n", "        R = R\n"),
@@ -478,9 +486,9 @@ def selftest(repo):
 def _wiring_checks(app, sel):
     res = []
     mr = _fn_src(app, "end_block_merge_run") or ""
-    ok1 = (mr.count("contests=(_ct or None))") == 1 and "if len(_hit) >= 3:" in mr and "if (_blk, _sd) in _tgc:" in mr
+    ok1 = (mr.count("contests=(_ct or None))") == 1 and "if len(_hit) >= 3:" in mr    # 🔧 `W-G.9-395`：一端二競合之查去之
            and "'形': ('二' if _hit[0][0] == _hit[1][0] else '一')" in mr and "k6b_stage3_run(_rows, _L, own_map" in mr)
-    res.append(("W1 `end_block_merge_run` 交競合、三以上與一端二競合停機、題一／題二依街廓之同異", ok1, ""))
+    res.append(("W1 `end_block_merge_run` 交競合、三以上停機、題一／題二依街廓之同異", ok1, ""))
     k6 = _fn_src(app, "k6b_stage3_run") or ""
     ok2 = False
     if k6:

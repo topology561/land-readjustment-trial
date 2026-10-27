@@ -25,6 +25,9 @@
            R2（唯首一退縮）注入：手冊先行之內，入池閘自其第 2 次之呼叫起立程式之停機（`GB-999`）⇒ 須上拋至
            `run_corner_pk_k6b`（訊息含 `GB-999` 與「試算內之程式之停機·手冊先行」）·⛔ 判為不過而續辦。
 🔧 `W-G.9-390`（`K-9-61` ④·⛔ 上列一字不刪）：X3 之許增 `k6b_stage3_run`（其差⛔ 限於二形·其行為與接線由 F34 量之）。
+🔧 `W-G.9-395`（`K-9-60` ①③·⛔ 上列一字不刪）：X3 之許增 `end_block_apply`、`end_block_merge_run`、`k6b_stage3_run`——其
+  停機之去（`GB-207`、一筆跨占二末端塊、一端屬二競合）⇒ 其差⛔ 限於二形（`end_block_merge_run` 之二形之查於此三名⛔ 及之·
+  其行為與接線由 F39 量之）。
 rc：0 相符／1 不符／2 用法錯／3 無從判定（執行中止·⛔ 等同相符）。
 """
 import ast, contextlib, copy, difflib, io, math, os, re, subprocess, sys
@@ -51,6 +54,8 @@ F391 = ("verify/stepg_pipeline.py", "verify/run_verification.py")
 NEW392 = ("K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check")
 W392 = NEW392 + ("_solve_G_one", "end_block_host", "f3_screen_stepg_run", "_WF_NS_NAMES")
 W392 = W392 + ("_corner_first_lot_G",)   # 🔧 `W-G.9-392` 補令一：評選之式之起算點（K-9-41 ①·F36 W8 量之）
+# 🔧 `W-G.9-395`：其後之單所改之頂層節點（K-9-60 ①③·二形之查⛔ 及之·F39 量之）
+W395 = {"end_block_apply", "end_block_merge_run", "k6b_stage3_run"}
 TAG_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])|【未裁】")
 TRIAL_CALLS = {"f3_screen_stepg_run", "run_step_g", "trial", "alloc_eval"}
 CATCH = {"RuntimeError", "_K6BTrialStop", "Exception"}
@@ -562,6 +567,10 @@ def wiring(repo, base):
     # 🔧 `W-G.9-392`：同（F36 量之）
     ok3 = ok3 or (add == NEW_TOP | set(NEW391) | set(NEW392) and not gone
                   and set(dif) <= ALLOW | ALLOW390 | set(W391) | set(W392) and not why)
+    # 🔧 `W-G.9-395`：同（W395 之三名之二形之查⛔ 及之·F39 量之）
+    why395 = [w for w in why if w.split("：")[0] not in W395]
+    ok3 = ok3 or (add == NEW_TOP | set(NEW391) | set(NEW392) and not gone
+                  and set(dif) <= ALLOW | ALLOW390 | set(W391) | set(W392) | W395 and not why395)
     res.append(("X3 頂層：新名 ＝ 五·相異 ⊆ 本單之許·其差唯二形", ok3,
                 f"增 {sorted(add)}／去 {sorted(gone)}／相異 {dif}／不合 {why}"))
     # X4
