@@ -6151,6 +6151,37 @@ RW_TABLE_25 = (
 )
 
 
+def rw_width_mm(W: float) -> float:
+    """
+    街角地側面道路負擔之寬度 W 之公釐值（W-G.9-398 補令一·KL 2026-10-27 23:29「採戊」：
+    「寬度先四捨五入至公釐，再依附表 25 內插；清冊之寬度記至公釐」）。
+      以 `repr(float(W))` 之十進位字面起算、依四捨五入（ROUND_HALF_UP）取至 0.001
+      （例：6.0745 ⇒ 6.075、7.1975 ⇒ 7.198、5.3004 ⇒ 5.300、17.9995 ⇒ 18.000；
+       二進位之 `round(W, 3)` 於前二例得 6.074、7.197 ⇒ ⛔ 用）。
+      W 非有限值（NaN、±inf）⇒ ValueError（no-silent-fallback）。
+    全檔之「寬度取至公釐」唯經本函式（⛔ 另寫第二份取位之式）。
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+    W = float(W)
+    if not math.isfinite(W):
+        raise ValueError(f"rw_width_mm：W 非有限值：{W!r}")
+    return float(Decimal(repr(W)).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP))
+
+
+def rw_pct_2dp(x: float) -> float:
+    """
+    側街負擔百分率之顯示值（W-G.9-398 補令一·請示之附帶告知 2「百分率之顯示改依四捨五入」·KL 2026-10-28 10:48 未異議）。
+      先以 `round(x, 6)` 去浮點之殘（百分率之真值至多五位小數：W 之公釐值於附表 25 之內插得四位、0〜1 m 之段得五位），
+      再以其 `repr` 之十進位字面依四捨五入（ROUND_HALF_UP）取至 0.01（例：22.214999999999996 ⇒ 22.22）。
+      x 非有限值 ⇒ ValueError。
+    """
+    from decimal import Decimal, ROUND_HALF_UP
+    x = float(x)
+    if not math.isfinite(x):
+        raise ValueError(f"rw_pct_2dp：x 非有限值：{x!r}")
+    return float(Decimal(repr(round(x, 6))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
 def rw_from_width(W: float) -> float:
     """
     街角地側面道路負擔百分率（Rw %）— 依《市地重劃實施辦法》第 29 條附件二，
@@ -6160,8 +6191,18 @@ def rw_from_width(W: float) -> float:
       ③ 0 < W < 1m ⇒ 自 (0, 0) 至 (1.0m, 1m 之格值) 線性（手冊表自 1m 起）；
       ④ 1 ≤ W < 18（公尺）：W 落於格點（每 0.1m 一格·距格點 ≤ 1e-10m 視為格點）⇒ 該格之值；
          否則以所在格間之二格點之值線性內插（附表 25 備註「公分以下用內插法」；17.9m 之次格點 ＝ 100）。
+    🔧 W-G.9-398 補令一（KL 2026-10-27 23:29「採戊」：寬度先四捨五入至公釐，再依附表 25 內插）：
+      ① 之後、③④ 之前，W ← `rw_width_mm(W)`（公釐值）；取位後 W ≤ 0 ⇒ 0、W ≥ 18m ⇒ 100（例：17.9995 ⇒ 100）；
+      其後之 ③④ 以公釐值為受詞（0 < W < 1m 之段之寬度同取至公釐·KL 2026-10-27 21:30 第 3 點）。
     """
     W = float(W or 0.0)
+    if math.isnan(W):
+        raise ValueError(f"rw_from_width：W 為 NaN：{W!r}")
+    if W <= 0:
+        return 0.0
+    if W >= RW_SATURATION_WIDTH_M:
+        return 100.0
+    W = rw_width_mm(W)
     if W <= 0:
         return 0.0
     if W >= RW_SATURATION_WIDTH_M:
@@ -6876,7 +6917,7 @@ def iterate_G_S(a: float, A: float, B: float, C: float,
 
     if avg_depth <= 0 or a <= 0:
         return {'G': 0.0, 'S': 0.0, 'iterations': 0, 'converged': False,
-                'trace': [], 'W': round(W_prev, 2), 'Rw_pct': 0.0}
+                'trace': [], 'W': rw_width_mm(W_prev), 'Rw_pct': 0.0}
 
     tb = float(tab6_total_burden) if tab6_total_burden is not None else float(B)
     tb = max(0.0, min(0.9, tb))
@@ -6927,7 +6968,7 @@ def iterate_G_S(a: float, A: float, B: float, C: float,
     return {
         'G': round(G, 2), 'S': round(S, 2),
         'iterations': it, 'converged': converged, 'trace': trace,
-        'W': round(W_cur, 2), 'W_far': round(W_cur, 2), 'Rw_pct': round(Rw_pct, 2),
+        'W': rw_width_mm(W_cur), 'W_far': rw_width_mm(W_cur), 'Rw_pct': rw_pct_2dp(Rw_pct),
     }
 
 
@@ -12127,7 +12168,14 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
        「一槽兩用餵錯量」）。
 
     回傳：{'G', 'S', 'W', 'Rw_pct', 'area_geom', 'iterations', 'converged', 'trace',
-          'allocation_dir'}
+          'allocation_dir', 'jump398'}
+
+    🔧 W-G.9-398 補令一（KL 2026-10-27 23:29「採戊」·2026-10-28 10:48 第一問「是」、第二問「甲」）：
+      'W'／'W_far'／'W_near' ＝ 寬度之公釐值（`rw_width_mm`）⇒ 次宗之起算 ＝ 前宗遠側寬度之公釐值；
+      'Rw_pct' ＝ 百分率之顯示值（`rw_pct_2dp`·十進位四捨五入至二位）；
+      'jump398'：二分終而未收斂、「diff < 0 之最末之試點」與「diff > 0 之最末之試點」皆存而二者之寬度之公釐值相異
+      （＝ 地界線落於半公釐之跳處）⇒ 取 |diff| 較小之一試點為解（相等 ⇒ diff > 0 之一·即寬度之公釐值較大〔進位〕之一）、
+      converged 為真，其值 ＝ '捨'（取 diff < 0 之一）／'進'（取 diff > 0 之一）；其餘一切情形 ＝ None（行為照舊）。
     """
     import numpy as np
     a = float(a or 0.0); A = float(A or 0.0); B = float(B or 0.0); C = float(C or 0.0)
@@ -12204,6 +12252,8 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     _W_near_out = 0.0                # W 正典：本宗近側界線之 KL W（mp→近側·供 stepg telescoping 閘 W₀ 用）
     _rw_start = 0.0                  # 🆕 K-9-5-6：本宗 Rw 鏈之**起點**（首宗＝自量 W_near；其餘＝前一宗 W_far）
     last_W = 0.0; last_Rw = 0.0; last_G_target = 0.0; last_area = 0.0
+    # 🆕 W-G.9-398 補令一（跳處·甲）：diff < 0／diff > 0 之最末之試點（S_guess, G_target, W, Rw_pct, area_geom, diff）
+    _neg398 = None; _pos398 = None
     it = 0
     for it in range(1, max_iter + 1):
         S_guess = (S_min + S_max) / 2.0
@@ -12289,6 +12339,10 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
 
         last_W = W; last_Rw = Rw_pct
         last_G_target = G_target; last_area = area_geom
+        if diff < 0:
+            _neg398 = (S_guess, G_target, W, Rw_pct, area_geom, diff)
+        elif diff > 0:
+            _pos398 = (S_guess, G_target, W, Rw_pct, area_geom, diff)
 
         trace.append({
             'step': it, 'S_guess': round(S_guess, 3),
@@ -12316,6 +12370,16 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
         W_conv = last_W
         Rw_conv = last_Rw
         area_conv = last_area
+
+    # 🆕 W-G.9-398 補令一（跳處·甲·KL 2026-10-28 10:48 第二問「甲 取較接近者」）：
+    #   未收斂而二試點之寬度之公釐值相異 ⇒ 解落於半公釐之跳處 ⇒ 取 |diff| 較小之一（等距 ⇒ diff > 0〔進位〕之一）。
+    _jump398 = None
+    if (not converged and _neg398 is not None and _pos398 is not None
+            and rw_width_mm(_neg398[2]) != rw_width_mm(_pos398[2])):
+        _pick398 = _neg398 if abs(_neg398[5]) < abs(_pos398[5]) else _pos398
+        S_conv, G_conv, W_conv, Rw_conv, area_conv = _pick398[:5]
+        converged = True
+        _jump398 = '捨' if _pick398 is _neg398 else '進'
 
     # 把 allocation_dir 序列化為可儲存的 list（np.ndarray 不易存於 session_state）
     ad_out = None
@@ -12371,16 +12435,17 @@ def solve_G_binary(a: float, A: float, B: float, C: float,
     return {
         'G': round(G_conv, 2), 'S': round(S_conv, 2),
         'S_raw': S_conv,   # S0d（補丁四 §二）：'S' 為 2dp 顯示·'S_raw' 全精度供推進同源（app/stepg 四處推進讀之）
-        'W': round(W_conv, 2), 'W_far': round(W_conv, 2),  # W_far：本宗遠側 KL W（mp→遠側·脫鉤後 intrinsic）
-        'W_near': round(_W_near_out, 2),                    # W 正典：本宗近側 KL W（供 stepg telescoping 閘 W₀）
+        'W': rw_width_mm(W_conv), 'W_far': rw_width_mm(W_conv),  # W_far：本宗遠側 KL W（mp→遠側·脫鉤後 intrinsic）·公釐值（W-G.9-398 補令一）
+        'W_near': rw_width_mm(_W_near_out),                 # W 正典：本宗近側 KL W（供 stepg telescoping 閘 W₀）·公釐值（W-G.9-398 補令一）
         'W_rw_start': round(_rw_start, 4),                  # 🆕 K-9-5-6：Rw 鏈起點（哨兵 §四(b)(c) 用·純加性）
         # 🆕 **D-2b-5 §三 歸因用·純加性·⛔ 零行為變更·⛔ 無消費者讀之以改行為**：
-        #   `W_far`／`Rw_pct` 皆 2dp 顯示值；鏈起點取自**已捨入之 `W_far`** ⇒ 捨入誤差經
-        #   `rw_from_width` 之斜率**放大**後進入 ΣRw。歸因須逐位比對，故曝未捨入值。
+        #   🔧 W-G.9-398 補令一：`W_far` ＝ 公釐值、`Rw_pct` ＝ 百分率之顯示值（十進位四捨五入至二位）；
+        #   鏈起點取自**公釐值之 `W_far`**（＝ 前宗遠側寬度之公釐值·KL 2026-10-27 23:29「採戊」）。歸因須逐位比對，故曝未捨入值。
         'W_far_raw': W_conv,                                # 未捨入之本宗遠側 W
         'Rw_raw': Rw_conv,                                  # 未捨入之本宗 Rw(%)
-        'W_rw_start_raw': _rw_start,                        # 未捨入之鏈起點（＝上一宗之**已捨入** W_far）
-        'Rw_pct': round(Rw_conv, 2),
+        'W_rw_start_raw': _rw_start,                        # 未捨入之鏈起點（＝上一宗之 W_far 之**公釐值**·W-G.9-398 補令一）
+        'Rw_pct': rw_pct_2dp(Rw_conv),                      # 百分率之顯示值（W-G.9-398 補令一）
+        'jump398': _jump398,                                # 🆕 W-G.9-398 補令一：跳處之取（'進'／'捨'／None）
         'area_geom': round(area_conv, 2),
         'iterations': it, 'converged': converged, 'trace': trace,
         'allocation_dir': ad_out,  # §0.5-B：實際使用之臨街向（rot90(f3_cad_alloc_dir)）
@@ -21738,7 +21803,7 @@ def f3_screen_stepg_run(st, *,
             '第1筆街角': '是' if _is_first_corner else '否',
             '街角側別': _side if _is_corner_mark else '—',
             'F(m)': round(_F, 2),
-            'W(m)': round(_res.get('W', 0.0), 2),
+            'W(m)': round(_res.get('W', 0.0), 3),
             'Rw(%)': round(_res.get('Rw_pct', 0.0), 2),
             'S(m)': round(_res.get('S', 0.0), 2),
             '幾何面積(㎡)': round(_res.get('area_geom', 0.0), 2),
@@ -29095,7 +29160,7 @@ def main():
   「左側長度」或「右側長度」（左右定義：站在街廓內面向正面道路，左手邊為左側、右手邊為右側）
 - **W**：宗地側街臨街線實際長度之中點，向宗地分配線作垂直線所量之距離。
   **按「🔍 自動計算 W」**可由「街廓多邊形 + 宗地多邊形 + 街廓分配線（若未指定，以街廓 MBR 長邊方向替代）」自動幾何推導；亦可直接在表格手動輸入。
-- **Rw（%）**：由 104 版作業手冊 P.103 累積表（W=1→17.4、W=2→24.4、…、W=18 以上→100）線性內插。
+- **Rw（%）**：依手冊附表 25（街角地側面道路負擔百分率累積表·每 0.1 m 一格·公分以下內插·W ≥ 18 m 為 100）；W 先四捨五入至公釐。
 - **街廓平均深度 = 街廓面積 ÷ 正面臨接道路長度**
 - **迭代初值 S₀ = a·(1 − 財務分析 總負擔比率) / 街廓平均深度**
 - 收斂條件：|G_k − G_(k-1)| < 0.005 且 |S_(k+1) − S_k| < 0.005（皆取小數點後 2 位）
@@ -30024,7 +30089,7 @@ def main():
                         '正面長度(m)': '{:.2f}', '平均深度(m)': '{:.2f}',
                         'A 地價比': '{:.4f}',
                         'l₂ 正面尺度': '{:.2f}', 'l₁ 側面尺度': '{:.2f}',
-                        'F(m)': '{:.2f}', 'W(m)': '{:.2f}', 'Rw(%)': '{:.2f}',
+                        'F(m)': '{:.2f}', 'W(m)': '{:.3f}', 'Rw(%)': '{:.2f}',
                         'S(m)': '{:.2f}', 'G(㎡)': '{:.2f}',
                         '幾何面積(㎡)': '{:.2f}', '累積S(m)': '{:.2f}',
                         '負擔比率': '{:.2%}',
@@ -30037,6 +30102,7 @@ def main():
                         _df_g[_display_cols].style.format(_fmt),
                         use_container_width=True, hide_index=True,
                     )
+                    st.caption("註：W(m) 記至公釐；累積百分率（附表 25 內插）不取位，各宗之 Rw(%) ＝ 本宗與前一宗（首宗為起算點）之累積百分率相減後四捨五入至小數二位。")
 
                     # 🆕 `W-G.9-349`：入池閘（`K-9-29 六`）之合併紀錄——同歸戶相鄰合併試算之成否（留置／入池）
                     _k929_6_log_v = st.session_state.get('f3_k929_6_log')
