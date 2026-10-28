@@ -422,3 +422,4 @@
 | 2026-10-28T15:52:07+08:00 | 發單端 | 門鈴：`RING executor http=200 session=https://claude.ai/code/cse_01VhAqqmYVGLu3oawVXCeVYZ`（`W-G.9-398_補令二` 出單之後）；effort=high | `pending` |
 | 2026-10-28T15:53:19+08:00 | 執行端 | 接單 `W-G.9-398_補令二.md`（`31655` B·`a10c4f839dfe…` ＝ `STATE.json`·`SELF_SHA256` `8acda5975c1b…` 依 `P-5` 自驗合）；effort=high | `running` |
 | 2026-10-28T16:53:00+08:00 | 執行端 | 進度：`W-G.9-398_補令二` 工項零‴ `d3b6a7e` 已推（新側支 `8bc2add` → `d3b6a7e`·快轉）；前置″ 之 `94` 呼叫於工項零‴ 之端跑中（已完 `6`／`94`·皆合期·並行 `2`）；生產碼已撰（未 `commit`）；effort=high | `running` |
+| 2026-10-28T17:53:00+08:00 | 執行端 | 進度：`W-G.9-398_補令二` 前置″ `94` 呼叫皆合期（`F8` 前態 `13c04b45…`／`f27849f5…`）；工項二″ `7c819b5`（未推）；驗之 `94` 呼叫跑中（並行 `2`）；effort=high | `running` |
