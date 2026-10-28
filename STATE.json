@@ -1,14 +1,14 @@
 {
- "status": "running",
- "status_since": "2026-10-28T23:43:46+08:00",
+ "status": "reported",
+ "status_since": "2026-10-28T23:55:53+08:00",
  "order": "W-G.9-398_補令三.md",
  "order_bytes": 29662,
  "order_sha256": "4545f42be7837b217e27c4954051d66182dcd281bbfd970c30b50ddd5ebea4f8",
  "order_kind": "短單",
  "expects_allocation_change": true,
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "W-G.9-398_補令三_回報.md",
+ "result": "完成",
  "kl_question": null,
  "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
  "history": [
@@ -1411,6 +1411,13 @@
    "from": "running",
    "to": "running",
    "note": "快轉前之記：主線 20e03bfd57f69b42ff9db0eff0fad9d90ed00f1f → bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434（將快轉·工項零⁗ 已推側支 verify/W-G.9-398-rw25 0534828 → bd7da4d·前置 1〜4 皆合期）"
+  },
+  {
+   "at": "2026-10-28T23:55:53+08:00",
+   "by": "執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "回報 W-G.9-398_補令三（完成·主線 20e03bfd57f69b42ff9db0eff0fad9d90ed00f1f → bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434 快轉·側支 0534828 → bd7da4d·收工閘 1⁗〜8⁗ 皆合期）"
   }
  ],
  "kl_pending": []
