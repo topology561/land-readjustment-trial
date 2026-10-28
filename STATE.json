@@ -1,6 +1,6 @@
 {
- "status": "reported",
- "status_since": "2026-10-28T23:55:53+08:00",
+ "status": "verifying",
+ "status_since": "2026-10-28T23:56:40+08:00",
  "order": "W-G.9-398_補令三.md",
  "order_bytes": 29662,
  "order_sha256": "4545f42be7837b217e27c4954051d66182dcd281bbfd970c30b50ddd5ebea4f8",
@@ -1418,6 +1418,13 @@
    "from": "running",
    "to": "reported",
    "note": "回報 W-G.9-398_補令三（完成·主線 20e03bfd57f69b42ff9db0eff0fad9d90ed00f1f → bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434 快轉·側支 0534828 → bd7da4d·收工閘 1⁗〜8⁗ 皆合期）"
+  },
+  {
+   "at": "2026-10-28T23:56:40+08:00",
+   "by": "發單端",
+   "from": "reported",
+   "to": "verifying",
+   "note": "接手復驗 W-G.9-398_補令三（入主線之短單·完成·⛔ 採自報）"
   }
  ],
  "kl_pending": []
