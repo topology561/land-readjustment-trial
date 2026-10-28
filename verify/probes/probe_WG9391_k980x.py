@@ -57,6 +57,9 @@ NEW392 = {"K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check"
 NEW398 = {"RW_TABLE_25"}   # 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·F41 量之）
 # 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
 NEW398B = {"rw_width_mm", "rw_pct_2dp"}
+# 🔧 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:09`／`22:42`／`22:57`·⛔ 上列一字不刪）：其新之頂層名與所改之頂層節點（F42 量之）。
+NEW399 = {"END_BLOCK_LINE_TOL", "END_BLOCK_IDX_W_LINE", "END_BLOCK_IDX_W_AREA", "end_block_end_line", "end_block_end_segs",
+          "end_block_end_geom", "k960_idx_rank", "k960_idx_key", "k960_idx_first"}
 NEW_TOP = {"K980_AREA_TOL", "K980_AREA_EPS", "K980_TOUCH_TOL", "end_block_band_width", "k980_range_touch_check",
            "k980_mba"}
 
@@ -403,6 +406,7 @@ def wiring(repo, base):
     ok6 = ok6 or (add == NEW_TOP | NEW392 and not rem)   # 🔧 `W-G.9-392`：其後之單之四新名亦許（F36 量之）
     ok6 = ok6 or (add == NEW_TOP | NEW392 | NEW398 and not rem)   # 🔧 `W-G.9-398`：其後之單之新常數亦許（F41 量之）
     ok6 = ok6 or (add == NEW_TOP | NEW392 | NEW398 | NEW398B and not rem)   # 🔧 `W-G.9-398` 補令一：同（F41 量之）
+    ok6 = ok6 or (add == NEW_TOP | NEW392 | NEW398 | NEW398B | NEW399 and not rem)   # 🔧 `W-G.9-399`：同（F42 量之）
     print(("  ✅" if ok6 else "  🔴") + f" W6 頂層之名之增 {sorted(add)}（期 {sorted(NEW_TOP)}）、減 {sorted(rem)}")
     if not ok6:
         red.append("W6")

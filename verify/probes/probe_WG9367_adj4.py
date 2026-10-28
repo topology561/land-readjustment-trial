@@ -793,6 +793,11 @@ ANC_SKIP373 = ANC_SKIP373 + ("99.75", "2.68")
 W398B = ("rw_width_mm", "rw_pct_2dp", "iterate_G_S", "solve_G_binary", "f3_screen_stepg_run")
 ALLOW375_APP += W398B
 ANC_SKIP373 = ANC_SKIP373 + ("'W(m)': round(_res.get('W', 0.0), 2),",)
+# 🔧 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:09`／`22:42`／`22:57`·⛔ 上列一字不刪）：W5 之許增其新之頂層名與所改之頂層節點（F42 量之）。
+W399 = ("END_BLOCK_LINE_TOL", "END_BLOCK_IDX_W_LINE", "END_BLOCK_IDX_W_AREA", "end_block_end_line", "end_block_end_segs",
+        "end_block_end_geom", "k960_idx_rank", "k960_idx_key", "k960_idx_first", "end_block_pick", "end_block_apply",
+        "end_block_host", "end_block_eval_rows", "end_block_merge_run", "k6b_stage3_run")
+ALLOW375_APP += W399
 
 
 def _git_show(repo, rev, rel):

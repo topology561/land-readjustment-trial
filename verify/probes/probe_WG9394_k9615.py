@@ -71,6 +71,10 @@ NEW398, W398 = {"RW_TABLE_25"}, {"rw_from_width"}   # 🔧 `W-G.9-398`：其後�
 NEW398B = {"rw_width_mm", "rw_pct_2dp"}
 W398B = {"iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"}
 STEPG398B = ["verify/stepg_pipeline.py"]   # 唯 `W(m)` 之一列（F41 之 X7′ 量之）
+# 🔧 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:09`／`22:42`／`22:57`·⛔ 上列一字不刪）：其新之頂層名與所改之頂層節點（F42 量之）。
+NEW399 = {"END_BLOCK_LINE_TOL", "END_BLOCK_IDX_W_LINE", "END_BLOCK_IDX_W_AREA", "end_block_end_line", "end_block_end_segs",
+          "end_block_end_geom", "k960_idx_rank", "k960_idx_key", "k960_idx_first"}
+W399 = {"end_block_pick", "end_block_apply", "end_block_host", "end_block_eval_rows", "end_block_merge_run", "k6b_stage3_run"}   # 唯所改之既有節點（本器之相異之節點⛔ 計新名）
 NEED = ["k6_program_stop", "k6_trial_mark", "k6_trial_raise_since", "K6_PROGRAM_STOPS", "k929_6_fixpoint",
         "k6b_stage3_run", "end_block_merge_run"]
 TWD = (37.0, True, (302512.0, 2650318.0))
@@ -487,7 +491,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W1", add in (set(), NEW398, NEW398 | NEW398B) and not rem and chg in (CHG_TOP, CHG_TOP | W395, CHG_TOP | W395 | W398, CHG_TOP | W395 | W398 | W398B), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")   # 🔧 `W-G.9-398`：其後之單之許
+    rep("W1", add in (set(), NEW398, NEW398 | NEW398B, NEW398 | NEW398B | NEW399) and not rem and chg in (CHG_TOP, CHG_TOP | W395, CHG_TOP | W395 | W398, CHG_TOP | W395 | W398 | W398B, CHG_TOP | W395 | W398 | W398B | W399), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")   # 🔧 `W-G.9-398`：其後之單之許
     # W2
     rs = _fn_node(ta, "k6_trial_raise_since")
     gb2 = None

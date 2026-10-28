@@ -427,6 +427,12 @@ def wiring(repo, base):
     _new1 = {"RW_TABLE_25", "rw_width_mm", "rw_pct_2dp"}
     ok1 = (add == _new1 and not rem
            and chg == _new1 | {"rw_from_width", "iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"})
+    # 🔧 `W-G.9-399`（末端塊評選指數·⛔ 上列一字不刪）：其後之單之新之頂層名與所改之頂層節點之許（F42 量之）
+    _new399 = {"END_BLOCK_LINE_TOL", "END_BLOCK_IDX_W_LINE", "END_BLOCK_IDX_W_AREA", "end_block_end_line", "end_block_end_segs",
+               "end_block_end_geom", "k960_idx_rank", "k960_idx_key", "k960_idx_first"}
+    _chg399 = _new399 | {"end_block_pick", "end_block_apply", "end_block_host", "end_block_eval_rows", "end_block_merge_run", "k6b_stage3_run"}
+    ok1 = ok1 or (add == _new1 | _new399 and not rem
+                  and chg == _new1 | {"rw_from_width", "iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"} | _chg399)
     print(("  ✅" if ok1 else "  🔴") + f" X1 頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
     if not ok1:
         red.append("X1")
