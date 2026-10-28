@@ -85,6 +85,9 @@ KEEP_ROWS = "".join(("列數", " ≠ ", "2"))
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 CHG_TOP = {"end_block_apply", "end_block_merge_run", "k6b_stage3_run"}
 NEW398, W398 = {"RW_TABLE_25"}, {"RW_TABLE_25", "rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之頂層節點（側面道路負擔百分率之附表 25·F41 量之）
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
+NEW398B = {"rw_width_mm", "rw_pct_2dp"}
+W398B = NEW398B | {"iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"}
 MW, DEP = 3.5, 30.0
 H = "住宅區"
 
@@ -655,8 +658,9 @@ def wiring(repo, base):
         "_k950_rows：⛔ 有「屬二以上之競合」之停機、仍有「列數 ≠ 2」之停機")
     a, b = _top(src), _top(bsrc)
     names_ok = set(a) == set(b) or (set(a) - set(b) == NEW398 and set(b) <= set(a))   # 🔧 `W-G.9-398`：其後之單之許
+    names_ok = names_ok or (set(a) - set(b) == NEW398 | NEW398B and set(b) <= set(a))   # 🔧 `W-G.9-398` 補令一：同
     diff = {k for k in a if a.get(k) != b.get(k)}
-    rep("W4", names_ok and diff in (CHG_TOP, CHG_TOP | W398),
+    rep("W4", names_ok and diff in (CHG_TOP, CHG_TOP | W398, CHG_TOP | W398 | W398B),   # 🔧 `W-G.9-398` 補令一：同
         f"頂層之名之增減 {sorted(set(a) ^ set(b))}（期 []）；頂層節點之相異 {sorted(diff)}（期 {sorted(CHG_TOP)}）")
     lits = []
     for nm in sorted(CHG_TOP):
@@ -669,7 +673,7 @@ def wiring(repo, base):
     out = _git(repo, "diff", "--name-only", base, "--", ":(glob)verify/*.py")
     wt = subprocess.run(["git", "-C", repo, "diff", "--name-only", "--", ":(glob)verify/*.py"], capture_output=True).stdout
     chg = sorted(set((out or b"").decode().split()) | set(wt.decode().split()))
-    rep("W6", out is not None and not chg, f"verify/ 頂層之 *.py 對基準相異 {chg}（期 []）")
+    rep("W6", out is not None and (not chg or chg == ["verify/stepg_pipeline.py"]), f"verify/ 頂層之 *.py 對基準相異 {chg}（期 []）")   # 🔧 `W-G.9-398` 補令一：`stepg` 之 `W(m)` 之一列之許（F41 之 X7′ 量之）
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
 

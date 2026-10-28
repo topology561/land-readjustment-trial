@@ -40,6 +40,27 @@
            X6 新增或改之頂層節點內⛔ 新增案件字面；
            X7 `verify/` 頂層之 `*.py`（生產碼）對基準相異 ＝ 0。
 rc：0 相符／1 不符／2 用法錯。
+
+🔧 `W-G.9-398` 補令一（KL `2026-10-27 23:29`「採戊」·`2026-10-28 10:48` 第一問「是」、第二問「甲」·⛔ 上文一字不刪·其與下列相違者以下列為準）：
+  寬度 W 先四捨五入至公釐（十進位·ROUND_HALF_UP·以 repr 之十進位字面起算）再依附表 25 內插；`W`／`W_far`／`W_near` 回傳其公釐值；
+  次宗之起算寬度 ＝ 前宗遠側寬度之公釐值；地界線恰落於半公釐之跳處之宗取「應分配面積與實際面積」較接近之一端（等距取進位）。
+  期值之源改為 `hb_Rq`（＝ `hb_R(q(W))`·`q` ＝ 發單端以 `Decimal` 自算之公釐取位）；T1〜T6、T8 之受詞皆為格點、格間之 1／4〜3／4
+  （公釐值）或其浮點之鄰（取位後同值）⇒ 期值照舊。改與增：
+  T2′ 格間之 1／4、1／2、3／4 ⇒ ＝ hb_Rq（其公釐值）；
+  T7′ 0〜18.5 m 每 0.0007 m ⇒ ＝ hb_Rq（逐點·差 ≤ 1e-9）、相鄰二值不減、其差 ≤ 0.0174（＝ 0〜1 m 之每公釐之增·W ≥ 1 m 者 ≤ 0.0072）；
+  T9′ 玩具之第 2 宗之起算 ＝ 第 1 宗之寬之公釐值（`_fix` 之 s0 取 q）；自解之寬距半公釐之跳 ≥ 1e-4 m；
+  T10 公釐之四捨五入（十例）：6.0745、1.0005、4.0005、6.4605、12.3455、7.1975、9.9995、5.3005、5.3004、17.9995 ⇒ ＝ hb_Rq
+      （前七例以二進位之 `round(W, 3)` 取位者異·第八、九例捕「⛔ 取位」與「取至公分」·第十例 ⇒ 100）；
+  T11 `_solve_G_one` 之回傳：`W` ＝ `W_far` ＝ q(`W_far_raw`)、`W_near` 為公釐值、`Rw_pct` ＝ (R(q(W_far)) − R(起算)) 之十進位四捨五入至二位；
+  T12 跳處（甲）：玩具之街角第 1 宗之解恰落 S ＝ 5.3005（W ＝ S）之跳處，`a` 使「實際面積」位於跳之二端之 1／4、3／4 ⇒
+      前者取進位之端（G ＝ 跳後·`W_far` ＝ 5.301·`jump398` ＝ '進'）、後者取捨去之端（G ＝ 跳前·`W_far` ＝ 5.300·'捨'）；
+      其 G 取至 2 位 ＝ 發單端之自算、`Rw_pct` ＝ 45.86（進）／45.85（捨）；`converged` 為真（左右二側 × 二座標系·8 例）；
+  T13 `rw_width_mm`：非有限值（NaN、inf）⇒ ValueError；`rw_from_width(NaN)` ⇒ ValueError；`rw_pct_2dp(22.214999999999996)` ＝ 22.22。
+  wiring 之改：X1′ 頂層之名之增恰 `{RW_TABLE_25, rw_width_mm, rw_pct_2dp}`、無減；相異之節點 ＝ 其三 ∪ `{rw_from_width, iterate_G_S,
+  solve_G_binary, f3_screen_stepg_run, main}`；X3′ `rw_from_width` 另須呼 `rw_width_mm`；X7′ `verify/` 頂層之 `*.py` 之相異唯
+  `verify/stepg_pipeline.py`，其差唯 `W(m)` 之一列（`round(…, 2)` ⇒ `round(…, 3)`）；
+  X8 分配計算表之 `W(m)`：`f3_screen_stepg_run` 與 `stepg_pipeline` 之列皆 `round(…, 3)`、`main` 之格式 `'{:.3f}'`；
+  X9 `solve_G_binary`、`iterate_G_S` 之回傳之 `W`／`W_far`／`W_near` 皆經 `rw_width_mm`、`Rw_pct` 皆經 `rw_pct_2dp`（AST·⛔ `round(…, 2)`）。
 """
 import ast, contextlib, io, math, os, re, subprocess, sys
 
@@ -95,6 +116,22 @@ def hb_R(W):
     return _grid(i) + (_grid(i + 1) - _grid(i)) * f
 
 
+def q_mm(W):
+    """發單端之獨立之公釐取位（十進位·ROUND_HALF_UP·以 repr 之十進位字面起算）。"""
+    from decimal import Decimal, ROUND_HALF_UP
+    return float(Decimal(repr(float(W))).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP))
+
+
+def hb_Rq(W):
+    """補令一之期值之源：寬度先取至公釐（`q_mm`）再依附表 25（`hb_R`）。"""
+    W = float(W)
+    if W <= 0:
+        return 0.0
+    if W >= 18.0:
+        return 100.0
+    return hb_R(q_mm(W))
+
+
 def old_R(W):
     W = float(W)
     if W <= 0:
@@ -136,12 +173,14 @@ def _xf(ang_deg, mirror, tx, ty):
 _L, _D, _A, _B, _C, _LF, _LS, _F = 60.0, 20.0, 1.2, 0.3, 0.25, 6.0, 4.0, 20.0
 
 
-def _fix(a, s0, R):
-    """玩具之不動點：D·S ＝ (a(1−A·B) − (R(s0＋S) − R(s0))·F·l₁／100 − S·l₂)(1−C)·二分至 1e-12（⛔ 由受測之碼產）。"""
+def _fix(a, s0, R, w0=None):
+    """玩具之不動點：D·S ＝ (a(1−A·B) − (R(s0＋S) − R(w0))·F·l₁／100 − S·l₂)(1−C)·二分至 1e-12（⛔ 由受測之碼產）。
+    補令一：`w0`（起算寬度）缺 ⇒ `s0`；第 2 宗以後傳前宗之寬之公釐值。"""
+    w0 = s0 if w0 is None else w0
     lo, hi = 0.0, _L - s0
     for _ in range(200):
         m = 0.5 * (lo + hi)
-        rhs = (a * (1 - _A * _B) - (R(s0 + m) - R(s0)) * _F * _LS / 100.0 - m * _LF) * (1 - _C)
+        rhs = (a * (1 - _A * _B) - (R(s0 + m) - R(w0)) * _F * _LS / 100.0 - m * _LF) * (1 - _C)
         if _D * m > rhs:
             hi = m
         else:
@@ -156,6 +195,7 @@ def _toy(ns):
     from shapely.geometry import Polygon
     import streamlit as _st9
     got, exp_new, exp_old, mg = [], [], [], 1.0
+    mj = [1.0]
     for fr in (_xf(0, False, 0.0, 0.0), _xf(37, True, 307123.4, 2654321.7)):
         f, v = fr
         poly = Polygon([f(p) for p in [(0, 0), (_L, 0), (_L, _D), (0, _D)]])
@@ -178,23 +218,64 @@ def _toy(ns):
                 r2, _ = ns["_solve_G_one"](a_m2=a2, A=_A, l_front=_LF, l_side=_LS, F=_F, blk_poly=poly, d_hat=d_use,
                                            baseline_pt=b2, S_max=_L - s1, is_corner=False, side=side + "側",
                                            avg_depth=_D, B=_B, C=_C, tab6_burden=_B + _C, allocation_dir=ad,
-                                           side_mid=mid, W_prev=s1, near_dir=r1.get("_alloc_dir_used"),
+                                           side_mid=mid, W_prev=float(r1["W_far"]), near_dir=r1.get("_alloc_dir_used"),
                                            w0_start=None, is_chain_head=False, s_back=0.0)
-                g1n, s1n = _fix(a1, 0.0, hb_R)
-                g2n, _ = _fix(a2, s1n, hb_R)
+                g1n, s1n = _fix(a1, 0.0, hb_Rq)
+                g2n, s2n = _fix(a2, s1n, hb_Rq, q_mm(s1n))
                 mg = min([mg] + [abs((g * 100.0) % 1.0 - 0.5) / 100.0 for g in (g1n, g2n)])
+                mj[0] = min([mj[0]] + [abs((w * 1000.0) % 1.0 - 0.5) / 1000.0 for w in (s1n, s1n + s2n)])
                 g1o, s1o = _fix(a1, 0.0, old_R)
                 g2o, _ = _fix(a2, s1o, old_R)
                 got += [round(float(r1["G"]), 2), round(float(r2["G"]), 2)]
                 exp_new += [round(g1n, 2), round(g2n, 2)]
                 exp_old += [round(g1o, 2), round(g2o, 2)]
     _st9.session_state.pop("f3_cad_side_lines_by_side", None)
-    return got, exp_new, exp_old, mg
+    return got, exp_new, exp_old, mg, mj[0]
+
+
+def _toy_jump(ns):
+    """T12／T11：玩具之街角第 1 宗之解恰落 W ＝ 5.3005 之跳處（甲）；並收 T11 之回傳之欄。"""
+    import numpy as np
+    from shapely.geometry import Polygon
+    import streamlit as _st9
+    k = _F * _LS / 100.0
+    Ss = 5.3005
+    Glo = (- hb_R(5.300) * k - Ss * _LF) * (1 - _C)      # 加 a(1−A·B)(1−C) 前之常數部（跳前·捨）
+    Ghi = (- hb_R(5.301) * k - Ss * _LF) * (1 - _C)      # 跳後·進
+    out, t11 = [], []
+    for fr in (_xf(0, False, 0.0, 0.0), _xf(37, True, 307123.4, 2654321.7)):
+        f, v = fr
+        poly = Polygon([f(p) for p in [(0, 0), (_L, 0), (_L, _D), (0, _D)]])
+        dh = np.array(v((1, 0)), dtype=float)
+        ad = ns["alloc_normal_axis"](v((0, 1)))
+        for side in ("左", "右"):
+            x = 0.0 if side == "左" else _L
+            sd = {"p1": f((x, 0.0)), "p2": f((x, _D)), "mid": f((x, _D / 2.0))}
+            _st9.session_state["f3_cad_side_lines_by_side"] = {"GT": {"left" if side == "左" else "right": sd}}
+            mid = np.array(sd["mid"], dtype=float)
+            d_use = dh if side == "左" else -dh
+            base = np.array(f((x, 0.0)), dtype=float)
+            for t, pick in ((0.25, "進"), (0.75, "捨")):
+                # 實際面積 D·S* ＝ G_hi ＋ t·(G_lo − G_hi) ⇒ |diff_hi| ＝ t·J、|diff_lo| ＝ (1−t)·J
+                tgt = _D * Ss - (Ghi + t * (Glo - Ghi))
+                a = tgt / ((1 - _A * _B) * (1 - _C))
+                r, _ = ns["_solve_G_one"](a_m2=a, A=_A, l_front=_LF, l_side=_LS, F=_F, blk_poly=poly, d_hat=d_use,
+                                          baseline_pt=base, S_max=_L, is_corner=True, side=side + "側", avg_depth=_D,
+                                          B=_B, C=_C, tab6_burden=_B + _C, allocation_dir=ad, side_mid=mid,
+                                          W_prev=0.0, near_dir=None, w0_start=0.0, is_chain_head=True, s_back=0.0)
+                eg = a * (1 - _A * _B) * (1 - _C) + (Ghi if pick == "進" else Glo)
+                ew = 5.301 if pick == "進" else 5.300
+                erw = 45.86 if pick == "進" else 45.85
+                out.append((round(float(r["G"]), 2) == round(eg, 2) and abs(float(r["Rw_pct"]) - erw) <= 1e-12,
+                            abs(float(r["W_far"]) - ew) <= 1e-12, r.get("jump398") == pick, bool(r.get("converged"))))
+                t11.append(r)
+    _st9.session_state.pop("f3_cad_side_lines_by_side", None)
+    return out, t11
 
 
 def selftest(repo):
     ns, _ = _harvest(repo)
-    need = ["rw_from_width", "rw_increment", "_solve_G_one", "alloc_normal_axis"]
+    need = ["rw_from_width", "rw_increment", "_solve_G_one", "alloc_normal_axis", "rw_width_mm", "rw_pct_2dp"]
     miss = [n for n in need if n not in ns]
     if miss:
         print(f"  🔴 受詞缺 {miss}")
@@ -212,6 +293,8 @@ def selftest(repo):
             if abs(R(w) - e) > 1e-9:
                 t2.append((round(w, 4), R(w), e))
     C.append(("T2 格間 170 × 3 處 ＝ 二端之線性內插（公分以下用內插法）", (len(t2), t2[:3]), (0, [])))
+    t2q = [(i, q) for i in range(10, 180) for q in (0.25, 0.5, 0.75) if abs(R((i + q) / 10.0) - hb_Rq((i + q) / 10.0)) > 1e-9]
+    C.append(("T2′ 格間 170 × 3 處 ＝ hb_Rq（公釐值）", (len(t2q), t2q[:3]), (0, [])))
     C.append(("T3 請示表：5.30 ⇒ 45.85、5.35 ⇒ 46.15、7.00 ⇒ 55.69",
               tuple(abs(R(w) - e) <= 1e-9 for w, e in ((5.30, 45.85), (5.35, 46.15), (7.00, 55.69))), (True,) * 3))
     C.append(("T4 起點 0 與 0〜1 m（自 (0, 0) 至 (1.0, 17.36) 線性）",
@@ -226,16 +309,46 @@ def selftest(repo):
     dec = sum(1 for a, b in zip(vals, vals[1:]) if b < a - 1e-12)
     jmp = max(b - a for a, b in zip(vals, vals[1:]))
     C.append(("T7 0〜18.5 m 每 0.0007 m：不減、相鄰之差 ≤ 0.02", (dec, jmp <= 0.02), (0, True)))
+    off = sum(1 for k in range(0, int(18.5 / 0.0007) + 1) if abs(vals[k] - hb_Rq(k * 0.0007)) > 1e-9)
+    C.append(("T7′ 0〜18.5 m 每 0.0007 m ＝ hb_Rq（逐點）·不減·相鄰之差 ≤ 0.0174", (off, dec, jmp <= 0.0174), (0, 0, True)))
     ch = (0.0, 4.2, 9.7, 13.05, 18.3)
     inc = [RI(a, b) for a, b in zip(ch, ch[1:])]
     exp8 = (0.3905, 0.3063, 0.14545, 0.15775)
     C.append(("T8 累積差額之鏈 0→4.2→9.7→13.05→18.3 與倒退",
               (tuple(abs(x - e) <= 1e-12 for x, e in zip(inc, exp8)), abs(sum(inc) - 1.0) <= 1e-12, RI(9.7, 4.2)),
               ((True,) * 4, True, 0.0)))
-    got, en, eo, mg = _toy(ns)
+    got, en, eo, mg, mj = _toy(ns)
     C.append(("T9 玩具街廓之街角第 1、2 宗（左右 × 二座標系 × 二 a）＝ HB 之自解；舊表之自解至少一異；自解距半分 ≥ 0.001",
               (len(got), [(k, g, e) for k, (g, e) in enumerate(zip(got, en)) if g != e], en != eo, mg >= 0.001),
               (16, [], True, True)))
+    C.append(("T9′ 同上（第 2 宗起於第 1 宗之寬之公釐值·hb_Rq）：自解之寬距半公釐之跳 ≥ 1e-4 m", mj >= 1e-4, True))
+    w10 = (6.0745, 1.0005, 4.0005, 6.4605, 12.3455, 7.1975, 9.9995, 5.3005, 5.3004, 17.9995)
+    C.append(("T10 公釐之四捨五入（十例·十進位·二進位之 round 異者七）＝ hb_Rq",
+              [w for w in w10 if abs(R(w) - hb_Rq(w)) > 1e-9], []))
+    jo, t11 = _toy_jump(ns)
+    bad11 = []
+    for r in t11:
+        wf, wr = float(r["W_far"]), float(r["W_far_raw"])
+        okw = (abs(float(r["W"]) - wf) <= 1e-12 and abs(wf - q_mm(wr)) <= 1e-12 and abs(wf * 1000 - round(wf * 1000)) <= 1e-6
+               and abs(float(r["W_near"]) * 1000 - round(float(r["W_near"]) * 1000)) <= 1e-6)
+        from decimal import Decimal, ROUND_HALF_UP
+        erw = float(Decimal(repr(round(hb_Rq(wf) - hb_Rq(float(r["W_near"])), 6))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        if not (okw and abs(float(r["Rw_pct"]) - erw) <= 1e-12):
+            bad11.append((wf, wr, r.get("W_near"), r.get("Rw_pct"), erw))
+    C.append(("T11 回傳之 W ＝ W_far ＝ q(W_far_raw)·W_near 公釐·Rw_pct ＝ 十進位四捨五入", (len(t11), bad11), (8, [])))
+    C.append(("T12 跳處（甲）：1／4 ⇒ 進、3／4 ⇒ 捨（G 與 Rw_pct、W_far、jump398、converged）·左右 × 二座標系",
+              jo, [(True, True, True, True)] * 8))
+    t13 = []
+    for fn, arg in (("rw_width_mm", float("nan")), ("rw_width_mm", float("inf")), ("rw_from_width", float("nan"))):
+        try:
+            ns[fn](arg)
+            t13.append(False)
+        except ValueError:
+            t13.append(True)
+        except Exception:  # noqa: BLE001
+            t13.append(False)
+    t13.append(ns["rw_pct_2dp"](22.214999999999996) == 22.22)
+    C.append(("T13 非有限值 ⇒ ValueError；rw_pct_2dp(22.214999999999996) ＝ 22.22", t13, [True] * 4))
     red = []
     for name, g, e in C:
         ok = g == e
@@ -311,7 +424,9 @@ def wiring(repo, base):
     red = []
     add, rem = set(dn) - set(do), set(do) - set(dn)
     chg = {k for k in dn if dn.get(k) != do.get(k)}
-    ok1 = add == {"RW_TABLE_25"} and not rem and chg == {"RW_TABLE_25", "rw_from_width"}
+    _new1 = {"RW_TABLE_25", "rw_width_mm", "rw_pct_2dp"}
+    ok1 = (add == _new1 and not rem
+           and chg == _new1 | {"rw_from_width", "iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"})
     print(("  ✅" if ok1 else "  🔴") + f" X1 頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
     if not ok1:
         red.append("X1")
@@ -334,7 +449,7 @@ def wiring(repo, base):
     names = {x.id for x in ast.walk(fn) if isinstance(x, ast.Name)} if fn is not None else set()
     big = ([x for x in _nums(fn) if 1.0 < float(x) < 100.0 and round(float(x), 2) in _TBLV] + _runs(fn)
            if fn is not None else ["缺"])
-    ok3 = {"RW_TABLE_25", "RW_SATURATION_WIDTH_M"} <= names and not big
+    ok3 = {"RW_TABLE_25", "RW_SATURATION_WIDTH_M", "rw_width_mm"} <= names and not big
     print(("  ✅" if ok3 else "  🔴") + f" X3 rw_from_width 讀 RW_TABLE_25／RW_SATURATION_WIDTH_M·其內表之值之數之常數 {big[:5]}")
     if not ok3:
         red.append("X3")
@@ -369,10 +484,44 @@ def wiring(repo, base):
         red.append("X6")
     dv = [x for x in _git(repo, "diff", "--name-only", base, "--", "verify/").split("\n")
           if x and re.match(r"^verify/[^/]+\.py$", x)]
-    ok7 = not dv
-    print(("  ✅" if ok7 else "  🔴") + f" X7 verify/ 頂層之 *.py 對基準之相異 {dv}")
+    dl = [x for x in _git(repo, "diff", "-U0", base, "--", "verify/stepg_pipeline.py").split("\n")
+          if x and x[0] in "+-" and not x.startswith(("+++", "---"))]
+    ok7 = (dv == ["verify/stepg_pipeline.py"]
+           and dl == ["-            'W(m)': round(_res.get('W', 0.0), 2),", "+            'W(m)': round(_res.get('W', 0.0), 3),"])
+    print(("  ✅" if ok7 else "  🔴") + f" X7′ verify/ 頂層之 *.py 對基準之相異 {dv}·其差之列 {len(dl)}")
     if not ok7:
         red.append("X7")
+    sp = open(os.path.join(repo, "verify", "stepg_pipeline.py"), encoding="utf-8").read()
+    fs = mn.get("f3_screen_stepg_run")
+    fsrc = ast.get_source_segment(src, fs) if fs is not None else ""
+    msrc = ast.get_source_segment(src, mn["main"]) if "main" in mn else ""
+    _w2, _f2 = "'W(m)': round(_res.get('W', 0.0), " + "2)", "'W(m)': '{:." + "2f}'"   # 分寫之：⛔ 成 F23／F24 之字樣之錨
+    ok8 = (fsrc.count("'W(m)': round(_res.get('W', 0.0), 3),") == 1 and _w2 not in fsrc
+           and sp.count("'W(m)': round(_res.get('W', 0.0), 3),") == 1 and _w2 not in sp
+           and msrc.count("'W(m)': '{:.3f}'") == 1 and _f2 not in msrc)
+    print(("  ✅" if ok8 else "  🔴") + " X8 分配計算表之 W(m)：二列 round(…, 3)·畫面之格式 '{:.3f}'")
+    if not ok8:
+        red.append("X8")
+    bad9 = []
+    for fnm in ("solve_G_binary", "iterate_G_S"):
+        fn9 = mn.get(fnm)
+        rets = [n.value for n in ast.walk(fn9) if isinstance(n, ast.Return) and isinstance(n.value, ast.Dict)] if fn9 else []
+        if not rets:
+            bad9.append((fnm, "無 dict 之回傳"))
+        for d in rets:
+            for kk, vv in zip(d.keys, d.values):
+                key = kk.value if isinstance(kk, ast.Constant) else None
+                want = {"W": "rw_width_mm", "W_far": "rw_width_mm", "W_near": "rw_width_mm", "Rw_pct": "rw_pct_2dp"}.get(key)
+                if want is None:
+                    continue
+                if isinstance(vv, ast.Constant) and vv.value == 0.0 and key == "Rw_pct":
+                    continue
+                if not (isinstance(vv, ast.Call) and isinstance(vv.func, ast.Name) and vv.func.id == want):
+                    bad9.append((fnm, key, ast.unparse(vv)[:40]))
+    ok9 = not bad9
+    print(("  ✅" if ok9 else "  🔴") + f" X9 回傳之 W／W_far／W_near 經 rw_width_mm·Rw_pct 經 rw_pct_2dp {bad9[:4]}")
+    if not ok9:
+        red.append("X9")
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
 

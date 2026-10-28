@@ -29,6 +29,8 @@ _FUNCS = ("rw_from_width", "_select_pool_slot")
 _CONSTS = ("RW_SATURATION_WIDTH_M",)
 # 🔧 `W-G.9-398`：`rw_from_width` 改照手冊附表 25（KL 2026-10-26 09:53）後引用其表之常數 `RW_TABLE_25` ⇒ 一併抽出。
 _CONSTS = _CONSTS + ("RW_TABLE_25",)
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·KL 2026-10-27 23:29「採戊」）：`rw_from_width` 經 `rw_width_mm` ⇒ 一併抽出；其用 `math`（app.py 之模組級 import）⇒ ns 預置之。
+_FUNCS = _FUNCS + ("rw_width_mm",)
 
 
 def _extract():
@@ -48,7 +50,7 @@ def _extract():
     if missing_c:
         raise AssertionError(f"app.py 缺 module 級常數 {sorted(missing_c)}——被改名或刪除？")
     mod = ast.Module(body=consts + nodes, type_ignores=[])
-    ns = {}
+    ns = {"math": __import__("math")}   # 🔧 `W-G.9-398` 補令一：`rw_width_mm` 之 `math`
     exec(compile(mod, filename="<pool_slot@app.py>", mode="exec"), ns)
     return ns["_select_pool_slot"], ns["rw_from_width"]
 

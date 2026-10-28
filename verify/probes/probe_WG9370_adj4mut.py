@@ -127,6 +127,9 @@ ALLOW373_APP += W392
 # 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·KL `2026-10-26 09:53`·⛔ 上列一字不刪）：X2 之許增其新常數與所改之函式（F41 量之）。
 W398 = ("RW_TABLE_25", "rw_from_width")
 ALLOW373_APP += W398
+# 🔧 `W-G.9-398` 補令一（KL `2026-10-27 23:29`「採戊」·⛔ 上列一字不刪）：X2 之許增其二新函式與所改之三函式（F41 量之）。
+W398B = ("rw_width_mm", "rw_pct_2dp", "iterate_G_S", "solve_G_binary", "f3_screen_stepg_run")
+ALLOW373_APP += W398B
 
 
 def _strip_fns(src, names):

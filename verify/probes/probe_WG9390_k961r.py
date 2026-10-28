@@ -59,6 +59,9 @@ W394 = ("k6_trial_raise_since", "end_block_merge_run", "k953_manual_run")
 # 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·KL `2026-10-26 09:53`·⛔ 上列一字不刪）：其新常數與所改之函式（F41 量之）。
 NEW398 = ("RW_TABLE_25",)
 W398 = NEW398 + ("rw_from_width",)
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
+NEW398B = ("rw_width_mm", "rw_pct_2dp")
+W398B = NEW398B + ("iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main")
 
 
 def _harvest(repo):
@@ -427,6 +430,9 @@ def wiring(repo, base):
     # 🔧 `W-G.9-398`：同（F41 量之）
     ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) | set(NEW392) | set(NEW398) and set(tb) <= set(ta)
                   and set(diff) <= {"k6b_stage3_run"} | set(W391) | set(W392) | set(W394) | set(W398))
+    # 🔧 `W-G.9-398` 補令一：同（F41 量之）
+    ok2 = ok2 or ("k6b_stage3_run" in diff and set(ta) - set(tb) == set(NEW391) | set(NEW392) | set(NEW398) | set(NEW398B) and set(tb) <= set(ta)
+                  and set(diff) <= {"k6b_stage3_run"} | set(W391) | set(W392) | set(W394) | set(W398) | set(W398B))
     print(("  ✅" if ok2 else "  🔴") + f" X2 頂層之相異 {diff}（期 ['k6b_stage3_run']）、名之集同 {set(ta) == set(tb)}")
     if not ok2:
         red.append("X2")
