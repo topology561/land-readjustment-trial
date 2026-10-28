@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-28T23:42:30+08:00",
+ "status": "running",
+ "status_since": "2026-10-28T23:43:46+08:00",
  "order": "W-G.9-398_補令三.md",
  "order_bytes": 29662,
  "order_sha256": "4545f42be7837b217e27c4954051d66182dcd281bbfd970c30b50ddd5ebea4f8",
@@ -1397,6 +1397,13 @@
    "from": "verifying",
    "to": "pending",
    "note": "復驗 W-G.9-398_補令二（⛔ 採自報）通過：十一筆之實物合單；生產碼差異逐行讀合 R-1″〜R-7″；施後 94（0534828）＋ 前態 6 ＋ 對照 5（8bc2add）從頭重跑皆合期（stderr 0 B）；F36 diff ＝ 戊欄（3.5 m 3／0 m 7）；主線→施後 ＝ 請示表戊對現行（3.5 m 6／0 m 10 項）；F8 4aca01db／186b090b；收工閘 1″〜8″ 合 ⇒ 出 W-G.9-398_補令三（入主線之短單·快轉 20e03bf → 工項零⁗ 之 commit·expects_allocation_change=true·KL 10:48 第一問「是」）"
+  },
+  {
+   "at": "2026-10-28T23:43:46+08:00",
+   "by": "執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接單 W-G.9-398_補令三（bytes 29662／sha256 4545f42b… ＝ STATE；SELF_SHA256 6d037a3e… 自驗合）"
   }
  ],
  "kl_pending": []
