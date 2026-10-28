@@ -1,15 +1,15 @@
 {
- "status": "running",
- "status_since": "2026-10-29T01:49:00+08:00",
+ "status": "reported",
+ "status_since": "2026-10-29T02:12:00+08:00",
  "order": "W-P.005_重劃後三圖層與地號對照表.md",
  "order_bytes": 71084,
  "order_sha256": "710a0b9b1324a0e24a9b309349c45e94eadf17d2776389905bba683fc5fe3659",
  "order_kind": "規格單",
  "attempt": 1,
  "report": "出圖線/reports/W-P.005_回報.md",
- "result": null,
+ "result": "完成",
  "kl_question": null,
- "wip_plots": "9a3cb61bd5397ecaca62ca30b5c32d57a03b8fd8",
+ "wip_plots": "9deaad28ca37bd24c4c02ddc86d65da3b7a9d574",
  "history": [
   {
    "at": "2026-10-23T17:50:00+08:00",
@@ -402,6 +402,13 @@
    "from": "pending",
    "to": "running",
    "note": "接 W-P.005（單檔 71084 bytes·sha256 710a0b9b…3659 相符；許可 N=393·核心線 order W-G.9-398_補令三）"
+  },
+  {
+   "at": "2026-10-29T02:12:00+08:00",
+   "by": "出圖線·執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "W-P.005 完成：側支 verify/W-P.005-post-maps＝9deaad2（併主線 bd7da4d 於 6b6231a·無衝突）；wip/plots 9a3cb61→9deaad2（快轉）；附錄甲〜己 sha256 相符；alloc_state 0 m 宗 35／3.5 m 宗 34、post_maps 地號之序＝§二 7；check_W-P005 16/16、W-P001 12/12、W-P002 8/8、W-P003 8/8、W-P004 8/8；Ⓐ〜Ⓔ 皆紅、成果綠；差異閘綠（30 列·對照組紅）；預覽 2 PNG 入 成果/（與原型逐位元組同）；自捕：附錄己之檔名中 .gitignore 之 *對照表* ⇒ git add -f"
   }
  ]
 }
