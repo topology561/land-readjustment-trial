@@ -1,14 +1,14 @@
 {
- "status": "verifying",
- "status_since": "2026-10-28T15:33:40+08:00",
- "order": "W-G.9-398_補令一.md",
- "order_bytes": 146863,
- "order_sha256": "3c1e6621ccbd4721c613ebda5311214e0ce16a88e3462a03aefce57259391f89",
+ "status": "pending",
+ "status_since": "2026-10-28T15:51:16+08:00",
+ "order": "W-G.9-398_補令二.md",
+ "order_bytes": 31655,
+ "order_sha256": "a10c4f839dfe9fcb0b6a29888056f4eb6bda573958627151ea568ee8ed1b7923",
  "order_kind": "補令",
  "expects_allocation_change": true,
- "attempt": 1,
- "report": "W-G.9-398_補令一_回報.md",
- "result": "停機上呈",
+ "attempt": 2,
+ "report": null,
+ "result": null,
  "kl_question": null,
  "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
  "history": [
@@ -1362,6 +1362,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-398_補令一（停機上呈·停機款 4″·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-28T15:51:16+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "pending",
+   "note": "復驗 W-G.9-398_補令一 之停機上呈（⛔ 採自報）：停機之由屬實（f748370..8bc2add 實 19 列·期書恰 18 列·發單端之誤·自誤 644）；ce6912d／8bc2add 之內容合單（重抽 Fy56 施於 ce6912d ＝ 8bc2add 之樹）⇒ 出 W-G.9-398_補令二（前置″ 項 4 改二段 19／1 列·閘之數依之·塊 E45·⛔ 改規格一字·本案之期 ＝ 戊欄照舊）"
   }
  ],
  "kl_pending": []
