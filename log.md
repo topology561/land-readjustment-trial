@@ -417,3 +417,4 @@
 | 2026-10-28T15:28:04+08:00 | 執行端 | 接單 `W-G.9-398_補令一.md`（bytes `146863`／sha256 `3c1e6621ccbd…` 合 STATE；SELF_SHA256 `7c0d3516ed6e…` 自驗合）；effort=high | `running` |
 | 2026-10-28T15:32:52+08:00 | 執行端 | **回報 `W-G.9-398_補令一.md`（停機上呈·停機款 `4″`）**：前置″ 項 `4` 之 `git diff --name-status f748370 8bc2add` 之期「恰 `18` 列」而實 `19` 列（`A` 本補令 ＋ 塊 `Fy56` 之 `18` 檔 `M`·其內容與期之列舉逐一相合·唯列數異·`W-G.9-392` 補令一之同形）；新側支 `verify/W-G.9-398-rw25` ＝ `8bc2add`（零″ `ce6912d`·一″ `8bc2add`）；`§零″` 皆合（heads `56`·四簿·`pip freeze` `ae1438da…`·pre-flight 🔴 `0`／🟡 `7` 具名豁免）；生產碼⛔ 動；主線⛔ 動（`20e03bf`）；⛔ 涉土地後果；effort=high | `reported` |
 | 2026-10-28T15:33:13+08:00 | 執行端 | 門鈴：`RING issuer http=200 session=https://claude.ai/code/cse_01VhAqqn5DiBSsfnaBVsnnkA`（`W-G.9-398_補令一` 回報之後）；effort=high | `reported` |
+| 2026-10-28T15:33:40+08:00 | 發單端 | 接手復驗 `W-G.9-398_補令一`（停機上呈·停機款 `4″`·⛔ 採自報）；effort=high | `verifying` |
