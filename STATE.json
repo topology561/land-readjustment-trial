@@ -1,6 +1,6 @@
 {
- "status": "verifying",
- "status_since": "2026-10-28T23:56:40+08:00",
+ "status": "idle",
+ "status_since": "2026-10-29T01:36:00+08:00",
  "order": "W-G.9-398_補令三.md",
  "order_bytes": 29662,
  "order_sha256": "4545f42be7837b217e27c4954051d66182dcd281bbfd970c30b50ddd5ebea4f8",
@@ -1425,6 +1425,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-398_補令三（入主線之短單·完成·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-29T01:36:00+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "idle",
+   "note": "復驗 W-G.9-398_補令三 通過：主線 20e03bf → bd7da4d（快轉·執行端推）；立 基準/bd7da4d….md（94／94）；本案配地之變 ＝ 戊欄（F36 diff 3.5 m 6／0 m 10 項）"
   }
  ],
  "kl_pending": []
