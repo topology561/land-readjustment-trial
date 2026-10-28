@@ -1,16 +1,16 @@
 {
- "status": "drafting",
- "status_since": "2026-10-29T01:38:00+08:00",
- "order": "W-G.9-398_補令三.md",
- "order_bytes": 29662,
- "order_sha256": "4545f42be7837b217e27c4954051d66182dcd281bbfd970c30b50ddd5ebea4f8",
- "order_kind": "短單",
- "expects_allocation_change": true,
+ "status": "pending",
+ "status_since": "2026-10-29T05:16:18+08:00",
+ "order": "W-G.9-399_規格單.md",
+ "order_bytes": 182866,
+ "order_sha256": "8cfb1582e13b993595ee84ad99375009dd0b5855be244a969a4bdc045eb8c915",
+ "order_kind": "規格單",
+ "expects_allocation_change": false,
  "attempt": 1,
- "report": "W-G.9-398_補令三_回報.md",
- "result": "完成",
+ "report": null,
+ "result": null,
  "kl_question": null,
- "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
+ "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
   {
    "at": "2026-10-17T08:15:58+08:00",
@@ -1439,6 +1439,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖擬 W-G.9-396（K-9-60 ②＋互相等待之先後改以末端塊評選指數·KL 10/26 22:09／22:42／22:57）"
+  },
+  {
+   "at": "2026-10-29T05:16:18+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-G.9-399_規格單.md（182866 B·8cfb1582e13b…·attempt 1·expects_allocation_change ＝ false）：互相等待之先後改以末端塊評選指數（KL 10/26 22:09／22:42／22:57）；三位以上同之、成圈者依序鍵；新側支 verify/W-G.9-399-k960x"
   }
  ],
  "kl_pending": []
