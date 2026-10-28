@@ -1,14 +1,14 @@
 {
- "status": "verifying",
- "status_since": "2026-10-28T20:05:17+08:00",
- "order": "W-G.9-398_補令二.md",
- "order_bytes": 31655,
- "order_sha256": "a10c4f839dfe9fcb0b6a29888056f4eb6bda573958627151ea568ee8ed1b7923",
- "order_kind": "補令",
+ "status": "pending",
+ "status_since": "2026-10-28T23:42:30+08:00",
+ "order": "W-G.9-398_補令三.md",
+ "order_bytes": 29662,
+ "order_sha256": "4545f42be7837b217e27c4954051d66182dcd281bbfd970c30b50ddd5ebea4f8",
+ "order_kind": "短單",
  "expects_allocation_change": true,
- "attempt": 2,
- "report": "W-G.9-398_補令二_回報.md",
- "result": "完成",
+ "attempt": 1,
+ "report": null,
+ "result": null,
  "kl_question": null,
  "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
  "history": [
@@ -1390,6 +1390,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-398_補令二（完成之回報·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-28T23:42:30+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "pending",
+   "note": "復驗 W-G.9-398_補令二（⛔ 採自報）通過：十一筆之實物合單；生產碼差異逐行讀合 R-1″〜R-7″；施後 94（0534828）＋ 前態 6 ＋ 對照 5（8bc2add）從頭重跑皆合期（stderr 0 B）；F36 diff ＝ 戊欄（3.5 m 3／0 m 7）；主線→施後 ＝ 請示表戊對現行（3.5 m 6／0 m 10 項）；F8 4aca01db／186b090b；收工閘 1″〜8″ 合 ⇒ 出 W-G.9-398_補令三（入主線之短單·快轉 20e03bf → 工項零⁗ 之 commit·expects_allocation_change=true·KL 10:48 第一問「是」）"
   }
  ],
  "kl_pending": []
