@@ -1,13 +1,13 @@
 {
- "status": "drafting",
- "status_since": "2026-10-29T00:21:30+08:00",
- "order": "W-P.004_附表20-22.md",
- "order_bytes": 67630,
- "order_sha256": "fdf334f8a786a2970b8b5111493ecf4761f58eca17f59b3196da5b723972cff8",
+ "status": "pending",
+ "status_since": "2026-10-29T01:21:00+08:00",
+ "order": "W-P.005_重劃後三圖層與地號對照表.md",
+ "order_bytes": 71084,
+ "order_sha256": "710a0b9b1324a0e24a9b309349c45e94eadf17d2776389905bba683fc5fe3659",
  "order_kind": "規格單",
  "attempt": 1,
- "report": "出圖線/reports/W-P.004_回報.md",
- "result": "完成",
+ "report": "出圖線/reports/W-P.005_回報.md",
+ "result": null,
  "kl_question": null,
  "wip_plots": "9a3cb61bd5397ecaca62ca30b5c32d57a03b8fd8",
  "history": [
@@ -388,6 +388,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "擬 W-P.005（附表 13、24 ＋ DXF 圖層 2、4、6＋暫編→正式地號對照表·KL 23:31、23:37）"
+  },
+  {
+   "at": "2026-10-29T01:21:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-P.005（DXF 加公告分配地籍線、分配後歸戶圖、重劃後地價圖成六圖層＋暫編→正式地號對照表〔S 型預設·重號缺號即停〕＋顏色對照表·KL 23:31、23:37）：側支 verify/W-P.005-post-maps；附錄甲〜己逐位元組；配地結果取階段一之終（段三後·舊七級調配引擎於主線報 GSA 錨檢破、新調配模組未成）；原型（9a3cb61 試併 bd7da4d 無衝突）check 16/16、Ⓐ〜Ⓔ 皆紅；附表 13、24 移 W-P.006；許可已具（N＝393）"
   }
  ]
 }
