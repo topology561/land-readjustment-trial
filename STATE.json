@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-28T15:51:16+08:00",
+ "status": "running",
+ "status_since": "2026-10-28T15:53:19+08:00",
  "order": "W-G.9-398_補令二.md",
  "order_bytes": 31655,
  "order_sha256": "a10c4f839dfe9fcb0b6a29888056f4eb6bda573958627151ea568ee8ed1b7923",
@@ -1369,6 +1369,13 @@
    "from": "verifying",
    "to": "pending",
    "note": "復驗 W-G.9-398_補令一 之停機上呈（⛔ 採自報）：停機之由屬實（f748370..8bc2add 實 19 列·期書恰 18 列·發單端之誤·自誤 644）；ce6912d／8bc2add 之內容合單（重抽 Fy56 施於 ce6912d ＝ 8bc2add 之樹）⇒ 出 W-G.9-398_補令二（前置″ 項 4 改二段 19／1 列·閘之數依之·塊 E45·⛔ 改規格一字·本案之期 ＝ 戊欄照舊）"
+  },
+  {
+   "at": "2026-10-28T15:53:19+08:00",
+   "by": "執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接單 W-G.9-398_補令二（bytes 31655·sha256 a10c4f83… 與 STATE 合·SELF_SHA256 8acda597… 依 P-5 自驗合）"
   }
  ],
  "kl_pending": []
