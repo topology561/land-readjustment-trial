@@ -1,14 +1,14 @@
 {
- "status": "drafting",
- "status_since": "2026-10-28T10:57:11+08:00",
- "order": "W-G.9-398_規格單.md",
- "order_bytes": 150064,
- "order_sha256": "beb469830bda6218299a0e0b7ea24c3794765bc079441235c43a959f1d052d18",
- "order_kind": "規格單",
+ "status": "pending",
+ "status_since": "2026-10-28T15:26:52+08:00",
+ "order": "W-G.9-398_補令一.md",
+ "order_bytes": 146863,
+ "order_sha256": "3c1e6621ccbd4721c613ebda5311214e0ce16a88e3462a03aefce57259391f89",
+ "order_kind": "補令",
  "expects_allocation_change": true,
  "attempt": 1,
- "report": "W-G.9-398_規格單_回報.md",
- "result": "完成",
+ "report": null,
+ "result": null,
  "kl_question": null,
  "main_before": "5d2a2836617bc2aea57f0c7513e67d9b2313f7f7",
  "history": [
@@ -1334,6 +1334,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖擬 W-G.9-398_補令一（改戊：W 先四捨五入至公釐再依附表 25 內插·清冊記至公釐；半公釐跳處取甲＝較接近者·等距取進位；累積百分率之列法·KL 2026-10-28 10:48·KL答覆/2026-10-28_1048.md）"
+  },
+  {
+   "at": "2026-10-28T15:26:52+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-G.9-398_補令一（改戊：W 先四捨五入至公釐再依附表 25 內插·次宗起算為前宗公釐值·跳處取較接近者〔甲〕·W(m) 記至公釐·表下之註·畫面之說明之字）；KL 2026-10-27 23:29「採戊」、2026-10-28 10:48 第一問「是」第二問「甲」；本案 ＝ 請示表戊欄（對 f748370：3.5 m 3 項／0 m 7 項）⇒ 復驗之結果同戊欄者入主線"
   }
  ],
  "kl_pending": []
