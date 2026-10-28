@@ -1,6 +1,6 @@
 {
- "status": "reported",
- "status_since": "2026-10-29T02:12:00+08:00",
+ "status": "verifying",
+ "status_since": "2026-10-29T02:19:00+08:00",
  "order": "W-P.005_重劃後三圖層與地號對照表.md",
  "order_bytes": 71084,
  "order_sha256": "710a0b9b1324a0e24a9b309349c45e94eadf17d2776389905bba683fc5fe3659",
@@ -409,6 +409,13 @@
    "from": "running",
    "to": "reported",
    "note": "W-P.005 完成：側支 verify/W-P.005-post-maps＝9deaad2（併主線 bd7da4d 於 6b6231a·無衝突）；wip/plots 9a3cb61→9deaad2（快轉）；附錄甲〜己 sha256 相符；alloc_state 0 m 宗 35／3.5 m 宗 34、post_maps 地號之序＝§二 7；check_W-P005 16/16、W-P001 12/12、W-P002 8/8、W-P003 8/8、W-P004 8/8；Ⓐ〜Ⓔ 皆紅、成果綠；差異閘綠（30 列·對照組紅）；預覽 2 PNG 入 成果/（與原型逐位元組同）；自捕：附錄己之檔名中 .gitignore 之 *對照表* ⇒ git add -f"
+  },
+  {
+   "at": "2026-10-29T02:19:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "reported",
+   "to": "verifying",
+   "note": "復驗 W-P.005"
   }
  ]
 }
