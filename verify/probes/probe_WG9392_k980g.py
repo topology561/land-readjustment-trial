@@ -65,6 +65,9 @@ except Exception:  # noqa: BLE001
 
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 NEW_TOP = {"K980_G_TOL", "K980_G_MAX_ITER", "end_block_trial_G", "k980_acq_check"}
+NEW398 = {"RW_TABLE_25"}   # 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·F41 量之）
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
+NEW398B = {"rw_width_mm", "rw_pct_2dp"}
 GB = "GB-206"
 
 
@@ -417,6 +420,8 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(srcs["app.py"])
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     ok5 = add == NEW_TOP and not rem
+    ok5 = ok5 or (add == NEW_TOP | NEW398 and not rem)   # 🔧 `W-G.9-398`：其後之單之新常數亦許（F41 量之）
+    ok5 = ok5 or (add == NEW_TOP | NEW398 | NEW398B and not rem)   # 🔧 `W-G.9-398` 補令一：同（F41 量之）
     print(("  ✅" if ok5 else "  🔴") + f" W5 頂層之名之增 {sorted(add)}·減 {sorted(rem)}")
     if not ok5:
         red.append("W5")
@@ -468,6 +473,11 @@ ANCHOR = {
     0.0: ({"628-18(1)": 307.78, "628-18(2)": 259.13},
           {"R1-抵費地-1": 851.69, "R3-抵費地": 1651.40, "R4-抵費地": 697.39, "R5-抵費地": 1221.46, "R6-抵費地": 980.58}),
 }
+# 🔧 `W-G.9-398`（側面道路負擔百分率之附表 25·KL `2026-10-26 09:53`·⛔ 上列一字不刪）：附表 25 之後之 0 m 之 `R3-抵費地` 之錨之更（源 ＝ 發單端之原型之實跑·＝ 本單 `§一` 項 `5` 之 `F36 diff` 之 0 m 之抵費地之列）。
+ANCHOR[0.0][1]["R3-抵費地"] = 1651.39
+# 🔧 `W-G.9-398` 補令一（寬度 `W` 先取至公釐·KL `2026-10-27 23:29`「採戊」·`10-28 10:48` 第一問「是」·⛔ 上列一字不刪）：抵費地之錨之更（源 ＝ 發單端之原型之實跑·＝ 補令一 `§一″` 項 `5` 之 `F36 diff` 之抵費地之列〔請示表戊欄〕）。
+ANCHOR[3.5][1]["R1-抵費地-1"] = 851.70
+ANCHOR[0.0][1].update({"R1-抵費地-1": 851.70, "R3-抵費地": 1651.40, "R5-抵費地": 1221.45})
 
 
 def _one(repo, sb):

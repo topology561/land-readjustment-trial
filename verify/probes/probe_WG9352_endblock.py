@@ -34,6 +34,8 @@ EB_FUNCS = ["end_block_side_geom", "end_block_pick", "end_block_pin", "end_block
             "end_block_host", "end_block_eval_rows", "end_block_assert_head"]
 DEP_FUNCS = ["_strip_axis", "_strip_s_range", "_block_strip", "_end_band", "_end_region_R",
              "alloc_normal_axis", "solve_G_binary", "_select_pool_slot", "rw_from_width"]
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·KL `2026-10-27 23:29`「採戊」·⛔ 上列一字不刪）：`solve_G_binary`／`rw_from_width` 經 `rw_width_mm`、`rw_pct_2dp` ⇒ 一併抽出（其用 `math` ⇒ 抽出之 ns 預置之）。
+DEP_FUNCS = DEP_FUNCS + ["rw_width_mm", "rw_pct_2dp"]
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 
 
@@ -56,7 +58,7 @@ def _extract_ns(src):
     got = {n.name for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in EB_FUNCS}
     if got != set(EB_FUNCS):
         raise KeyError("受詞缺")
-    ns = {}
+    ns = {"math": __import__("math")}   # 🔧 `W-G.9-398` 補令一：`rw_width_mm` 之 `math`
     exec(compile("\n\n".join(parts), "<eb_extract>", "exec"), ns)
     return ns
 

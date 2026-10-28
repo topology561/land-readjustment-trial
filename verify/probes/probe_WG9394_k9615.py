@@ -66,6 +66,11 @@ CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 GB_RE = re.compile(r"(?<![0-9A-Za-z\-])GB-\d+(?![0-9])")
 CHG_TOP = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k953_manual_run"}
 W395 = {"end_block_apply"}      # 🔧 `W-G.9-395`：其後之單所改之頂層節點（F39 量之·⛔ 新名）
+NEW398, W398 = {"RW_TABLE_25"}, {"rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之函式（側面道路負擔百分率之附表 25·F41 量之）
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
+NEW398B = {"rw_width_mm", "rw_pct_2dp"}
+W398B = {"iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"}
+STEPG398B = ["verify/stepg_pipeline.py"]   # 唯 `W(m)` 之一列（F41 之 X7′ 量之）
 NEED = ["k6_program_stop", "k6_trial_mark", "k6_trial_raise_since", "K6_PROGRAM_STOPS", "k929_6_fixpoint",
         "k6b_stage3_run", "end_block_merge_run"]
 TWD = (37.0, True, (302512.0, 2650318.0))
@@ -482,7 +487,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W1", not add and not rem and chg in (CHG_TOP, CHG_TOP | W395), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
+    rep("W1", add in (set(), NEW398, NEW398 | NEW398B) and not rem and chg in (CHG_TOP, CHG_TOP | W395, CHG_TOP | W395 | W398, CHG_TOP | W395 | W398 | W398B), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")   # 🔧 `W-G.9-398`：其後之單之許
     # W2
     rs = _fn_node(ta, "k6_trial_raise_since")
     gb2 = None
@@ -551,7 +556,7 @@ def wiring(repo, base):
             nb = None
         if ob != nb:
             diff7.append(p)
-    rep("W7", bool(names) and not diff7, f"verify/ 頂層之 *.py（{len(names)}）對基準相異 {diff7}")
+    rep("W7", bool(names) and (not diff7 or diff7 == STEPG398B), f"verify/ 頂層之 *.py（{len(names)}）對基準相異 {diff7}")   # 🔧 `W-G.9-398` 補令一：`stepg` 之 `W(m)` 之一列之許
     print(f"⇒ 紅 {red}；rc {1 if red else 0}")
     return 1 if red else 0
 

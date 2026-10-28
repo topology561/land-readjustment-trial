@@ -65,6 +65,11 @@ FRAG_EMPTY = "frag_poly" + " 空"          # 舊之停機之訊息之子字串�
 CHG_TOP = {"end_block_side_geom", "_end_region_R", "end_block_band_width", "_place_pool_parcels", "end_block_apply"}
 # 🔧 `W-G.9-394`：其後之單所改之頂層節點（K-9-61 ⑤·GB-205 之試算之內之處置·F38 量之·⛔ 新名）
 W394 = {"k6_trial_raise_since", "k6b_stage3_run", "end_block_merge_run", "k953_manual_run"}
+NEW398, W398 = {"RW_TABLE_25"}, {"rw_from_width"}   # 🔧 `W-G.9-398`：其後之單之新常數與所改之函式（側面道路負擔百分率之附表 25·F41 量之）
+# 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
+NEW398B = {"rw_width_mm", "rw_pct_2dp"}
+W398B = {"iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"}
+STEPG398B = ["verify/stepg_pipeline.py"]   # 唯 `W(m)` 之一列（F41 之 X7′ 量之）
 MW, DEP, LEN = 3.5, 30.0, 40.0
 
 
@@ -410,7 +415,7 @@ def wiring(repo, base):
     tb, tn = _top(old), _top(src)
     add, rem = set(tn) - set(tb), set(tb) - set(tn)
     chg = {k for k in tn if k in tb and tn[k] != tb[k]}
-    rep("W5", not add and not rem and chg in (CHG_TOP, CHG_TOP | W394), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")
+    rep("W5", add in (set(), NEW398, NEW398 | NEW398B) and not rem and chg in (CHG_TOP, CHG_TOP | W394, CHG_TOP | W394 | W398, CHG_TOP | W394 | W398 | W398B), f"頂層之名之增 {sorted(add)}·減 {sorted(rem)}·相異之節點 {sorted(chg)}")   # 🔧 `W-G.9-398`：其後之單之許
     # W6
     tbo = ast.parse(old)
     lits = []
@@ -434,7 +439,7 @@ def wiring(repo, base):
             nb = None
         if ob != nb:
             diff7.append(p)
-    rep("W7", bool(names) and not diff7, f"verify/ 頂層之 *.py（{len(names)}）對基準相異 {diff7}")
+    rep("W7", bool(names) and (not diff7 or diff7 == STEPG398B), f"verify/ 頂層之 *.py（{len(names)}）對基準相異 {diff7}")   # 🔧 `W-G.9-398` 補令一：`stepg` 之 `W(m)` 之一列之許
     # W8
     eps = next((n.value.value for n in ta.body if isinstance(n, ast.Assign) and any(
         isinstance(t, ast.Name) and t.id == "END_BLOCK_UNFRONT_EPS" for t in n.targets)
