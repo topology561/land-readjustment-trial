@@ -25,10 +25,21 @@
            E6 旋轉 37°、鏡射、TWD97 之尺度、FRONT 反向 ⇒ E1〜E4 之長同（差 ≤ 1e-6）；
            E7 BASELINE 未給 ⇒ `end_segs`／`end_len` 皆 None；E8 該端點距外框 0.049 ⇒ 可、0.051 ⇒ 停機；
            E9 BASELINE 不觸外框 ⇒ 停機；E10 BASELINE 過該端點 ⇒ 停機。
+           〔補令一 ″·W-2〕E11 BASELINE 過 (10,30) 而偏 0.5° ⇒ 右 30（⛔ 循屁股線延至交點 ⇒ 33.5）、左 30 − 10·tan0.5°；E11′ 同之
+           旋轉鏡射 TWD97、FRONT 反向；E12 偏 −0.5° ⇒ 左 30、右 30 − 10·tan0.5°；E13 偏 1.9° ⇒ 右 30；E13′ 偏 2.1°（逾 2°·
+           BASELINE 非屁股線）⇒ 右依字面 33.5；E14 端之外框有與 BASELINE 平行而遠之折（深 15 處橫 3）⇒ 端線 15＋3＋15 ＝ 33
+           （⛔ 止於其折）；E15 BASELINE ∥ 屁股線而外移 0.049 ⇒ 30、0.051 ⇒ 停機。
            乙（`end_block_apply` ＋ `end_block_pick`·同上之矩形·試算 G 皆小 ⇒ 各列皆未達）：
            P1 A [0,2] 滿深、X [2,10] ⇒ A 臨端線 30、指數 0.742857；X 0、0.257143（⛔ 計正面道路之長）；P2 A1 [0,5]×[0,10]、
            A2 [0,5]×[10,30] ⇒ 0.333333／0.666667；P3 紀錄之 `端線(m)` ＝ 30.0；P4 旋轉鏡射 TWD97 ⇒ P1 之值同；P5 未給 BASELINE ⇒
            列之 `臨端線(m)`／`評選指數` 皆 None。
+           〔補令一 ″·W-1〕P6 條片 S(1) [0,0.04]（跨占 1.2）居端、A(1) [0.04,4] ⇒ 端線之每一小段唯歸原位次最先之一宗：
+           S 30／0.406857、A 0／0.593143（⛔ 二邊各計 ⇒ S 60；⛔ 一段二宗並計；⛔ 依暫編地號歸 A）；P7 P6 之旋轉鏡射 TWD97 ⇒ 同；
+           P8 條片 [0,0.03]（跨占 0.9 ⛔ 計）⇒ A 30／0.994857；P9 P6 之諸列之臨端線之和 30 ≤ 端線 30、指數之和 1.0。
+           〔補令一 ″·W-3〕P10 FRONT 之該端點距外框 0.08（BASELINE 已給）⇒ `end_block_apply` 照行（⛔ 停機）：紀錄之 `端線(m)`
+           None、`端線之誤` 載「距街廓外框」、列之指數 None、各列之結果與當選 ＝ 未給 BASELINE 者；P11 BASELINE 畫於屁股線外
+           0.08 ⇒ 同（「未觸 BASELINE」）；P12 `end_block_eval_rows` 之說明：P10 之端載「端線 — m（無從定：」、P1 之端載
+           「端線 30.0 m；」。
            丙（`k960_idx_rank`）：R1 合併群合計（g1：0.3＋0.2 ＞ B 0.45）；R2 平手（4 位同）⇒ 首列先者先（⛔ 依暫編地號）；
            R3 非未達之列⛔ 計；R4 無歸戶之片自成一單位；R5 未達之列之指數 None ⇒ 停機。
            丁（`k960_idx_key`／`k960_idx_first`）：K1 有第 1 名者先於皆無者（⛔ 先比名次之和）；K2 第 1 名之端數多者先；K3 皆一端
@@ -42,6 +53,8 @@
            M5 順序一致（⛔ 互相等待）而列無評選指數 ⇒ 照原位次（⛔ 停機）；M6 互相等待而列無評選指數 ⇒ 停機；
            M7 三位輪流互等·戊兩兩皆先（亦序鍵之先者）⇒ 戊先（同 F39 V5）；M8 三位輪流互等·丁兩兩皆先而序鍵之先者為戊 ⇒
            丁先（⛔ 依序鍵）；M9 三位輪流互等·兩兩比較成圈（丁勝戊、戊勝己、己勝丁）⇒ 序鍵之先者戊先（⛔ 依暫編地號〔丁之 D1〕）。
+           〔補令一 ″·W-3〕M10 互相等待而一端（BE 左）之端線不可定 ⇒ 停機（訊息載「端線無從定」）；M11 順序一致（⛔ 互相等待）
+           而一端之端線不可定 ⇒ 照原位次（＝ M5 之果·⛔ 停機）。
   wiring   <repo> <基準 commit>
            W1 新之頂層名 ＝ `{end_block_end_line, end_block_end_segs, end_block_end_geom, k960_idx_rank, k960_idx_key,
               k960_idx_first, END_BLOCK_LINE_TOL, END_BLOCK_IDX_W_LINE, END_BLOCK_IDX_W_AREA}`（對基準·⛔ 他增、⛔ 減）；
@@ -125,6 +138,7 @@ TRI = [(-5, DEP), (0, 0), (20, 0), (20, DEP)]
 INS = [(0, 0), (20, 0), (20, DEP), (8, DEP)]
 BENT = [(0, 0), (20, 0), (20, DEP), (0, DEP), (-2, 15)]
 CHAM = [(0, 0), (18, 0), (20, 2), (20, DEP), (0, DEP)]
+JOG = [(0, 0), (20, 0), (20, DEP), (-3, DEP), (-3, 15), (0, 15)]
 L_TRI, L_INS, L_BENT = math.sqrt(925.0), math.sqrt(3.5 ** 2 + 13.125 ** 2), 2.0 * math.sqrt(229.0)
 
 
@@ -162,6 +176,27 @@ def _cases_e(ns):
     run("E8′ 該端點距外框 0.051 ⇒ 停機", lambda: L(RECT, "left", p1=(-0.051, 0.0)), ("停機", "距街廓外框"))
     run("E9 BASELINE 不觸外框 ⇒ 停機", lambda: L(RECT, "left", bl=((-50.0, 40.0), (70.0, 40.0))), ("停機", "觸 BASELINE"))
     run("E10 BASELINE 過該端點 ⇒ 停機", lambda: L(RECT, "left", bl=((-50.0, 0.0), (70.0, 0.0))), ("停機", "已觸 BASELINE"))
+    # 〔補令一 ″·W-2〕BASELINE 過屁股線之中點 (10,30) 而偏 a 度
+    sk = lambda a: ((10.0 - 100.0, DEP - 100.0 * math.tan(math.radians(a))), (10.0 + 100.0, DEP + 100.0 * math.tan(math.radians(a))))
+    T05 = DEP - 10.0 * math.tan(math.radians(0.5))
+    run("E11 偏 0.5° ⇒ 右 30（⛔ 33.5）", lambda: L(RECT, "right", bl=sk(0.5)), 30.0)
+    run("E11 偏 0.5° ⇒ 左 30 − 10·tan0.5°", lambda: L(RECT, "left", bl=sk(0.5)), T05)
+    for sd, exp in (("right", 30.0), ("left", T05)):
+        run(f"E11′ 偏 0.5°·{sd}·旋轉 37°·鏡射·TWD97", (lambda sd=sd: L(RECT, sd, bl=sk(0.5), frame=FR)), exp)
+        run(f"E11′ 偏 0.5°·{sd}·FRONT 反向", (lambda sd=sd: L(RECT, sd, bl=sk(0.5), swap=True)), exp)
+    run("E12 偏 −0.5° ⇒ 左 30", lambda: L(RECT, "left", bl=sk(-0.5)), 30.0)
+    run("E12 偏 −0.5° ⇒ 右 30 − 10·tan0.5°", lambda: L(RECT, "right", bl=sk(-0.5)), T05)
+    run("E13 偏 1.9°（未逾 2°）⇒ 右 30", lambda: L(RECT, "right", bl=sk(1.9)), 30.0)
+    run("E13′ 偏 2.1°（逾 2°·依字面）⇒ 右 33.5", lambda: L(RECT, "right", bl=sk(2.1)), 33.5)
+
+    def jog():
+        from shapely.geometry import Polygon
+        ln = ns["end_block_end_line"](Polygon(JOG), (0.0, 0.0), (20.0, 0.0), [(-50.0, DEP), (70.0, DEP)], _label="BX")
+        return ln.length
+    run("E14 端之外框有與 BASELINE 平行而遠之折 ⇒ 端線 33（⛔ 止於其折）", jog, 33.0)
+    run("E15 BASELINE ∥ 屁股線而外移 0.049 ⇒ 30", lambda: L(RECT, "left", bl=((-50.0, DEP + 0.049), (70.0, DEP + 0.049))), 30.0)
+    run("E15 BASELINE ∥ 屁股線而外移 0.051 ⇒ 停機",
+        lambda: L(RECT, "left", bl=((-50.0, DEP + 0.051), (70.0, DEP + 0.051))), ("停機", "觸 BASELINE"))
     return C
 
 
@@ -177,26 +212,30 @@ def _R(x0, x1, y0=0.0, y1=DEP):
     return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
 
 
-def _rows(ns, parts, frame=ID, baseline=True):
-    """長 40 之矩形·二端皆無側街·試算 G 皆 1 ⇒ 各列未達·准強制。回 (左之列, 左之紀錄)。"""
+def _rows(ns, parts, frame=ID, baseline=True, fy=0.0, bly=DEP, full=False):
+    """長 40 之矩形·二端皆無側街·試算 G 皆 1 ⇒ 各列未達·准強制。回 (左之列, 左之紀錄)。
+    〔補令一 ″〕fy ＝ FRONT 之二端點之 y（外框之 y ＝ 0）；bly ＝ BASELINE 之 y；full ⇒ 回 (左之列, 左之紀錄, cache)。"""
     from shapely.geometry import Polygon
     f, v = frame
     blk = Polygon([f(p) for p in _R(0, 40)])
     cad = v((0.0, 1.0))
     cache = {}
     ns["end_block_apply"]([_e(p, c, frame) for p, c in parts], blk_label="BX", block_poly=blk, d_hat=v((1.0, 0.0)),
-                          corner_pt=f((0, 0)), front_p2=f((40, 0)), cad_alloc=cad,
+                          corner_pt=f((0, fy)), front_p2=f((40, fy)), cad_alloc=cad,
                           allocation_dir=ns["alloc_normal_axis"](cad), min_width=MW,
                           has_side_pk={"left": False, "right": False}, has_side_cad={"left": False, "right": False},
                           corner_range_polys={}, trial=lambda tp, s, w: (1.0, 5.0), cache=cache,
                           allow_forced=lambda s: True,
-                          baseline_pts=([tuple(f((-50, DEP))), tuple(f((90, DEP)))] if baseline else None))
+                          baseline_pts=([tuple(f((-50, bly))), tuple(f((90, bly)))] if baseline else None))
     rec = cache["BX"]["left"]
-    return {r["暫編地號"]: (r.get("臨端線(m)"), r.get("評選指數"), r.get("結果")) for r in rec["候選"]}, rec
+    out = {r["暫編地號"]: (r.get("臨端線(m)"), r.get("評選指數"), r.get("結果")) for r in rec["候選"]}
+    return (out, rec, cache) if full else (out, rec)
 
 
 P1 = [("A(1)", _R(0, 2)), ("X(1)", _R(2, 10)), ("B(1)", _R(10, 40))]
 P2 = [("A1(1)", _R(0, 5, 0, 10)), ("A2(1)", _R(0, 5, 10, DEP)), ("B(1)", _R(5, 40))]
+P6 = [("S(1)", _R(0, 0.04)), ("A(1)", _R(0.04, 4)), ("B(1)", _R(4, 40))]
+P8 = [("S(1)", _R(0, 0.03)), ("A(1)", _R(0.03, 4)), ("B(1)", _R(4, 40))]
 
 
 def _cases_p(ns):
@@ -222,6 +261,34 @@ def _cases_p(ns):
     run("P5 未給 BASELINE ⇒ 列之臨端線、評選指數皆 None",
         lambda: {k: v[:2] for k, v in _rows(ns, P1, baseline=False)[0].items() if k in ("A(1)", "X(1)")},
         {"A(1)": (None, None), "X(1)": (None, None)})
+    # 〔補令一 ″·W-1〕條片：S 之二長邊皆距端線 5 cm 內、A 之左邊亦然 ⇒ 每一小段唯歸原位次最先者（S）
+    E6 = {"S(1)": (30.0, 0.406857, "未達"), "A(1)": (0.0, 0.593143, "未達")}
+    run("P6 條片 S 居端 ⇒ S 30／0.406857、A 0／0.593143",
+        lambda: {k: v for k, v in _rows(ns, P6)[0].items() if k in ("S(1)", "A(1)")}, E6)
+    run("P7 P6 之旋轉 37°·鏡射·TWD97 ⇒ 同",
+        lambda: {k: v for k, v in _rows(ns, P6, frame=FR)[0].items() if k in ("S(1)", "A(1)")}, E6)
+    run("P8 條片 0.9 ㎡（⛔ 跨占）⇒ A 30／0.994857", lambda: _rows(ns, P8)[0].get("A(1)"), (30.0, 0.994857, "未達"))
+    run("P9 P6 之臨端線之和 30、指數之和 1.0（≤ 端線 30、≤ 1）",
+        lambda: (lambda o: (round(sum(x[0] for x in o.values()), 6), round(sum(x[1] for x in o.values()), 6)))(_rows(ns, P6)[0]),
+        (30.0, 1.0))
+
+    def w3(**kw):
+        o, rec = _rows(ns, P1, **kw)
+        o0, rec0 = _rows(ns, P1, baseline=False, fy=kw.get("fy", 0.0))
+        return (rec.get("端線(m)"), any(t in str(rec.get("端線之誤")) for t in ("距街廓外框", "未觸 BASELINE")),
+                {k: x[1] for k, x in o.items()}, {k: x[2] for k, x in o.items()} == {k: x[2] for k, x in o0.items()},
+                rec.get("當選") == rec0.get("當選"))
+    EW3 = (None, True, {"A(1)": None, "X(1)": None}, True, True)
+    run("P10 FRONT 之端點距外框 0.08 ⇒ 照行·端線 None·載其由·指數 None·結果與當選同未給 BASELINE", lambda: w3(fy=-0.08), EW3)
+    run("P11 BASELINE 畫於屁股線外 0.08 ⇒ 同 P10", lambda: w3(bly=DEP + 0.08), EW3)
+
+    def disp():
+        ev10 = _rows(ns, P1, fy=-0.08, full=True)[2]
+        ev1 = _rows(ns, P1, full=True)[2]
+        l10 = [x for x in ns["end_block_eval_rows"](ev10)["lines"] if x.startswith("BX 左端")]
+        l1 = [x for x in ns["end_block_eval_rows"](ev1)["lines"] if x.startswith("BX 左端")]
+        return (len(l10) == 1 and "端線 — m（無從定：" in l10[0], len(l1) == 1 and "端線 30.0 m；" in l1[0])
+    run("P12 顯示：端線不可定 ⇒「端線 — m（無從定：」；可定 ⇒「端線 30.0 m；」", disp, (True, True))
     return C
 
 
@@ -349,6 +416,8 @@ def _cbs(targets):
                     win = c
                     break
             out.setdefault(blk, {})[sd] = {"觸發": True, "R_end(㎡)": cfg["thr"], "候選": rows, "當選": win}
+            if cfg.get("err"):          # 〔補令一 ″·W-3〕該端之端線不可定
+                out[blk][sd]["端線之誤"] = cfg["err"]
         return out
 
     def alloc_state(temp, build):
@@ -393,10 +462,12 @@ def _w2(a, area=None, nm=None):
     return t, own, blocks, {RX: [(-10.0, -5.0), (50.0, -5.0)]}
 
 
-def _t2(order_e, order_f, idx_e=None, idx_f=None, nm=None):
+def _t2(order_e, order_f, idx_e=None, idx_f=None, nm=None, err_e=None):
     nm = nm or {}
     n = lambda s: nm.get(s, s)
     e = dict(thr=90, cands=[n(x) for x in order_e])
+    if err_e:
+        e["err"] = err_e
     f = dict(thr=180, cands=[n(x) for x in order_f])
     if idx_e is not None:
         e["idx"] = {n(k): v for k, v in idx_e.items()}
@@ -497,6 +568,14 @@ def _cases_m(ns):
     run("M9 三位輪流互等·兩兩比較成圈 ⇒ 序鍵之先者（戊）先（⛔ 依暫編地號）",
         lambda: _go(ns, _w3(), T3({"D1(1)": 0.6, "U1(1)": 0.3}, {"U2(1)": 0.6, "J2(1)": 0.3},
                                   {"Jg(1)": 0.6, "Dg(1)": 0.3})), EXP5)
+    # 〔補令一 ″·W-3〕
+    ERR = "🔴 end_block_end_line[BE·left]：FRONT 之該端點距街廓外框 0.0800 m，逾容差 0.05 m"
+    run("M10 互相等待而 BE 左之端線不可定 ⇒ 停機（載「端線無從定」）",
+        lambda: _go(ns, _w2(V1A), _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], err_e=ERR, **D_TOP)), ("停機", "端線無從定"))
+    run("M11 順序一致（⛔ 互相等待）而 BE 左之端線不可定 ⇒ 照原位次（＝ M5）",
+        lambda: _go(ns, _w2(V1A), _t2(["D1(1)", "U1(1)"], ["D2(1)", "U2(1)"], err_e=ERR, **D_TOP)),
+        ([("D1(1)", "②", "成"), ("D2(1)", "②", "未成"), ("U1(1)", "—", "略·已定案"), ("U2(1)", "②", "成")],
+         [("BE", "左", "D1(1)"), ("BF", "左", "U2(1)")], {}))
     return C
 
 
