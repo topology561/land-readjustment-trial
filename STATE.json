@@ -1,14 +1,14 @@
 {
- "status": "verifying",
- "status_since": "2026-10-30T00:53:40+08:00",
- "order": "W-G.9-399_補令二.md",
- "order_bytes": 75373,
- "order_sha256": "d7199ace80a0b7e833487a360bdae374eb1608759a32b3e110a232e09d17ce42",
- "order_kind": "補令",
+ "status": "pending",
+ "status_since": "2026-10-30T05:12:00+08:00",
+ "order": "W-G.9-399_補令三.md",
+ "order_bytes": 28525,
+ "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
+ "order_kind": "短單",
  "expects_allocation_change": false,
- "attempt": 3,
- "report": "W-G.9-399_補令二_回報.md",
- "result": "完成",
+ "attempt": 1,
+ "report": null,
+ "result": null,
  "kl_question": null,
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
@@ -1530,6 +1530,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-399_補令二（完成之回報·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-30T05:12:00+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "pending",
+   "note": "復驗 W-G.9-399_補令二 通過（⛔ 採自報·施後 97＋前態 9 呼叫從頭重跑皆合期·本案配地⛔ 變）⇒ 出 W-G.9-399_補令三（入主線之短單·快轉 bd7da4d → 側支之端）"
   }
  ],
  "kl_pending": []
