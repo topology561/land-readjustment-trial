@@ -1,14 +1,14 @@
 {
- "status": "verifying",
- "status_since": "2026-10-29T10:03:20+08:00",
- "order": "W-G.9-399_規格單.md",
- "order_bytes": 182866,
- "order_sha256": "8cfb1582e13b993595ee84ad99375009dd0b5855be244a969a4bdc045eb8c915",
- "order_kind": "規格單",
+ "status": "pending",
+ "status_since": "2026-10-29T12:41:12+08:00",
+ "order": "W-G.9-399_補令一.md",
+ "order_bytes": 89175,
+ "order_sha256": "b086c2042f9e67845ddf7b0c02a1aa8c58b8f2ab36dc63a719016e9b1b13d1c3",
+ "order_kind": "補令",
  "expects_allocation_change": false,
- "attempt": 1,
- "report": "W-G.9-399_規格單_回報.md",
- "result": "停機上呈",
+ "attempt": 2,
+ "report": null,
+ "result": null,
  "kl_question": null,
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
@@ -1467,6 +1467,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-399_規格單（停機上呈·停機款 12·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-29T12:41:12+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "pending",
+   "note": "復驗 W-G.9-399_規格單 之停機上呈（停機款 12·W-1〜W-3 屬實·自誤 645）⇒ 出 W-G.9-399_補令一.md（89175 B·b086c2042f9e…·attempt 2·expects_allocation_change ＝ false）：臨端線之長之分配、BASELINE 之微小角差、端線不可定⛔ 阻全案；原趟之碼為底（R-0″ 95047cb9…）"
   }
  ],
  "kl_pending": []
