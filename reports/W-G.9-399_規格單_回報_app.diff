@@ -1,0 +1,434 @@
+diff --git a/app.py b/app.py
+index ca9f917..95047cb 100644
+--- a/app.py
++++ b/app.py
+@@ -11609,6 +11609,12 @@ END_BLOCK_CROSS_MIN_AREA = 1.0      # ㎡·跨占之門檻（比照街角選位
+ SS_END_BLOCK_EVAL = 'f3_end_block_eval'
+ SS_END_BLOCK_MODE = 'f3_end_block_mode'      # 🆕 `W-G.9-353`：`'trial'` ⇒ 皆未達者暫以強制抵費地計
+ SS_END_BLOCK_MERGE = 'f3_end_block_merge'    # 🆕 `W-G.9-353`：合併再試之紀錄 `{'標的': [...], '皆未達': {街廓: [端…]}}`
++# 🆕 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:09`／`22:42`／`22:57`）：
++#   端線之定之容差（m）——同 `_boundary_len_on_line` 之 `perp_tol` 之預設（KL 備忘：容差至少 1 cm）。
++END_BLOCK_LINE_TOL = 0.05
++#   評選指數之權重——KL `2026-10-26 22:42`「1. 權重改用2項即可：端線 0.4、面積 0.6」（⛔ 計正面道路之長）。
++END_BLOCK_IDX_W_LINE = 0.4
++END_BLOCK_IDX_W_AREA = 0.6
+ 
+ 
+ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+@@ -11663,10 +11669,135 @@ def end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, alloc
+             'r_end_area': float(_a), 'band_area': float(_band.area), 'buf': _buf}
+ 
+ 
++def end_block_end_line(block_poly, end_pt, other_pt, baseline_pts, _label=''):
++    """🆕 `W-G.9-399`（KL `2026-10-26 22:09`「以末端塊為範圍計算臨相臨街廓BLOCK長度指數」·`22:42`「端線 0.4」·KL `2026-10-22 05:40`「臨FRONTLINE
++    及BASELINE」·`K-6` 典 `W-G.9-399` 之節之三之甲）：一端之**端線** ＝ 街廓外框（`block_poly.exterior`）自 FRONT 之該端點
++    `end_pt`（左 ＝ p1、右 ＝ p2）沿外框、背離 FRONT 之他端點 `other_pt` 之向，至首觸 BASELINE 之直線（`baseline_pts` 二點所定·
++    同 `n19p_depth_info_by_label` 之源）之一段。回 `LineString`（跨外框之始末者合之；合不成一線者 `MultiLineString`）。
++    觸點之候選 ＝ 外框與 BASELINE 之直線之交（點；共線之段取其二端）∪ 外框之頂點之距該直線未逾 `END_BLOCK_LINE_TOL` 者
++    （⛔ 以容差之帶之入口為觸點）。向：以外框之弧長之位置（`project`）計，順、逆二向各求「自 `end_pt` 至最近之觸點」與
++    「至 `other_pt` 之投影」之弧長；前者短於後者之向恰一 ⇒ 該向（他端點得為截角前之理論角·`K-4` 第 5 條 ⇒ ⛔ 驗其距外框·唯取其
++    投影以定向）。停機（`RuntimeError`·no-silent-fallback）：缺件；`end_pt` 距外框逾容差；`end_pt` 已觸 BASELINE；無觸點；
++    合條件之向非恰一；端線之長未逾容差。"""
++    import math as _m399
++    from shapely.geometry import LineString as _LS399, MultiLineString as _ML399, Point as _Pt399
++    from shapely.ops import linemerge as _lm399, substring as _sub399
++    _tag399 = f"🔴 end_block_end_line[{_label}]"
++    if block_poly is None or end_pt is None or other_pt is None:
++        raise RuntimeError(f"{_tag399}：缺街廓或 FRONT 之端點（no-silent-fallback）")
++    if baseline_pts is None or len(baseline_pts) != 2:
++        raise RuntimeError(f"{_tag399}：BASELINE 之點非二點（{baseline_pts!r}）")
++    (_bx0, _by0), (_bx1, _by1) = [(float(_q399[0]), float(_q399[1])) for _q399 in baseline_pts]
++    _ux399, _uy399 = _bx1 - _bx0, _by1 - _by0
++    _un399 = _m399.hypot(_ux399, _uy399)
++    if not (_un399 > 0.0):
++        raise RuntimeError(f"{_tag399}：BASELINE 之二點重合 ⇒ 其直線不可定義")
++    _ux399, _uy399 = _ux399 / _un399, _uy399 / _un399
++
++    def _off399(x, y):
++        # 至 BASELINE 之直線（無限延長）之垂距
++        return abs((x - _bx0) * _uy399 - (y - _by0) * _ux399)
++    _ring399 = _LS399(list(block_poly.exterior.coords))
++    _len399 = float(_ring399.length)
++    _ep399 = (float(end_pt[0]), float(end_pt[1]))
++    _gap399 = float(_ring399.distance(_Pt399(_ep399)))
++    if _gap399 > END_BLOCK_LINE_TOL:
++        raise RuntimeError(f"{_tag399}：FRONT 之該端點距街廓外框 {_gap399:.4f} m，逾容差 {END_BLOCK_LINE_TOL} m")
++    if _off399(*_ep399) <= END_BLOCK_LINE_TOL:
++        raise RuntimeError(f"{_tag399}：FRONT 之該端點已觸 BASELINE（垂距 {_off399(*_ep399):.4f} m）⇒ 端線不可定")
++    # 觸點之候選：外框與 BASELINE 之直線之交（直線取足以涵蓋外框之長）∪ 距之未逾容差之頂點
++    _reach399 = max(_m399.hypot(float(_c[0]) - _bx0, float(_c[1]) - _by0) for _c in _ring399.coords) + 1.0
++    _bline399 = _LS399([(_bx0 - _reach399 * _ux399, _by0 - _reach399 * _uy399),
++                        (_bx0 + _reach399 * _ux399, _by0 + _reach399 * _uy399)])
++    _hits399 = []
++
++    def _collect399(g):
++        _gt = g.geom_type
++        if _gt == 'Point':
++            _hits399.append((float(g.x), float(g.y)))
++        elif _gt == 'LineString':
++            _cs = list(g.coords)
++            if _cs:
++                _hits399.extend([(float(_cs[0][0]), float(_cs[0][1])), (float(_cs[-1][0]), float(_cs[-1][1]))])
++        elif hasattr(g, 'geoms'):
++            for _sg in g.geoms:
++                _collect399(_sg)
++    _xg399 = _ring399.intersection(_bline399)
++    if not _xg399.is_empty:
++        _collect399(_xg399)
++    _hits399.extend((float(_c[0]), float(_c[1])) for _c in _ring399.coords
++                    if _off399(float(_c[0]), float(_c[1])) <= END_BLOCK_LINE_TOL)
++    if not _hits399:
++        raise RuntimeError(f"{_tag399}：街廓外框未觸 BASELINE 之直線（無觸點）⇒ 端線不可定")
++    _s0 = float(_ring399.project(_Pt399(_ep399)))
++    _so = float(_ring399.project(_Pt399(float(other_pt[0]), float(other_pt[1]))))
++    _sh = [float(_ring399.project(_Pt399(_h))) for _h in _hits399]
++    _fw_t, _fw_o = min((_x - _s0) % _len399 for _x in _sh), (_so - _s0) % _len399
++    _bw_t, _bw_o = min((_s0 - _x) % _len399 for _x in _sh), (_s0 - _so) % _len399
++    _dirs399 = [_d for _d, _ok in (('順', _fw_t < _fw_o), ('逆', _bw_t < _bw_o)) if _ok]
++    if len(_dirs399) != 1:
++        raise RuntimeError(f"{_tag399}：先觸 BASELINE、後至他端點之向有 {len(_dirs399)} 向（順 {_fw_t:.4f}／{_fw_o:.4f}、"
++                           f"逆 {_bw_t:.4f}／{_bw_o:.4f}·期恰一）⇒ 端線不可定")
++    if _dirs399[0] == '順':
++        _a399, _b399 = _s0, _s0 + _fw_t
++    else:
++        _a399, _b399 = _s0 - _bw_t, _s0
++    _spans399 = ([(_a399, _b399)] if 0.0 <= _a399 and _b399 <= _len399 else
++                 ([(_a399, _len399), (0.0, _b399 - _len399)] if _b399 > _len399 else [(_a399 + _len399, _len399), (0.0, _b399)]))
++    _pieces399 = [_sub399(_ring399, _p, _q) for _p, _q in _spans399 if _q > _p]
++    _pieces399 = [_pc for _pc in _pieces399 if _pc.geom_type == 'LineString' and _pc.length > 0.0]
++    _out399 = _pieces399[0] if len(_pieces399) == 1 else _lm399(_ML399(_pieces399))
++    if not (float(_out399.length) > END_BLOCK_LINE_TOL):
++        raise RuntimeError(f"{_tag399}：端線之長 {float(_out399.length):.4f}（m）未逾容差 {END_BLOCK_LINE_TOL}")
++    return _out399
++
++
++def end_block_end_segs(end_line):
++    """🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`）：端線（`end_block_end_line` 之所回）之直段之列 `[(a, b), …]`——`a`、`b` 為二元之 `float` 之組，唯取長 ＞ 0 者，
++    依其座標之序；`MultiLineString` 者逐其子（塊 `K48` 之三之乙：分子、分母逐直段以 `_boundary_len_on_line` 量之）。"""
++    _parts399 = list(end_line.geoms) if end_line.geom_type == 'MultiLineString' else [end_line]
++    _segs399 = []
++    for _pt399 in _parts399:
++        _cs399 = [(float(_c[0]), float(_c[1])) for _c in _pt399.coords]
++        for _p399, _q399 in zip(_cs399[:-1], _cs399[1:]):
++            if _q399[0] != _p399[0] or _q399[1] != _p399[1]:
++                _segs399.append((_p399, _q399))
++    return _segs399
++
++
++def end_block_end_geom(block_poly, d_hat, corner_pt, front_p2, side, r_end, baseline_pts, _label=''):
++    """🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`·塊 `K48` 之三之甲）：一端之端線之量。回 `{'end_segs', 'end_len'}`：
++    `baseline_pts` 為 `None`（BASELINE 未給）⇒ 皆 `None`（列之指數為空·唯互相等待時停機）；否則端線 ＝ `end_block_end_line`
++    （該端點：左 ＝ `corner_pt`、右 ＝ `corner_pt ＋ s(front_p2)·d̂`；他端點為其另一），`end_segs` ＝ 其直段（`end_block_end_segs`），
++    `end_len`（評選指數之端線之分母）＝ 各直段上 `_boundary_len_on_line(r_end, a, b)` 之和——`R_end` 之外框落於端線之長
++    （同源·比照街角之「範圍自身之側街邊」；端線內斜而出 `R_end` 者唯計其內之段）；`end_len` 未逾 `END_BLOCK_LINE_TOL` ⇒ 停機。"""
++    if baseline_pts is None:
++        return {'end_segs': None, 'end_len': None}
++    import numpy as np
++    if side not in ('left', 'right'):
++        raise RuntimeError(f"🔴 end_block_end_geom[{_label}]：side={side!r}（只接受 left／right）")
++    if block_poly is None or d_hat is None or corner_pt is None or front_p2 is None or r_end is None:
++        raise RuntimeError(f"🔴 end_block_end_geom[{_label}·{side}]：缺街廓／FRONT／R_end 之幾何（no-silent-fallback）")
++    _c399 = np.asarray(corner_pt, dtype=float)[:2]
++    _u399 = np.asarray(d_hat, dtype=float)[:2]
++    _q399 = _c399 + float(np.dot(np.asarray(front_p2, dtype=float)[:2] - _c399, _u399)) * _u399
++    _at399, _to399 = (_c399, _q399) if side == 'left' else (_q399, _c399)
++    _ln399 = end_block_end_line(block_poly, (float(_at399[0]), float(_at399[1])), (float(_to399[0]), float(_to399[1])),
++                                baseline_pts, _label=f"{_label}·{side}")
++    _sg399 = end_block_end_segs(_ln399)
++    _el399 = float(sum(_boundary_len_on_line(r_end, _a, _b) for _a, _b in _sg399))
++    if not (_el399 > END_BLOCK_LINE_TOL):
++        raise RuntimeError(f"🔴 end_block_end_geom[{_label}·{side}]：R_end 之外框落於端線之長 {_el399:.4f}（m）未逾容差"
++                           f" {END_BLOCK_LINE_TOL} ⇒ 評選指數之分母不可定")
++    return {'end_segs': _sg399, 'end_len': _el399}
++
++
+ def end_block_pick(side, geom, entries, corner_range_polys, trial, _label='', allow_forced=False):
+     """評選（純函式·`trial(tp) -> (G, 臨正街寬)` 由呼叫端供）。`entries` ＝ 自該端起之原位次序列之宗。
+     回 `{'winner': 暫編地號, 'rows': [...]}`；皆未達 ⇒ `allow_forced` 為真者回 `{'winner': None, 'rows': [...]}`
+-    （強制抵費地·`W-G.9-353`），否則 🔴 停機。"""
++    （強制抵費地·`W-G.9-353`），否則 🔴 停機。
++    🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`）：每一跨占之列於其跨占之欄之後增 `臨端線(m)`（2 位）、`評選指數`（6 位）；
++    `geom` 無 `end_segs`（BASELINE 未給）⇒ 二欄皆 `None`。"""
+     from shapely.geometry import Polygon as _P_eb
+     _r_end = geom['r_end']
+     _thr = float(geom['r_end_area'])
+@@ -11685,6 +11816,19 @@ def end_block_pick(side, geom, entries, corner_range_polys, trial, _label='', al
+         if _ov <= END_BLOCK_CROSS_MIN_AREA:
+             continue
+         _row = {'暫編地號': _k, '原地號': str(_tp.get('原地號', '')), '跨占R_end(㎡)': round(_ov, 2)}
++        # 🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`·塊 `K48` 之三之乙）：評選指數 ＝ 0.4 × 臨端線之長 ÷ 端線之長 ＋ 0.6 × 跨占 ÷
++        #   R_end（分子以未取位之量）；臨端線之長 ＝ 該宗 ∩ R_end 之外框落於端線之長（逐直段·與分母同源）；無端線 ⇒ 二欄皆 None。
++        #   歸街角側之列亦算之以示（⛔ 入名次）；評選、當選、停機照舊。
++        _es399 = geom.get('end_segs')
++        if _es399:
++            _cut399 = _r_end.intersection(_pg)
++            _on399 = float(sum(_boundary_len_on_line(_cut399, _a, _b) for _a, _b in _es399))
++            _row['臨端線(m)'] = round(_on399, 2)
++            _row['評選指數'] = round(END_BLOCK_IDX_W_LINE * _on399 / float(geom['end_len'])
++                                     + END_BLOCK_IDX_W_AREA * _ov / _thr, 6)
++        else:
++            _row['臨端線(m)'] = None
++            _row['評選指數'] = None
+         if any(float(_pg.intersection(_c).area) > END_BLOCK_CROSS_MIN_AREA for _c in _crs):
+             _row.update({'試算G(㎡)': None, '臨正街寬(m)': None, '結果': '跨占街角規定範圍·歸街角側'})
+             rows.append(_row)
+@@ -11725,7 +11869,7 @@ def end_block_pin(ordered, side, pid, _label=''):
+ 
+ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p2, cad_alloc,
+                     allocation_dir, min_width, has_side_pk, has_side_cad, corner_range_polys,
+-                    trial, cache, allow_forced=None, min_build_area=None):
++                    trial, cache, allow_forced=None, min_build_area=None, baseline_pts=None):
+     """一街廓之末端塊：評選（首趟）或沿用（`cache` 已有本街廓）＋ 落位。
+     `trial(tp, side, s_back) -> (G, 臨正街寬)`；`cache` ＝ `SS_END_BLOCK_EVAL` 之 dict（就地寫）。
+     🆕 `W-G.9-353`：`allow_forced(side) -> bool`（缺 ⇒ 恆偽）——各筆單獨皆未達者，真 ⇒ 強制抵費地（末）
+@@ -11742,7 +11886,11 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
+     `'歸他端'`（合併再試⛔ 以之為候選）。其後之紀錄、落位（先左後右）、回傳照舊；非二端預選之街廓（一端有側街、或有
+     `cache`）逐位同改前。重選而皆未達且⛔ 准強制 ⇒ `end_block_pick` 之既有之停機（其訊息之列 ＝ 重選之列）。
+     所據之讀：KL `2026-10-25 03:58` 之答（其請示之通知一·KL 未示異議）——這筆土地在兩端各依原位次試一次；只一端拿得下
+-    ⇒ 歸該端；兩端皆拿得下 ⇒ 歸落於範圍內面積（取至 2 位）較大之一端、相同歸 p1 側；兩端皆拿不下 ⇒ 兩端皆不歸。"""
++    ⇒ 歸該端；兩端皆拿得下 ⇒ 歸落於範圍內面積（取至 2 位）較大之一端、相同歸 p1 側；兩端皆拿不下 ⇒ 兩端皆不歸。
++    🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`·末端塊評選指數）：增關鍵字參數 `baseline_pts`（BASELINE 之二點·`None` ⇒ 改前之
++    行為）；每一無側街之端取 `end_block_side_geom` 之所回之後，以 `end_block_end_geom`（`r_end` ＝ 其所回之 `r_end`）之
++    `end_segs`／`end_len` 併入該端之幾何（新 dict·⛔ 改 `end_block_side_geom`）；首趟之紀錄每端增 `端線(m)`（2 位·無 ⇒ `None`）。
++    二端預選、落位、他端之重選照舊。"""
+     _info = {'left': None, 'right': None}
+     _cached = cache.get(blk_label)
+     _rec = {}
+@@ -11758,6 +11906,10 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
+             _geo393[_sd393] = end_block_side_geom(block_poly, d_hat, corner_pt, front_p2, cad_alloc, allocation_dir,
+                                                   min_width, _sd393, _label=blk_label,
+                                                   min_build_area=min_build_area)
++            # 🆕 `W-G.9-399`（R-5）：端線之二鍵併入該端之幾何（新 dict·`end_block_side_geom` 之所回⛔ 改）
++            _geo393[_sd393] = dict(_geo393[_sd393],
++                                   **end_block_end_geom(block_poly, d_hat, corner_pt, front_p2, _sd393,
++                                                        _geo393[_sd393]['r_end'], baseline_pts, _label=blk_label))
+     # 🔧 `W-G.9-395`（R-1 ①②③·`K-9-60 ①`）：二端預選——二端皆無側街且 `cache` 無本街廓者，二端之評選於落位之前各行一次
+     #   （左之序 ＝ `_out`、右之序 ＝ 其反序）；衝突（二端之當選為同一暫編地號）⇒ 交面積大者／相同 ⇒ 左端得之，他端除之而
+     #   重選並於原列之該宗之位插入其「歸他端」之列；其後一端之當選於他端之列之「未達」⇒「歸他端」。下之迴圈取其結果
+@@ -11824,6 +11976,7 @@ def end_block_apply(ordered, *, blk_label, block_poly, d_hat, corner_pt, front_p
+             _rec[_sd] = {'觸發': True, '未臨正街(㎡)': round(float(_g['unfront']), 2),
+                          '末端帶(㎡)': round(float(_g['band_area']), 2),
+                          'R_end(㎡)': round(float(_g['r_end_area']), 2),
++                         '端線(m)': (None if _g['end_len'] is None else round(float(_g['end_len']), 2)),   # 🆕 `W-G.9-399`
+                          '候選': _pk_res['rows'], '當選': _win}
+             if _win is None:
+                 _rec[_sd]['強制抵費地'] = True
+@@ -11893,8 +12046,13 @@ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2,
+                    S_block_max, post_price, pre_price_by_zone, min_build_area=None):
+     """`W-G.9-352`：二宿主（畫面 `f3_screen_stepg_run`／harness `_run_step_g_impl`）之共同入口（單一真相源·#20）。
+     讀 session 之畸零地寬、街角選位表之有無側街、CAD 之 SIDELINE；試算之 G 經宿主之 `_solve_one`
+-    （與配地同一解算路徑）。回 `end_block_apply` 之回傳。"""
++    （與配地同一解算路徑）。回 `end_block_apply` 之回傳。
++    🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`·末端塊評選指數之端線）：BASELINE 之二點 ＝ `_baseline_pts_from_manual`
++    （session 之 `f3_manual_baseline` 之本街廓、街廓之外框之頂點·同 `n19p_depth_info_by_label` 之源）；缺 ⇒ `None`
++    （端線⛔ 算·列之指數為空）——傳予 `end_block_apply` 之 `baseline_pts`。"""
+     import numpy as np
++    _bl399 = _baseline_pts_from_manual((session.get('f3_manual_baseline') or {}).get(blk_label),
++                                       (list(blk_poly.exterior.coords) if blk_poly is not None else None))
+     _mw = float((session.get('f3_min_width_by_label', {}) or {}).get(blk_label, 0.0) or 0.0)
+     _fo = (session.get('f3L_forced_offset', {}) or {}).get(blk_label, {}) or {}
+     _sl = (session.get('f3_cad_side_lines_by_side', {}) or {}).get(blk_label, {}) or {}
+@@ -11930,12 +12088,14 @@ def end_block_host(ordered, *, blk_label, blk_poly, d_hat, corner_pt, front_p2,
+                            corner_pt=corner_pt, front_p2=front_p2, cad_alloc=alloc_dir_cad,
+                            allocation_dir=allocation_dir, min_width=_mw, has_side_pk=_has_pk,
+                            has_side_cad=_has_cad, corner_range_polys=corner_range_polys,
+-                           min_build_area=min_build_area,
++                           min_build_area=min_build_area, baseline_pts=_bl399,
+                            trial=_trial, cache=_cache, allow_forced=_allow)
+ 
+ 
+ def end_block_eval_rows(ev):
+-    """`W-G.9-352`：末端塊評選之顯示（純函式·表列之值皆字串）。回 `{'lines': [...], 'rows': [...]}`。"""
++    """`W-G.9-352`：末端塊評選之顯示（純函式·表列之值皆字串）。回 `{'lines': [...], 'rows': [...]}`。
++    🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`）：觸發之端之說明增「端線 … m；」（缺 ⇒ `—`）；表之列照紀錄之鍵
++    （`臨端線(m)`、`評選指數` 自然入表）。"""
+     _nm = {'left': '左', 'right': '右'}
+     lines, rows = [], []
+     for _blk in sorted(ev or {}):
+@@ -11948,6 +12108,8 @@ def end_block_eval_rows(ev):
+                 continue
+             lines.append(f"{_blk} {_nm[_sd]}端（無側街）：未臨正街 {_r['未臨正街(㎡)']} ＋ 末端帶 {_r['末端帶(㎡)']}"
+                          f" ＝ R_end {_r['R_end(㎡)']} ㎡；"
++                         + ((f"端線 {('—' if _r['端線(m)'] is None else _r['端線(m)'])} m；") if '端線(m)' in _r
++                            else "")   # 🆕 `W-G.9-399`：紀錄無此鍵（改前之紀錄）⇒ 照舊⛔ 列
+                          + (f"當選 {_r['當選']}" if _r.get('當選') is not None
+                             else "各筆單獨與合併再試皆未達 ⇒ 強制抵費地（面積 ＝ R_end）"))
+             for _c in (_r.get('候選') or []):
+@@ -12035,7 +12197,11 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+       二標的之首次之試算之候選之列中 `結果` ＝ `'未達'` 而暫編地號屬該群者（街廓內之土地·一宗於二端皆有列者其 G 各計）；
+       ΣG ＝ 其 `試算G(㎡)` 之和；ΣA ＝ `k967_pre_area`（其暫編地號之集·表 ＝ 每片之分攤登記面積 − 段三之部分併出之和）；
+       p ＝ 其最小之暫編地號。`rec['競合']` 之形照舊（⛔ 載序鍵）。
+-      ③ 之併入之除外另增首次之試算之各端之當選（取得即鎖定·`K-9-80`·全街廓）。"""
++      ③ 之併入之除外另增首次之試算之各端之當選（取得即鎖定·`K-9-80`·全街廓）。
++    🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`／`22:57`·二位地主之互相等待之先後改以末端塊評選指數）：每一競合另載 `'p'`
++      （序鍵之第三項）、`'面積表'`（序鍵之重劃前面積之表）、`'評選'` ＝ `{(街廓, 端): {'名次','指數','片'}}`（`k960_idx_rank`·該端之
++      首次之試算之候選之列·單位 ＝ 合併群〔同一求群之輸入〕）；名次取不到 ⇒ `'評選'` ＝ `None`、`'評選之誤'` ＝ 其訊息之首列（⛔ 停機·
++      唯互相等待時由 `k6b_stage3_run` 停之）。`rec['競合']` 之形照舊（⛔ 載新鍵）。"""
+     _rec = {'退縮': setback, '標的': [], '皆未達': {}}
+     _m389 = k6_trial_mark()
+     try:
+@@ -12073,7 +12239,9 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+     _ct = []
+     _pa395 = {_t395['暫編地號']: float(_t395.get('分攤登記面積_m2', 0) or 0)
+               - sum(float(_v395) for _v395 in (_t395.get('段三部分併出') or {}).values()) for _t395 in temp_parcels}
++    _gu399 = {}                       # 🆕 `W-G.9-399`（R-11）：每一片之單位（合併群·以其群之最小索引為名）
+     for _g in k6_merge_groups(_pk, own_map):
++        _gu399.update({temp_parcels[_i399]['暫編地號']: ('群', _g[0]) for _i399 in _g})
+         _ids = sorted(temp_parcels[i]['暫編地號'] for i in _g)
+         _hit = sorted({x for p in _ids for x in _cand_of.get(p, ())})
+         if len(_hit) >= 2:
+@@ -12099,6 +12267,21 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+                                           k967_pre_area(_ms395[0], _ms395, _pa395), _ms395[0])})
+     if _ct:
+         _rec['競合'] = [{'形': c['形'], '列': [list(e) for e in c['列']]} for c in _ct]
++        # 🆕 `W-G.9-399`（R-11·KL `2026-10-26 22:09`／`22:42`／`22:57`）：每一競合另載 `p`（序鍵之第三項）、`面積表`（序鍵之重劃前
++        #   面積之表）、`評選`（其二標的之各端之名次·`k960_idx_rank` 於該端之首次之試算之候選之列·單位 ＝ 合併群〔上之求群之迴圈
++        #   所錄之 `_gu399`·同一輸入〕）；名次取不到 ⇒ `評選` ＝ None、`評選之誤` ＝ 其訊息之首列（⛔ 停機·唯互相等待時用之）。
++        #   `rec['競合']` 之形照舊。
++        for _c399 in _ct:
++            _c399['p'] = _c399['序鍵'][2]
++            _c399['面積表'] = _pa395
++            _me399 = _gu399.get(_c399['p'], ('單', _c399['p']))
++            try:
++                _c399['評選'] = {(_e399[0], _e399[1]): k960_idx_rank(_ev[_e399[0]][_SIDE[_e399[1]]].get('候選') or [],
++                                                                    _gu399)[_me399]
++                                 for _e399 in _c399['列']}
++            except RuntimeError as _x399:
++                _c399['評選'] = None
++                _c399['評選之誤'] = str(_x399).split("\n")[0]
+     _L = (set(locked or ()) | set(corner_lots or ())
+           | {t['暫編地號'] for t in temp_parcels if t.get('段三併出')})
+     # 🔧 `W-G.9-373` 補令一（R-13′·KL 裁 `2026-10-08 20:18` 甲案）：段三之除外唯取已全數併出者——部分併出之剩下（建地片仍在
+@@ -15015,6 +15198,61 @@ def k967_pool_less(area_of, pool_out):
+     return {_p967: float(area_of[_p967]) - float(pool_out.get(_p967, 0)) for _p967 in area_of}
+ 
+ 
++def k960_idx_rank(rows, group_of):
++    """🆕 `W-G.9-399`（KL `2026-10-26 22:09`「計算各街廓之末端塊名次……名次是指該地主若於該街廓指數分數最大即為第1名」·
++    `22:42`「「是」，與街角地一致」·塊 `K48` 之三之丙）：一端之末端塊名次。`rows` ＝ 該端之候選之列（其端之原位次序）；唯計
++    `結果` ＝ `'未達'` 之列（歸街角側、歸他端⛔ 計）；單位 ＝ `group_of.get(暫編地號, ('單', 暫編地號))`（合併群·無歸戶之片自成
++    一單位）；單位之指數 ＝ 其諸列之 `評選指數` 之和。名次 ＝ 依（和取至 4 位之大者先、同者其單位之首列〔`rows` 之序〕先者先·比照
++    街角之「總分同分 → 原位次先者勝」·⛔ 依暫編地號）之 `1, 2, …`。回 `{單位: {'名次', '指數'（和取至 6 位）, '片'}}`。
++    計入之列之 `評選指數` 為 `None` ⇒ 停機（`RuntimeError`·⛔ 以 0 計）。"""
++    _sum399, _head399, _pcs399 = {}, {}, {}
++    for _i399, _r399 in enumerate(rows or []):
++        if _r399.get('結果') != '未達':
++            continue
++        _p399 = _r399.get('暫編地號')
++        if _r399.get('評選指數') is None:
++            raise RuntimeError(f"🔴 [K-9-60 ③·W-G.9-399] {_p399!r} 之評選指數取不到（BASELINE 未給或端線未算）⇒ 名次無從定")
++        _u399 = (group_of or {}).get(_p399, ('單', _p399))
++        if _u399 not in _sum399:
++            _sum399[_u399], _head399[_u399], _pcs399[_u399] = 0.0, _i399, []
++        _sum399[_u399] += float(_r399['評選指數'])
++        _pcs399[_u399].append(_p399)
++    _ord399 = sorted(_sum399, key=lambda _x: (-round(_sum399[_x], 4), _head399[_x]))
++    return {_u399: {'名次': _n399 + 1, '指數': round(_sum399[_u399], 6), '片': list(_pcs399[_u399])}
++            for _n399, _u399 in enumerate(_ord399)}
++
++
++def k960_idx_key(c, common, area_of):
++    """🆕 `W-G.9-399`（`K-9-28` 之序·KL `2026-10-26 22:42`「與街角地一致」·`22:57`「是」〔唯計共同跨占之端〕·塊 `K48` 之三之丁）：
++    互相等待之一競合 `c`（`c['評選']` ＝ `{端: {'名次','指數','片'}}`、`c['p']`）於共同之端 `common` 之序鍵（小者先）＝
++    有第 1 名者 `(0, −第 1 名之端數)`、皆無者 `(1, 名次之和)`，接 `(−adj_q2(面積), −指數之和〔取至 4 位〕, str(p))`；
++    面積 ＝ `k967_pre_area`（共同之端之片之集·一片計一次·表 ＝ `area_of`）。暫編地號唯為末步（KL `22:57`）。"""
++    _ev399 = c['評選']
++    _rk399 = [int(_ev399[_e]['名次']) for _e in common]
++    _n1399 = sum(1 for _x in _rk399 if _x == 1)
++    _lead399 = (0, -_n1399) if _n1399 else (1, sum(_rk399))
++    _pc399 = sorted({str(_q) for _e in common for _q in _ev399[_e]['片']})
++    _ar399 = k967_pre_area(str(c['p']), _pc399, area_of)
++    _ix399 = round(sum(float(_ev399[_e]['指數']) for _e in common), 4)
++    return _lead399 + (-adj_q2(_ar399), -_ix399, str(c['p']))
++
++
++def k960_idx_first(X, Y, area_of):
++    """🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`／`22:57`·塊 `K48` 之二、三之丁）：二位地主互相等待之先後。回 `(先, 後, 共同之端)`
++    （`X`／`Y` 本身·`k960_idx_key` 小者先）；任一之 `評選` 非 `dict` ⇒ 停機（其 `評選之誤` 入訊息）；共同之端（二者之 `評選`
++    之鍵之交·排序）為空 ⇒ 停機（`RuntimeError`·⛔ 以序鍵代之）。"""
++    for _c399 in (X, Y):
++        if not isinstance(_c399.get('評選'), dict):
++            raise RuntimeError(f"🔴 [K-9-60 ③·W-G.9-399] 競合 {_c399.get('p')!r} 缺末端塊評選指數"
++                               f"（{_c399.get('評選之誤')}）⇒ 互相等待之先後無從定")
++    _cm399 = sorted(set(X['評選']) & set(Y['評選']))
++    if not _cm399:
++        raise RuntimeError(f"🔴 [K-9-60 ③·W-G.9-399] 競合 {X.get('p')!r}、{Y.get('p')!r} 無共同跨占之端 ⇒ 先後無從比")
++    if k960_idx_key(Y, _cm399, area_of) < k960_idx_key(X, _cm399, area_of):
++        return Y, X, _cm399
++    return X, Y, _cm399
++
++
+ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks, centerlines,
+                    a_prime, trial_winner, alloc_state, *, log_print=print, blk5=None, contests=None):
+     """`K-6 §二 段三`（逐一嘗試）＋ `K-9-48`（街角合併重試·後處理）——`W-G.9-344`。
+@@ -15095,6 +15333,10 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       在前；同退於一列之後者依其 `最終序位`；再延後者改記新之夥伴之列；夥伴之鏈成環 ⇒ 停機），首列與候列皆回列——夾於
+       夥伴之列之前之他人照原位次先試；記一列（`層級` ＝ `'K-9-60 ③'`、`結果` ＝ `'互相等待 ⇒ 先處理'`）；再判之。環中有缺
+       `'序鍵'` 之競合 ⇒ 停機。各端至多一競合之輸入逐位同改前（無延後 ⇒ 一切位皆一項之串 ⇒ 其序 ＝ `最終序位` 之序）。
++    🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`／`22:57`·`K-6` 典 `W-G.9-399` 之節）：上開互相等待之環之先者之擇改為——環之長
++      ＝ `2` ⇒ `k960_idx_first`（末端塊評選指數之名次依 `K-9-28` 之序·唯計共同之端·⛔ 用序鍵；缺評選 ⇒ 停機）；環之長 ≥ `3` ⇒
++      環中任一競合缺評選 ⇒ 停機；有一競合對其餘每一競合皆有共同之端且 `k960_idx_first` 皆以之為先（依環之序取首見者）⇒ 其先；
++      無之 ⇒ 序鍵最小者（照舊·序鍵之缺之停機唯及於此）。其先處理之列之 `競合` 欄載其由。其餘照舊。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -15639,11 +15881,43 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                         break
+                 if _cy395 is None:
+                     return
+-                _nk395 = [_cx395 for _cx395 in _cy395 if '序鍵' not in contests[_cx395]]
+-                if _nk395:
+-                    raise RuntimeError(
+-                        f"🔴 [K-6-B 段三 K-9-60 ③] 互相等待之環 {_cy395} 之競合 {_nk395} 缺序鍵——先後無從定（停機款 9）")
+-                _fr395 = min(_cy395, key=lambda _cx395: tuple(contests[_cx395]['序鍵']))
++                # 🆕 `W-G.9-399`（R-12·KL `2026-10-26 22:09`／`22:42`／`22:57`·塊 `K48` 之二、三之戊）：先者之擇——
++                #   二位 ⇒ 末端塊評選指數依 `K-9-28` 之序（`k960_idx_first`·唯計共同之端·⛔ 用序鍵）；三位以上 ⇒ 兩兩以之比而勝過
++                #   其餘每一位者（依環之序取首見者）先，無之（兩兩比較成圈、或某二位無共同之端）⇒ 序鍵最小者（照舊）。
++                if len(_cy395) == 2:
++                    _hd399, _tl399, _cm399 = k960_idx_first(contests[_cy395[0]], contests[_cy395[1]],
++                                                            contests[_cy395[0]].get('面積表'))
++                    _fr395 = _cy395[0] if _hd399 is contests[_cy395[0]] else _cy395[1]
++                    _why399 = f"評選指數之序（共同之端 {_cm399}）"
++                else:
++                    _nv399 = [_cx395 for _cx395 in _cy395 if not isinstance(contests[_cx395].get('評選'), dict)]
++                    if _nv399:
++                        raise RuntimeError(
++                            f"🔴 [K-6-B 段三 K-9-60 ③·W-G.9-399] 三位以上互相等待之環 {_cy395} 之競合 {_nv399} 缺末端塊評選指數"
++                            f"（{[contests[_cx395].get('評選之誤') for _cx395 in _nv399]}）——先後無從定")
++                    _fr395 = None
++                    for _cx399 in _cy395:
++                        _wn399 = True
++                        for _cz399 in _cy395:
++                            if _cz399 == _cx399:
++                                continue
++                            if not (set(contests[_cx399]['評選']) & set(contests[_cz399]['評選'])) or \
++                                    k960_idx_first(contests[_cx399], contests[_cz399],
++                                                   contests[_cx399].get('面積表'))[0] is not contests[_cx399]:
++                                _wn399 = False
++                                break
++                        if _wn399:
++                            _fr395 = _cx399
++                            break
++                    if _fr395 is not None:
++                        _why399 = "三位以上 ⇒ 兩兩之評選指數皆先"
++                    else:
++                        _nk395 = [_cx395 for _cx395 in _cy395 if '序鍵' not in contests[_cx395]]
++                        if _nk395:
++                            raise RuntimeError(
++                                f"🔴 [K-6-B 段三 K-9-60 ③] 互相等待之環 {_cy395} 之競合 {_nk395} 缺序鍵——先後無從定（停機款 9）")
++                        _fr395 = min(_cy395, key=lambda _cx395: tuple(contests[_cx395]['序鍵']))
++                        _why399 = f"三位以上·兩兩比較成圈 ⇒ 序鍵 {tuple(contests[_fr395]['序鍵'])}"
+                 _dl395 = _nx395[_fr395]
+                 _pk395 = _pt[_kf(_susp[_fr395][0])]
+                 _lst395 = _susp.pop(_dl395)
+@@ -15653,8 +15927,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                 _f395, _d395 = _susp[_fr395][0], _lst395[0]
+                 _row(序=_f395['最終序位'], 街廓=_f395['街廓'], 端=_f395['端'], 候選=_f395['暫編地號'],
+                      層級='K-9-60 ③', 結果='互相等待 ⇒ 先處理',
+-                     競合=(f"先處理 {_f395['暫編地號']}（序鍵 {tuple(contests[_fr395]['序鍵'])}）；延後 "
+-                         f"{_d395['暫編地號']}（序鍵 {tuple(contests[_dl395]['序鍵'])}）退至 {_pr395['暫編地號']} 之後"))
++                     競合=(f"先處理 {_f395['暫編地號']}（{_why399}）；延後 "
++                         f"{_d395['暫編地號']} 退至 {_pr395['暫編地號']} 之後"))
+ 
+         while True:
+             _ring395()

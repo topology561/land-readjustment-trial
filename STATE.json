@@ -1,14 +1,14 @@
 {
- "status": "running",
- "status_since": "2026-10-29T05:17:16+08:00",
+ "status": "reported",
+ "status_since": "2026-10-29T10:02:33+08:00",
  "order": "W-G.9-399_規格單.md",
  "order_bytes": 182866,
  "order_sha256": "8cfb1582e13b993595ee84ad99375009dd0b5855be244a969a4bdc045eb8c915",
  "order_kind": "規格單",
  "expects_allocation_change": false,
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "W-G.9-399_規格單_回報.md",
+ "result": "停機上呈",
  "kl_question": null,
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
@@ -1453,6 +1453,13 @@
    "from": "pending",
    "to": "running",
    "note": "接單 W-G.9-399_規格單.md（182866 B·8cfb1582e13b… ＝ STATE；SELF_SHA256 a4957106… 依 P-5 自驗合）"
+  },
+  {
+   "at": "2026-10-29T10:02:33+08:00",
+   "by": "執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "回報 W-G.9-399_規格單（停機上呈·停機款 12：唯讀獨立審查之發現 W-1〜W-5 涉規格之漏載／域上之判斷）：新側支 verify/W-G.9-399-k960x ＝ 23f3fc8（工項零 6b159e2、一 23f3fc8）；工項二 915bcd1 ⛔ 推（驗 V-1〜V-9 皆合·本案配地⛔ 變·差異見 reports/W-G.9-399_規格單_回報_app.diff）；主線 bd7da4d ⛔ 動"
   }
  ],
  "kl_pending": []
