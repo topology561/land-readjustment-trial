@@ -1,14 +1,14 @@
 {
- "status": "running",
- "status_since": "2026-10-29T21:32:30+08:00",
+ "status": "reported",
+ "status_since": "2026-10-30T00:52:34+08:00",
  "order": "W-G.9-399_補令二.md",
  "order_bytes": 75373,
  "order_sha256": "d7199ace80a0b7e833487a360bdae374eb1608759a32b3e110a232e09d17ce42",
  "order_kind": "補令",
  "expects_allocation_change": false,
  "attempt": 3,
- "report": null,
- "result": null,
+ "report": "W-G.9-399_補令二_回報.md",
+ "result": "完成",
  "kl_question": null,
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
@@ -1516,6 +1516,13 @@
    "from": "pending",
    "to": "running",
    "note": "接單 W-G.9-399_補令二.md（75373 B·d7199ace…·SELF_SHA256 def7ecd2… 自驗合·attempt 3）"
+  },
+  {
+   "at": "2026-10-30T00:52:34+08:00",
+   "by": "執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "回報 W-G.9-399_補令二（完成）：新側支 verify/W-G.9-399-k960x ＝ 3a404b0（工項零‴ bfdba99、一‴ 9e0eeb1、二‴ 0c35403〔app.py 101a7a6a…〕、三‴ 4c77eee、四‴ 3a404b0）；V-1‴〜V-9‴ 皆合（97 呼叫·不符 0·本案配地⛔ 變）；唯讀審查 PASS（不變性 5000 例新碼 0／app_R0 308）；收工閘 1‴〜8‴ 皆合；主線 bd7da4d ⛔ 動"
   }
  ],
  "kl_pending": []
