@@ -1,6 +1,6 @@
 {
  "status": "verifying",
- "status_since": "2026-10-29T16:19:17+08:00",
+ "status_since": "2026-10-29T21:11:20+08:00",
  "order": "W-G.9-399_補令一.md",
  "order_bytes": 89175,
  "order_sha256": "b086c2042f9e67845ddf7b0c02a1aa8c58b8f2ab36dc63a719016e9b1b13d1c3",
@@ -1495,6 +1495,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-399_補令一（停機上呈·停機款 12″·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-29T21:11:20+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "verifying",
+   "note": "接手（逾時·README 第五節）：前一輪之 W-G.9-399_補令二 之擬（verifying·末 commit df37cec 17:33）與側支 1612750（12:46）皆逾 3 小時無新 commit ⇒ 視為中斷；本輪接手一次，原型（倉外）已失 ⇒ 依 交接.md 之段之記重建"
   }
  ],
  "kl_pending": []
