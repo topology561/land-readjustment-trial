@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-30T05:12:00+08:00",
+ "status": "running",
+ "status_since": "2026-10-30T05:16:49+08:00",
  "order": "W-G.9-399_補令三.md",
  "order_bytes": 28525,
  "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
@@ -1537,6 +1537,13 @@
    "from": "verifying",
    "to": "pending",
    "note": "復驗 W-G.9-399_補令二 通過（⛔ 採自報·施後 97＋前態 9 呼叫從頭重跑皆合期·本案配地⛔ 變）⇒ 出 W-G.9-399_補令三（入主線之短單·快轉 bd7da4d → 側支之端）"
+  },
+  {
+   "at": "2026-10-30T05:16:49+08:00",
+   "by": "執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接單 W-G.9-399_補令三.md（28525 B·9fb3a996…·SELF_SHA256 1dcd7049… 自驗合·attempt 1）"
   }
  ],
  "kl_pending": []
