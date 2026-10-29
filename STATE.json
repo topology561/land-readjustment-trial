@@ -1,6 +1,6 @@
 {
- "status": "reported",
- "status_since": "2026-10-30T05:36:08+08:00",
+ "status": "verifying",
+ "status_since": "2026-10-30T05:37:00+08:00",
  "order": "W-G.9-399_補令三.md",
  "order_bytes": 28525,
  "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
@@ -1558,6 +1558,13 @@
    "from": "running",
    "to": "reported",
    "note": "回報 W-G.9-399_補令三（完成）：工項零⁗ 4f05898 推側支（3a404b0 → 4f05898）；主線 wip/s1-endpart bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434 → 4f058980a284ae6253033c9b3aad47dffa146761（快轉）；出艙 ①〜④ 皆合；收工閘 1⁗〜8⁗ 皆合（41 呼叫 rc 0·stderr 0 B）；本案配地⛔ 變"
+  },
+  {
+   "at": "2026-10-30T05:37:00+08:00",
+   "by": "發單端",
+   "from": "reported",
+   "to": "verifying",
+   "note": "接手復驗 W-G.9-399_補令三（入主線之短單·完成之回報·⛔ 採自報）"
   }
  ],
  "kl_pending": []
