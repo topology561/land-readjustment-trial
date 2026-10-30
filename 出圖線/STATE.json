@@ -1,6 +1,6 @@
 {
-  "status": "reported",
-  "status_since": "2026-10-30T10:16:00+08:00",
+  "status": "verifying",
+  "status_since": "2026-10-30T10:17:57+08:00",
   "order": "W-P.005_補令一_寬深之註記.md",
   "order_bytes": 88425,
   "order_sha256": "0ec9ac826bd83bf334823233bd2e1df0b857b4e10cbc02cde617c0008b6480c4",
@@ -458,6 +458,13 @@
       "from": "running",
       "to": "reported",
       "note": "W-P.005_補令一 完成：側支 verify/W-P.005a-width-depth＝351e854（併 9fd3427 於 68ef3be）；wip/plots 9deaad2→351e854（快轉）；check 18/18＋舊 12/8/8/8；Ⓐ〜Ⓘ 皆紅；對照組唯 V3 紅、附錄辛同；差異閘綠（對照組紅）；預覽 4 PNG"
+    },
+    {
+      "at": "2026-10-30T10:17:57+08:00",
+      "by": "出圖線·發單端",
+      "from": "reported",
+      "to": "verifying",
+      "note": "上鎖：復驗 W-P.005_補令一"
     }
   ]
 }
