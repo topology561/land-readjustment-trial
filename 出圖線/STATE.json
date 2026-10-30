@@ -1,6 +1,6 @@
 {
- "status": "reported",
- "status_since": "2026-10-30T22:23:42+08:00",
+ "status": "verifying",
+ "status_since": "2026-10-31T00:19:00+08:00",
  "order": "W-P.006_附表13-24.md",
  "order_bytes": 90128,
  "order_sha256": "b25be2cdefb5cf5ec748f2a6a7131219488d35d5b8dcba1c64c303cdecf8c31c",
@@ -507,6 +507,13 @@
    "from": "running",
    "to": "reported",
    "note": "W-P.006 完成：側支 verify/W-P.006-tables-13-24＝1c9caf5（主線 9fd3427 已含·Already up to date）；wip/plots 351e854→1c9caf5（快轉）；check_W-P006 14/14＋W-P005 18/18＋舊 12/8/8/8；Ⓐ〜Ⓔ 皆紅；差異閘綠（對照組紅）；預覽 2 PNG（sha256 與單 §二 8 不同·字形繪製之環境差·記之）"
+  },
+  {
+   "at": "2026-10-31T00:19:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "reported",
+   "to": "verifying",
+   "note": "上鎖：復驗 W-P.006"
   }
  ]
 }
