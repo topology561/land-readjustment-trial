@@ -1,6 +1,6 @@
 {
-  "status": "verifying",
-  "status_since": "2026-10-30T10:17:57+08:00",
+  "status": "await_kl",
+  "status_since": "2026-10-30T10:41:49+08:00",
   "order": "W-P.005_補令一_寬深之註記.md",
   "order_bytes": 88425,
   "order_sha256": "0ec9ac826bd83bf334823233bd2e1df0b857b4e10cbc02cde617c0008b6480c4",
@@ -8,7 +8,7 @@
   "attempt": 1,
   "report": "出圖線/reports/W-P.005_補令一_回報.md",
   "result": "完成",
-  "kl_question": null,
+  "kl_question": "出圖線/待KL/2026-10-30_W-P.005_補令一_寬深註記之確認.md",
   "wip_plots": "351e8548b88bf58993966f59bda6b821ae573d6b",
   "history": [
     {
@@ -465,6 +465,13 @@
       "from": "reported",
       "to": "verifying",
       "note": "上鎖：復驗 W-P.005_補令一"
+    },
+    {
+      "at": "2026-10-30T10:41:49+08:00",
+      "by": "出圖線·發單端",
+      "from": "verifying",
+      "to": "await_kl",
+      "note": "復驗 W-P.005_補令一 合：側支 verify/W-P.005a-width-depth＝wip/plots＝351e854（併 9fd3427 於 68ef3be·快轉自 9deaad2）；差異閘綠（32 列皆三目錄·對照組改 app.py 紅）；附錄甲〜己 bytes／sha256 合；alloc_state 二退縮宗 35／34、略 R1-抵費地-2；post_maps 地號之序＝§二 7；check_W-P005 18/18；check_W-P001〜004 12/8/8/8；mutate 成果綠、Ⓐ〜Ⓘ 皆紅（所紅之項＝§二 7）；對照組（9deaad2 之 post_maps）唯 V3 紅、附錄辛 583/58 與 576/56 同；預覽 4 PNG 重出與成果/ 逐位元組同；獨立覆核（以三角形 C–A–B 異法算截角）二退縮 57 宗之寬深註記全合、八街角截角與宗重疊 0；請 KL 確認寬深註記"
     }
   ]
 }
