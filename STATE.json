@@ -1,6 +1,6 @@
 {
- "status": "verifying",
- "status_since": "2026-10-30T05:37:00+08:00",
+ "status": "idle",
+ "status_since": "2026-10-30T08:25:00+08:00",
  "order": "W-G.9-399_補令三.md",
  "order_bytes": 28525,
  "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
@@ -1565,6 +1565,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "接手復驗 W-G.9-399_補令三（入主線之短單·完成之回報·⛔ 採自報）"
+  },
+  {
+   "at": "2026-10-30T08:25:00+08:00",
+   "by": "發單端",
+   "from": "verifying",
+   "to": "idle",
+   "note": "復驗 W-G.9-399_補令三 通過（⛔ 採自報·主線 bd7da4d → 4f05898 快轉之實值以 ls-remote 證·閘 1⁗〜7⁗ 合·97 呼叫於新主線從頭重跑皆合期）⇒ 立基準 基準/4f058980a284ae6253033c9b3aad47dffa146761.md ⇒ idle（下一張 W-G.9-396 留次輪）"
   }
  ],
  "kl_pending": []
