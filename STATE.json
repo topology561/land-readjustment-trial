@@ -1,6 +1,6 @@
 {
- "status": "drafting",
- "status_since": "2026-10-30T23:09:55+08:00",
+ "status": "await_kl",
+ "status_since": "2026-10-31T00:48:41+08:00",
  "order": "W-G.9-399_補令三.md",
  "order_bytes": 28525,
  "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
@@ -9,7 +9,7 @@
  "attempt": 1,
  "report": "W-G.9-399_補令三_回報.md",
  "result": "完成",
- "kl_question": null,
+ "kl_question": "2026-10-31_丁與第二驗不能兩全.md",
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
   {
@@ -1621,6 +1621,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖：依 KL 10-30 23:02「丁」（KL答覆/2026-10-30_2302.md）擬 W-G.9-396"
+  },
+  {
+   "at": "2026-10-31T00:48:41+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "await_kl",
+   "note": "擬 W-G.9-396（依丁）⇒ 出單前三驗之 ② 不成立、已排定之先後二讀（獨立審查揭·發單端復核屬實）⇒ 再呈 KL（待KL/2026-10-31_丁與第二驗不能兩全.md·圖二十四·二題·通知三）；本案配地不涉"
   }
  ],
  "kl_pending": []
