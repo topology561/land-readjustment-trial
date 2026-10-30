@@ -1,6 +1,6 @@
 {
- "status": "drafting",
- "status_since": "2026-10-30T20:03:08+08:00",
+ "status": "await_kl",
+ "status_since": "2026-10-30T20:44:51+08:00",
  "order": "W-G.9-399_補令三.md",
  "order_bytes": 28525,
  "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
@@ -9,7 +9,7 @@
  "attempt": 1,
  "report": "W-G.9-399_補令三_回報.md",
  "result": "完成",
- "kl_question": null,
+ "kl_question": "待KL/2026-10-30_全組一次排定與兩人直接比較相反.md",
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
   {
@@ -1600,6 +1600,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖：依 KL 2026-10-30 19:28「丙」擬 W-G.9-396"
+  },
+  {
+   "at": "2026-10-30T20:44:51+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "await_kl",
+   "note": "依 KL 19:28「丙」擬 W-G.9-396：監看窗之出單前三驗之 ② 不成立（組內比較成圈時全組之序與兩人直接比較相反·二列之競合亦然·圖二十三丙端 戊→丁）⇒ 再呈三題（兩端亦依全組／不共端者之排法／組之範圍）"
   }
  ],
  "kl_pending": []
