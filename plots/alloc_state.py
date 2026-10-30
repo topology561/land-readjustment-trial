@@ -12,6 +12,9 @@ W-P.005　配地結果之取出（重劃後三圖層與地號對照表之輸入�
   所取者 ＝ 階段一之終（段三後·調配〔核心線階段二〕之前）之 g_rows；調配之新模組入主線後，唯改本檔之來源。
   「推進側別」＝「抵費地」之列 ⇒ 類別「抵費地」（同 app.py export_allocated_dxf）；他列 ⇒「分配地」。
   面積二位四捨五入為 0.00 之列不成宗，列於「略」（印之·⛔ 靜默）。
+  W-P.005_補令一（KL 2026-10-30 08:00）：分配地加「S」（G 值計算之臨正面道路寬度·g_rows 之 S(m)）與
+  「街角第1宗側別」（g_rows 之「第1筆街角」＝是者之「街角側別」：左／右）；街廓加「側面道路線」（CAD 之
+  side_lines_by_side·左／右·各 [p1, p2]）——供公告分配地籍線之「寬」（顯示 S）與街角宗之「深」（含道路截角）。
 缺值一律報錯停止（⛔ 靜默補值）。
 """
 import argparse
@@ -29,6 +32,8 @@ SOURCE_NOTE = "階段一之終（段三後·未經調配）：verify/stepg_pipel
 KIND_LOT, KIND_OFFSET = "分配地", "抵費地"
 OFFSET_SIDE = "抵費地"
 OUT_FMT = "配地結果_退縮{}m.json"
+SIDE_NAME = {"left": "左", "right": "右"}
+CORNER_SIDE = {"左側": "左", "右側": "右"}
 
 
 class SourceError(RuntimeError):
@@ -74,6 +79,7 @@ def run_pipeline(setbacks):
 def blocks_of(cb_by, cad):
     alloc = cad.get("alloc_dir_by_block") or {}
     front = cad.get("front_lines") or {}
+    sides = cad.get("side_lines_by_side") or {}
     out = {}
     for lbl in sorted(cb_by):
         b = cb_by[lbl]
@@ -89,6 +95,12 @@ def blocks_of(cb_by, cad):
                 raise SourceError(f"街廓 {lbl} 有宗地分配線而無正面臨路線")
             d["宗地分配線方向"] = [float(v) for v in alloc[lbl]]
             d["正面臨路線"] = [[float(v) for v in front[lbl]["p1"]], [float(v) for v in front[lbl]["p2"]]]
+            sl = {}
+            for side, nm in SIDE_NAME.items():
+                if side in sides.get(lbl, {}):
+                    s = sides[lbl][side]
+                    sl[nm] = [[float(v) for v in s["p1"]], [float(v) for v in s["p2"]]]
+            d["側面道路線"] = sl
         out[lbl] = d
     return out
 
@@ -121,7 +133,20 @@ def lots_of(g_rows, blocks, omap):
             w = r.get("宗地寬度(m)")
             if w is None or float(w) <= 0:
                 raise SourceError(f"{pid} 之宗地寬度缺")
-            d.update({"原地號": ln, "歸戶": omap[ln], "G": q2(r["G(㎡)"]), "宗地寬度": q2(w)})
+            s = r.get("S(m)")
+            if s is None or float(s) <= 0:
+                raise SourceError(f"{pid} 之 S 缺")
+            d.update({"原地號": ln, "歸戶": omap[ln], "G": q2(r["G(㎡)"]), "宗地寬度": q2(w), "S": q2(s)})
+            first = r.get("第1筆街角")
+            if first == "是":
+                side = CORNER_SIDE.get(r.get("街角側別"))
+                if side is None:
+                    raise SourceError(f"{pid} 為街角第 1 宗而街角側別 {r.get('街角側別')!r} 不明")
+                if side not in blocks[blk]["側面道路線"]:
+                    raise SourceError(f"{pid} 為{side}側街角第 1 宗而街廓 {blk} 無該側之側面道路線")
+                d["街角第1宗側別"] = side
+            elif first != "否":
+                raise SourceError(f"{pid} 之「第1筆街角」{first!r} 非是／否")
         lots.append(d)
     return lots, dropped
 

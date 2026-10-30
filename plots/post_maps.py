@@ -14,6 +14,10 @@ W-P.005　重劃後三圖層（公告分配地籍線·分配後歸戶圖·重劃
   KL 2026-10-28 23:31：問一 甲（程式依 S 型自動編定；全範圍同一地段；先排區〔東北先〕、再區內 S 型）；
   問四 乙（每宗註記地號、面積、分配寬度、深度）；問五 乙（抵費地自成一色並註「抵費地」；道路、公園不填色、
   只畫界線；原地主分得之地照一般歸戶上色）。KL 23:37：保留「暫編 → 正式地號對照表」（重號或缺號即停）。
+  W-P.005_補令一（KL 2026-10-30 08:00）：公告分配地籍線之「寬」顯示 S（G 值計算之臨正面道路寬度）；
+  「深」＝ 面積 ÷ W（W ＝ 宗地寬度·判畸零地之寬·街角宗亦為截角前之寬）；街角第 1 宗之深 ＝
+  （面積 ＋ 道路截角面積）÷ W——道路截角面積 ＝ 正面臨路線與側面道路線之交點（未截角之理論角）與該宗之截角線
+  所圍之面積，由圖資幾何算出，唯供計算深度（⛔ 改面積之註記與配地面積）。
 缺值一律報錯停止（⛔ 靜默補值）。
 """
 import argparse
@@ -38,6 +42,7 @@ OFFSET_TEXT = "抵費地"
 OFFSET_COLOR = (160, 160, 160)
 LINE_GAP = 1.4                       # 多列註記之行距（× 字高）
 REGION_TOL = 0.01                    # 區之相接之容差（公尺）
+ON_LINE_TOL = 0.02                   # 宗之頂點落於正面臨路線、側面道路線上之容差（公尺）
 NO_RE = re.compile(r"^[1-9]\d{0,4}(-[1-9]\d*)?$")   # 母號（不超過五位數）或「母號-子號」（手冊第 3849〜3854 列）
 MAP_SHEET = "地號對照表"
 MAP_HEAD = ("暫編", "街廓", "類別", "配地之暫編地號", "預設地號（S 型）", "正式地號", "面積（㎡）")
@@ -267,15 +272,66 @@ def _texts(msp, layer, lines, p):
         t.set_placement((p.x, y), align=TextEntityAlignment.MIDDLE_CENTER)
 
 
-def cad_lines(e, no):
+def _line_cross(a1, a2, b1, b2):
+    (x1, y1), (x2, y2), (x3, y3), (x4, y4) = a1, a2, b1, b2
+    den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+    if abs(den) < 1e-12:
+        raise PM.SourceError("正面臨路線與側面道路線平行，無交點")
+    t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den
+    return (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
+
+
+def corner_cut(e, blocks):
+    """街角第 1 宗之道路截角 ⇒ shapely 多邊形：正面臨路線與該側之側面道路線（皆延長）之交點 C，
+    與該宗之邊界上「正面臨路線上最近 C 之頂點 A」至「側面道路線上最近 C 之頂點 B」之一段（截角線）所圍。
+    A ＝ B（無截角）⇒ 空。取不到 A、B 或所圍者與該宗重疊 ⇒ SourceError。"""
+    import math
+    from shapely.geometry import LineString, Point, Polygon
+    b = blocks[e["街廓"]]
+    side = e["街角第1宗側別"]
+    f1, f2_ = b["正面臨路線"]
+    s1, s2 = b["側面道路線"][side]
+    c = _line_cross(f1, f2_, s1, s2)
+    coords = [(float(x), float(y)) for x, y in e["多邊形"]]
+    if coords[0] == coords[-1]:
+        coords = coords[:-1]
+    fl, sl = LineString([f1, f2_]), LineString([s1, s2])
+    on_f = [i for i, p in enumerate(coords) if fl.distance(Point(p)) <= ON_LINE_TOL]
+    on_s = [i for i, p in enumerate(coords) if sl.distance(Point(p)) <= ON_LINE_TOL]
+    if not on_f or not on_s:
+        raise PM.SourceError(f"{e['暫編']} 為街角第 1 宗而其邊界不臨正面臨路線或側面道路線")
+    ia = min(on_f, key=lambda i: math.dist(coords[i], c))
+    ib = min(on_s, key=lambda i: math.dist(coords[i], c))
+    if ia == ib:
+        return Polygon()
+    n = len(coords)
+
+    def chain(i, j):
+        out = [i]
+        while i != j:
+            i = (i + 1) % n
+            out.append(i)
+        return out
+    c1, c2 = chain(ia, ib), chain(ib, ia)
+    cut = Polygon([c] + [coords[i] for i in (c1 if len(c1) <= len(c2) else c2)])
+    if not cut.is_valid or cut.intersection(Polygon(coords)).area > 1e-6:
+        raise PM.SourceError(f"{e['暫編']} 之道路截角之形不合")
+    return cut
+
+
+def cad_lines(e, no, blocks):
     if e["類別"] == KIND_LOT:
+        s = q2(e["S"])
         w = q2(e["宗地寬度"])
-        d = (Decimal(repr(float(e["面積"]))) / w).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        return [no, f2(e["面積"]), f"寬{w:.2f}", f"深{d:.2f}"]
+        a = Decimal(repr(float(e["面積"])))
+        if "街角第1宗側別" in e:
+            a += q2(corner_cut(e, blocks).area)
+        d = (a / w).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return [no, f2(e["面積"]), f"寬{s:.2f}", f"深{d:.2f}"]
     return [no, f2(e["面積"])]
 
 
-def write_dxf(pre_path, path, ents, numbers, key_of, hh_color, hh_no, price, price_color):
+def write_dxf(pre_path, path, ents, numbers, key_of, hh_color, hh_no, price, price_color, blocks):
     import ezdxf
     from shapely.geometry import Polygon
     doc = ezdxf.readfile(pre_path)
@@ -294,7 +350,7 @@ def write_dxf(pre_path, path, ents, numbers, key_of, hh_color, hh_no, price, pri
         rp = Polygon(coords).representative_point()
         no = numbers[e["暫編"]]
         msp.add_lwpolyline(coords, close=True, dxfattribs={"layer": LAYER_POST_CAD})
-        _texts(msp, LAYER_POST_CAD, cad_lines(e, no), rp)
+        _texts(msp, LAYER_POST_CAD, cad_lines(e, no, blocks), rp)
         if e["類別"] in (KIND_LOT, KIND_OFFSET):
             h = msp.add_hatch(dxfattribs={"layer": LAYER_POST_OWN})
             if e["類別"] == KIND_LOT:
@@ -371,7 +427,7 @@ def main(argv=None):
     os.makedirs(a.out, exist_ok=True)
     p = {k: os.path.join(a.out, v.format(tag)) for k, v in OUT_FMT.items()}
     write_map(p["map"], ents, order, numbers, default)
-    write_dxf(a.pre_dxf, p["dxf"], ents, numbers, key_of, hh_color, hh_no, price, price_color)
+    write_dxf(a.pre_dxf, p["dxf"], ents, numbers, key_of, hh_color, hh_no, price, price_color, doc["街廓"])
     write_color_table(p["color"], ents, numbers, key_of, hh_color, hh_no, price, price_color)
     n = {k: sum(1 for e in ents if e["類別"] == k) for k in (KIND_LOT, KIND_OFFSET)}
     print(f"退縮 {tag} m：分配地 {n[KIND_LOT]}、抵費地 {n[KIND_OFFSET]}、公設 {len(ents) - sum(n.values())}；"

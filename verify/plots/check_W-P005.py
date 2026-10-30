@@ -14,7 +14,11 @@ V3 地號與註記（每宗恰一地號、無重號、＝ 對照表之正式地�
 V4 S 型之預設編定（異法重導：形心·區·街廓之序·交替·公設續編於後；1〜N 連號）；
 V5 分配後歸戶圖（原地主之地 ＝ 其重劃前之歸戶色與歸戶號；抵費地一色並註「抵費地」；公設不填色、只畫界線）；
 V6 重劃後地價圖（街廓之價·二位；一價一色；公設不填色）；
-V7 對照表之用（改號即帶入圖；重號、空白 ⇒ 停止而無輸出）與顏色對照表。
+V7 對照表之用（改號即帶入圖；重號、空白 ⇒ 停止而無輸出）與顏色對照表；
+V8 街角第 1 宗（W-P.005_補令一·KL 2026-10-30 08:00）：每一側面道路線恰一宗；其 W 為截角前之寬（異法重導）；
+   道路截角（異法：該宗與理論角之凸包減該宗、取含理論角之一塊）面積 > 0、落於道路、⛔ 與任一宗重疊。
+V3 之寬 ＝ S（G 值計算之臨正面道路寬度）、深 ＝ 面積 ÷ W，街角第 1 宗之深 ＝（面積 ＋ 道路截角面積）÷ W
+   （截角以 V8 之異法算之）。
 """
 import json
 import os
@@ -216,12 +220,96 @@ def v3(c):
         want = [no, s2(area)]
         if x and x["類別"] == "分配地":
             w = rhu(x["宗地寬度"])
-            d = (Decimal(repr(float(x["面積"]))) / w).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            want += [f"寬{w:.2f}", f"深{d:.2f}"]
+            a = Decimal(repr(float(x["面積"])))
+            if "街角第1宗側別" in x:
+                a += rhu(_cut_alt(c, x).area)
+            d = (a / w).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            want += [f"寬{rhu(x['S']):.2f}", f"深{d:.2f}"]
         if sorted(inside) != sorted(want):
             bad.append(f"{key} 之註記 {inside} ≠ {want}")
     if len(tx) != sum(4 if (x and x["類別"] == "分配地") else 2 for x, _ in got.values()):
         bad.append(f"{L_CAD} 之文字數不合（{len(tx)}）")
+    return bad
+
+
+def _theory_corner(c, x):
+    """異法：以向量之叉積解正面臨路線與側面道路線（皆延長）之交點。"""
+    b = c.state["街廓"][x["街廓"]]
+    (ax, ay), (bx, by) = b["正面臨路線"]
+    (px, py), (qx, qy) = b["側面道路線"][x["街角第1宗側別"]]
+    rx, ry, sx, sy = bx - ax, by - ay, qx - px, qy - py
+    den = rx * sy - ry * sx
+    t = ((px - ax) * sy - (py - ay) * sx) / den
+    return ax + t * rx, ay + t * ry
+
+
+def _cut_alt(c, x):
+    """異法之道路截角：（該宗 ∪ 理論角）之凸包 − 該宗，取與理論角相接之一塊。"""
+    from shapely.geometry import MultiPoint, Point, Polygon
+    lot = Polygon(x["多邊形"])
+    cp = Point(_theory_corner(c, x))
+    rest = MultiPoint(list(lot.exterior.coords) + [cp.coords[0]]).convex_hull.difference(lot)
+    parts = [g for g in getattr(rest, "geoms", [rest]) if g.area > 1e-9 and g.distance(cp) < 1e-6]
+    if len(parts) != 1:
+        raise AssertionError(f"{x['配地暫編']} 之道路截角 {len(parts)} 塊")
+    return parts[0]
+
+
+def v8(c):
+    import math
+    from shapely.geometry import LineString, Point, Polygon
+    from shapely.ops import unary_union
+    bad = []
+    blocks = c.state["街廓"]
+    lots = [x for x in c.lots if x["類別"] == "分配地"]
+    roads = unary_union([Polygon(blocks[b]["多邊形"]) for b in c.public if blocks[b]["分類"] != "公園"]
+                        or [Polygon()])
+    every = unary_union([Polygon(x["多邊形"]) for x in c.lots])
+    n_c = 0
+    for b in sorted(c.alloc):
+        for side in sorted(blocks[b].get("側面道路線", {})):
+            hit = [x for x in lots if x["街廓"] == b and x.get("街角第1宗側別") == side]
+            sl = LineString(blocks[b]["側面道路線"][side])
+            touch = [x for x in lots if x["街廓"] == b and Polygon(x["多邊形"]).intersection(sl.buffer(0.02)).area > 0.01]
+            if len(hit) != 1:
+                bad.append(f"{b} {side}側 之街角第 1 宗 {len(hit)} 宗")
+                continue
+            x = hit[0]
+            if [y["配地暫編"] for y in touch] != [x["配地暫編"]]:
+                bad.append(f"{b} {side}側 臨側面道路線之宗 {[y['配地暫編'] for y in touch]} ≠ {x['配地暫編']}")
+            n_c += 1
+            (ax, ay), (bx, by) = blocks[b]["正面臨路線"]
+            L = math.hypot(bx - ax, by - ay)
+            ux, uy = (bx - ax) / L, (by - ay) / L
+            dx, dy = blocks[b]["宗地分配線方向"]
+            dl = math.hypot(dx, dy)
+            cosv = abs(ux * dx / dl + uy * dy / dl)
+            sinv = math.sqrt(max(0.0, 1 - cosv * cosv))   # 正面臨路線與「垂直於宗地分配線」之夾角之餘弦
+            cx, cy = _theory_corner(c, x)
+            fl = LineString(blocks[b]["正面臨路線"])
+            ts = [abs((px - cx) * ux + (py - cy) * uy) for px, py in Polygon(x["多邊形"]).exterior.coords
+                  if fl.distance(Point(px, py)) <= 0.02]
+            w_pre, w_post = max(ts) * sinv, (max(ts) - min(ts)) * sinv
+            if abs(rhu(w_pre) - rhu(x["宗地寬度"])) > Decimal("0.01"):
+                bad.append(f"{x['配地暫編']} 之 W {x['宗地寬度']} ≠ 截角前之寬 {w_pre:.3f}（截角後 {w_post:.3f}）")
+            if not w_post < w_pre - 1:
+                bad.append(f"{x['配地暫編']} 之截角前後之寬不分（{w_pre:.3f}／{w_post:.3f}）")
+            try:
+                cut = _cut_alt(c, x)
+            except AssertionError as ex:
+                bad.append(str(ex))
+                continue
+            if cut.area <= 0.01:
+                bad.append(f"{x['配地暫編']} 之道路截角之面積 {cut.area:.4f}")
+            if cut.intersection(roads).area < 0.99 * cut.area:
+                bad.append(f"{x['配地暫編']} 之道路截角不在道路（{cut.intersection(roads).area:.4f}／{cut.area:.4f}）")
+            if cut.intersection(every).area > 1e-4:
+                bad.append(f"{x['配地暫編']} 之道路截角與宗重疊")
+    if n_c == 0:
+        bad.append("無街角第 1 宗")
+    if any("街角第1宗側別" in x and x.get("街角第1宗側別") not in blocks[x["街廓"]].get("側面道路線", {})
+           for x in lots):
+        bad.append("街角第 1 宗之側別無側面道路線")
     return bad
 
 
@@ -456,7 +544,7 @@ def _map_runs(c):
     return bad
 
 
-CHECKS = [("V0", v0), ("V1", v1), ("V2", v2), ("V3", v3), ("V4", v4), ("V5", v5), ("V6", v6), ("V7", v7)]
+CHECKS = [("V0", v0), ("V1", v1), ("V2", v2), ("V3", v3), ("V4", v4), ("V5", v5), ("V6", v6), ("V7", v7), ("V8", v8)]
 
 
 def run(out, pre_dxf, moedict, tags, quiet=False, run_map=True, with_default=True):
