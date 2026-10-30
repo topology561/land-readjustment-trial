@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-30T21:55:00+08:00",
+ "status": "running",
+ "status_since": "2026-10-30T21:49:08+08:00",
  "order": "W-P.006_附表13-24.md",
  "order_bytes": 90128,
  "order_sha256": "b25be2cdefb5cf5ec748f2a6a7131219488d35d5b8dcba1c64c303cdecf8c31c",
@@ -493,6 +493,13 @@
    "from": "drafting",
    "to": "pending",
    "note": "出 W-P.006_附表13-24.md（90128 bytes·sha256 b25be2cd…c31c·側支 verify/W-P.006-tables-13-24）：附表 13、24 先做格式與可填之欄；alloc_state 增 G 式之項與財務／歸戶表／現金補償；原型 check 14/14、Ⓐ〜Ⓔ 紅、check_W-P005 18/18"
+  },
+  {
+   "at": "2026-10-30T21:49:08+08:00",
+   "by": "出圖線·執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接 W-P.006（90128 bytes·sha256 b25be2cd…c31c 相符；許可 N＝393·核心線 W-G.9-399_補令三）"
   }
  ]
 }
