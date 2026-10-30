@@ -57,6 +57,12 @@ KL `2026-10-25 03:58`「二是、三丙」·`10:13`·`10:18`「一甲、二甲�
            （判別力之證 ＝ 單之突變之表〔發單端施於其原型〕與主線 `d4928d4` 之紅·本器⛔ 含突變。）
            （V7 之讀 ＝ `K-9-60` ③「該端仍依 K-9-49 以原投影序逐一試其跨占者」與 `K-9-50` 讀法 2：先處理者之競合候其夥伴之列，
             夥伴之列之前之他人照原位次先試；三丙唯定二位地主之先後。）
+           🔧 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`／`22:57`·⛔ 上文一字不刪·其與下列相違者以下列為準）：二位地主互相
+           等待之先後改以末端塊評選指數（端線 0.4·面積 0.6）之名次依 `K-9-28` 之序（唯計共同之端·`F42` 量之）——乙之玩具
+           之列增 `評選指數`（各例之 `idx`）：V1、V2、V6、V8 戊於二端皆第 1 名（⇒ 戊先·結果同前）；V3 各一端第 1 名而戊之重劃前
+           面積大（⇒ 戊先）；V4 各一端第 1 名、面積與指數之和皆同（⇒ 暫編地號小之丁先）；V7 丁於二端皆第 1 名（⇒ 丁先）；
+           V9〜V13 各片之指數 ＝ 其地主之 G 之和 ÷ 1000（名次隨 G 之和·⇒ 先後同前）；V5（三位）之指數使二讀之先者同（戊）。
+           結果皆同改前（其名之述依新之序）。
   wiring   <repo> <基準 commit>
            W1 `end_block_apply` 內⛔ 有訊息含 `GB-207` 之 `raise`、⛔ 有 `k6_program_stop` 之呼叫；
            W2 `end_block_merge_run` 內⛔ 有訊息含「同時跨占二以上末端塊」「屬二以上之競合」之 `raise`；仍有含「三個以上之末端塊」
@@ -88,6 +94,10 @@ NEW398, W398 = {"RW_TABLE_25"}, {"RW_TABLE_25", "rw_from_width"}   # 🔧 `W-G.9
 # 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
 NEW398B = {"rw_width_mm", "rw_pct_2dp"}
 W398B = NEW398B | {"iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main"}
+# 🔧 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:09`／`22:42`／`22:57`·⛔ 上列一字不刪）：其新之頂層名與所改之頂層節點（F42 量之）。
+NEW399 = {"END_BLOCK_LINE_TOL", "END_BLOCK_IDX_W_LINE", "END_BLOCK_IDX_W_AREA", "end_block_end_line", "end_block_end_segs",
+          "end_block_end_geom", "k960_idx_rank", "k960_idx_key", "k960_idx_first"}
+W399 = NEW399 | {"end_block_pick", "end_block_host", "end_block_eval_rows"}
 MW, DEP = 3.5, 30.0
 H = "住宅區"
 
@@ -285,6 +295,7 @@ def _cbs(targets):
                     continue
                 ok = g(by[c]) >= cfg["thr"]
                 rows.append({"暫編地號": c, "原地號": by[c]["原地號"], "跨占R_end(㎡)": cfg.get("cross", {}).get(c, 10.0),
+                             "評選指數": (cfg.get("idx") or {}).get(c),   # 🔧 `W-G.9-399`：末端塊評選指數（各例之 idx）
                              "試算G(㎡)": round(g(by[c]), 2), "臨正街寬(m)": 5.0, "結果": "當選" if ok else "未達"})
                 if ok:
                     win = c
@@ -357,11 +368,18 @@ def _w2(a, area=None, nm=None, third=False, tg=False):
     return t, own, blocks, {RX: [(-10.0, -5.0), (50.0, -5.0)]}
 
 
-def _t2(order_e, order_f, thr_e=90, thr_f=180, cross=None, nm=None):
+def _t2(order_e, order_f, thr_e=90, thr_f=180, cross=None, nm=None, idx=None):
     nm = nm or {}
     n = lambda s: nm.get(s, s)
-    return {(n("BE"), "left"): dict(thr=thr_e, cands=[n(x) for x in order_e], cross={n(k): v for k, v in (cross or {}).items()}),
-            (n("BF"), "left"): dict(thr=thr_f, cands=[n(x) for x in order_f], cross={n(k): v for k, v in (cross or {}).items()})}
+    _ix = {n(k): v for k, v in (idx or {}).items()}   # 🔧 `W-G.9-399`：末端塊評選指數（二端共一表·暫編地號為鍵）
+    return {(n("BE"), "left"): dict(thr=thr_e, cands=[n(x) for x in order_e], cross={n(k): v for k, v in (cross or {}).items()}, idx=_ix),
+            (n("BF"), "left"): dict(thr=thr_f, cands=[n(x) for x in order_f], cross={n(k): v for k, v in (cross or {}).items()}, idx=_ix)}
+
+
+# 🔧 `W-G.9-399`：諸例之末端塊評選指數（E 之列：D1／U1；F 之列：U2／D2〔／X〕）
+IX_U = {"D1(1)": 0.3, "U1(1)": 0.6, "U2(1)": 0.6, "D2(1)": 0.3}      # 戊於二端皆第 1 名
+IX_D = {"D1(1)": 0.6, "U1(1)": 0.3, "U2(1)": 0.3, "D2(1)": 0.6, "X(1)": 0.1}   # 丁於二端皆第 1 名
+IX_1 = {"D1(1)": 0.6, "U1(1)": 0.3, "U2(1)": 0.6, "D2(1)": 0.3}      # 各一端第 1 名（指數之和 丁 0.9 ＝ 戊 0.9）
 
 
 V1A = dict(D1=36, D2=27, Dr=60, U1=45, U2=36, Ur=150)
@@ -410,28 +428,28 @@ def _cases_b(ns):
         lambda: _go(ns, w, _t2(["D1(1)", "U1(1)"], ["D2(1)", "U2(1)"], cross=V1X)),
         ([("D1(1)", "②", "成"), ("D2(1)", "②", "未成"), ("U1(1)", "—", "略·已定案"), ("U2(1)", "②", "成")],
          [("BE", "左", "D1(1)"), ("BF", "左", "U2(1)")], {}))
-    run("V1 順序相反 ⇒ 互相等待 ⇒ 序鍵（G 之和 戊 81 ＞ 丁 63）⇒ 戊先：戊得 E、F 強制",
-        lambda: _go(ns, w, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], cross=V1X)), EXP_V1)
+    run("V1 順序相反 ⇒ 互相等待 ⇒ 評選指數（戊於二端皆第 1 名）⇒ 戊先：戊得 E、F 強制",
+        lambda: _go(ns, w, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], cross=V1X, idx=IX_U)), EXP_V1)
     w2 = _w2(dict(D1=50, D2=13, Dr=60, U1=36, U2=36, Ur=150))
-    run("V2 G 之和（戊 72 ＞ 丁 63）與最大之一片（丁 50 ＞ 戊 36）異 ⇒ 依和：戊先",
-        lambda: _go(ns, w2, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"])),
+    run("V2 戊於二端皆第 1 名（G 之和 戊 72、最大之一片 丁 50）⇒ 戊先",
+        lambda: _go(ns, w2, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], idx=IX_U)),
         ([("U2(1)", "K-9-60 ③", "互相等待 ⇒ 先處理"), ("U1(1)", "②半", "成"), ("U2(1)", "②半", "未成"),
           ("D1(1)", "—", "略·已定案"), ("D2(1)", "②", "未成")], [("BE", "左", "U1(1)")], {"BF": ["left"]}))
     w3 = _w2(dict(D1=30, D2=32, Dr=200, U1=36, U2=36, Ur=150), area={"D1": 10.0})
-    run("V3 G 之和相等（72）⇒ 重劃前面積之和大者（戊 72 ＞ 丁 62·道路片⛔ 計）先：戊得 E、丁得 F",
-        lambda: _go(ns, w3, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"])),
+    run("V3 各一端第 1 名 ⇒ 面積（共同之端之片之重劃前面積）大者（戊 72 ＞ 丁 62·道路片⛔ 計）先：戊得 E、丁得 F",
+        lambda: _go(ns, w3, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], idx=IX_1)),
         ([("U2(1)", "K-9-60 ③", "互相等待 ⇒ 先處理"), ("U1(1)", "②半", "成"), ("U2(1)", "②半", "未成"),
           ("D1(1)", "—", "略·已定案"), ("D2(1)", "②", "成")], [("BE", "左", "U1(1)"), ("BF", "左", "D2(1)")], {}))
     w4 = _w2(dict(D1=36, D2=36, Dr=60, U1=36, U2=36, Ur=150))
-    run("V4 G 之和與重劃前面積之和皆相等 ⇒ 最小之暫編地號小者（D1(1)）先：丁得 E、戊得 F",
-        lambda: _go(ns, w4, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"])),
+    run("V4 各一端第 1 名、面積與指數之和皆相等 ⇒ 最小之暫編地號小者（D1(1)）先：丁得 E、戊得 F",
+        lambda: _go(ns, w4, _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], idx=IX_1)),
         ([("D1(1)", "K-9-60 ③", "互相等待 ⇒ 先處理"), ("D1(1)", "②", "成"), ("D2(1)", "②", "未成"),
           ("U1(1)", "—", "略·已定案"), ("U2(1)", "②", "成")], [("BE", "左", "D1(1)"), ("BF", "左", "U2(1)")], {}))
     big = 10 ** 6
-    run("V5 三位地主互相等待成環（G 之和 丁 40／戊 60／己 50）⇒ 戊先、其餘依原位次（己、丁）",
-        lambda: _go(ns, _w3(), {("BE", "left"): dict(thr=big, cands=["D1(1)", "U1(1)"]),
-                                ("BF", "left"): dict(thr=big, cands=["U2(1)", "J2(1)"]),
-                                ("BG", "left"): dict(thr=big, cands=["Jg(1)", "Dg(1)"])}),
+    run("V5 三位地主互相等待成環（G 之和 丁 40／戊 60／己 50·評選指數兩兩亦戊先）⇒ 戊先、其餘依原位次（己、丁）",
+        lambda: _go(ns, _w3(), {("BE", "left"): dict(thr=big, cands=["D1(1)", "U1(1)"], idx={"D1(1)": 0.3, "U1(1)": 0.6}),
+                                ("BF", "left"): dict(thr=big, cands=["U2(1)", "J2(1)"], idx={"U2(1)": 0.6, "J2(1)": 0.3}),
+                                ("BG", "left"): dict(thr=big, cands=["Jg(1)", "Dg(1)"], idx={"Jg(1)": 0.5, "Dg(1)": 0.4})}),
         ([("U2(1)", "K-9-60 ③", "互相等待 ⇒ 先處理"), ("U2(1)", "—", "未成"), ("U1(1)", "—", "未成"),
           ("Jg(1)", "—", "未成"), ("J2(1)", "—", "未成"), ("D1(1)", "—", "未成"), ("Dg(1)", "—", "未成")],
          [], {"BE": ["left"], "BF": ["left"], "BG": ["left"]}))
@@ -441,7 +459,7 @@ def _cases_b(ns):
     inv = {v: k for k, v in NM.items() if "(" in k or k in ("BE", "BF", "RX")}
 
     def v6():
-        m, wn, fl = _go(ns, _w2(V1A, nm=NM), _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], cross=V1X, nm=NM))
+        m, wn, fl = _go(ns, _w2(V1A, nm=NM), _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], cross=V1X, nm=NM, idx=IX_U))
         b = lambda s: inv.get(s, s)
         return (sorted((b(c), l, r) for c, l, r in m), sorted((b(x), e, b(c)) for x, e, c in wn),
                 {b(k): v for k, v in (fl or {}).items()})
@@ -449,25 +467,26 @@ def _cases_b(ns):
     run("V6 換名（街廓名之序反之·地號改名）⇒ V1 之結果除名稱外同（逐列之集·定案之端·皆未達）", v6,
         (sorted(EXP_V1[0]), EXP_V1[1], EXP_V1[2]))
     w7 = _w2(dict(D1=50, D2=30, Dr=60, U1=36, U2=36, Ur=150), third=True)
-    run("V7 互相等待而先處理者（丁·G 之和 80 ＞ 戊 72）在 F 端之前尚有第三人庚 ⇒ 庚照原位次先試而得 F；丁之競合消滅、丁得 E",
-        lambda: _go(ns, w7, _t2(["D1(1)", "U1(1)"], ["U2(1)", "X(1)", "D2(1)"])),
+    run("V7 互相等待而先處理者（丁·於二端皆第 1 名）在 F 端之前尚有第三人庚 ⇒ 庚照原位次先試而得 F；丁之競合消滅、丁得 E",
+        lambda: _go(ns, w7, _t2(["D1(1)", "U1(1)"], ["U2(1)", "X(1)", "D2(1)"], idx=IX_D)),
         ([("D1(1)", "K-9-60 ③", "互相等待 ⇒ 先處理"), ("X(1)", "①", "成"), ("D1(1)", "②", "成"),
           ("U1(1)", "—", "略·已定案"), ("D2(1)", "—", "略·已定案"), ("U2(1)", "—", "略·已定案")],
          [("BE", "左", "D1(1)"), ("BF", "左", "X(1)")], {}))
-    t8 = _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], cross=V1X)
+    t8 = _t2(["D1(1)", "U1(1)"], ["U2(1)", "D2(1)"], cross=V1X, idx=IX_U)
     t8[("BG", "left")] = dict(thr=10 ** 6, cands=["T(1)"])
     run("V8 環成即處理：V1 之環成於 F 端之末列，其後之他街廓之列（T）於其處理之後",
         lambda: _go(ns, _w2(V1A, tg=True), t8),
         (EXP_V1[0] + [("T(1)", "—", "未成")], EXP_V1[1], {"BF": ["left"], "BG": ["left"]}))
     # ── 補令一 ″（塊 `K44`·A-1／A-2）：被延後之首列之新位 ＝ 夥伴之列之現位之緊後；同退者依原位次 ──
     for nm, E, F, G, exp in V9_13:
-        run(nm, (lambda E=E, F=F, G=G: _alarm(lambda: _go(ns, _wv9(E, F, G), _tv9(E, F)), 60)), exp)
+        run(nm, (lambda E=E, F=F, G=G: _alarm(lambda: _go(ns, _wv9(E, F, G), _tv9(E, F, idx=_iv9(E, F, G))), 60)), exp)
     _n11, E11, F11, G11, X11 = V9_13[2]
     inv12 = {v: k for k, v in NM12.items()}
 
     def v12():
         m, wn, fl = _go(ns, _renv9(_wv9(E11, F11, G11), NM12), _tv9([NM12[x] for x in E11], [NM12[x] for x in F11],
-                                                                   blk=(NM12["BE"], NM12["BF"]), sd="right"))
+                                                                   blk=(NM12["BE"], NM12["BF"]), sd="right",
+                                                                   idx={NM12[k]: v for k, v in _iv9(E11, F11, G11).items()}))
         b = lambda x: inv12.get(x, x)
         return ([(b(c), l, r) for c, l, r in m], [(b(x), e, b(c)) for x, e, c in wn],
                 {b(k): ["left" if s == "right" else s for s in v] for k, v in (fl or {}).items()})
@@ -526,9 +545,16 @@ def _wv9(E, F, G):
     return t, own, {"BE": {"category": H}, "BF": {"category": H}}, {}
 
 
-def _tv9(E, F, blk=("BE", "BF"), sd="left"):
+def _tv9(E, F, blk=("BE", "BF"), sd="left", idx=None):
     big = 10 ** 6
-    return {(blk[0], sd): dict(thr=big, cands=list(E)), (blk[1], sd): dict(thr=big, cands=list(F))}
+    return {(blk[0], sd): dict(thr=big, cands=list(E), idx=dict(idx or {})),
+            (blk[1], sd): dict(thr=big, cands=list(F), idx=dict(idx or {}))}
+
+
+def _iv9(E, F, G):
+    """🔧 `W-G.9-399`：各片之末端塊評選指數 ＝ 其地主（暫編地號之首字）之 G 之和 ÷ 1000（名次隨 G 之和·二位互相等待之先後
+    ⇒ 同改前之序鍵）。"""
+    return {p: G[p[0]] / 1000.0 for p in list(E) + list(F)}
 
 
 _PRv = "互相等待 ⇒ 先處理"
@@ -659,8 +685,9 @@ def wiring(repo, base):
     a, b = _top(src), _top(bsrc)
     names_ok = set(a) == set(b) or (set(a) - set(b) == NEW398 and set(b) <= set(a))   # 🔧 `W-G.9-398`：其後之單之許
     names_ok = names_ok or (set(a) - set(b) == NEW398 | NEW398B and set(b) <= set(a))   # 🔧 `W-G.9-398` 補令一：同
+    names_ok = names_ok or (set(a) - set(b) == NEW398 | NEW398B | NEW399 and set(b) <= set(a))   # 🔧 `W-G.9-399`：同
     diff = {k for k in a if a.get(k) != b.get(k)}
-    rep("W4", names_ok and diff in (CHG_TOP, CHG_TOP | W398, CHG_TOP | W398 | W398B),   # 🔧 `W-G.9-398` 補令一：同
+    rep("W4", names_ok and diff in (CHG_TOP, CHG_TOP | W398, CHG_TOP | W398 | W398B, CHG_TOP | W398 | W398B | W399),   # 🔧 `W-G.9-399`：同
         f"頂層之名之增減 {sorted(set(a) ^ set(b))}（期 []）；頂層節點之相異 {sorted(diff)}（期 {sorted(CHG_TOP)}）")
     lits = []
     for nm in sorted(CHG_TOP):

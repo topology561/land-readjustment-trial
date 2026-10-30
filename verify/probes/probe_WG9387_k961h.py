@@ -55,6 +55,10 @@ W398 = NEW398 + ("rw_from_width",)
 # 🔧 `W-G.9-398` 補令一（寬度先取至公釐·跳處之甲·KL `2026-10-27 23:29`·`2026-10-28 10:48`·⛔ 上列一字不刪）：其二新函式與所改之頂層節點（F41 量之）。
 NEW398B = ("rw_width_mm", "rw_pct_2dp")
 W398B = NEW398B + ("iterate_G_S", "solve_G_binary", "f3_screen_stepg_run", "main")
+# 🔧 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:09`／`22:42`／`22:57`·⛔ 上列一字不刪）：其新之頂層名與所改之頂層節點（F42 量之）。
+NEW399 = ("END_BLOCK_LINE_TOL", "END_BLOCK_IDX_W_LINE", "END_BLOCK_IDX_W_AREA", "end_block_end_line", "end_block_end_segs",
+          "end_block_end_geom", "k960_idx_rank", "k960_idx_key", "k960_idx_first")
+W399 = NEW399 + ("end_block_pick", "end_block_apply", "end_block_host", "end_block_eval_rows", "end_block_merge_run", "k6b_stage3_run")
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 # 外部錨（R3）：主線 `34736ab` 之 `probe_WG9351_intake.py run <repo>` 之「單位」列之原街廓（發單端 2026-10-17 實跑）
 EXPECT_RUN = {
@@ -294,6 +298,8 @@ def wiring(repo, base):
                       and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389) | set(W391) | set(W392) | set(W398))   # 🔧 `W-G.9-398`：同（F41 量之）
         ok3 = ok3 or (set(ct) - set(bt) == set(NEW389) | set(NEW391) | set(NEW392) | set(NEW398) | set(NEW398B) and set(bt) <= set(ct)
                       and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389) | set(W391) | set(W392) | set(W398) | set(W398B))   # 🔧 `W-G.9-398` 補令一：同（F41 量之）
+        ok3 = ok3 or (set(ct) - set(bt) == set(NEW389) | set(NEW391) | set(NEW392) | set(NEW398) | set(NEW398B) | set(NEW399) and set(bt) <= set(ct)
+                      and set(dif) <= {FN_AI} | {"k6b_stage3_run"} | set(W389) | set(W391) | set(W392) | set(W398) | set(W398B) | set(W399))   # 🔧 `W-G.9-399`：同（F42 量之）
         res.append(("X3 頂層之名之集⛔ 變·相異之節點 ⊆ {adj_intake}", ok3,
                     f"增 {sorted(set(ct) - set(bt))}／去 {sorted(set(bt) - set(ct))}／相異 {dif}"))
         ls = subprocess.run(["git", "-C", repo, "ls-tree", "--name-only", base, "verify/"], capture_output=True,

@@ -36,6 +36,9 @@ DEP_FUNCS = ["_strip_axis", "_strip_s_range", "_block_strip", "_end_band", "_end
              "alloc_normal_axis", "solve_G_binary", "_select_pool_slot", "rw_from_width"]
 # 🔧 `W-G.9-398` 補令一（寬度先取至公釐·KL `2026-10-27 23:29`「採戊」·⛔ 上列一字不刪）：`solve_G_binary`／`rw_from_width` 經 `rw_width_mm`、`rw_pct_2dp` ⇒ 一併抽出（其用 `math` ⇒ 抽出之 ns 預置之）。
 DEP_FUNCS = DEP_FUNCS + ["rw_width_mm", "rw_pct_2dp"]
+# 🔧 `W-G.9-399`（末端塊評選指數·KL `2026-10-26 22:42`·⛔ 上列一字不刪）：`end_block_apply` 經 `end_block_end_geom`（端線·`baseline_pts`
+#   未給 ⇒ 皆 `None`·本器之玩具皆未給）⇒ 一併抽出。
+DEP_FUNCS = DEP_FUNCS + ["end_block_end_geom"]
 CASE_LIT_RE = re.compile(r"^(R|RD|G)\d+$|^G\d{3}$|^\d{3}(-\d+)*(\(\d+\))?$")
 
 
