@@ -1,6 +1,6 @@
 {
- "status": "drafting",
- "status_since": "2026-10-30T08:58:00+08:00",
+ "status": "await_kl",
+ "status_since": "2026-10-30T10:55:00+08:00",
  "order": "W-G.9-399_補令三.md",
  "order_bytes": 28525,
  "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
@@ -9,7 +9,7 @@
  "attempt": 1,
  "report": "W-G.9-399_補令三_回報.md",
  "result": "完成",
- "kl_question": null,
+ "kl_question": "2026-10-30_三位地主互相等待前後兩次之先後相反.md",
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
   {
@@ -1579,6 +1579,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖：擬下一張單（交接.md 待落地清單之序·預定 W-G.9-396）"
+  },
+  {
+   "at": "2026-10-30T10:55:00+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "await_kl",
+   "note": "W-G.9-396（K-9-60 ②）擬單中，唯讀審查揭互相等待之前後兩次之先後相反（依 22:57 之字面不能算完）⇒ 請示 KL（甲 前次已排定者為準／乙 停機交人工）；原型、器、單之稿在倉外（交接.md 10:40 之列）"
   }
  ],
  "kl_pending": []
