@@ -1,15 +1,15 @@
 {
-  "status": "running",
-  "status_since": "2026-10-30T09:48:30+08:00",
+  "status": "reported",
+  "status_since": "2026-10-30T10:16:00+08:00",
   "order": "W-P.005_補令一_寬深之註記.md",
   "order_bytes": 88425,
   "order_sha256": "0ec9ac826bd83bf334823233bd2e1df0b857b4e10cbc02cde617c0008b6480c4",
   "order_kind": "補令",
   "attempt": 1,
-  "report": null,
-  "result": null,
+  "report": "出圖線/reports/W-P.005_補令一_回報.md",
+  "result": "完成",
   "kl_question": null,
-  "wip_plots": "9deaad28ca37bd24c4c02ddc86d65da3b7a9d574",
+  "wip_plots": "351e8548b88bf58993966f59bda6b821ae573d6b",
   "history": [
     {
       "at": "2026-10-23T17:50:00+08:00",
@@ -451,6 +451,13 @@
       "from": "pending",
       "to": "running",
       "note": "接 W-P.005_補令一_寬深之註記.md（88425 bytes·sha256 0ec9ac82… 相符；許可 N＝393·核心線 W-G.9-399_補令三）"
+    },
+    {
+      "at": "2026-10-30T10:16:00+08:00",
+      "by": "出圖線·執行端",
+      "from": "running",
+      "to": "reported",
+      "note": "W-P.005_補令一 完成：側支 verify/W-P.005a-width-depth＝351e854（併 9fd3427 於 68ef3be）；wip/plots 9deaad2→351e854（快轉）；check 18/18＋舊 12/8/8/8；Ⓐ〜Ⓘ 皆紅；對照組唯 V3 紅、附錄辛同；差異閘綠（對照組紅）；預覽 4 PNG"
     }
   ]
 }
