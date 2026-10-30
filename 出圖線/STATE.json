@@ -1,13 +1,13 @@
 {
-  "status": "drafting",
-  "status_since": "2026-10-30T08:19:29+08:00",
-  "order": "W-P.005_重劃後三圖層與地號對照表.md",
-  "order_bytes": 71084,
-  "order_sha256": "710a0b9b1324a0e24a9b309349c45e94eadf17d2776389905bba683fc5fe3659",
-  "order_kind": "規格單",
+  "status": "pending",
+  "status_since": "2026-10-30T08:46:54+08:00",
+  "order": "W-P.005_補令一_寬深之註記.md",
+  "order_bytes": 88425,
+  "order_sha256": "0ec9ac826bd83bf334823233bd2e1df0b857b4e10cbc02cde617c0008b6480c4",
+  "order_kind": "補令",
   "attempt": 1,
-  "report": "出圖線/reports/W-P.005_回報.md",
-  "result": "完成",
+  "report": null,
+  "result": null,
   "kl_question": null,
   "wip_plots": "9deaad28ca37bd24c4c02ddc86d65da3b7a9d574",
   "history": [
@@ -437,6 +437,13 @@
       "from": "idle",
       "to": "drafting",
       "note": "上鎖：擬 W-P.005_補令一（第 2 點：深＝面積÷W·街角宗＝（面積＋道路截角面積）÷W·圖面之寬顯示 S·KL 10/30 08:00）"
+    },
+    {
+      "at": "2026-10-30T08:46:54+08:00",
+      "by": "出圖線·發單端",
+      "from": "drafting",
+      "to": "pending",
+      "note": "出 W-P.005_補令一（KL 10/30 08:00 第 2 點：寬顯示 S、深＝面積÷W、街角第 1 宗之深＝（面積＋道路截角面積）÷W·88425 bytes·sha256 0ec9ac82…）：側支 verify/W-P.005a-width-depth；主線已進至 9fd3427（W-G.9-399）⇒ 單令合併（試併無衝突·配地結果二退縮逐位元組同）；查明：街角第 1 宗之現行 W 即截角前之寬（S 自理論角起量）⇒ W ⛔ 改；原型 check 18/18、Ⓐ〜Ⓘ 皆紅、對照組唯 V3 紅"
     }
   ]
 }
