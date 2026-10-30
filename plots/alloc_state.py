@@ -15,6 +15,11 @@ W-P.005　配地結果之取出（重劃後三圖層與地號對照表之輸入�
   W-P.005_補令一（KL 2026-10-30 08:00）：分配地加「S」（G 值計算之臨正面道路寬度·g_rows 之 S(m)）與
   「街角第1宗側別」（g_rows 之「第1筆街角」＝是者之「街角側別」：左／右）；街廓加「側面道路線」（CAD 之
   side_lines_by_side·左／右·各 [p1, p2]）——供公告分配地籍線之「寬」（顯示 S）與街角宗之「深」（含道路截角）。
+  W-P.006（附表 13、24·KL 2026-10-30 19:28）：分配地加 G 式之各項（「a」＝g_rows 之 a 面積、「a原位次」＝該宗之
+  分攤登記面積〔build_parcels·二位〕、「併入面積」＝ a − a原位次、「重劃前區段」、「F」、「W」〔g_rows 之 W(m)·Rw 所查〕、
+  「Rw」〔%〕、「l側」、「l正」）；檔加「財務」（stepg_pipeline._compute_v3_finance 之 B、C、重劃後單價〔街廓〕、
+  重劃前單價〔區段〕·全精度·同 run_step_g 所用）、「歸戶表」（地號 → 歸戶之代號·t8_ownership_map）、
+  「現金補償」（階段一未判 ⇒ []；調配之新模組入主線後由本檔填之·每項 {"歸戶", "金額"}）。
 缺值一律報錯停止（⛔ 靜默補值）。
 """
 import argparse
@@ -29,6 +34,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "verify"))
 
 SOURCE_NOTE = "階段一之終（段三後·未經調配）：verify/stepg_pipeline.run_step_g 之 g_rows"
+CASH_NOTE = "階段一未判現金補償（調配之新模組未成）"
 KIND_LOT, KIND_OFFSET = "分配地", "抵費地"
 OFFSET_SIDE = "抵費地"
 OUT_FMT = "配地結果_退縮{}m.json"
@@ -50,11 +56,11 @@ def tag_of(setback):
 
 
 def run_pipeline(setbacks):
-    """⇒ (cb_by, cad, omap, {退縮: g_rows})。管線之印出一律收於記憶體（⛔ 擾本程式之輸出）。"""
+    """⇒ (cb_by, cad, omap, {退縮: g_rows}, {退縮: build_parcels}, 財務)。管線之印出一律收於記憶體（⛔ 擾本程式之輸出）。"""
     import run_verification as rv
     from app_harvest import harvest
     from selection_pipeline import build_ownership, build_build_parcels, run_corner_pk_k6b
-    from stepg_pipeline import run_step_g
+    from stepg_pipeline import run_step_g, _compute_v3_finance
     sink = io.StringIO()
     with contextlib.redirect_stdout(sink):
         snapshot = rv.load_snapshot()
@@ -64,7 +70,8 @@ def run_pipeline(setbacks):
         with open(rv.V6DXF, "rb") as f:
             v6 = f.read()
         temp, build, _sw = build_build_parcels(ns, fake_st, v6, list(cb_by.values()), snapshot)
-        rows = {}
+        fin = _compute_v3_finance(ns, snapshot, list(cb_by.values()), cad)
+        rows, bps = {}, {}
         for sb in setbacks:
             params = rv.build_param_table(ns, fake_st, cb_by, cad, snapshot, sb)
             _d, _s, _o, win, forced, _tp3, bp3 = run_corner_pk_k6b(
@@ -72,8 +79,18 @@ def run_pipeline(setbacks):
             sg = run_step_g(ns, fake_st, list(cb_by.values()), cad, snapshot, params, bp3,
                             win, forced, sb, eff_min_build_by_blk={})
             rows[sb] = sg["g_rows"]
+            bps[sb] = bp3
         omap = dict(fake_st.session_state["t8_ownership_map"])
-    return cb_by, cad, omap, rows
+    return cb_by, cad, omap, rows, bps, fin
+
+
+def finance_of(fin):
+    out = {"B": float(fin["B"]), "C": float(fin["C"]),
+           "重劃後單價": {k: float(v) for k, v in sorted(fin["post_price_by_block"].items())},
+           "重劃前單價": {k: float(v) for k, v in sorted(fin["pre_price_by_zone"].items())}}
+    if not (0 < out["B"] < 1 and 0 < out["C"] < 1) or not out["重劃後單價"] or not out["重劃前單價"]:
+        raise SourceError(f"財務之值不合：B {out['B']}、C {out['C']}")
+    return out
 
 
 def blocks_of(cb_by, cad):
@@ -105,7 +122,19 @@ def blocks_of(cb_by, cad):
     return out
 
 
-def lots_of(g_rows, blocks, omap):
+def own_area_of(build):
+    """build_parcels ⇒ {暫編地號: 分攤登記面積_m2}（缺 ⇒ 不入；用時缺即停）。"""
+    out = {}
+    for b in build:
+        k = b.get("暫編地號")
+        if k in out:
+            raise SourceError(f"build_parcels 之暫編地號 {k} 重複")
+        if k and b.get("分攤登記面積_m2") is not None:
+            out[k] = float(b["分攤登記面積_m2"])
+    return out
+
+
+def lots_of(g_rows, blocks, omap, own_area):
     lots, dropped = [], []
     seen = set()
     for r in g_rows:
@@ -137,6 +166,21 @@ def lots_of(g_rows, blocks, omap):
             if s is None or float(s) <= 0:
                 raise SourceError(f"{pid} 之 S 缺")
             d.update({"原地號": ln, "歸戶": omap[ln], "G": q2(r["G(㎡)"]), "宗地寬度": q2(w), "S": q2(s)})
+            if pid not in own_area:
+                raise SourceError(f"{pid} 無分攤登記面積（build_parcels）")
+            a = Decimal(repr(float(r["a 面積(㎡)"]))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            a0 = Decimal(repr(own_area[pid])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if a <= 0 or a0 <= 0 or a0 > a:
+                raise SourceError(f"{pid} 之 a {a}、分攤登記面積 {a0} 不合")
+            zone = r.get("重劃前區段")
+            if not zone:
+                raise SourceError(f"{pid} 之重劃前區段缺")
+            for k in ("F(m)", "W(m)", "Rw(%)", "l₁ 側面尺度", "l₂ 正面尺度"):
+                if r.get(k) is None or float(r[k]) < 0:
+                    raise SourceError(f"{pid} 之 {k} 缺或負")
+            d.update({"a": float(a), "a原位次": float(a0), "併入面積": float(a - a0), "重劃前區段": zone,
+                      "F": float(r["F(m)"]), "W": float(r["W(m)"]), "Rw": float(r["Rw(%)"]),
+                      "l側": float(r["l₁ 側面尺度"]), "l正": float(r["l₂ 正面尺度"])})
             first = r.get("第1筆街角")
             if first == "是":
                 side = CORNER_SIDE.get(r.get("街角側別"))
@@ -157,11 +201,14 @@ def main(argv=None):
     ap.add_argument("--setback", type=float, action="append", required=True)
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
-    cb_by, cad, omap, rows = run_pipeline(a.setback)
+    cb_by, cad, omap, rows, bps, fin = run_pipeline(a.setback)
     blocks = blocks_of(cb_by, cad)
+    finance = finance_of(fin)
     for sb in a.setback:
-        lots, dropped = lots_of(rows[sb], blocks, omap)
-        doc = {"退縮_m": sb, "來源": SOURCE_NOTE, "街廓": blocks, "宗": lots, "略": dropped}
+        lots, dropped = lots_of(rows[sb], blocks, omap, own_area_of(bps[sb]))
+        doc = {"退縮_m": sb, "來源": SOURCE_NOTE, "街廓": blocks, "宗": lots, "略": dropped,
+               "財務": finance, "歸戶表": {k: omap[k] for k in sorted(omap)},
+               "現金補償": [], "現金補償之來源": CASH_NOTE}
         p = os.path.join(a.out, OUT_FMT.format(tag_of(sb)))
         with open(p, "w", encoding="utf-8") as f:
             json.dump(doc, f, ensure_ascii=False, indent=1)
