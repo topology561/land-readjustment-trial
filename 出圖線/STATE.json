@@ -1,15 +1,15 @@
 {
- "status": "running",
- "status_since": "2026-10-31T09:48:29+08:00",
+ "status": "reported",
+ "status_since": "2026-10-31T10:08:01+08:00",
  "order": "W-P.006_補令一_附表13-24之修正.md",
  "order_bytes": 83311,
  "order_sha256": "f0804e57e945dd5cef9bb60da07a794e4324d8cd9808c0511787266c0da18b84",
  "order_kind": "補令",
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "出圖線/reports/W-P.006_補令一_回報.md",
+ "result": "完成",
  "kl_question": null,
- "wip_plots": "1c9caf5e8d3202c420c738e23b5fa43b89baf8c4",
+ "wip_plots": "15935e2d608def08db9bf3dc69fe0b1a75e5981e",
  "history": [
   {
    "at": "2026-10-23T17:50:00+08:00",
@@ -549,6 +549,13 @@
    "from": "pending",
    "to": "running",
    "note": "接 W-P.006_補令一（83311 bytes·sha256 f0804e57…8b84 相符；許可 N＝393·核心線 W-G.9-399_補令三）"
+  },
+  {
+   "at": "2026-10-31T10:08:01+08:00",
+   "by": "出圖線·執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "W-P.006_補令一 完成：側支 verify/W-P.006a-tables-fix＝15935e2（主線 9fd3427 已含·Already up to date）；wip/plots 1c9caf5→15935e2（快轉）；check_W-P006 14/14＋W-P005 18/18＋舊 12/8/8/8；對照組 V1〜V5 紅；Ⓐ〜Ⓙ 皆紅；差異閘綠（對照組紅）；預覽 2 PNG（sha256 ＝ 單 §二 6）"
   }
  ]
 }
