@@ -1,6 +1,6 @@
 {
- "status": "verifying",
- "status_since": "2026-10-31T10:19:00+08:00",
+ "status": "await_kl",
+ "status_since": "2026-10-31T10:58:00+08:00",
  "order": "W-P.006_補令一_附表13-24之修正.md",
  "order_bytes": 83311,
  "order_sha256": "f0804e57e945dd5cef9bb60da07a794e4324d8cd9808c0511787266c0da18b84",
@@ -8,7 +8,7 @@
  "attempt": 1,
  "report": "出圖線/reports/W-P.006_補令一_回報.md",
  "result": "完成",
- "kl_question": null,
+ "kl_question": "出圖線/待KL/2026-10-31_W-P.006_補令一_附表13-24修正之確認.md",
  "wip_plots": "15935e2d608def08db9bf3dc69fe0b1a75e5981e",
  "history": [
   {
@@ -563,6 +563,13 @@
    "from": "reported",
    "to": "verifying",
    "note": "上鎖：復驗 W-P.006_補令一"
+  },
+  {
+   "at": "2026-10-31T10:58:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "verifying",
+   "to": "await_kl",
+   "note": "復驗 W-P.006_補令一 合：wip/plots＝側支＝15935e2（主線 9fd3427 已含）；差異閘綠（對 9fd3427 39 列皆三目錄；對 1c9caf5 唯三 M 二 A；對照組改 app.py 紅）；附錄甲〜戊 bytes／sha256 自單重擷取逐位元組同；發單端重跑 alloc_state（0 m 35／3.5 m 34·略 R1-抵費地-2）、post_maps、post_tables 之實得＝§二 6；check_W-P006 14/14、W-P005 18/18、W-P001〜004 12/8/8/8；對照組（1c9caf5 之舊表）V1〜V5 紅；mutate Ⓐ〜Ⓙ 皆紅、成果綠；預覽重出與成果/逐位元組同；獨立覆核：自 U_LAND（德安段）重算可填之戶 14／16、單筆戶 10、附表 24 Σa 已填之 14 宗之值逐一合、57 張之 G、①②③、負擔額、計算式、差額與舊版逐值同、附表 13 Σ重劃後 34949.89。請 KL 確認（待KL/2026-10-31_W-P.006_補令一_附表13-24修正之確認.md）"
   }
  ]
 }
