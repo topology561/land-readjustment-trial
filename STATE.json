@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-31T11:23:18+08:00",
+ "status": "running",
+ "status_since": "2026-10-31T11:48:17+08:00",
  "order": "W-G.9-396_規格單.md",
  "order_bytes": 139401,
  "order_sha256": "9f67f805ce358cf91e010bc481cf63337ee930d606a9ee43d13403490193690f",
@@ -1649,6 +1649,13 @@
    "from": "drafting",
    "to": "pending",
    "note": "出 W-G.9-396_規格單（K-9-60 ② 三個以上末端塊·已排定之先後一乙二是·expects_allocation_change=false）"
+  },
+  {
+   "at": "2026-10-31T11:48:17+08:00",
+   "by": "執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接單 W-G.9-396_規格單.md；bytes 139401／sha256 9f67f805…／SELF_SHA256 90f3d278…（P-5 原口徑）驗符"
   }
  ],
  "kl_pending": []
