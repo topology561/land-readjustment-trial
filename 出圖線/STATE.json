@@ -1,6 +1,6 @@
 {
- "status": "reported",
- "status_since": "2026-10-31T10:08:01+08:00",
+ "status": "verifying",
+ "status_since": "2026-10-31T10:19:00+08:00",
  "order": "W-P.006_補令一_附表13-24之修正.md",
  "order_bytes": 83311,
  "order_sha256": "f0804e57e945dd5cef9bb60da07a794e4324d8cd9808c0511787266c0da18b84",
@@ -556,6 +556,13 @@
    "from": "running",
    "to": "reported",
    "note": "W-P.006_補令一 完成：側支 verify/W-P.006a-tables-fix＝15935e2（主線 9fd3427 已含·Already up to date）；wip/plots 1c9caf5→15935e2（快轉）；check_W-P006 14/14＋W-P005 18/18＋舊 12/8/8/8；對照組 V1〜V5 紅；Ⓐ〜Ⓙ 皆紅；差異閘綠（對照組紅）；預覽 2 PNG（sha256 ＝ 單 §二 6）"
+  },
+  {
+   "at": "2026-10-31T10:19:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "reported",
+   "to": "verifying",
+   "note": "上鎖：復驗 W-P.006_補令一"
   }
  ]
 }
