@@ -1,6 +1,6 @@
 {
- "status": "pending",
- "status_since": "2026-10-31T21:20:00+08:00",
+ "status": "running",
+ "status_since": "2026-10-31T21:50:00+08:00",
  "order": "W-P.007_附表13之版面.md",
  "order_bytes": 102322,
  "order_sha256": "d947d7137c5ec52b470b68d4c530020f64f0beb07cd48e696b13b5a3ce1aca02",
@@ -605,6 +605,13 @@
    "from": "drafting",
    "to": "pending",
    "note": "出 W-P.007_附表13之版面.md（102322 bytes·sha256 d947d713…·側支 verify/W-P.007-table13-layout）：附表 13 之版面照手冊 PDF 第 88 頁重畫（表名與冊頁在框外、所有權人與管理人四列、住址直書跨四列、直書之格、欄寬之比、每表至少 5 列、外框粗線、附註與簽欄緊接框下、A4 橫式）；內容與附表 24 逐值不變；原型 check_W-P007 14/14、check_W-P006 14/14、對照組紅、mutate_W-P007 Ⓐ〜Ⓔ 紅、mutate_W-P006 Ⓐ〜Ⓙ 紅；附表 24 俟乾淨之底稿；許可已具（N＝393）"
+  },
+  {
+   "at": "2026-10-31T21:50:00+08:00",
+   "by": "出圖線·執行端",
+   "from": "pending",
+   "to": "running",
+   "note": "接 W-P.007_附表13之版面.md（單檔 102322 bytes·sha256 d947d713…ca02 相符；許可 N=393·核心線 order W-G.9-396_規格單）"
   }
  ]
 }
