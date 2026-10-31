@@ -1,14 +1,14 @@
 {
- "status": "running",
- "status_since": "2026-10-31T15:48:50+08:00",
+ "status": "reported",
+ "status_since": "2026-10-31T19:57:15+08:00",
  "order": "W-G.9-396_規格單.md",
  "order_bytes": 139401,
  "order_sha256": "9f67f805ce358cf91e010bc481cf63337ee930d606a9ee43d13403490193690f",
  "order_kind": "規格單",
  "expects_allocation_change": false,
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "W-G.9-396_規格單_回報.md",
+ "result": "完成",
  "kl_question": null,
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
@@ -1663,6 +1663,13 @@
    "from": "running",
    "to": "running",
    "note": "接手（第一次逾時·README 第五節）W-G.9-396_規格單.md：ops/queue 末筆與側支 verify/W-G.9-396-k960m 末筆 da2af6d（03:51:18Z）皆逾 3 小時無新 commit；單之 bytes 139401／sha256 9f67f805…／SELF_SHA256 90f3d278… 再驗符；自側支 da2af6d 續（先核其內容合單·⛔ 重做已推之工項）"
+  },
+  {
+   "at": "2026-10-31T19:57:15+08:00",
+   "by": "執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "回報 W-G.9-396_規格單（完成·接手之輪）：側支 verify/W-G.9-396-k960m ＝ 4556d86d（工項二 588b06ee·三 c7dbaa2e·四 4556d86d）；本案配地⛔ 變；V-1〜V-9 與收工閘 1〜8 皆期；審查之二 WARNING 之歸類請發單端覆核"
   }
  ],
  "kl_pending": []
