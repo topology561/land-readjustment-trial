@@ -233,7 +233,9 @@ def _w5(c):
     par = _parents(s3)
     r4 = [n for n in ast.walk(s3) if isinstance(n, ast.Assign) and _u(n) == "_r4 = None"]
     r4_ok = len(r4) == 1 and _in_branch(r4[0], par, "_noaff(state, _t2, {W['blk'], _lb}, {Lo['c']})", "orelse")
-    cl = [n for n in ast.walk(s3) if _is_call(n, "_t14_357")]
+    # 🔧 `W-G.9-396`（K-9-60 ②）：多端之競合（巢狀 `_ct_multi`）內之 `_t14_357` 之呼⛔ 計（其由 `F43` 量之）
+    _ex396 = {id(x) for f in ast.walk(s3) if isinstance(f, ast.FunctionDef) and f.name == "_ct_multi" for x in ast.walk(f)}
+    cl = [n for n in ast.walk(s3) if _is_call(n, "_t14_357") and id(n) not in _ex396]
     cl_ok = len(cl) == 1 and _in_branch(cl[0], par, "_r4 is not None", "orelse")
     asg = [n for n in ast.walk(s3) if isinstance(n, (ast.Assign, ast.AugAssign, ast.AnnAssign))
            and "_t14_done" in [_u(x) for x in (n.targets if isinstance(n, ast.Assign) else [n.target])]]

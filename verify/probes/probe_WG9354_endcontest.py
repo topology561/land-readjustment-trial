@@ -12,14 +12,15 @@
            整片二端成而交面積大者／並列而暫編地號小者／皆不成而他人續試／夥伴之端先由他人定案〔逐列〕／夥伴之端於
            擱置中由他人定案〔釋出〕／公設片平分）。玩具二（題二）：一街廓 BZ 左右端，甲 Z1(1)／Z4(1)／Z2(1) 相連、
            道路片 Z3(1)。TN〜TR ＝ 題二之各支（① 只一端／① 二端而交面積大者／並列而 p1 側／② 只一端／皆不成）。
-           H1〜H3 ＝ 停機（三個以上之末端塊／一筆土地同時跨占二末端塊／一端屬二競合）。P1〜P3 ＝ 後處理承前（他街廓
+           H1〜H3 ＝ 停機（三個以上之末端塊／一筆土地同時跨占二末端塊／一端屬二競合）（🔧 `W-G.9-396`：H1 改為形「多」
+           之競合〔三端皆拿不下 ⇒ 皆未達·⛔ 停機〕）。P1〜P3 ＝ 後處理承前（他街廓
            依原位次配得之宗照配／須承受而配得者二筆 ⇒ 停機／唯一 ⇒ 承受公設平分之分）。S1 ＝ 道路片全在中心線之
            一側 ⇒ 不切、全歸該側。另施十四突變，每一突變須使至少一例轉紅（判別力）。
   wiring   <repo>
            AST／字樣：W1 `end_block_merge_run` 交競合（`contests=(_ct or None)`）、三以上／一端二競合之停機；
            W2 `k6b_stage3_run` 之 `contests=None`、逐列之環經 `_k950_rows`、無競合 ⇒ 逐列依序（`yield from rows`）；
            W3 段三之二呼叫端（harness `run_corner_pk_k6b`、畫面 `f3_screen_k6b_stage3`）⛔ 給競合；W4 道路切分之
-           單一真相源（`_road_halves` 之二呼叫）；W5 後處理之承受（`_stay`／`_recv_of`）；W6 ⛔ 案件字面。
+           單一真相源（`_road_halves` 之二呼叫·🔧 `W-G.9-396`：三）；W5 後處理之承受（`_stay`／`_recv_of`）；W6 ⛔ 案件字面。
            另施四突變，每一突變須轉紅。
   run      <repo> [<退縮> …]
            harness 實跑本案（預設退縮 `3.5`、`0.0`）：R1 無標的 ⇒ 紀錄⛔ 載競合。另於退縮 `3.5` 實跑三合成案（注入於
@@ -220,6 +221,17 @@ def _w_area(world, add):
     return t, own, blocks, cl
 
 
+def _rec(ns, world, targets):
+    """🔧 `W-G.9-396`：end_block_merge_run 之 rec（競合之形與皆未達）。"""
+    temp, own, blocks, cl = world
+    temp = copy.deepcopy(temp)
+    build = [t for t in temp if t["街廓分類"] == H]
+    ap, ev, st = _cbs(targets)
+    r = ns["end_block_merge_run"](temp, build, own, set(), set(), blocks, cl, ap, ev, st, setback=3.5,
+                                  log_print=lambda *x: None)[3]
+    return [c["形"] for c in r.get("競合") or []], r.get("皆未達")
+
+
 def _halt(ns, world, targets, phrase, **kw):
     try:
         _go(ns, world, targets, **kw)
@@ -355,10 +367,11 @@ def _cases(ns):
          ([_W1, ("Z1(1)", "—", "未成", "—"), ("Z2(1)", "—", "未成", "—")], [], {"BZ": ["left", "right"]}, {},
           ["W1(1)", "W2(1)", "Z1(1)", "Z2(1)", "Z4(1)"]))
     # ── 停機 ──
-    _run(out, "H1 同一合併群之候選分屬三個末端塊 ⇒ 停機",
-         lambda: _halt(ns, w, {A1: dict(thr=500, cands=["X1(1)"]), B1: dict(thr=500, cands=["Y1(1)"]),
-                               ("BY", "right"): dict(thr=500, cands=["Y2(1)"])}, "[末端塊合併再試] 同一合併群"),
-         ("停機", True))
+    # 🔧 `W-G.9-396`（K-9-60 ②）：H1 之停機去之 ⇒ 形「多」之競合；甲之地共 380 ＜ 門檻 500 ⇒ 三端皆拿不下
+    _run(out, "H1 同一合併群之候選分屬三個末端塊 ⇒ 形「多」之競合·三端皆未達",
+         lambda: _rec(ns, w, {A1: dict(thr=500, cands=["X1(1)"]), B1: dict(thr=500, cands=["Y1(1)"]),
+                              ("BY", "right"): dict(thr=500, cands=["Y2(1)"])}),
+         (["多"], {"BX": ["left"], "BY": ["left", "right"]}))
     # 🔧 `W-G.9-395`（K-9-60 ①）：H2 之停機去之 ⇒ 題二之競合（主列與皆未達）
     _run(out, "H2 一筆土地為同一街廓二端之未達候選 ⇒ 題二之競合：二端皆拿不下 ⇒ 皆⛔ 併",
          lambda: (lambda r: (r[0], r[2]))(
@@ -432,8 +445,8 @@ SELF_MUTS = [
      "                    _cls['a'].append((x, _cl0['勝']['blk']))\n                    continue",
      "                    pass"),
     ("M12 道路片須恰切二", "k6b_stage3_run", "        if len(_parts) not in (1, 2):", "        if len(_parts) != 2:"),
-    ("M13 ⛔ 擱置（逐列）", "k6b_stage3_run",
-     "                elif _ci not in _susp:\n                    _susp[_ci] = [_r]\n                    continue",
+    ("M13 ⛔ 擱置（逐列）", "k6b_stage3_run",    # 🔧 `W-G.9-396`：停候之競合 ＝ {端: [已至之列, 候列…]}
+     "                elif _ci not in _susp:\n                    _susp[_ci] = {_tg: [_r]}\n                    continue",
      "                elif False:\n                    pass"),
     ("M14 夥伴之端定案⛔ 釋出", "k6b_stage3_run", "            if (not _was) and _tg in won:",
      "            if False:"),
@@ -508,7 +521,7 @@ def _wiring_checks(app, sel):
     ok3 = (ci >= 0 and si >= 0 and "contests" not in k6c[ci:ci + 400].split("finally:")[0]
            and "contests" not in scr[si:si + 400].split("finally:")[0])
     res.append(("W3 段三之二呼叫端（harness／畫面）⛔ 給競合", ok3, ""))
-    ok4 = (k6.count("_road_halves(x, '") == 2 and k6.count("def _road_halves(") == 1
+    ok4 = (k6.count("_road_halves(x, '") == 3 and k6.count("def _road_halves(") == 1    # 🔧 `W-G.9-396`：K-9-60 ② 之切半
            and "_split(_geo[x], _line)" in k6 and k6.count("_split(") == 1)
     res.append(("W4 道路片之中心線切分 ＝ 單一真相源（後處理 (b) 與題一之切半）", ok4, ""))
     ok5 = ("R = R - _stay" in k6 and k6.count("_recv_of(") >= 5 and "def _recv_of(b, y):" in k6)    # 🔧 `W-G.9-388`

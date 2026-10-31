@@ -65,9 +65,9 @@ KL `2026-10-25 03:58`「二是、三丙」·`10:13`·`10:18`「一甲、二甲�
            結果皆同改前（其名之述依新之序）。
   wiring   <repo> <基準 commit>
            W1 `end_block_apply` 內⛔ 有訊息含 `GB-207` 之 `raise`、⛔ 有 `k6_program_stop` 之呼叫；
-           W2 `end_block_merge_run` 內⛔ 有訊息含「同時跨占二以上末端塊」「屬二以上之競合」之 `raise`；仍有含「三個以上之末端塊」
-              者（`K-9-60` ② 另單）；
-           W3 `k6b_stage3_run` 之 `_k950_rows` 內⛔ 有訊息含「屬二以上之競合」之 `raise`、仍有含「列數 ≠ 2」者
+           W2 `end_block_merge_run` 內⛔ 有訊息含「同時跨占二以上末端塊」「屬二以上之競合」之 `raise`；🔧 `W-G.9-396`（`K-9-60` ②）：
+              亦⛔ 有含「三個以上之末端塊」者；
+           W3 `k6b_stage3_run` 之 `_k950_rows` 內⛔ 有訊息含「屬二以上之競合」之 `raise`；🔧 `W-G.9-396`：亦⛔ 有含「列數 ≠ 2」者
            （W1〜W3 唯計 `raise` 之句內之字串·docstring 與註⛔ 計）；
            W4 `app.py` 之頂層之名⛔ 增減；頂層節點之相異 ＝ `{end_block_apply, end_block_merge_run, k6b_stage3_run}`；
            W5 所改之三節點內⛔ 新增案件字面；W6 `verify/` 頂層之 `*.py` 對基準相異 0。
@@ -676,12 +676,12 @@ def wiring(repo, base):
         "end_block_apply 內⛔ 有 GB-207 之字面、⛔ 有 k6_program_stop 之呼叫")
     s2 = _raise_strs(n2)
     rep("W2", not any(GONE_DUP in s for s in s2) and not any(GONE_TGC in s for s in s2)
-        and any(KEEP_HIT3 in s for s in s2),
-        "end_block_merge_run：⛔ 有「同時跨占二以上末端塊」「屬二以上之競合」之停機；仍有「三個以上之末端塊」之停機")
+        and not any(KEEP_HIT3 in s for s in s2),    # 🔧 `W-G.9-396`（K-9-60 ②）：三個以上之末端塊之停機去之
+        "end_block_merge_run：⛔ 有「同時跨占二以上末端塊」「屬二以上之競合」「三個以上之末端塊」之停機")
     k950 = [x for x in ast.walk(n3) if isinstance(x, ast.FunctionDef) and x.name == "_k950_rows"]
     s3 = _raise_strs(k950[0]) if len(k950) == 1 else []
-    rep("W3", len(k950) == 1 and not any(GONE_TGC in s for s in s3) and any(KEEP_ROWS in s for s in s3),
-        "_k950_rows：⛔ 有「屬二以上之競合」之停機、仍有「列數 ≠ 2」之停機")
+    rep("W3", len(k950) == 1 and not any(GONE_TGC in s for s in s3) and not any(KEEP_ROWS in s for s in s3),    # 🔧 `W-G.9-396`
+        "_k950_rows：⛔ 有「屬二以上之競合」「列數 ≠ 2」之停機")
     a, b = _top(src), _top(bsrc)
     names_ok = set(a) == set(b) or (set(a) - set(b) == NEW398 and set(b) <= set(a))   # 🔧 `W-G.9-398`：其後之單之許
     names_ok = names_ok or (set(a) - set(b) == NEW398 | NEW398B and set(b) <= set(a))   # 🔧 `W-G.9-398` 補令一：同
