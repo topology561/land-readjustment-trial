@@ -1,13 +1,13 @@
 {
- "status": "drafting",
- "status_since": "2026-10-31T20:20:00+08:00",
- "order": "W-P.006_補令一_附表13-24之修正.md",
- "order_bytes": 83311,
- "order_sha256": "f0804e57e945dd5cef9bb60da07a794e4324d8cd9808c0511787266c0da18b84",
- "order_kind": "補令",
+ "status": "pending",
+ "status_since": "2026-10-31T21:20:00+08:00",
+ "order": "W-P.007_附表13之版面.md",
+ "order_bytes": 102322,
+ "order_sha256": "d947d7137c5ec52b470b68d4c530020f64f0beb07cd48e696b13b5a3ce1aca02",
+ "order_kind": "新單",
  "attempt": 1,
- "report": "出圖線/reports/W-P.006_補令一_回報.md",
- "result": "完成",
+ "report": null,
+ "result": null,
  "kl_question": null,
  "wip_plots": "15935e2d608def08db9bf3dc69fe0b1a75e5981e",
  "history": [
@@ -598,6 +598,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖：擬 W-P.007（唯附表 13 之版面·照手冊第 88 頁·KL 08:32、17:14；附表 24 之底稿未換·俟監看窗）"
+  },
+  {
+   "at": "2026-10-31T21:20:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-P.007_附表13之版面.md（102322 bytes·sha256 d947d713…·側支 verify/W-P.007-table13-layout）：附表 13 之版面照手冊 PDF 第 88 頁重畫（表名與冊頁在框外、所有權人與管理人四列、住址直書跨四列、直書之格、欄寬之比、每表至少 5 列、外框粗線、附註與簽欄緊接框下、A4 橫式）；內容與附表 24 逐值不變；原型 check_W-P007 14/14、check_W-P006 14/14、對照組紅、mutate_W-P007 Ⓐ〜Ⓔ 紅、mutate_W-P006 Ⓐ〜Ⓙ 紅；附表 24 俟乾淨之底稿；許可已具（N＝393）"
   }
  ]
 }
