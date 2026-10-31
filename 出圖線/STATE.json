@@ -1,13 +1,13 @@
 {
- "status": "drafting",
- "status_since": "2026-10-31T08:18:00+08:00",
- "order": "W-P.006_附表13-24.md",
- "order_bytes": 90128,
- "order_sha256": "b25be2cdefb5cf5ec748f2a6a7131219488d35d5b8dcba1c64c303cdecf8c31c",
- "order_kind": "規格單",
+ "status": "pending",
+ "status_since": "2026-10-31T08:46:00+08:00",
+ "order": "W-P.006_補令一_附表13-24之修正.md",
+ "order_bytes": 83311,
+ "order_sha256": "f0804e57e945dd5cef9bb60da07a794e4324d8cd9808c0511787266c0da18b84",
+ "order_kind": "補令",
  "attempt": 1,
- "report": "W-P.006_回報.md",
- "result": "完成",
+ "report": null,
+ "result": null,
  "kl_question": null,
  "wip_plots": "1c9caf5e8d3202c420c738e23b5fa43b89baf8c4",
  "history": [
@@ -535,6 +535,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖：擬 W-P.006_補令一（KL 10/31 08:14 之 1〜8）"
+  },
+  {
+   "at": "2026-10-31T08:46:00+08:00",
+   "by": "出圖線·發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-P.006_補令一_附表13-24之修正.md（83311 bytes·sha256 f0804e57…8b84·側支 verify/W-P.006a-tables-fix）：KL 10/31 08:14 之 1〜8——縣有依管理機關分表（抵費地 花蓮縣政府·道路公園留空待 KL）；取配面積／分配面積／Σa 依手冊（戶之 a 和＝登記面積和者填·99.03 ＝ 628-36 本筆坐落公設用地之部分）；重劃前單價唯列所用之區段地價＋註；取位之註；③ 暫值之註；欄名依手冊；R1-抵費地-2 面積取二位 0.00 不成宗·非漏列；原型 check 14/14、Ⓐ〜Ⓙ 紅"
   }
  ]
 }
