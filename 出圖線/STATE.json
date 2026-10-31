@@ -1,15 +1,15 @@
 {
- "status": "running",
- "status_since": "2026-10-31T21:50:00+08:00",
+ "status": "reported",
+ "status_since": "2026-10-31T22:32:00+08:00",
  "order": "W-P.007_附表13之版面.md",
  "order_bytes": 102322,
  "order_sha256": "d947d7137c5ec52b470b68d4c530020f64f0beb07cd48e696b13b5a3ce1aca02",
  "order_kind": "新單",
  "attempt": 1,
- "report": null,
- "result": null,
+ "report": "出圖線/reports/W-P.007_回報.md",
+ "result": "完成",
  "kl_question": null,
- "wip_plots": "15935e2d608def08db9bf3dc69fe0b1a75e5981e",
+ "wip_plots": "83576c7ab7047f03769cb9ee2c91c6ee738a148c",
  "history": [
   {
    "at": "2026-10-23T17:50:00+08:00",
@@ -612,6 +612,13 @@
    "from": "pending",
    "to": "running",
    "note": "接 W-P.007_附表13之版面.md（單檔 102322 bytes·sha256 d947d713…ca02 相符；許可 N=393·核心線 order W-G.9-396_規格單）"
+  },
+  {
+   "at": "2026-10-31T22:32:00+08:00",
+   "by": "出圖線·執行端",
+   "from": "running",
+   "to": "reported",
+   "note": "W-P.007 完成：附錄甲〜己 bytes/sha256 合；commit 83576c7；合併主線 Already up to date（9fd3427）；check_W-P007 14/14（對照組 L1〜L6 紅）、check_W-P006 14/14（對照組 V1〜V3 紅）、舊 18/12/8/8/8；mutate_W-P007 Ⓐ〜Ⓔ 紅、mutate_W-P006 Ⓐ〜Ⓙ 紅；差異閘 43 列不合 0（對照組紅）；預覽 PNG sha256 與單異（單明定記之不停）；wip/plots 15935e2 → 83576c7（快轉）"
   }
  ]
 }
