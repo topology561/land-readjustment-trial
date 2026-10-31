@@ -14,6 +14,9 @@ verify/case_params_UC9898.json、手冊第 3990〜4045 列之範例、KL 2026-10
 W-P.006_補令一（KL 2026-10-31 08:14）：縣有依管理機關分表（抵費地之管理人 花蓮縣政府、公共設施之管理人留空）；
 取配面積／分配面積／Σa／Σa' 之可填與否（戶之 a 之和 ＝ 重劃前登記面積之和）；重劃前單價唯列所用之值；
 表下之加註；欄名依手冊之附表 24 範例。
+W-P.007（KL 2026-10-31 08:32·附表 13 之版面照手冊第 88 頁）：附表 13 之讀取之位置隨新版面改（題在第 3 列、
+首列登記人之格、表頭第 8〜10 列、資料第 11 列起、附註緊接框下、簽欄五處）；所量之內容⛔ 變。版面本身由
+check_W-P007.py 量之。
 """
 import json
 import os
@@ -54,7 +57,10 @@ H6 = ("鄉鎮市區", "段", "小段", "地號", "登記面積(㎡)", "取配面
       "持分比率", "建號", None)
 H5 = ("重劃前土地情形",) + (None,) * 9 + ("扣除各項負擔後應分配面積(㎡)", "重劃後土地情形") + (None,) * 11 + ("備註",)
 H7 = (None,) * 6 + ("姓名", "國民身分證統一編號") + (None,) * 9 + ("繳（元）", "領（元）", "姓名", "國民身分證統一編號") + (None,) * 3
-FIRST = 8
+FIRST = 11
+OWNER13 = ((4, 8), (5, 8), (4, 12), (6, 8), (7, 8))   # 首列登記人 姓名、統編、住址、管理人姓名、統編
+SIGN13 = (1, 6, 10, 14, 19)
+MIN13 = 5
 TOL_G = Decimal("0.02")        # 計算式以表上之值重算與 G 之差（G 為幾何二分之解·S 等取二位）
 TOL_AREA = 0.05
 
@@ -186,7 +192,7 @@ def load(out, pre, tag):
 def rows_of(ws, first=FIRST):
     out = []
     r = first
-    while any(ws.cell(r, k).value is not None for k in range(1, 25)):
+    while any(ws.cell(r, k).value is not None for k in range(1, 25)) and ws.cell(r, 1).value != N_A13:
         out.append(tuple(ws.cell(r, k).value for k in range(1, 25)))
         r += 1
     return out, r
@@ -218,24 +224,25 @@ def v1(c):
     if c.a13.sheetnames != want:
         return [f"附表 13 之表 {c.a13.sheetnames}"]
     for ws in c.a13:
-        if ws.cell(1, 1).value != T_A13:
+        if ws.cell(3, 1).value != T_A13:
             bad.append(f"{ws.title} 之題")
-        for rr, h in ((5, H5), (6, H6), (7, H7)):
+        for rr, h in ((8, H5), (9, H6), (10, H7)):
             if tuple(ws.cell(rr, k).value for k in range(1, 25)) != h:
                 bad.append(f"{ws.title} 列 {rr} 之表頭")
-        rows, r = rows_of(ws)
-        if ws.cell(r + 1, 1).value != N_A13 or [ws.cell(r + 3, k).value for k in (1, 5, 9, 13, 17)] != \
+        rows, _ = rows_of(ws)
+        r = FIRST + max(len(rows), MIN13)
+        if ws.cell(r, 1).value != N_A13 or [ws.cell(r + 1, k).value for k in SIGN13] != \
                 ["日期：", "承辦：", "股長：", "科長：", "局(處)長："]:
             bad.append(f"{ws.title} 之附註或簽欄")
         if ws.title.startswith("縣有"):
             mgr = MGR_OFF if ws.title == CNTY.format("抵費地") else None
-            if ws.cell(3, 4).value != COUNTY or ws.cell(4, 4).value != mgr:
-                bad.append(f"{ws.title} 之所有權人或管理人 {ws.cell(3, 4).value}、{ws.cell(4, 4).value}")
+            if ws.cell(*OWNER13[0]).value != COUNTY or ws.cell(*OWNER13[3]).value != mgr:
+                bad.append(f"{ws.title} 之所有權人或管理人 {ws.cell(*OWNER13[0]).value}、{ws.cell(*OWNER13[3]).value}")
             continue
         n = int(ws.title[3:])
         lns = sorted((ln for ln, h in c.hh_of.items() if h == n), key=nkey)
         f = c.own[lns[0]][0]
-        got = (ws.cell(3, 4).value, ws.cell(3, 9).value, ws.cell(3, 13).value, ws.cell(4, 4).value, ws.cell(4, 9).value)
+        got = tuple(ws.cell(*rc).value for rc in OWNER13)
         if got != (f[0], f[1], f[3], f[4], f[5]):
             bad.append(f"{ws.title} 之首列登記人 {got}")
     return bad

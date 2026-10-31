@@ -18,6 +18,10 @@ W-P.006　附表 13 重劃前後土地分配清冊、附表 24 土地分配計�
   10/30 19:28（W-P.005 全定版·下一批附表 13、24）。
   本版之配地 ＝ 階段一之終（調配之前）：未分配之戶之重劃後各欄留空；各宗之 a 之併入（a'）之逐筆來源
   管線未出 ⇒ 附表 24 之重劃前唯列原位次之地號，附表 13 之「取配面積」留空（俟調配之終態）。
+W-P.007（KL 2026-10-31 08:32「各附表之版面一律照手冊範本」·17:14）：附表 13 之版面照手冊 PDF 第 88 頁重畫——
+  表名與冊頁在框外、題在框內；所有權人與管理人四列（標籤二行合一格、住址直書跨四列、住址之格分所有權人與管理人）；
+  表頭三列（直書之格依手冊）；欄寬依手冊之比；每表至少 5 列；附註與簽欄緊接框下；橫式 A4、每頁重出 1〜10 列。
+  表之內容（值、欄名、表之分法）⛔ 變；附表 24 ⛔ 變。
 W-P.006_補令一（KL 2026-10-31 08:14·出圖線/KL答覆/2026-10-31_0814.md 之 1〜8）：
   一 縣有之表依管理機關分表（「縣有（抵費地）」管理人＝花蓮縣政府〔手冊第 4501 列「縣（市）主管機關」·
      平均地權條例第 3 條〕；「縣有（道路）」等公共設施各一表，管理人〔手冊第 4498 列「各該公共設施主管機關」〕
@@ -64,30 +68,47 @@ TITLE_A24 = "○○縣（市）第○○期○○○○市地重劃區土地分�
 BOOK_A13 = "共　　冊　第　　冊　第　　頁"
 SHEET_COUNTY = "縣有（{}）"
 A13_NCOL = 24
-A13_FIRST = 8                       # 資料之首列
+A13_FIRST = 11                      # 資料之首列
 A24_NCOL = 6
 OUT_FMT = {"a13": "附表13_重劃前後土地分配清冊_退縮{}m.xlsx", "a24": "附表24_土地分配計算表_退縮{}m.xlsx"}
 NF = {"area": "#,##0.00", "yuan": "#,##0", "p2": "#,##0.00", "k8": "0.00000000", "k4": "0.0000",
       "m2": "0.00", "pct": "0.00%"}
 
-# 附表 13 之表頭（列, 欄起, 列迄, 欄迄, 字）
-A13_HEAD = (
-    (5, 1, 5, 10, "重劃前土地情形"), (5, 11, 7, 11, "扣除各項負擔後應分配面積(㎡)"),
-    (5, 12, 5, 23, "重劃後土地情形"), (5, 24, 7, 24, "備註"),
-    (6, 1, 7, 1, "鄉鎮市區"), (6, 2, 7, 2, "段"), (6, 3, 7, 3, "小段"), (6, 4, 7, 4, "地號"),
-    (6, 5, 7, 5, "登記面積(㎡)"), (6, 6, 7, 6, "取配面積(㎡)"), (6, 7, 6, 8, "所有權人"),
-    (6, 9, 7, 9, "持分比率"), (6, 10, 7, 10, "評定單價(元／㎡)"),
-    (7, 7, 7, 7, "姓名"), (7, 8, 7, 8, "國民身分證統一編號"),
-    (6, 12, 7, 12, "使用分區"), (6, 13, 7, 13, "段"), (6, 14, 7, 14, "小段"), (6, 15, 7, 15, "地號"),
-    (6, 16, 7, 16, "面積(㎡)"), (6, 17, 7, 17, "評定單價(元／㎡)"), (6, 18, 6, 19, "預計繳領差額地價"),
-    (7, 18, 7, 18, "繳（元）"), (7, 19, 7, 19, "領（元）"), (6, 20, 6, 21, "所有權人"),
-    (7, 20, 7, 20, "姓名"), (7, 21, 7, 21, "國民身分證統一編號"), (6, 22, 7, 22, "持分比率"), (6, 23, 7, 23, "建號"),
+# 附表 13 之版面（W-P.007·照手冊 PDF 第 88 頁〔參考/手冊附表頁/附表13_重劃前後土地分配清冊_手冊PDF第88頁.png〕）
+# 列 1 表名、列 2 冊頁、列 3 題（框內）、列 4〜7 所有權人與管理人、列 8〜10 表頭、列 11 起資料。
+CAPTION_A13 = "附表 13 重劃前後土地分配清冊"
+A13_HEAD = (    # （列, 欄起, 列迄, 欄迄, 字）
+    (8, 1, 8, 10, "重劃前土地情形"), (8, 11, 10, 11, "扣除各項負擔後應分配面積(㎡)"),
+    (8, 12, 8, 23, "重劃後土地情形"), (8, 24, 10, 24, "備註"),
+    (9, 1, 10, 1, "鄉鎮市區"), (9, 2, 10, 2, "段"), (9, 3, 10, 3, "小段"), (9, 4, 10, 4, "地號"),
+    (9, 5, 10, 5, "登記面積(㎡)"), (9, 6, 10, 6, "取配面積(㎡)"), (9, 7, 9, 8, "所有權人"),
+    (9, 9, 10, 9, "持分比率"), (9, 10, 10, 10, "評定單價(元／㎡)"),
+    (10, 7, 10, 7, "姓名"), (10, 8, 10, 8, "國民身分證統一編號"),
+    (9, 12, 10, 12, "使用分區"), (9, 13, 10, 13, "段"), (9, 14, 10, 14, "小段"), (9, 15, 10, 15, "地號"),
+    (9, 16, 10, 16, "面積(㎡)"), (9, 17, 10, 17, "評定單價(元／㎡)"), (9, 18, 9, 19, "預計繳領差額地價"),
+    (10, 18, 10, 18, "繳（元）"), (10, 19, 10, 19, "領（元）"), (9, 20, 9, 21, "所有權人"),
+    (10, 20, 10, 20, "姓名"), (10, 21, 10, 21, "國民身分證統一編號"), (9, 22, 10, 22, "持分比率"),
+    (9, 23, 10, 23, "建號"),
 )
-A13_OWNER = (   # 列 3、4：所有權人與管理人（標籤之欄起迄, 值之欄起迄）
-    (3, (1, 3, "土地所有權人（首列登記人）姓名"), (4, 6)), (3, (7, 8, "國民身分證統一編號"), (9, 10)),
-    (3, (11, 12, "住址"), (13, 18)),
-    (4, (1, 3, "管理人姓名"), (4, 6)), (4, (7, 8, "國民身分證統一編號"), (9, 10)),
+A13_OWNER_LABEL = (   # 所有權人與管理人之標籤（列, 欄起, 列迄, 欄迄, 字）
+    (4, 1, 5, 7, "土地所有權人（首列登記人）姓名\n國民身分證統一編號"),
+    (6, 1, 7, 7, "管理人姓名\n國民身分證統一編號"),
+    (4, 11, 7, 11, "住址"),
 )
+A13_OWNER_VALUE = (   # 首列登記人之 姓名、統編、住址、管理人姓名、管理人統編、管理人住址 之格（列, 欄起, 列迄, 欄迄）
+    (4, 8, 4, 10), (5, 8, 5, 10), (4, 12, 5, 24), (6, 8, 6, 10), (7, 8, 7, 10), (6, 12, 7, 24),
+)
+A13_VERT = ((4, 11), (8, 24), (9, 1), (9, 3), (9, 4), (9, 5), (9, 6), (9, 9), (9, 12), (9, 14), (9, 15),
+            (9, 16), (9, 22), (9, 23), (10, 7), (10, 20))    # 直書之格（手冊第 88 頁之直排字）
+A13_DIST = ((4, 1), (6, 1), (8, 1), (8, 12))                  # 分散對齊之格（手冊之字距展開）
+A13_WIDTH = (9.0, 9.1, 9.0, 9.0, 9.0, 9.1, 10.4, 10.6, 9.7, 14.3, 16.1, 7.7,
+             7.7, 7.7, 7.7, 7.7, 17.4, 10.4, 10.6, 12.0, 12.0, 8.3, 8.4, 14.0)   # 手冊之欄寬（像素）÷ 7
+A13_HEIGHT = {1: 24, 2: 20, 3: 28, 4: 20, 5: 20, 6: 18, 7: 18, 8: 20, 9: 34, 10: 84}
+A13_ROW_H = 38          # 資料列之高
+A13_NOTE_CHARS, A13_LINE_H = 7, 14   # 備註欄每行約 7 字、每行 14 點：備註之字多者，其列加高（自動換行而⛔ 截字）
+A13_MIN_ROWS = 5        # 每表至少之資料列（手冊之表樣 5 列）
+A13_SIGN_COL = (1, 6, 10, 14, 19)
+A13_BOOK = (2, 19, 2, 24)
 A24_PRE = ("段", "小段", "地號", "登記面積(㎡)", "分配面積(㎡)", "共有人申請單獨分配持分比例",
            "持分面積(㎡)", "法定空地面積(㎡)", "當期公告現值(元/㎡)", "評定之重劃前單價(元/㎡)")
 A24_CALC = ("Σa(㎡)", "Σa'(㎡)", "Σ(a＋a')(㎡)", "原位置重劃前地價(元/㎡)",
@@ -276,17 +297,42 @@ def _num(x):
 
 
 # ---------------------------------------------------------------- 附表 13
+def _frame(ws, r1, r2, ncol):
+    """r1〜r2 列、1〜ncol 欄：每格四邊細線，外框粗線（手冊第 88 頁）。"""
+    from openpyxl.styles import Border, Side
+    thin, thick = Side(style="thin"), Side(style="medium")
+    for r in range(r1, r2 + 1):
+        for c in range(1, ncol + 1):
+            ws.cell(r, c).border = Border(left=thick if c == 1 else thin, right=thick if c == ncol else thin,
+                                          top=thick if r == r1 else thin, bottom=thick if r == r2 else thin)
+
+
+def _a13_heights(ws, n):
+    """資料列之高：A13_ROW_H；備註之字多者依其行數加高。"""
+    for i in range(n):
+        v = ws.cell(A13_FIRST + i, A13_NCOL).value
+        lines = -(-len(str(v)) // A13_NOTE_CHARS) if v else 1
+        ws.row_dimensions[A13_FIRST + i].height = max(A13_ROW_H, A13_LINE_H * lines)
+
+
 def a13_sheet(wb, name, head_owner, pre_rows, post_rows, note_first):
+    from openpyxl.styles import Alignment, Font
+    from openpyxl.utils import get_column_letter
     ws = wb.create_sheet(name)
-    _put(ws, 1, 1, TITLE_A13, c2=A13_NCOL)
-    _put(ws, 2, 19, BOOK_A13, c2=A13_NCOL)
-    vals = list(head_owner)
-    for (r, (c1, c2, lab), (v1, v2)), v in zip(A13_OWNER, vals):
-        _put(ws, r, c1, lab, c2=c2)
-        _put(ws, r, v1, v, c2=v2)
-    for r1, c1, r2, c2, lab in A13_HEAD:
+    ws.cell(1, 1, CAPTION_A13).font = Font(bold=True, size=14)
+    c = _put(ws, A13_BOOK[0], A13_BOOK[1], BOOK_A13, r2=A13_BOOK[2], c2=A13_BOOK[3])
+    c.alignment = Alignment(horizontal="right", vertical="center")
+    _put(ws, 3, 1, TITLE_A13, c2=A13_NCOL).font = Font(size=16)
+    for r1, c1, r2, c2, lab in A13_OWNER_LABEL + A13_HEAD:
         _put(ws, r1, c1, lab, r2=r2, c2=c2)
-    n = max(len(pre_rows), len(post_rows), 1)
+    vals = tuple(head_owner) + (None,)
+    for (r1, c1, r2, c2), v in zip(A13_OWNER_VALUE, vals):
+        _put(ws, r1, c1, v, r2=r2, c2=c2)
+    for r, c in A13_VERT:
+        ws.cell(r, c).alignment = Alignment(horizontal="center", vertical="center", text_rotation=255)
+    for r, c in A13_DIST:
+        ws.cell(r, c).alignment = Alignment(horizontal="distributed", vertical="center", wrap_text=True, indent=1)
+    n = max(len(pre_rows), len(post_rows), A13_MIN_ROWS)
     for i in range(n):
         r = A13_FIRST + i
         if i < len(pre_rows):
@@ -297,13 +343,18 @@ def a13_sheet(wb, name, head_owner, pre_rows, post_rows, note_first):
                 _put(ws, r, c, v, nf)
     if note_first:
         _put(ws, A13_FIRST, 24, note_first)
+    _a13_heights(ws, n)
     last = A13_FIRST + n - 1
-    PM._grid(ws, 3, last, A13_NCOL)
-    ws.cell(last + 2, 1, NOTE_A13)
-    step = A13_NCOL // len(SIGN_A13)
-    for i, lab in enumerate(SIGN_A13):
-        ws.cell(last + 4, 1 + i * step, lab)
-    PM._page(ws, "1:7", landscape=True)
+    _frame(ws, 3, last, A13_NCOL)
+    ws.cell(last + 1, 1, NOTE_A13)
+    for col, lab in zip(A13_SIGN_COL, SIGN_A13):
+        ws.cell(last + 2, col, lab)
+    ws.row_dimensions[last + 1].height = ws.row_dimensions[last + 2].height = 24
+    for r, h in A13_HEIGHT.items():
+        ws.row_dimensions[r].height = h
+    for i, w in enumerate(A13_WIDTH, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+    PM._page(ws, "1:10", landscape=True)
     return ws
 
 
@@ -367,6 +418,7 @@ def write_a13(path, doc, ents, numbers, sch, cash, zoning, pre_price, full):
                        [], rows, None)
         for i in range(len(rows)):
             _put(ws, A13_FIRST + i, 24, NOTE_OFFSET if off else NOTE_PUBLIC)
+        _a13_heights(ws, max(len(rows), A13_MIN_ROWS))
     wb.save(path)
     return out
 
