@@ -1,0 +1,751 @@
+diff --git a/app.py b/app.py
+index 101a7a6a..8a3e2796 100644
+--- a/app.py
++++ b/app.py
+@@ -12278,7 +12278,11 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+     🆕 `W-G.9-399`（KL `2026-10-26 22:09`／`22:42`／`22:57`·二位地主之互相等待之先後改以末端塊評選指數）：每一競合另載 `'p'`
+       （序鍵之第三項）、`'面積表'`（序鍵之重劃前面積之表）、`'評選'` ＝ `{(街廓, 端): {'名次','指數','片'}}`（`k960_idx_rank`·該端之
+       首次之試算之候選之列·單位 ＝ 合併群〔同一求群之輸入〕）；名次取不到 ⇒ `'評選'` ＝ `None`、`'評選之誤'` ＝ 其訊息之首列（⛔ 停機·
+-      唯互相等待時由 `k6b_stage3_run` 停之）。`rec['競合']` 之形照舊（⛔ 載新鍵）。"""
++      唯互相等待時由 `k6b_stage3_run` 停之）。`rec['競合']` 之形照舊（⛔ 載新鍵）。
++    🆕 `W-G.9-396`（`K-9-60` ②·KL `2026-10-05 22:59`；`2026-10-25 03:58`「二是」、`10:18`「一甲」；`2026-10-26 22:09`「第一題：乙」）：
++      ② 之「分屬三個以上之末端塊」之停機去之——其競合照二端之式建之（`'列'` ＝ 各端之首個候選·依原投影序；`'序鍵'`、`'p'`、
++      `'面積表'`、`'評選'` 計全部之端），其 `'形'` ＝ `'多'`，交 `k6b_stage3_run` 依題一之步驟之多端之推延處之（其 `_ct_multi`）。
++      `rec['競合']` 之形照舊（其 `'形'` 可為 `'多'`）。"""
+     _rec = {'退縮': setback, '標的': [], '皆未達': {}}
+     _m389 = k6_trial_mark()
+     try:
+@@ -12322,9 +12326,6 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+         _ids = sorted(temp_parcels[i]['暫編地號'] for i in _g)
+         _hit = sorted({x for p in _ids for x in _cand_of.get(p, ())})
+         if len(_hit) >= 2:
+-            if len(_hit) >= 3:
+-                raise RuntimeError(f"🔴 [末端塊合併再試] 同一合併群 {_ids} 之候選分屬 {len(_hit)} 個末端塊 {_hit}——"
+-                                   "三個以上之末端塊（K-9-50 射程 ③·逐案呈核）")
+             _gid = own_map.get(str(temp_parcels[_g[0]].get('原地號', '')))
+             _ent = []
+             for _blk, _sd in _hit:
+@@ -12342,6 +12343,9 @@ def end_block_merge_run(temp_parcels, build_parcels, own_map, locked, corner_lot
+             _ct.append({'形': ('二' if _hit[0][0] == _hit[1][0] else '一'), '列': [e for _, e in _ent],
+                         '序鍵': k967_rank(sum(float(_c395['試算G(㎡)']) for _c395 in _un395),
+                                           k967_pre_area(_ms395[0], _ms395, _pa395), _ms395[0])})
++            # 🆕 `W-G.9-396`（R-1·`K-9-60` ②）：分屬三個以上之末端塊 ⇒ 形「多」（其列、序鍵、評選計全部之端·⛔ 停機）
++            if len(_hit) >= 3:
++                _ct[-1]['形'] = '多'
+     if _ct:
+         _rec['競合'] = [{'形': c['形'], '列': [list(e) for e in c['列']]} for c in _ct]
+         # 🆕 `W-G.9-399`（R-11·KL `2026-10-26 22:09`／`22:42`／`22:57`）：每一競合另載 `p`（序鍵之第三項）、`面積表`（序鍵之重劃前
+@@ -15422,6 +15426,14 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+       ＝ `2` ⇒ `k960_idx_first`（末端塊評選指數之名次依 `K-9-28` 之序·唯計共同之端·⛔ 用序鍵；缺評選 ⇒ 停機）；環之長 ≥ `3` ⇒
+       環中任一競合缺評選 ⇒ 停機；有一競合對其餘每一競合皆有共同之端且 `k960_idx_first` 皆以之為先（依環之序取首見者）⇒ 其先；
+       無之 ⇒ 序鍵最小者（照舊·序鍵之缺之停機唯及於此）。其先處理之列之 `競合` 欄載其由。其餘照舊。
++    🆕 `W-G.9-396`（`K-9-60` ②·KL `2026-10-05 22:59`；`2026-10-25 03:58`「二是」、`10:18`「一甲」；`2026-10-26 22:09`「第一題：乙」；
++      `2026-10-30 23:02`「丁」；`2026-10-31 07:52`「一乙、二是」·`K-6` 典 `W-G.9-396` 之節）：`contests` 之 `'形'` 可為 `'多'`（列 ≥ `3`·
++      同一合併群之未達候選分屬三個以上之末端塊）。`_k950_rows` 之停候之競合 ＝ `{端: [已至之列, 候列…]}`；仍在之列（端未由他人
++      定案·形「多」者另去其候選已併出者）皆已至 ⇒ 並解（`_contest(ct, rs)`·三以上 ⇒ `_ct_multi`·形「多」縮為二列者依其二端）；
++      `_ct_multi` ＝ 題一之步驟之多端之推延（本街廓 → 依所臨分給〔中心線·只臨一端者整片·餘平分〕→ 端群各判 → 全部拿不下改整片·
++      `_rk390` 之序 → 不得之端依題一 4 歸承受之得者·`_t14_357(…, acc396=True)`）；`_closer[群]` 可為諸 `{'勝','敗'}` 之列（步驟 10 逐
++      其項）。互相等待之當次之人（候於之圖之環所在之強連通之集）有形「多」⇒ 已排定之先後（含間接）中排在他人之後者⛔ 為先處理
++      者，先處理者唯記為先於被其延後之人；皆只跨兩端 ⇒ 照前（每次重比、⛔ 記）。
+     """
+     import copy as _cp
+     from shapely.geometry import Polygon as _Pg, LineString as _Ls
+@@ -15866,9 +15878,219 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         _ct_log(Lo, _rw[Lo['k']], False, _note)
+         return [Lo]
+ 
+-    def _contest(ct, rX, rY):
++    def _ct_multi(E):
++        # 🆕 `W-G.9-396`（R-3·`K-9-60` ②·KL `2026-10-05 22:59`；`2026-10-25 03:58`「二是」、`10:18`「一甲」；`2026-10-26 22:09`
++        #   「第一題：乙」·塊 `K51` 之二之甲）：同一合併群之未達候選分屬三個以上之末端塊（E ＝ 並解之諸端·依至之先後）——
++        #   ① 各端以本街廓內之土地試；② 仍需要道路、公設地者依所臨分給（單位 ＝ 街廓）→ 端群各判（拿得下者定案、餘不得；全部
++        #   拿不下 ⇒ 群內整片各試·`_rk390` 之先者一端得）；③ 不得之端（每街廓一）之分依題一 4 歸承受之得者。回不得之端之列。
++        nonlocal state
++        _path396 = []
++        _ub396 = {}                                   # 單位（街廓）→ 其端（E 之序）
++        for e in E:
++            _ub396.setdefault(e['blk'], []).append(e)
++        _last396 = {e['k']: None for e in E}          # 每端最後之試（紀錄之列用之）
++        _okk396 = set()                               # 得者之端之鍵
++        _wres396 = {}                                 # 得者之端之鍵 → 其試
++
++        def _show396(es, rs):
++            return "／".join(f"{e['c']} {'—' if rs.get(e['k']) is None else ('成' if rs[e['k']]['ok'] else '未成')}"
++                            for e in es)
++
++        def _unit396(es, rs):
++            # 一單位之拿得下之端：唯一 ⇒ 之；同一街廓之二端皆拿得下 ⇒ 比照題二（`_ct_pick(…, '二')`）之先者
++            _cs396 = [e for e in es if rs.get(e['k']) is not None and rs[e['k']]['ok']]
++            if len(_cs396) >= 2:
++                return _ct_pick(_cs396[0], _cs396[1], '二')[0]
++            return _cs396[0] if _cs396 else None
++
++        # ① 各端以本街廓內之土地（S）試；每一單位之拿得下之端定案（一次 `_ct_commit`）、其單位之他端讓
++        _r1_396 = {e['k']: (_ct_try(e, _ct_whole(e, e['S']), '①') if e['S'] else None) for e in E}
++        _last396.update(_r1_396)
++        _path396.append("①：" + _show396(E, _r1_396))
++        _w1_396 = [w for w in (_unit396(_es396, _r1_396) for _es396 in _ub396.values()) if w is not None]
++        if _w1_396:
++            _ct_commit([(w, _r1_396[w['k']]) for w in _w1_396])
++            for w in _w1_396:
++                _okk396.add(w['k'])
++                _wres396[w['k']] = _r1_396[w['k']]
++        _wb396 = {w['blk'] for w in _w1_396}
++        # ② 餘之端：以 `_sets` 重求其 S／U；U 為空者不得
++        _SU396 = {}
++        for e in E:
++            if e['blk'] not in _wb396:
++                _g396, _S396, _V396 = _sets(e['c'])
++                _SU396[e['k']] = (_S396, _V396)
++        _nd396 = [e for e in E if e['k'] in _SU396 and _SU396[e['k']][1]]
++        _fr396, _wh396, _sh396 = {}, set(), set()    # 單位 → {片: 比}；整歸之 (單位, 片)；共用之片（二以上之單位需要者）
++        for x in sorted(set().union(*[_SU396[e['k']][1] for e in _nd396])):
++            _C396 = sorted({e['blk'] for e in _nd396 if x in _SU396[e['k']][1]})
++            if len(_C396) == 1:
++                _fr396.setdefault(_C396[0], {})[x] = 1.0
++                _wh396.add((_C396[0], x))
++                continue
++            _sh396.add(x)
++            _nx396 = _nbr_blocks(_raw[x], _blk_of[x])
++            _T396 = [b for b in _C396 if b in _nx396]
++            if len(_T396) == 1:
++                _fr396.setdefault(_T396[0], {})[x] = 1.0
++                _wh396.add((_T396[0], x))
++            elif len(_T396) >= 2 and _kind(x) == 'road' and not _is_crossing(x):
++                for _h396 in _road_halves(x, 'K-9-60 ②'):
++                    _hn396 = set(_nbr_blocks(_h396, _blk_of[x]))
++                    _ht396 = [b for b in _T396 if b in _hn396]
++                    if len(_ht396) != 1:
++                        raise RuntimeError(
++                            f"🔴 [K-6-B 段三 K-9-60 ②] {x} 之半（{_h396.area:.4f}）所鄰之仍需要之末端塊街廓 ＝ {_ht396}"
++                            "（期恰一）（停機款 9）")
++                    _fr396.setdefault(_ht396[0], {})[x] = (_fr396.get(_ht396[0], {}).get(x, 0.0)
++                                                           + float(_h396.area) / float(_geo[x].area))
++            else:
++                _to396 = _T396 if len(_T396) >= 2 else _C396
++                for b in _to396:
++                    _fr396.setdefault(b, {})[x] = 1.0 / len(_to396)
++        # 端群 ＝ 分得同一片（比 ＞ 0）之單位之相連之集（並查之集·成串者同群）
++        _uf396 = {b: b for b in _ub396 if any(e['blk'] == b for e in _nd396)}
++
++        def _root396(b):
++            while _uf396[b] != b:
++                b = _uf396[b]
++            return b
++        for x in sorted(_sh396):
++            _hb396 = [b for b in sorted(_uf396) if _fr396.get(b, {}).get(x, 0.0) > 0.0]
++            for b in _hb396[1:]:
++                _ra396, _rb396 = _root396(_hb396[0]), _root396(b)
++                if _ra396 != _rb396:
++                    _uf396[_rb396] = _ra396
++        _gs396 = []                                   # 諸群（依 E 之序之首見）
++        for e in _nd396:
++            _gr396 = _root396(e['blk'])
++            if _gr396 not in [g[0] for g in _gs396]:
++                _gs396.append((_gr396, []))
++            _gl396 = [g for g in _gs396 if g[0] == _gr396][0][1]
++            if e['blk'] not in _gl396:
++                _gl396.append(e['blk'])
++        _w2_396, _by396 = [], {}                      # ② 之得者 [(端, 試)]；分給而定之群之單位 → 其分
++        for _gr396, _gb396 in _gs396:
++            _ge396 = [e for e in _nd396 if e['blk'] in _gb396]
++            _gp396 = {x for b in _gb396 for x, _f396 in _fr396.get(b, {}).items() if _f396 > 0.0}
++            _rh396 = {}
++            for e in _ge396:
++                _S396, _V396 = _SU396[e['k']]
++                _mine396 = {x: _f396 for x, _f396 in _fr396.get(e['blk'], {}).items() if x in _V396 and _f396 > 0.0}
++                _its396 = _ct_whole(e, _S396 | {x for x in _mine396 if (e['blk'], x) in _wh396}) + \
++                    [(x, _aprime(state, x, e['c']) * _mine396[x], False) for x in sorted(_mine396)
++                     if (e['blk'], x) not in _wh396]
++                _rh396[e['k']] = _ct_try(e, _its396, '②半')
++            _last396.update(_rh396)
++            _path396.append(f"分給〔{'、'.join(_gb396)}〕：" + _show396(_ge396, _rh396))
++            _gw396 = [w for w in (_unit396([e for e in _ge396 if e['blk'] == b], _rh396) for b in _gb396)
++                      if w is not None]
++            if _gw396:
++                _w2_396.extend((w, _rh396[w['k']]) for w in _gw396)
++                for b in _gb396:
++                    _by396[b] = {x: _f396 for x, _f396 in _fr396.get(b, {}).items() if _f396 > 0.0 and x in _sh396}
++                continue
++            if len(_gb396) < 2:
++                continue
++            # 群內全部拿不下 ⇒ 各端以 S ∪（U ∩ 本群之片）整筆試；能達標之端（每單位一）二以上 ⇒ `_rk390` 最小者一端得
++            _rw396 = {e['k']: _ct_try(e, _ct_whole(e, _SU396[e['k']][0] | (_SU396[e['k']][1] & _gp396)), '②')
++                      for e in _ge396}
++            _last396.update(_rw396)
++            _path396.append(f"整片〔{'、'.join(_gb396)}〕：" + _show396(_ge396, _rw396))
++            _cw396 = [w for w in (_unit396([e for e in _ge396 if e['blk'] == b], _rw396) for b in _gb396)
++                      if w is not None]
++            if _cw396:
++                _bw396 = min(_cw396, key=lambda w: _rk390(w, _rw396[w['k']]))
++                _w2_396.append((_bw396, _rw396[_bw396['k']]))
++        if _w2_396:
++            _ct_commit(_w2_396)
++            for w, _res396 in _w2_396:
++                _okk396.add(w['k'])
++                _wres396[w['k']] = _res396
++            for b in _by396:
++                merged_out.update(_by396[b])
++        _note396 = "K-9-60 ②｜" + "；".join(_path396)
++        _win396 = [e for e in E if e['k'] in _okk396]
++        _lose396 = [e for e in E if e['k'] not in _okk396]
++        for e in E:
++            _ct_log(e, _last396.get(e['k']), e['k'] in _okk396, _note396)
++        # ③ 有得者時：不得之端（每街廓一·E 之序之首·其街廓無得者）之分依題一 4 歸承受之得者
++        if _win396:
++            _cl396 = []
++            _wbk396 = {w['blk'] for w in _win396}
++            _seen396 = set()
++            for Lo in _lose396:
++                if Lo['blk'] in _wbk396 or Lo['blk'] in _seen396:
++                    continue
++                _seen396.add(Lo['blk'])
++                _lb396 = Lo['blk']
++                _lsh396 = dict(_by396.get(_lb396, {}))
++                _lz396 = [Lo['c']] + sorted(_lsh396)
++
++                def _rel396(w):
++                    # 承受之得者之先：與該端之候選及其分之片相鄰（得者之宗連同已併入之片）、或分用同一片者
++                    _wz396 = [w['c']] + sorted(_z396 for _z396 in merged_out if w['c'] in marks.get(_z396, set()))
++                    _wsh396 = set(_by396.get(w['blk'], {})) if w['k'] in _okk396 else set()
++                    if set(_lsh396) & _wsh396:
++                        return 0
++                    return 0 if any(_adj(_p396, _q396) for _p396 in _lz396 for _q396 in _wz396) else 1
++                _W396 = min(_win396, key=lambda w: (_rel396(w), _rk390(w, _wres396[w['k']])))
++                _cl396.append({'勝': _W396, '敗': Lo})
++                if not _lsh396:
++                    continue
++                _wf396 = {x: _by396.get(_W396['blk'], {}).get(x, 0.0) for x in _lsh396}
++                _iL396 = [(x, _aprime(state, x, Lo['c']) * _lsh396[x], False) for x in sorted(_lsh396)]
++                _t1_396 = _clone(state)
++                _apply(_t1_396, Lo['c'], _iL396)
++                _sb396 = alloc_state(state["temp"], state["build"])
++                _sa396 = alloc_state(_t1_396["temp"], _t1_396["build"])
++                if _sb396.get("err") or _sa396.get("err"):
++                    raise RuntimeError(
++                        f"🔴 [K-6-B 段三 K-9-60 ②] 不得之端之原位次無從判定（配地中止）：{_sb396.get('err')!r}｜"
++                        f"{_sa396.get('err')!r}（停機款 9）")
++                _k0_396 = set(_sb396["kept"].get(_lb396, set()))
++                _k1_396 = set(_sa396["kept"].get(_lb396, set()))
++                _r4_396 = None
++                if Lo['c'] in _k1_396 and not (_k0_396 - _k1_396) and \
++                        int(_sa396["bad_pools"].get(_lb396, 0)) <= int(_sb396["bad_pools"].get(_lb396, 0)):
++                    state = _t1_396
++                    for x in _lsh396:
++                        marks.setdefault(x, set()).add(Lo['c'])
++                    _to396 = f"{Lo['c']} 依原位次配地，其分併之"
++                    _r4_396 = dict(整筆併入=[], 切分併入={x: round(float(q), 4) for x, q, _w2 in _iL396},
++                                   併入量={Lo['c']: round(sum(q for _, q, _w2 in _iL396), 4)}, 受併宗=Lo['c'], 檢核='通過')
++                else:
++                    _iW396 = [(x, _aprime(state, x, _W396['c']) * _lsh396[x], False) for x in sorted(_lsh396)] + \
++                        [(Lo['c'], _aprime(state, Lo['c'], _W396['c']), True)]
++                    _t2_396 = _clone(state)
++                    _apply(_t2_396, _W396['c'], _iW396)
++                    if _noaff(state, _t2_396, {_W396['blk'], _lb396}, {Lo['c']}):
++                        state = _t2_396
++                        merged_out.add(Lo['c'])
++                        for x in sorted(_lsh396) + [Lo['c']]:
++                            marks.setdefault(x, set()).add(_W396['c'])
++                        _to396 = f"{Lo['c']} 不能依原位次配地 ⇒ 連同其分併入 {_W396['c']}"
++                        _r4_396 = dict(整筆併入=[Lo['c']],
++                                       切分併入={x: round(float(q), 4) for x, q, _w2 in _iW396 if not _w2},
++                                       併入量={_W396['c']: round(sum(q for _, q, _w2 in _iW396), 4)},
++                                       受併宗=_W396['c'], 檢核='通過')
++                    else:
++                        _to396 = (f"{Lo['c']} 不能依原位次配地；連同其分併入 {_W396['c']} 不過 ⇒ "
++                                  "依 K-9-48 七項之 4／3／5 與 K-9-51")
++                _n4_396 = _note396 + f"｜承受之得者 {_W396['c']}；{_to396}"
++                if _r4_396 is not None:
++                    _row(序='後處理', 街廓=_lb396, 端=Lo['end'], 候選=Lo['c'], 層級='題一 4', 結果='成', **_r4_396,
++                         競合=_n4_396)
++                else:
++                    _t14_357(_W396, Lo, set(_lsh396), _lsh396, _wf396, _n4_396, acc396=True)
++            _closer[E[0]['gi']] = _cl396
++        return _lose396
++
++    def _contest(ct, rs):
++        # 🔧 `W-G.9-396`（R-2·`K-9-60` ②）：rs ＝ 並解之列（依至之先後·二以上）；三以上 ⇒ `_ct_multi`；二 ⇒ 原為二列之競合依其
++        #   `'形'`，形「多」縮為二列者依其二端（同一街廓 ⇒ 題二；否則題一·塊 `K51` 之二之乙）
+         _ends = []
+-        for _r in (rX, rY):
++        for _r in rs:
+             _k = (_r['街廓'], _r['端'], _r['暫編地號'])
+             _ar = [float(e[3]) for e in ct['列'] if tuple(e[:3]) == _k]
+             if len(_ar) != 1:
+@@ -15877,18 +16099,29 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             _ends.append({'k': _k, 'blk': _r['街廓'], 'end': _r['端'], 'c': _r['暫編地號'], 'gi': _gi,
+                           'S': S, 'U': U, 'area': _ar[0],
+                           'base': dict(序=_r['最終序位'], 街廓=_r['街廓'], 端=_r['端'], 候選=_r['暫編地號'])})
+-        A, B = _ends
++        if len(_ends) < 2:
++            raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 並解之列 {[e['k'] for e in _ends]} 不足二（停機款 9）")
++        A, B = _ends[0], _ends[1]
+         if A['gi'] is None or A['gi'] != B['gi']:
+             raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 競合之二候選 {A['c']}／{B['c']} 非同一合併群（停機款 9）")
+-        if ct['形'] == '二':
++        _odd396 = [e['c'] for e in _ends[2:] if e['gi'] != A['gi']]
++        if _odd396:
++            raise RuntimeError(f"🔴 [K-6-B 段三 K-9-60 ②] 競合之候選 {_odd396} 與 {A['c']} 非同一合併群（停機款 9）")
++        _fm396 = ct['形']
++        if len(_ends) >= 3:
++            _fm396 = None
++            _losers = _ct_multi(_ends)
++        elif _fm396 == '多':
++            _fm396 = '二' if A['blk'] == B['blk'] else '一'
++        if _fm396 == '二':
+             if A['blk'] != B['blk'] or {A['end'], B['end']} != {'左', '右'}:
+                 raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 題二之二端須為同一街廓之左右端：{A['k']}／{B['k']}（停機款 9）")
+             _losers = _ct_same_block(A, B)
+-        elif ct['形'] == '一':
++        elif _fm396 == '一':
+             if A['blk'] == B['blk']:
+                 raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 題一之二端須分屬二街廓：{A['k']}／{B['k']}（停機款 9）")
+             _losers = _ct_cross(A, B)
+-        else:
++        elif _fm396 is not None:
+             raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 競合之形 {ct.get('形')!r} 未定（停機款 9）")
+         _mem = set(_groups[A['gi']])
+         for e in _losers:
+@@ -15897,6 +16130,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+     def _k950_rows(rows):
+         # 🆕 `W-G.9-354`（`K-9-50`）：無競合 ⇒ 逐列依序（逐位同本批前）；有競合 ⇒ 競合之列候其夥伴之列，二列並解；
+         #   夥伴之端先由他人定案 ⇒ 競合消滅，依逐列辦；未得之一端之同群候選⛔ 再試（其他跨占者依原投影序續試）
++        # 🔧 `W-G.9-396`（R-4·`K-9-60` ②·KL `2026-10-26 22:09`／`2026-10-30 23:02`／`2026-10-31 07:52`）：列數 ≥ 2（形「多」＝ 三以上）；
++        #   停候之競合 ＝ {端: [已至之列, 候列…]}（依至之先後）；仍在之列皆已至 ⇒ 並解（`_contest(ct, 仍在之列之已至之列)`）；
++        #   互相等待之當次之人（強連通之集）有形「多」⇒ 已排定之先後（一乙·唯記被延後者）；皆只跨兩端 ⇒ 照 `9fd3427` 之碼（二是）
+         if not contests:
+             yield from rows
+             return
+@@ -15904,9 +16140,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         _kf = lambda r: (r['街廓'], r['端'], r['暫編地號'])
+         _cmap = {}
+         for _ci, _ct in enumerate(contests):
+-            if len(_ct.get('列') or []) != 2:
++            if len(_ct.get('列') or []) < 2:
+                 raise RuntimeError(
+-                    f"🔴 [K-6-B 段三 K-9-50] 競合 {_ci} 之列數 ≠ 2（三個以上之末端塊·K-9-50 射程 ③·停機款 9）")
++                    f"🔴 [K-6-B 段三 K-9-50] 競合 {_ci} 之列數 {len(_ct.get('列') or [])} ＜ 2（停機款 9）")
+             for _e in _ct['列']:
+                 # 🔧 `W-G.9-395`（R-3 ①·`K-9-60 ③`）：一端屬二以上之競合⛔ 停機；同一列見於二競合照舊停機
+                 if tuple(_e[:3]) in _cmap:
+@@ -15917,8 +16153,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         for _k, _ci in _cmap.items():
+             if _k not in _ks:
+                 raise RuntimeError(f"🔴 [K-6-B 段三 K-9-50] 競合之列 {_k} 不在 order（停機款 9）")
+-            _pt[_k] = [tuple(e[:3]) for e in contests[_ci]['列'] if tuple(e[:3]) != _k][0]
++            _pt[_k] = [tuple(e[:3]) for e in contests[_ci]['列'] if tuple(e[:3]) != _k]   # 🔧 `W-G.9-396`：夥伴 ＝ 他列（列）
+         _cdone, _susp = set(), {}
++        _pre396 = set()     # 🆕 `W-G.9-396`（R-4 ④·一乙）：已排定之先後 (先處理者, 被延後者)·唯當次之人有形「多」時記、用
+         _q = _dq(rows)
+         # 🔧 `W-G.9-395`（R-3 ②③④·`K-9-60 ③`）：回列 ＝ 依排序之位合排（_np395 ＝ 延後之首列 → 其夥伴之列）；消滅；互相等待之環
+         #   補令一 ″（塊 `K44`）：排序之位 ＝ 一串數——未延後之列 ＝（其最終序位）；延後之首列 ＝ 其夥伴之列之當時之排序之位，
+@@ -15942,78 +16179,233 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             nonlocal _q
+             _q = _dq(sorted(list(_q) + list(lst), key=_ps395))
+ 
++        def _live396(cx):
++            # 🆕 `W-G.9-396`（塊 `K51` 之三之丙）：仍在之列 ＝ 其端未由他人定案者；形「多」者另去其候選已併出者（依列之序）
++            _m396 = len(contests[cx]['列']) >= 3
++            return [tuple(e[:3]) for e in contests[cx]['列']
++                    if tuple(e[:3])[:2] not in won and not (_m396 and e[2] in merged_out)]
++
++        def _all396(d):
++            # 停候之競合之一切列（已至之列與候列·依端之至之先後）
++            return [x for l in d.values() for x in l]
++
++        def _solve396(cx):
++            # 並解：仍在之列之已至之列（依至之先後）交 `_contest`；其候列與非仍在之端之列回列
++            _d396 = _susp.pop(cx)
++            _lt396 = {x[:2] for x in _live396(cx)}
++            _contest(contests[cx], [l[0] for t, l in _d396.items() if t in _lt396])
++            _cdone.add(cx)
++            _back395([x for t, l in _d396.items() for x in (l[1:] if t in _lt396 else l)])
++
+         def _gone395():
+             # 停候之競合之首列之端或其夥伴之端已定案 ⇒ 消滅（其競合之畢·首列與候列皆回列）
+-            for _cx395 in sorted(_susp):
+-                _hd395 = _kf(_susp[_cx395][0])
+-                if _hd395[:2] in won or _pt[_hd395][:2] in won:
+-                    _cdone.add(_cx395)
+-                    _back395(_susp.pop(_cx395))
++            # 🔧 `W-G.9-396`（R-4 ③·依此序）：形「多」之已至之列不在仍在之列（而仍在之列 ≥ 2）⇒ 該端之列回列；仍在之列 ≤ 1、或
++            #   （二列之競合之）其已至之端已定案 ⇒ 消滅；仍在之列 ≥ 2 而皆已至 ⇒ 並解（競合之處理之後再判之）
++            _again396 = True
++            while _again396:
++                _again396 = False
++                for _cx395 in sorted(_susp):
++                    if _cx395 not in _susp:
++                        continue
++                    _d396 = _susp[_cx395]
++                    _lv396 = _live396(_cx395)
++                    _lt396 = {x[:2] for x in _lv396}
++                    if len(contests[_cx395]['列']) >= 3 and len(_lv396) >= 2:
++                        for _t396 in [t for t in _d396 if t not in _lt396]:
++                            _back395(_d396.pop(_t396))
++                        if not _d396:
++                            _susp.pop(_cx395)
++                            continue
++                    if len(_lv396) <= 1 or (len(contests[_cx395]['列']) == 2 and any(t in won for t in _d396)):
++                        _cdone.add(_cx395)
++                        _back395(_all396(_susp.pop(_cx395)))
++                        continue
++                    if all(x[:2] in _d396 for x in _lv396):
++                        _solve396(_cx395)
++                        _again396 = True
++                        break
++
++        def _hd396(cx):
++            # 停候之競合之最先至之列
++            return next(iter(_susp[cx].values()))[0]
+ 
+         def _ring395():
+             # 每取一列之前：邊 ＝ 停候之競合 → 其夥伴之列所在之候列之競合；有環 ⇒ 序鍵最小者仍停候、持其夥伴之列者延後
++            # 🔧 `W-G.9-396`（R-4 ④）：邊 ＝ 停候之競合 → 其未至之仍在之列所在之候列之競合（出邊可多·依列之序）；深先、首見之序
++            #   求一環；當次之人 ＝ 其環所在之強連通之集（塊 `K51` 之三之甲）
+             while True:
+-                _in395 = {_kf(_x395): _cx395 for _cx395, _ls395 in _susp.items() for _x395 in _ls395[1:]}
+-                _nx395 = {_cx395: _in395.get(_pt[_kf(_ls395[0])]) for _cx395, _ls395 in _susp.items()}
+-                _cy395 = None
+-                for _st395 in sorted(_nx395):
+-                    _wy395, _cu395 = [], _st395
+-                    while _cu395 is not None and _cu395 not in _wy395:
+-                        _wy395.append(_cu395)
+-                        _cu395 = _nx395[_cu395]
+-                    if _cu395 is not None:
+-                        _cy395 = _wy395[_wy395.index(_cu395):]
++                _in395 = {_kf(_x395): _cx395 for _cx395, _d396 in _susp.items() for _ls395 in _d396.values()
++                          for _x395 in _ls395[1:]}
++                _nm396 = {}
++                for _cx395, _d396 in _susp.items():
++                    _o396 = []
++                    for _y396 in _live396(_cx395):
++                        if _y396[:2] in _d396:
++                            continue
++                        _h396 = _in395.get(_y396)
++                        if _h396 is not None and _h396 not in _o396:
++                            _o396.append(_h396)
++                    _nm396[_cx395] = _o396
++                _nx395 = {_cx395: (_o396[0] if _o396 else None) for _cx395, _o396 in _nm396.items()}
++                _cy395, _vs396 = None, set()
++                for _st395 in sorted(_nm396):
++                    if _st395 in _vs396:
++                        continue
++                    _vs396.add(_st395)
++                    _wy395, _it396 = [_st395], [iter(_nm396[_st395])]
++                    while _it396 and _cy395 is None:
++                        _cu395 = next(_it396[-1], None)
++                        if _cu395 is None:
++                            _it396.pop()
++                            _wy395.pop()
++                        elif _cu395 in _wy395:
++                            _cy395 = _wy395[_wy395.index(_cu395):]
++                        elif _cu395 not in _vs396:
++                            _vs396.add(_cu395)
++                            _wy395.append(_cu395)
++                            _it396.append(iter(_nm396[_cu395]))
++                    if _cy395 is not None:
+                         break
+                 if _cy395 is None:
+                     return
+-                # 🆕 `W-G.9-399`（R-12·KL `2026-10-26 22:09`／`22:42`／`22:57`·塊 `K48` 之二、三之戊）：先者之擇——
+-                #   二位 ⇒ 末端塊評選指數依 `K-9-28` 之序（`k960_idx_first`·唯計共同之端·⛔ 用序鍵）；三位以上 ⇒ 兩兩以之比而勝過
+-                #   其餘每一位者（依環之序取首見者）先，無之（兩兩比較成圈、或某二位無共同之端）⇒ 序鍵最小者（照舊）。
+-                if len(_cy395) == 2:
+-                    _hd399, _tl399, _cm399 = k960_idx_first(contests[_cy395[0]], contests[_cy395[1]],
+-                                                            contests[_cy395[0]].get('面積表'))
+-                    _fr395 = _cy395[0] if _hd399 is contests[_cy395[0]] else _cy395[1]
+-                    _why399 = f"評選指數之序（共同之端 {_cm399}）"
+-                else:
+-                    _nv399 = [_cx395 for _cx395 in _cy395 if not isinstance(contests[_cx395].get('評選'), dict)]
+-                    if _nv399:
+-                        raise RuntimeError(
+-                            f"🔴 [K-6-B 段三 K-9-60 ③·W-G.9-399] 三位以上互相等待之環 {_cy395} 之競合 {_nv399} 缺末端塊評選指數"
+-                            f"（{[contests[_cx395].get('評選之誤') for _cx395 in _nv399]}）——先後無從定")
+-                    _fr395 = None
+-                    for _cx399 in _cy395:
+-                        _wn399 = True
+-                        for _cz399 in _cy395:
+-                            if _cz399 == _cx399:
+-                                continue
+-                            if not (set(contests[_cx399]['評選']) & set(contests[_cz399]['評選'])) or \
+-                                    k960_idx_first(contests[_cx399], contests[_cz399],
+-                                                   contests[_cx399].get('面積表'))[0] is not contests[_cx399]:
+-                                _wn399 = False
++                _fw396, _st396 = set(), [_cy395[0]]
++                while _st396:
++                    for _y396 in _nm396[_st396.pop()]:
++                        if _y396 not in _fw396:
++                            _fw396.add(_y396)
++                            _st396.append(_y396)
++                _bw396, _st396 = {_cy395[0]}, [_cy395[0]]
++                while _st396:
++                    _z396 = _st396.pop()
++                    for _y396 in sorted(_nm396):
++                        if _z396 in _nm396[_y396] and _y396 not in _bw396:
++                            _bw396.add(_y396)
++                            _st396.append(_y396)
++                _scc396 = list(_cy395) + sorted(((_fw396 | {_cy395[0]}) & _bw396) - set(_cy395))
++                if not any(len(contests[_y396]['列']) >= 3 for _y396 in _scc396):
++                    # 當次之人皆只跨兩端（二是）⇒ 照 `9fd3427` 之碼（先者之擇、延後、回列、所記之列·⛔ 記已排定之先後）
++                    # 🆕 `W-G.9-399`（R-12·KL `2026-10-26 22:09`／`22:42`／`22:57`·塊 `K48` 之二、三之戊）：先者之擇——
++                    #   二位 ⇒ 末端塊評選指數依 `K-9-28` 之序（`k960_idx_first`·唯計共同之端·⛔ 用序鍵）；三位以上 ⇒ 兩兩以之比而勝過
++                    #   其餘每一位者（依環之序取首見者）先，無之（兩兩比較成圈、或某二位無共同之端）⇒ 序鍵最小者（照舊）。
++                    if len(_cy395) == 2:
++                        _hd399, _tl399, _cm399 = k960_idx_first(contests[_cy395[0]], contests[_cy395[1]],
++                                                                contests[_cy395[0]].get('面積表'))
++                        _fr395 = _cy395[0] if _hd399 is contests[_cy395[0]] else _cy395[1]
++                        _why399 = f"評選指數之序（共同之端 {_cm399}）"
++                    else:
++                        _nv399 = [_cx395 for _cx395 in _cy395 if not isinstance(contests[_cx395].get('評選'), dict)]
++                        if _nv399:
++                            raise RuntimeError(
++                                f"🔴 [K-6-B 段三 K-9-60 ③·W-G.9-399] 三位以上互相等待之環 {_cy395} 之競合 {_nv399} 缺末端塊評選指數"
++                                f"（{[contests[_cx395].get('評選之誤') for _cx395 in _nv399]}）——先後無從定")
++                        _fr395 = None
++                        for _cx399 in _cy395:
++                            _wn399 = True
++                            for _cz399 in _cy395:
++                                if _cz399 == _cx399:
++                                    continue
++                                if not (set(contests[_cx399]['評選']) & set(contests[_cz399]['評選'])) or \
++                                        k960_idx_first(contests[_cx399], contests[_cz399],
++                                                       contests[_cx399].get('面積表'))[0] is not contests[_cx399]:
++                                    _wn399 = False
++                                    break
++                            if _wn399:
++                                _fr395 = _cx399
+                                 break
+-                        if _wn399:
+-                            _fr395 = _cx399
+-                            break
+-                    if _fr395 is not None:
+-                        _why399 = "三位以上 ⇒ 兩兩之評選指數皆先"
++                        if _fr395 is not None:
++                            _why399 = "三位以上 ⇒ 兩兩之評選指數皆先"
++                        else:
++                            _nk395 = [_cx395 for _cx395 in _cy395 if '序鍵' not in contests[_cx395]]
++                            if _nk395:
++                                raise RuntimeError(
++                                    f"🔴 [K-6-B 段三 K-9-60 ③] 互相等待之環 {_cy395} 之競合 {_nk395} 缺序鍵——先後無從定（停機款 9）")
++                            _fr395 = min(_cy395, key=lambda _cx395: tuple(contests[_cx395]['序鍵']))
++                            _why399 = f"三位以上·兩兩比較成圈 ⇒ 序鍵 {tuple(contests[_fr395]['序鍵'])}"
++                    _dl395 = _nx395[_fr395]
++                    _pk395 = _pt[_kf(_hd396(_fr395))][0]
++                    _lst395 = next(iter(_susp.pop(_dl395).values()))
++                    _pr395 = [_x395 for _x395 in _lst395[1:] if _kf(_x395) == _pk395][0]
++                    _np395[_kf(_lst395[0])] = _pr395            # 補令一 ″：退至夥伴之列之現位之緊後·隨之而移（再延後 ⇒ 改記新者）
++                    _back395(_lst395)
++                    _f395, _d395 = _hd396(_fr395), _lst395[0]
++                    _row(序=_f395['最終序位'], 街廓=_f395['街廓'], 端=_f395['端'], 候選=_f395['暫編地號'],
++                         層級='K-9-60 ③', 結果='互相等待 ⇒ 先處理',
++                         競合=(f"先處理 {_f395['暫編地號']}（{_why399}）；延後 "
++                             f"{_d395['暫編地號']} 退至 {_pr395['暫編地號']} 之後"))
++                    continue
++                # 🆕 `W-G.9-396`（R-4 ④·塊 `K51` 之二之丙·KL `2026-10-30 23:02`「丁」·`2026-10-31 07:52`「一乙、二是」）：當次之人有形
++                #   「多」⇒ ① 已排定之先後（含間接·傳遞之閉包）中排在當次之人之另一人之後者⛔ 為先處理者；② 餘一 ⇒ 之；餘二而皆有評選
++                #   而無共同之端 ⇒ 序鍵最小者；餘 ⇒ 現行之規則；③ 先處理者之未至之仍在之列在其候列中之當次之人皆延後，各記
++                #   (先處理者, 被延後者)
++                _tc396 = set(_pre396)
++                while True:
++                    _nw396 = {(_a396, _d396) for _a396, _b396 in _tc396 for _c396, _d396 in _tc396
++                              if _b396 == _c396} - _tc396
++                    if not _nw396:
++                        break
++                    _tc396 |= _nw396
++                if any(_a396 == _b396 for _a396, _b396 in _tc396):
++                    raise RuntimeError(
++                        f"🔴 [K-6-B 段三 K-9-60 ②] 已排定之先後成環 {sorted(_pre396)}（程式之錯·停機款 9）")
++                _ok396 = [_y396 for _y396 in _scc396
++                          if not any((_z396, _y396) in _tc396 for _z396 in _scc396 if _z396 != _y396)]
++                _ev396 = lambda _y396: isinstance(contests[_y396].get('評選'), dict)
++                if len(_ok396) == 1:
++                    _f396 = _ok396[0]
++                    _wh396 = "已排定之先後 ⇒ 唯一未排在後者"
++                elif len(_ok396) == 2 and all(_ev396(_y396) for _y396 in _ok396) and \
++                        not (set(contests[_ok396[0]]['評選']) & set(contests[_ok396[1]]['評選'])):
++                    if any('序鍵' not in contests[_y396] for _y396 in _ok396):
++                        raise RuntimeError(
++                            f"🔴 [K-6-B 段三 K-9-60 ②] 互相等待之競合 {_ok396} 缺序鍵——先後無從定（停機款 9）")
++                    _f396 = sorted(_ok396, key=lambda _y396: tuple(contests[_y396]['序鍵']))[0]
++                    _wh396 = f"二位而無共同之端 ⇒ 序鍵 {tuple(contests[_f396]['序鍵'])}"
++                elif len(_ok396) == 2:
++                    _a396 = k960_idx_first(contests[_ok396[0]], contests[_ok396[1]], contests[_ok396[0]].get('面積表'))
++                    _f396 = _ok396[0] if _a396[0] is contests[_ok396[0]] else _ok396[1]
++                    _wh396 = f"評選指數之序（共同之端 {_a396[2]}）"
++                elif len(_ok396) >= 3:
++                    _mv396 = [_y396 for _y396 in _ok396 if not _ev396(_y396)]
++                    if _mv396:
++                        raise RuntimeError(
++                            f"🔴 [K-6-B 段三 K-9-60 ②] 互相等待之競合 {_mv396} 缺末端塊評選指數"
++                            f"（{[contests[_y396].get('評選之誤') for _y396 in _mv396]}）——先後無從定（停機款 9）")
++                    _f396 = next((_y396 for _y396 in _ok396 if all(
++                        (set(contests[_y396]['評選']) & set(contests[_z396]['評選']))
++                        and k960_idx_first(contests[_y396], contests[_z396], contests[_y396].get('面積表'))[0]
++                        is contests[_y396] for _z396 in _ok396 if _z396 != _y396)), None)
++                    if _f396 is not None:
++                        _wh396 = "三位以上 ⇒ 兩兩之評選指數皆先"
+                     else:
+-                        _nk395 = [_cx395 for _cx395 in _cy395 if '序鍵' not in contests[_cx395]]
+-                        if _nk395:
++                        if any('序鍵' not in contests[_y396] for _y396 in _ok396):
+                             raise RuntimeError(
+-                                f"🔴 [K-6-B 段三 K-9-60 ③] 互相等待之環 {_cy395} 之競合 {_nk395} 缺序鍵——先後無從定（停機款 9）")
+-                        _fr395 = min(_cy395, key=lambda _cx395: tuple(contests[_cx395]['序鍵']))
+-                        _why399 = f"三位以上·兩兩比較成圈 ⇒ 序鍵 {tuple(contests[_fr395]['序鍵'])}"
+-                _dl395 = _nx395[_fr395]
+-                _pk395 = _pt[_kf(_susp[_fr395][0])]
+-                _lst395 = _susp.pop(_dl395)
+-                _pr395 = [_x395 for _x395 in _lst395[1:] if _kf(_x395) == _pk395][0]
+-                _np395[_kf(_lst395[0])] = _pr395            # 補令一 ″：退至夥伴之列之現位之緊後·隨之而移（再延後 ⇒ 改記新者）
+-                _back395(_lst395)
+-                _f395, _d395 = _susp[_fr395][0], _lst395[0]
+-                _row(序=_f395['最終序位'], 街廓=_f395['街廓'], 端=_f395['端'], 候選=_f395['暫編地號'],
+-                     層級='K-9-60 ③', 結果='互相等待 ⇒ 先處理',
+-                     競合=(f"先處理 {_f395['暫編地號']}（{_why399}）；延後 "
+-                         f"{_d395['暫編地號']} 退至 {_pr395['暫編地號']} 之後"))
++                                f"🔴 [K-6-B 段三 K-9-60 ②] 互相等待之競合 {_ok396} 缺序鍵——先後無從定（停機款 9）")
++                        _f396 = sorted(_ok396, key=lambda _y396: tuple(contests[_y396]['序鍵']))[0]
++                        _wh396 = f"三位以上·兩兩比較成圈 ⇒ 序鍵 {tuple(contests[_f396]['序鍵'])}"
++                else:
++                    raise RuntimeError(
++                        f"🔴 [K-6-B 段三 K-9-60 ②] 當次之人 {_scc396} 皆排在他人之後（程式之錯·停機款 9）")
++                _fk396 = {_y396 for _y396 in _live396(_f396) if _y396[:2] not in _susp[_f396]}
++                _dly396 = [_y396 for _y396 in _scc396 if _y396 != _f396
++                           and any(_kf(_x396) in _fk396 for _x396 in _all396(_susp[_y396]))]
++                if not _dly396:
++                    raise RuntimeError(
++                        f"🔴 [K-6-B 段三 K-9-60 ②] 先處理者 {_f396} 之列不在當次之人 {_scc396} 之候列（程式之錯·停機款 9）")
++                _fh396 = _hd396(_f396)
++                for _y396 in _dly396:
++                    _dd396 = _susp.pop(_y396)
++                    _hz396 = None
++                    for _l396 in _dd396.values():
++                        _p396 = [_x396 for _x396 in _l396[1:] if _kf(_x396) in _fk396]
++                        if _p396:
++                            _np395[_kf(_l396[0])] = _p396[0]      # 退至先處理者之該列之緊後（其餘回其原位次）
++                            _hz396 = _hz396 or (_l396[0], _p396[0])
++                    _back395(_all396(_dd396))
++                    _pre396.add((_f396, _y396))
++                    _row(序=_fh396['最終序位'], 街廓=_fh396['街廓'], 端=_fh396['端'], 候選=_fh396['暫編地號'],
++                         層級='K-9-60 ③', 結果='互相等待 ⇒ 先處理',
++                         競合=(f"先處理 {_fh396['暫編地號']}（{_wh396}·當次之人 {len(_scc396)}）；延後 "
++                             f"{_hz396[0]['暫編地號']} 退至 {_hz396[1]['暫編地號']} 之後"))
+ 
+         while True:
+             _ring395()
+@@ -16022,26 +16414,28 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             _r = _q.popleft()
+             _k = _kf(_r)
+             _tg = _k[:2]
+-            _hold = [ci for ci, lst in _susp.items() if _kf(lst[0])[:2] == _tg]
++            _hold = [ci for ci, _d396 in _susp.items() if _tg in _d396]
+             if _hold:
+-                _susp[_hold[0]].append(_r)
++                _susp[_hold[0]][_tg].append(_r)
+                 continue
+             if _r['暫編地號'] in _skip.get(_tg, ()):
+                 _row(序=_r['最終序位'], 街廓=_r['街廓'], 端=_r['端'], 候選=_r['暫編地號'], 結果='略·競合歸他端')
+                 continue
+             _ci = _cmap.get(_k)
+             if _ci is not None and _ci not in _cdone and _tg not in won and _r['暫編地號'] not in merged_out:
+-                if _pt[_k][:2] in won:
++                _lv396 = _live396(_ci)
++                if len(_lv396) <= 1:
+                     _cdone.add(_ci)
++                    if _ci in _susp:
++                        _back395(_all396(_susp.pop(_ci)))
+                 elif _ci not in _susp:
+-                    _susp[_ci] = [_r]
++                    _susp[_ci] = {_tg: [_r]}
+                     continue
+                 else:
+-                    _other = _susp.pop(_ci)
+-                    _contest(contests[_ci], _other[0], _r)
+-                    _cdone.add(_ci)
+-                    _back395(_other[1:])
+-                    _gone395()
++                    _susp[_ci][_tg] = [_r]
++                    if all(_y396[:2] in _susp[_ci] for _y396 in _lv396):
++                        _solve396(_ci)
++                        _gone395()
+                     continue
+             _was = _tg in won
+             yield _r
+@@ -16049,7 +16443,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                 _gone395()
+         if _susp:
+             raise RuntimeError(
+-                f"🔴 [K-6-B 段三 K-9-50] 競合之列 {[_kf(l[0]) for l in _susp.values()]} 候其夥伴而夥伴未至（停機款 9）")
++                f"🔴 [K-6-B 段三 K-9-50] 競合之列 {[_kf(_l396[0]) for _d396 in _susp.values() for _l396 in _d396.values()]} "
++                "候其夥伴而夥伴未至（停機款 9）")
+ 
+     # ── 🆕 `W-G.9-357`（`K-9-48` 七項 3〜6 ＋ `K-9-51`）：後處理之整批不過者之逐片處置——步驟 10 與題一 4 呼叫之 ──
+     #   「來源面積」＝ 以 a(x)（段三之輸入之 分攤登記面積 ＋ 面積）計之量；k(x, r) ＝ a′(x, r) ÷ a(x)。
+@@ -16266,9 +16661,13 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                 _row(序='後處理', 街廓=_blk_of[x], 候選=x, 層級='後處理·第5項', 受併宗='—', 結果='轉調配', 檢核='—',
+                      併入量={}, 餘量=round(float(rem[x]), 4))
+ 
+-    def _t14_357(W, Lo, X, frac_lo, frac_w, note):
++    _acc396 = set()         # 🆕 `W-G.9-396`（R-5）：acc396 之呼已記其得者之分之 (片, 得者)
++
++    def _t14_357(W, Lo, X, frac_lo, frac_w, note, acc396=False):
+         # `K-9-50` 題一 4 之合併不過 ⇒ 未取得之一端之候選與其半之每一片各為一要求，於已取得之一端之受併宗之街廓一次處置
+         #   （`K-9-66`·已取得之一端先前所併之半計入其帳），其剩下 ⇒ 第 5 項之輪（`K-9-51`／`K-9-68`）
++        # 🔧 `W-G.9-396`（R-5·`K-9-60` ②）：acc396 ⇒ 三單位以上共用一片而二以上之不得之端皆至此——得者之分之帳每片每得者一次、
++        #   `_left[片]` 累加；⛔ ⇒ 照舊（逐位同）
+         nonlocal state
+         c, w = Lo['c'], W['c']
+         _t14_done.add(c)    # 補令一 `R-7′`：`c` 依此處置畢即為其終局（① 之結果不論）——步驟 10 ⛔ 再處置之
+@@ -16282,7 +16681,11 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             if not _f > 0.0:
+                 continue
+             _fw = float(frac_w.get(x, 0.0))
++            if _fw > 0.0 and acc396 and (x, w) in _acc396:
++                _fw = 0.0
+             if _fw > 0.0:
++                if acc396:
++                    _acc396.add((x, w))
+                 _part.setdefault(x, {})
+                 _part[x][w] = _part[x].get(w, 0.0) + _a357(x) * _fw
+             _hv.append(x)
+@@ -16292,6 +16695,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         _rnd373(_rq, _rem, _F)
+         _p5_373([c] + _hv, _rem, _F)
+         for x in _hv:
++            if acc396:
++                _left[x] = _left.get(x, 0.0) + max(0.0, _rem.get(x, 0.0))
++                continue
+             _left[x] = max(0.0, _rem.get(x, 0.0))
+ 
+     # ── 步驟 1〜8 ──
+@@ -16402,6 +16808,8 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+                     _recv_by_blk[_b2].append(_c2)
+         _rcv388 = {_c388 for _cs388 in _recv_by_blk.values() for _c388 in _cs388}
+         _cl0 = _closer.get(_gi)
++        # 🔧 `W-G.9-396`（R-6·`K-9-60` ②）：_closer 之值為列（多端·諸 {'勝','敗'}）⇒ 逐其項；dict ⇒ 照舊（一項）
++        _cl396 = list(_cl0) if isinstance(_cl0, list) else ([_cl0] if _cl0 is not None else [])
+         R = _mem - merged_out - _rcv388 - L - _t14_done   # 補令一 `X-3′`：扣 `R-7` 所處置之候選
+         if not R:
+             continue
+@@ -16431,8 +16839,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+             #   ① b 無本段之受併宗而為題一之未得之一端、其候選為承受之宗 ⇒ 之；② 唯一 ⇒ 之（⛔ 須 G）；③ 二以上 ⇒
+             #   與 y 相鄰（宗連同其於本段整筆併入之片）者先 → 序鍵（應分配面積 → 重劃前面積 → 暫編地號）
+             _hs388 = list(_recv_by_blk.get(b, [])) + sorted(m for m in _stay if _blk_of[m] == b)
+-            if b not in _recv_by_blk and _cl0 is not None and b == _cl0['敗']['blk'] and _cl0['敗']['c'] in _hs388:
+-                return _cl0['敗']['c']
++            for _y396 in _cl396:
++                if b not in _recv_by_blk and b == _y396['敗']['blk'] and _y396['敗']['c'] in _hs388:
++                    return _y396['敗']['c']
+             if len(_hs388) == 1:
+                 return _hs388[0]
+ 
+@@ -16454,6 +16863,9 @@ def k6b_stage3_run(order, locked, own_map, temp_parcels, build_parcels, blocks,
+         for x in sorted(R):
+             _k = _kind(x)
+             if _k == 'bld':
++                if isinstance(_closer.get(_gi), list):
++                    # 🔧 `W-G.9-396`（R-6）：值為列者 ⇒ 以 x 之街廓為「敗」之街廓之項（首見）之「勝」之街廓
++                    _cl0 = next((_y396 for _y396 in _cl396 if _blk_of[x] == _y396['敗']['blk']), None)
+                 if _cl0 is not None and _blk_of[x] == _cl0['敗']['blk']:
+                     # 🆕 `W-G.9-354`（`K-9-50` 題一 4）：未得之一端之地主土地不能依原位次配地者 ⇒ 併入已取得之一端
+                     _cls['a'].append((x, _cl0['勝']['blk']))
