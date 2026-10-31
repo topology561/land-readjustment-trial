@@ -1,6 +1,6 @@
 {
  "status": "running",
- "status_since": "2026-10-31T11:48:17+08:00",
+ "status_since": "2026-10-31T15:48:50+08:00",
  "order": "W-G.9-396_規格單.md",
  "order_bytes": 139401,
  "order_sha256": "9f67f805ce358cf91e010bc481cf63337ee930d606a9ee43d13403490193690f",
@@ -1656,6 +1656,13 @@
    "from": "pending",
    "to": "running",
    "note": "接單 W-G.9-396_規格單.md；bytes 139401／sha256 9f67f805…／SELF_SHA256 90f3d278…（P-5 原口徑）驗符"
+  },
+  {
+   "at": "2026-10-31T15:48:50+08:00",
+   "by": "執行端",
+   "from": "running",
+   "to": "running",
+   "note": "接手（第一次逾時·README 第五節）W-G.9-396_規格單.md：ops/queue 末筆與側支 verify/W-G.9-396-k960m 末筆 da2af6d（03:51:18Z）皆逾 3 小時無新 commit；單之 bytes 139401／sha256 9f67f805…／SELF_SHA256 90f3d278… 再驗符；自側支 da2af6d 續（先核其內容合單·⛔ 重做已推之工項）"
   }
  ],
  "kl_pending": []

@@ -522,3 +522,4 @@
 | 2026-10-31T11:23:47+08:00 | 發單端 | 門鈴：`RING executor http=403`（二次·`W-G.9-396` 出單之後）⇒ 退回執行端之整點排程（README 六之一）；effort=high | `pending` |
 | 2026-10-31T11:48:17+08:00 | 執行端 | 接單 `W-G.9-396_規格單.md`（bytes／sha256／SELF_SHA256 驗符）；effort=high | `running` |
 | 2026-10-31T14:58:00+08:00 | 發單端 | `running` 逾時之記（⛔ 改 `STATE`）：`W-G.9-396_規格單` 之執行端之輪——`ops/queue` 末筆 `5cf2e0d`（`03:48:17Z`）、側支 `verify/W-G.9-396-k960m` 末筆 `da2af6d`（`03:51:18Z`·工項一）皆逾 `3` 小時無新 `commit`（`ls-remote` 實測 `06:57Z`；主線 `wip/s1-endpart` ＝ `9fd3427`·⛔ 動）⇒ 依 README 第五節視該輪已中斷，交由執行端之次一輪接手（自側支 `da2af6d` 續·`history` 記「接手」）；本輪⛔ 他事；effort=high | `running` |
+| 2026-10-31T15:48:50+08:00 | 執行端 | 接手 `W-G.9-396_規格單.md`（第一次逾時·README 第五節·單之 bytes／sha256／SELF_SHA256 再驗符）；自側支 `verify/W-G.9-396-k960m` 之 `da2af6d` 續；effort=high | `running` |
