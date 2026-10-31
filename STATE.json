@@ -1,14 +1,14 @@
 {
- "status": "drafting",
- "status_since": "2026-10-31T07:57:40+08:00",
- "order": "W-G.9-399_補令三.md",
- "order_bytes": 28525,
- "order_sha256": "9fb3a9965e7b89001e1387ffc0fcacf4a4287d94750751718ef66cf67146cbae",
- "order_kind": "短單",
+ "status": "pending",
+ "status_since": "2026-10-31T11:23:18+08:00",
+ "order": "W-G.9-396_規格單.md",
+ "order_bytes": 139401,
+ "order_sha256": "9f67f805ce358cf91e010bc481cf63337ee930d606a9ee43d13403490193690f",
+ "order_kind": "規格單",
  "expects_allocation_change": false,
  "attempt": 1,
- "report": "W-G.9-399_補令三_回報.md",
- "result": "完成",
+ "report": null,
+ "result": null,
  "kl_question": null,
  "main_before": "bd7da4dab47ae3dc7eb5249c1a9828eefd6f9434",
  "history": [
@@ -1642,6 +1642,13 @@
    "from": "idle",
    "to": "drafting",
    "note": "上鎖：依 KL 2026-10-31 07:52「一乙、二是」（KL答覆/2026-10-31_0752.md）擬 W-G.9-396"
+  },
+  {
+   "at": "2026-10-31T11:23:18+08:00",
+   "by": "發單端",
+   "from": "drafting",
+   "to": "pending",
+   "note": "出 W-G.9-396_規格單（K-9-60 ② 三個以上末端塊·已排定之先後一乙二是·expects_allocation_change=false）"
   }
  ],
  "kl_pending": []
