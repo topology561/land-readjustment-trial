@@ -11,6 +11,9 @@ verify/case_params_UC9898.json、手冊第 3990〜4045 列之範例、KL 2026-10
                    附表13_…_退縮<t>m.xlsx、附表24_…_退縮<t>m.xlsx。
   <重劃前成果目錄> ＝ plots/prelim_maps.py 之輸出（顏色對照表_重劃前.xlsx）。
 各退縮印 V0〜V6 之 PASS／FAIL；全 PASS 者結束碼 0。
+W-P.006_補令一（KL 2026-10-31 08:14）：縣有依管理機關分表（抵費地之管理人 花蓮縣政府、公共設施之管理人留空）；
+取配面積／分配面積／Σa／Σa' 之可填與否（戶之 a 之和 ＝ 重劃前登記面積之和）；重劃前單價唯列所用之值；
+表下之加註；欄名依手冊之附表 24 範例。
 """
 import json
 import os
@@ -37,7 +40,14 @@ T_A24 = "○○縣（市）第○○期○○○○市地重劃區土地分配�
 N_PUB = "依平均地權條例第 60 條規定，由土地所有權人共同負擔取得土地"
 N_OFF = "依平均地權條例第 60 條規定，由土地所有權人以未建築土地折價抵付之土地"
 N_A13 = "附註：重劃後分配面積與實地指界交接土地面積如有不符，應以地政機關實際登記面積為準。"
-N_A24 = "暫以匯入時之公告現值計，公告期滿後應以當期公告現值更正"
+N_A24 = ("③暫以匯入之地籍資料所載之公告土地現值計（暫值）；依手冊，以重劃土地分配結果公告期滿時之"
+         "當期公告土地現值為準")
+N_ROUND = "計算式各數為取位後之顯示值，與重劃後應分配權利面積之差係取位所致"
+N_PRE = ("評定之重劃前單價、原位置重劃前地價：配地計算所用之重劃前地價區段之區段地價（未取整、顯示至小數二位）；"
+         "附表 18 之評定單價為其取至元之值")
+N_SPLIT = "本宗之 a 含同戶他筆土地或本筆土地分屬他宗之部分，其逐筆之來源待配地程式提供，分配面積、Σa、Σa'暫空"
+MGR_OFF = "花蓮縣政府"
+CNTY = "縣有（{}）"
 L_A24 = "①＝G×C÷(1−C)；②＝(Σa＋Σa')−G−①；③＝平均公告現值"
 H6 = ("鄉鎮市區", "段", "小段", "地號", "登記面積(㎡)", "取配面積(㎡)", "所有權人", None, "持分比率", "評定單價(元／㎡)",
       None, "使用分區", "段", "小段", "地號", "面積(㎡)", "評定單價(元／㎡)", "預計繳領差額地價", None, "所有權人", None,
@@ -155,6 +165,21 @@ def load(out, pre, tag):
     c.others = [x for x in c.state["宗"] if x["類別"] != "分配地"]
     c.public = sorted(b for b, v in c.state["街廓"].items() if "宗地分配線方向" not in v)
     c.fin = c.state["財務"]
+    tot = {}
+    for x in c.lots:
+        n = c.hh_of[x["原地號"]]
+        k, s = tot.get(n, (0, Decimal(0)))
+        tot[n] = (k + 1, s + dq(x["a"]))
+    c.full = {n for n, (k, s) in tot.items()
+              if abs(s - sum(dq(c.area[ln]) for ln, h in c.hh_of.items() if h == n)) <= Decimal("0.01") * k}
+    c.single = {n for n in c.full if sum(1 for h in c.hh_of.values() if h == n) == 1}
+    cats = {}
+    for x in c.others:
+        cats.setdefault("抵費地", []).append(c.no[x["配地暫編"]])
+    for b in c.public:
+        cats.setdefault(c.state["街廓"][b]["分類"], []).append(c.no[b])
+    c.county = [CNTY.format(k) for k in sorted(cats, key=lambda k: (k != "抵費地", min(nkey(v) for v in cats[k])))]
+    c.cat_of = {no: k for k, v in cats.items() for no in v}
     return c
 
 
@@ -189,7 +214,7 @@ def v1(c):
     """附表 13：一戶一表（歸戶號 ＝ 重劃前顏色對照表）＋縣有；表頭、題、附註、簽欄、首列登記人。"""
     bad = []
     hh = sorted(set(c.hh_of.values()))
-    want = [f"歸戶號{n}" for n in hh] + ["縣有"]
+    want = [f"歸戶號{n}" for n in hh] + c.county
     if c.a13.sheetnames != want:
         return [f"附表 13 之表 {c.a13.sheetnames}"]
     for ws in c.a13:
@@ -202,9 +227,10 @@ def v1(c):
         if ws.cell(r + 1, 1).value != N_A13 or [ws.cell(r + 3, k).value for k in (1, 5, 9, 13, 17)] != \
                 ["日期：", "承辦：", "股長：", "科長：", "局(處)長："]:
             bad.append(f"{ws.title} 之附註或簽欄")
-        if ws.title == "縣有":
-            if ws.cell(3, 4).value != COUNTY:
-                bad.append("縣有之所有權人")
+        if ws.title.startswith("縣有"):
+            mgr = MGR_OFF if ws.title == CNTY.format("抵費地") else None
+            if ws.cell(3, 4).value != COUNTY or ws.cell(4, 4).value != mgr:
+                bad.append(f"{ws.title} 之所有權人或管理人 {ws.cell(3, 4).value}、{ws.cell(4, 4).value}")
             continue
         n = int(ws.title[3:])
         lns = sorted((ln for ln, h in c.hh_of.items() if h == n), key=nkey)
@@ -216,7 +242,8 @@ def v1(c):
 
 
 def v2(c):
-    """附表 13 之重劃前：每戶之各宗 × 各所有權人一列（地號序·登記次序）；取配面積留空。"""
+    """附表 13 之重劃前：每戶之各宗 × 各所有權人一列（地號序·登記次序）；取配面積：戶之 a 之和 ＝ 登記面積之和者
+    ＝ 登記面積，否則留空。"""
     bad = []
     for n in sorted(set(c.hh_of.values())):
         ws = c.a13[f"歸戶號{n}"]
@@ -225,7 +252,8 @@ def v2(c):
         want = []
         for ln in sorted((ln for ln, h in c.hh_of.items() if h == n), key=nkey):
             for nm, uid, sh, *_ in c.own[ln]:
-                want.append((c.place[ln][0], c.place[ln][1], None, ln, c.area[ln], None, nm, uid, sh, c.price_of[ln]))
+                want.append((c.place[ln][0], c.place[ln][1], None, ln, c.area[ln], c.area[ln] if n in c.full else None,
+                             nm, uid, sh, c.price_of[ln]))
         if got != want:
             bad.append(f"歸戶號{n} 之重劃前 {len(got)}／{len(want)} 列不合")
         if any(r[:10] != (None,) * 10 for r in rows[len(got):]):
@@ -255,8 +283,12 @@ def v3(c):
             bad.append(f"{no} 之重劃後之列不合（{len(got)}／{len(want)}）")
         seen.append(no)
         tot += float(dq(x["面積"]))
-    ws = c.a13["縣有"]
-    rows, _ = rows_of(ws)
+    rows = []
+    for t in c.county:
+        rr = rows_of(c.a13[t])[0]
+        if any(c.cat_of.get(r[14]) != t[3:-1] for r in rr):
+            bad.append(f"{t} 有他類之列")
+        rows += rr
     want = []
     for x in c.others:
         want.append((c.no[x["配地暫編"]], c.zoning, c.fin["重劃後單價"][x["街廓"]], N_OFF, float(dq(x["面積"]))))
@@ -264,7 +296,7 @@ def v3(c):
         from shapely.geometry import Polygon
         want.append((c.no[b], c.state["街廓"][b]["分類"], None, N_PUB, float(dq(Polygon(c.state["街廓"][b]["多邊形"]).area))))
     want.sort(key=lambda t: nkey(t[0]))
-    got = [(r[14], r[11], r[16], r[23], r[15]) for r in rows]
+    got = sorted(((r[14], r[11], r[16], r[23], r[15]) for r in rows), key=lambda t: nkey(t[0]))
     if got != want:
         bad.append(f"縣有之列不合：{[g for g, w in zip(got, want) if g != w][:3]}")
     if any(r[19] != COUNTY or r[21] != "1/1" or any(r[k] is not None for k in range(0, 11)) for r in rows):
@@ -282,7 +314,7 @@ def v3(c):
     if abs(tot - blk) > TOL_AREA:
         bad.append(f"面積之和 {tot:.2f} ≠ 街廓 {blk:.2f}")
     for ws in c.a13:
-        if ws.title != "縣有" and any(r[23] is not None for r in rows_of(ws)[0]):
+        if not ws.title.startswith("縣有") and any(r[23] is not None for r in rows_of(ws)[0]):
             bad.append(f"{ws.title} 有備註（本版無現金補償）")
     return bad
 
@@ -339,20 +371,22 @@ def v4(c):
         post = Decimal(repr(c.fin["重劃後單價"][x["街廓"]]))
         pre = Decimal(repr(c.fin["重劃前單價"][x["重劃前區段"]]))
         A = post / pre
-        a0, tot = dq(x["a原位次"]), dq(x["a"])
+        tot = dq(x["a"])
+        single = c.hh_of[ln] in c.single
+        a0 = float(tot) if single else None
         P, K = "重劃前", "計算分配有關資料"
         exp = {
             ("", "歸戶號"): [c.hh_of[ln], "所有權(代表)人姓名", rep], (P, "段"): [c.place[ln][1], None, None],
             (P, "小段"): [None, None, None], (P, "地號"): [ln, None, None],
-            (P, "登記面積(㎡)"): [c.area[ln], None, None], (P, "分配面積(㎡)"): [float(a0), None, None],
+            (P, "登記面積(㎡)"): [c.area[ln], None, None], (P, "分配面積(㎡)"): [a0, None, None],
             (P, "共有人申請單獨分配持分比例"): [None, None, None], (P, "持分面積(㎡)"): [None, None, None],
             (P, "法定空地面積(㎡)"): [None, None, None],
             (P, "當期公告現值(元/㎡)"): [float(next(iter(c.cur[ln]))), None, None],
-            (P, "評定之重劃前單價(元/㎡)"): [c.price_of[ln], None, None],
-            "Σa（原位次）(㎡)": [float(a0), None, None], "Σa'（併入）(㎡)": [float(tot - a0), None, None],
+            (P, "評定之重劃前單價(元/㎡)"): [float(pre), None, None],
+            "Σa(㎡)": [a0, None, None], "Σa'(㎡)": [0.0 if single else None, None, None],
             "Σ(a＋a')(㎡)": [float(tot), None, None], "原位置重劃前地價(元/㎡)": [float(pre), None, None],
             "預配位置重劃前原地平均單價(元/㎡)": [None, None, None], "重劃後宗地地價(元/㎡)": [float(post), None, None],
-            "A＝重劃後宗地地價÷重劃前地價": [float(A), None, None], "B": [float(B), None, None],
+            "A＝重劃後宗地地價／預配位置重劃前地價": [float(A), None, None], "B": [float(B), None, None],
             "C": [float(C), None, None], "1−C": [float(1 - C), None, None], "S(m)": [float(dq(x["S"])), None, None],
             "W(m)": [float(dq(x["W"])), None, None], "F(m)": [float(dq(x["F"])), None, None],
             "l1": [float(dq(x["l側"])), None, None], "l2": [float(dq(x["l正"])), None, None],
@@ -362,6 +396,8 @@ def v4(c):
         for k, e in exp.items():
             if not same(v.get(k), e):
                 bad.append(f"{ws.title} 之「{k}」{v.get(k)} ≠ {e}")
+        if c.price_of[ln] != int(qd(pre, 0)):
+            bad.append(f"{ws.title} 之重劃前單價 {pre} 取整 ≠ 附表 18 之 {c.price_of[ln]}")
         f8 = lambda d: f"{qd(d, 8):.8f}"  # noqa: E731
         s = (f"{dq(x['G']):.2f}=〔{tot:.2f}×(1−{f8(A)}×{f8(B)})−{dq(x['F']):.2f}×{dq(x['l側']):.2f}×"
              f"{dq(x['Rw'] / 100, 4):.4f}−{dq(x['S']):.2f}×{dq(x['l正']):.2f}〕×(1−{f8(C)})")
@@ -392,26 +428,32 @@ def v5(c):
         d = money(c, x)
         box = ("■繳納□領取" if d > 0 else "□繳納■領取" if d < 0 else "□繳納□領取") + f"新臺幣 {abs(d):,} 元"
         R = "重劃後"
+        total = None if y2 is None else float(y1 + y2)
         exp = {
             "段": [None, None, None], "小段": [None, None, None], "地號": [no, None, None],
-            "評定之重劃後單價(元/㎡)": [float(post), None, None], "重劃後應分配權利面積 G(㎡)": [float(G), None, None],
-            "實配面積(㎡)": [float(area), None, None], "分配率＝G／Σ(a＋a')": [float(G / tot), None, None],
+            "評定之重劃後單價(元/㎡)": [float(post), None, None], "重劃費用負擔總額(元)": [total, None, None],
+            "重劃後應分配權利面積(㎡)": [float(G), None, None],
+            "實配面積(㎡)": [float(area), None, None], "分配率＝G／a": [float(G / tot), None, None],
             "面積(㎡)": [float(area), None, None], "土地使用分區": [c.zoning, None, None],
-            "預計繳納（領取）差額地價總額": [box, None, None],
-            "抵費地負擔 ①": [float(b1), float(post), float(y1)],
-            "公共設施用地共同負擔 ②（單價 ③）": [float(b2), None if cur is None else float(cur),
-                                         None if y2 is None else float(y2)],
-            "合計（重劃費用負擔總額）": [None, None, None if y2 is None else float(y1 + y2)],
-            "預計應繳納差額地價": [None, None, float(d) if d > 0 else 0.0],
-            "預計應領取差額地價": [None, None, float(-d) if d < 0 else 0.0],
-            "重劃費用負擔": ["面積(㎡)", "單價(元/㎡)", "負擔額(元)"],
+            "預計繳納(領取)差額地價總額": [box, None, None],
+            "抵費地負擔": ["①面積(㎡)", "重劃後單價(元/㎡)", "負擔額(元)"],
+            "①": [float(b1), float(post), float(y1)],
+            "公共設施用地共同負擔": ["②面積(㎡)", "③平均公告現值(元/㎡)", "負擔額(元)"],
+            "②": [float(b2), None if cur is None else float(cur), None if y2 is None else float(y2)],
+            "合計(元)": [None, None, total],
+            "預計應繳納差額地價(元)": [None, None, float(d) if d > 0 else 0.0],
+            "預計應領取差額地價(元)": [None, None, float(-d) if d < 0 else 0.0],
         }
         exp = {(R, k): e for k, e in exp.items()}
         for k, e in exp.items():
             if not same(v.get(k), e):
                 bad.append(f"地號{no} 之「{k}」{v.get(k)} ≠ {e}")
-        if (R, L_A24) not in v or (R, N_A24) not in v:
-            bad.append(f"地號{no} 之圖例或加註")
+        single = c.hh_of[x["原地號"]] in c.single
+        for n_ in (L_A24, N_A24, N_ROUND, N_PRE):
+            if (R, n_) not in v:
+                bad.append(f"地號{no} 之圖例或加註缺「{n_[:12]}」")
+        if ((R, N_SPLIT) in v) == single:
+            bad.append(f"地號{no} 之 Σa 暫空之註 {'多' if single else '缺'}")
         if v.get((R, "製表日期：")) != ["承辦：", "股長：", "科長："]:
             bad.append(f"地號{no} 之簽欄")
         if not (b2 > 0 and b1 > 0):
@@ -478,7 +520,7 @@ def v6(c, moedict, prog):
             bad.append(f"改號之試跑失敗：{r.stderr[-300:]}")
         else:
             wb = openpyxl.load_workbook(os.path.join(tmp, "d", os.path.basename(c.p["a24"])), data_only=True)
-            gk = ("重劃後", "重劃後應分配權利面積 G(㎡)")
+            gk = ("重劃後", "重劃後應分配權利面積(㎡)")
             g1 = a24_vals(wb[f"地號{n2}"]).get(gk, [None])[0]
             g2 = a24_vals(wb[f"地號{n1}"]).get(gk, [None])[0]
             if (g1, g2) != (float(dq(x1["G"])), float(dq(x2["G"]))):

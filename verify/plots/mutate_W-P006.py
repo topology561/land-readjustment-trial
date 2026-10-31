@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-W-P.006 之故意錯誤之測（單 §三 4）：成果須綠、Ⓐ〜Ⓔ 共 5 種變異體須各紅（量測 ＝ check_W-P006.py 之 V0〜V6）。
+W-P.006 之故意錯誤之測（單 §三 4·補令一 §三 4）：成果須綠、Ⓐ〜Ⓙ 共 10 種變異體須各紅（量測 ＝ check_W-P006.py 之 V0〜V6）。
 
 命令列：python verify/plots/mutate_W-P006.py <成果目錄> <重劃前成果目錄> <dict-revised.json> <拋棄式之工作目錄>
   成果目錄 ＝ plots/alloc_state.py、plots/post_maps.py、plots/post_tables.py 之 --out（⛔ 改之）。
   唯驗退縮 3.5 m。各變異體 ＝ plots/ 之複本（於工作目錄）之 post_tables.py 改一處之字（MUTANTS）後，以子行程重出
   附表 13、24 於工作目錄，再以 check_W-P006 量之（V6 之子行程亦用該變異體）；V6 費時，唯成果與 Ⓔ 量之。
-結束碼：成果綠且 5 種皆紅 ⇒ 0；否則 1。
+結束碼：成果綠且 10 種皆紅 ⇒ 0；否則 1。
 """
 import importlib.util
 import os
@@ -26,9 +26,15 @@ MUTANTS = [   # (名, 說明, 原字, 改字, 跑 V6 否)
     ("Ⓑ", "附表 24 漏一宗", "    for e in es:\n        no, ln = numbers", "    for e in es[1:]:\n        no, ln = numbers",
      False),
     ("Ⓒ", "地價比 A 以個位之重劃前單價計", "    A = post / pre\n", "    A = post / q(pre, 0)\n", False),
-    ("Ⓓ", "抵費地與公設之備註互換", "NOTE_OFFSET if e[\"類別\"] == KIND_OFFSET else NOTE_PUBLIC",
-     "NOTE_PUBLIC if e[\"類別\"] == KIND_OFFSET else NOTE_OFFSET", False),
+    ("Ⓓ", "抵費地與公設之備註互換", "NOTE_OFFSET if off else NOTE_PUBLIC", "NOTE_PUBLIC if off else NOTE_OFFSET", False),
     ("Ⓔ", "現金補償之備註漏寫", "note = NOTE_CASH.format(cash[k]) if k in cash else None", "note = None", True),
+    # 補令一（KL 2026-10-31 08:14）
+    ("Ⓕ", "取配面積於 a 之和不等之戶亦填登記面積", "area[ln] if k in full else None", "area[ln]", False),
+    ("Ⓖ", "Σa、分配面積於多筆之戶亦填", "single = k in full and len(lns) == 1", "single = k in full", False),
+    ("Ⓗ", "附表 24 之評定之重劃前單價取整（二值並列）", '(float(x["pre"]), "p2"))', '(float(q(x["pre"], 0)), "yuan"))',
+     False),
+    ("Ⓘ", "抵費地之管理人漏填", "MGR_OFFSET if off else None", "None", False),
+    ("Ⓙ", "計算式取位之加註漏寫", "[LEGEND_A24, NOTE_A24, NOTE_ROUND, NOTE_PRE]", "[LEGEND_A24, NOTE_A24, NOTE_PRE]", False),
 ]
 
 

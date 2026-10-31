@@ -18,6 +18,15 @@ W-P.006　附表 13 重劃前後土地分配清冊、附表 24 土地分配計�
   10/30 19:28（W-P.005 全定版·下一批附表 13、24）。
   本版之配地 ＝ 階段一之終（調配之前）：未分配之戶之重劃後各欄留空；各宗之 a 之併入（a'）之逐筆來源
   管線未出 ⇒ 附表 24 之重劃前唯列原位次之地號，附表 13 之「取配面積」留空（俟調配之終態）。
+W-P.006_補令一（KL 2026-10-31 08:14·出圖線/KL答覆/2026-10-31_0814.md 之 1〜8）：
+  一 縣有之表依管理機關分表（「縣有（抵費地）」管理人＝花蓮縣政府〔手冊第 4501 列「縣（市）主管機關」·
+     平均地權條例第 3 條〕；「縣有（道路）」等公共設施各一表，管理人〔手冊第 4498 列「各該公共設施主管機關」〕
+     資料所無 ⇒ 留空）；
+  三 取配面積：一戶之分配地之 a 之和 ＝ 該戶重劃前各宗登記面積之和（差 ≤ 0.01×宗數）⇒ 各宗皆整筆參加分配，
+     附表 13 之取配面積 ＝ 登記面積；否則留空。附表 24：其戶唯一筆重劃前土地且如上 ⇒ 分配面積 ＝ Σa ＝ 本宗之 a、
+     Σa' ＝ 0（手冊第 3762 列「Σa：原位次分配土地…逕以重劃前面積加總」）；他者分配面積、Σa、Σa' 留空並加註；
+  四 附表 24 之重劃前單價唯列配地計算所用之值（區段地價·未取整·顯示二位）並加註其義；
+  五 表下加註計算式之取位；七 ③ 之暫值之註；八 欄名依手冊（附表 24 範例·手冊第 3990〜4045 列）。
 缺值一律報錯停止（⛔ 靜默補值）；匯入資料所無之欄留空（⛔ 杜撰）。
 """
 import argparse
@@ -39,14 +48,21 @@ NOTE_PUBLIC = "依平均地權條例第 60 條規定，由土地所有權人共�
 NOTE_OFFSET = "依平均地權條例第 60 條規定，由土地所有權人以未建築土地折價抵付之土地"
 NOTE_CASH = "未達最小分配面積標準二分之一，發給現金補償 {:,} 元"
 NOTE_A13 = "附註：重劃後分配面積與實地指界交接土地面積如有不符，應以地政機關實際登記面積為準。"
-NOTE_A24 = "暫以匯入時之公告現值計，公告期滿後應以當期公告現值更正"
+NOTE_A24 = ("③暫以匯入之地籍資料所載之公告土地現值計（暫值）；依手冊，以重劃土地分配結果公告期滿時之"
+            "當期公告土地現值為準")
+NOTE_ROUND = "計算式各數為取位後之顯示值，與重劃後應分配權利面積之差係取位所致"
+NOTE_PRE = ("評定之重劃前單價、原位置重劃前地價：配地計算所用之重劃前地價區段之區段地價（未取整、顯示至小數二位）；"
+            "附表 18 之評定單價為其取至元之值")
+NOTE_SPLIT = ("本宗之 a 含同戶他筆土地或本筆土地分屬他宗之部分，其逐筆之來源待配地程式提供，"
+              "分配面積、Σa、Σa'暫空")
+MGR_OFFSET = "花蓮縣政府"    # 抵費地之管理機關（手冊第 4501 列「縣（市）主管機關」·平均地權條例第 3 條）
 LEGEND_A24 = "①＝G×C÷(1−C)；②＝(Σa＋Σa')−G−①；③＝平均公告現值"
 SIGN_A13 = ("日期：", "承辦：", "股長：", "科長：", "局(處)長：")
 SIGN_A24 = ("製表日期：", "承辦：", "股長：", "科長：", "局（處）長：")
 TITLE_A13 = "○○縣(市)第○○期○○○○市地重劃區重劃前後土地分配清冊"
 TITLE_A24 = "○○縣（市）第○○期○○○○市地重劃區土地分配計算表"
 BOOK_A13 = "共　　冊　第　　冊　第　　頁"
-SHEET_COUNTY = "縣有"
+SHEET_COUNTY = "縣有（{}）"
 A13_NCOL = 24
 A13_FIRST = 8                       # 資料之首列
 A24_NCOL = 6
@@ -74,14 +90,14 @@ A13_OWNER = (   # 列 3、4：所有權人與管理人（標籤之欄起迄, 值
 )
 A24_PRE = ("段", "小段", "地號", "登記面積(㎡)", "分配面積(㎡)", "共有人申請單獨分配持分比例",
            "持分面積(㎡)", "法定空地面積(㎡)", "當期公告現值(元/㎡)", "評定之重劃前單價(元/㎡)")
-A24_CALC = ("Σa（原位次）(㎡)", "Σa'（併入）(㎡)", "Σ(a＋a')(㎡)", "原位置重劃前地價(元/㎡)",
-            "預配位置重劃前原地平均單價(元/㎡)", "重劃後宗地地價(元/㎡)", "A＝重劃後宗地地價÷重劃前地價",
+A24_CALC = ("Σa(㎡)", "Σa'(㎡)", "Σ(a＋a')(㎡)", "原位置重劃前地價(元/㎡)",
+            "預配位置重劃前原地平均單價(元/㎡)", "重劃後宗地地價(元/㎡)", "A＝重劃後宗地地價／預配位置重劃前地價",
             "B", "C", "1−C", "S(m)", "W(m)", "F(m)", "l1", "l2", "Rw")
-A24_POST = ("評定之重劃後單價(元/㎡)", "重劃後應分配權利面積 G(㎡)", "實配面積(㎡)", "分配率＝G／Σ(a＋a')",
-            "段", "小段", "地號", "面積(㎡)", "土地使用分區", "預計繳納（領取）差額地價總額")
-A24_BURDEN_HEAD = ("重劃費用負擔", "面積(㎡)", "單價(元/㎡)", "負擔額(元)")
-A24_BURDEN = ("抵費地負擔 ①", "公共設施用地共同負擔 ②（單價 ③）", "合計（重劃費用負擔總額）",
-              "預計應繳納差額地價", "預計應領取差額地價")
+A24_POST = ("評定之重劃後單價(元/㎡)", "重劃費用負擔總額(元)", "重劃後應分配權利面積(㎡)", "實配面積(㎡)",
+            "分配率＝G／a", "段", "小段", "地號", "面積(㎡)", "土地使用分區", "預計繳納(領取)差額地價總額")
+A24_BURDEN_HEAD = (("抵費地負擔", "①面積(㎡)", "重劃後單價(元/㎡)", "負擔額(元)"),
+                   ("公共設施用地共同負擔", "②面積(㎡)", "③平均公告現值(元/㎡)", "負擔額(元)"))
+A24_BURDEN = ("合計(元)", "預計應繳納差額地價(元)", "預計應領取差額地價(元)")
 
 
 def D(x):
@@ -205,14 +221,27 @@ def avg_curval(e, owners, hh_lns):
     return q(next(iter(vals)), 0) if len(vals) == 1 else None
 
 
+def full_households(ents, key_of, hh_lots, area):
+    """⇒ {戶鍵}：該戶之分配地之 a 之和 ＝ 該戶重劃前各宗登記面積之和（差 ≤ 0.01×宗數·a 取二位所致）
+    ⇒ 各宗皆整筆參加分配（取配面積 ＝ 登記面積）。"""
+    tot = {}
+    for e in ents:
+        if e["類別"] == KIND_LOT:
+            k = key_of[e["原地號"]]
+            n, s = tot.get(k, (0, Decimal(0)))
+            tot[k] = (n + 1, s + q(D(e["a"]), 2))
+    return {k for k, (n, s) in tot.items()
+            if abs(s - sum(D(area[ln]) for ln in hh_lots[k])) <= Decimal("0.01") * n}
+
+
 # ---------------------------------------------------------------- 計算（附表 24）
-def calc(e, fin, pre_unit_int, owners, hh_lns):
+def calc(e, fin, owners, hh_lns, single):
     post = D(fin["重劃後單價"][e["街廓"]])
     pre = D(fin["重劃前單價"][e["重劃前區段"]])
     B, C = D(fin["B"]), D(fin["C"])
     G, area = q(D(e["G"]), 2), q(D(e["面積"]), 2)
-    a0, a1 = q(D(e["a原位次"]), 2), q(D(e["併入面積"]), 2)
-    tot = a0 + a1
+    tot = q(D(e["a原位次"]), 2) + q(D(e["併入面積"]), 2)
+    a0, a1 = (tot, Decimal("0.00")) if single else (None, None)   # single：其戶唯一筆且整筆參加分配
     A = post / pre
     rw = q(D(e["Rw"]) / 100, 4)
     w = q(D(e["W"]), 2)
@@ -225,7 +254,7 @@ def calc(e, fin, pre_unit_int, owners, hh_lns):
     f8 = lambda x: f"{q(x, 8):.8f}"  # noqa: E731
     formula = (f"{G:.2f}=〔{tot:.2f}×(1−{f8(A)}×{f8(B)})−{q(D(e['F']), 2):.2f}×{q(D(e['l側']), 2):.2f}×{rw:.4f}"
                f"−{q(D(e['S']), 2):.2f}×{q(D(e['l正']), 2):.2f}〕×(1−{f8(C)})")
-    return {"post": post, "pre": pre, "pre_int": pre_unit_int, "B": B, "C": C, "A": A, "G": G, "area": area,
+    return {"post": post, "pre": pre, "B": B, "C": C, "A": A, "G": G, "area": area,
             "a0": a0, "a1": a1, "tot": tot, "rw": rw, "w": w, "b1": b1, "b2": b2, "c3": c3, "y1": y1, "y2": y2,
             "sum": None if y2 is None else y1 + y2, "diff": diff, "formula": formula}
 
@@ -291,7 +320,7 @@ def lot_post_rows(e, no, zoning, own3, fin):
     return rows
 
 
-def write_a13(path, doc, ents, numbers, sch, cash, zoning, pre_price):
+def write_a13(path, doc, ents, numbers, sch, cash, zoning, pre_price, full):
     import openpyxl
     lots, owners, area, key_of, hh_no, hh_lots, code_key = sch
     fin = doc["財務"]
@@ -311,7 +340,8 @@ def write_a13(path, doc, ents, numbers, sch, cash, zoning, pre_price):
         for ln in lns:
             for nm, uid, sh, *_ in shares(owners, ln):
                 pre_rows.append([(loc[ln]["鄉鎮市區"], None), (loc[ln]["段"], None), (loc[ln].get("小段"), None),
-                                 (ln, None), (area[ln], "area"), (None, "area"), (nm, None), (uid, None),
+                                 (ln, None), (area[ln], "area"), (area[ln] if k in full else None, "area"),
+                                 (nm, None), (uid, None),
                                  (sh, None), (pre_price[ln], "yuan")])
         post_rows = []
         es = sorted(by_hh.get(k, []), key=lambda e: PM.landno_key(numbers[e["暫編"]]))
@@ -322,23 +352,27 @@ def write_a13(path, doc, ents, numbers, sch, cash, zoning, pre_price):
         note = NOTE_CASH.format(cash[k]) if k in cash else None
         a13_sheet(wb, f"歸戶號{hh_no[k]}", head, pre_rows, post_rows, note)
         out.append((hh_no[k], lns, [numbers[e["暫編"]] for e in es], note))
-    rows = []
+    groups = {}   # 依管理機關分表：抵費地一表、公共設施依其分類各一表（管理機關資料所無 ⇒ 分類即其別）
     for e in sorted((e for e in ents if e["類別"] != KIND_LOT), key=lambda e: PM.landno_key(numbers[e["暫編"]])):
-        off = e["類別"] == KIND_OFFSET
-        price = (float(D(fin["重劃後單價"][e["街廓"]])), "p2") if off else (None, None)
-        rows.append([(None, "area"), (zoning if off else e["類別"], None), (None, None), (None, None),
-                     (numbers[e["暫編"]], None), (float(q(D(e["面積"]), 2)), "area"), price,
-                     (None, "yuan"), (None, "yuan"), (COUNTY, None), (None, None), ("1/1", None), (None, None)])
-    ws = a13_sheet(wb, SHEET_COUNTY, (COUNTY, None, None, None, None), [], rows, None)
-    for i, e in enumerate(sorted((e for e in ents if e["類別"] != KIND_LOT),
-                                 key=lambda e: PM.landno_key(numbers[e["暫編"]]))):
-        _put(ws, A13_FIRST + i, 24, NOTE_OFFSET if e["類別"] == KIND_OFFSET else NOTE_PUBLIC)
+        groups.setdefault(e["類別"], []).append(e)
+    for cat in sorted(groups, key=lambda c: (c != KIND_OFFSET, PM.landno_key(numbers[groups[c][0]["暫編"]]))):
+        off = cat == KIND_OFFSET
+        rows = []
+        for e in groups[cat]:
+            price = (float(D(fin["重劃後單價"][e["街廓"]])), "p2") if off else (None, None)
+            rows.append([(None, "area"), (zoning if off else e["類別"], None), (None, None), (None, None),
+                         (numbers[e["暫編"]], None), (float(q(D(e["面積"]), 2)), "area"), price,
+                         (None, "yuan"), (None, "yuan"), (COUNTY, None), (None, None), ("1/1", None), (None, None)])
+        ws = a13_sheet(wb, SHEET_COUNTY.format(cat), (COUNTY, None, None, MGR_OFFSET if off else None, None),
+                       [], rows, None)
+        for i in range(len(rows)):
+            _put(ws, A13_FIRST + i, 24, NOTE_OFFSET if off else NOTE_PUBLIC)
     wb.save(path)
     return out
 
 
 # ---------------------------------------------------------------- 附表 24
-def write_a24(path, doc, ents, numbers, sch, zoning, pre_price):
+def write_a24(path, doc, ents, numbers, sch, zoning, full):
     import openpyxl
     lots, owners, area, key_of, hh_no, hh_lots, code_key = sch
     fin = doc["財務"]
@@ -351,7 +385,8 @@ def write_a24(path, doc, ents, numbers, sch, zoning, pre_price):
         no, ln = numbers[e["暫編"]], e["原地號"]
         k = key_of[ln]
         lns = sorted(hh_lots[k], key=PM.landno_key)
-        x = calc(e, fin, pre_price[ln], owners, lns)
+        single = k in full and len(lns) == 1
+        x = calc(e, fin, owners, lns, single)
         own = shares(owners, ln)
         ws = wb.create_sheet(f"地號{no}")
         _put(ws, 1, 1, TITLE_A24, c2=A24_NCOL)
@@ -361,8 +396,8 @@ def write_a24(path, doc, ents, numbers, sch, zoning, pre_price):
         _put(ws, 2, 4, own[0][0] if len(own) == 1 else f"{own[0][0]}等{len(own)}人", c2=A24_NCOL)
         r = 3
         _put(ws, r, 1, "重劃前", c2=A24_NCOL)
-        pre = (loc[ln]["段"], loc[ln].get("小段"), ln, (area[ln], "area"), (float(x["a0"]), "area"), None, None, None,
-               (float(curval(owners, ln)), "yuan"), (pre_price[ln], "yuan"))
+        pre = (loc[ln]["段"], loc[ln].get("小段"), ln, (area[ln], "area"), (_num(x["a0"]), "area"), None, None, None,
+               (float(curval(owners, ln)), "yuan"), (float(x["pre"]), "p2"))
         for lab, v in zip(A24_PRE, pre):
             r += 1
             _put(ws, r, 1, lab)
@@ -385,17 +420,23 @@ def write_a24(path, doc, ents, numbers, sch, zoning, pre_price):
         _put(ws, r, 1, "重劃後", c2=A24_NCOL)
         d = x["diff"]
         box = ("■繳納□領取" if d > 0 else "□繳納■領取" if d < 0 else "□繳納□領取") + f"新臺幣 {abs(d):,} 元"
-        post_v = ((x["post"], "p2"), (x["G"], "area"), (x["area"], "area"), (x["G"] / x["tot"], "pct"),
+        post_v = ((x["post"], "p2"), (x["sum"], "yuan"), (x["G"], "area"), (x["area"], "area"), (x["G"] / x["tot"], "pct"),
                   (None, None), (None, None), (no, None), (x["area"], "area"), (zoning, None), (box, None))
         for lab, (v, nf) in zip(A24_POST, post_v):
             r += 1
             _put(ws, r, 1, lab)
             _put(ws, r, 2, v if isinstance(v, str) or v is None else float(v), nf)
-        r += 1
-        for c, lab in enumerate(A24_BURDEN_HEAD, start=1):
-            _put(ws, r, c, lab)
-        burden = ((x["b1"], x["post"], x["y1"]), (x["b2"], x["c3"], x["y2"]), (None, None, x["sum"]),
-                  (None, None, d if d > 0 else 0), (None, None, -d if d < 0 else 0))
+        for head, mark, (a_, p_, y_, pnf) in zip(A24_BURDEN_HEAD, ("①", "②"),
+                                                 ((x["b1"], x["post"], x["y1"], "p2"), (x["b2"], x["c3"], x["y2"], "yuan"))):
+            r += 1
+            for c, lab in enumerate(head, start=1):
+                _put(ws, r, c, lab)
+            r += 1
+            _put(ws, r, 1, mark)
+            _put(ws, r, 2, _num(a_), "area")
+            _put(ws, r, 3, _num(p_), pnf)
+            _put(ws, r, 4, _num(y_), "yuan")
+        burden = ((None, None, x["sum"]), (None, None, d if d > 0 else 0), (None, None, -d if d < 0 else 0))
         for lab, (a_, p_, y_) in zip(A24_BURDEN, burden):
             r += 1
             _put(ws, r, 1, lab)
@@ -403,10 +444,11 @@ def write_a24(path, doc, ents, numbers, sch, zoning, pre_price):
             _put(ws, r, 3, _num(p_), "p2")
             _put(ws, r, 4, _num(y_), "yuan")
         PM._grid(ws, 2, r, A24_NCOL)
-        ws.cell(r + 1, 1, LEGEND_A24)
-        ws.cell(r + 2, 1, NOTE_A24)
+        notes = [LEGEND_A24, NOTE_A24, NOTE_ROUND, NOTE_PRE] + ([] if single else [NOTE_SPLIT])
+        for i, s in enumerate(notes, start=1):
+            ws.cell(r + i, 1, s)
         for i, lab in enumerate(SIGN_A24):
-            ws.cell(r + 4, 1 + i, lab)
+            ws.cell(r + len(notes) + 2, 1 + i, lab)
         ws.column_dimensions["A"].width = 30
         ws.column_dimensions["B"].width = 16
         PM._page(ws, "1:2", landscape=False)
@@ -440,13 +482,15 @@ def main(argv=None):
         pre_price[ln] = price[zone_of[ln]]
     os.makedirs(a.out, exist_ok=True)
     p = {k: os.path.join(a.out, v.format(tag)) for k, v in OUT_FMT.items()}
-    r13 = write_a13(p["a13"], doc, ents, numbers, sch, cash, zoning, pre_price)
-    r24 = write_a24(p["a24"], doc, ents, numbers, sch, zoning, pre_price)
+    full = full_households(ents, sch[3], sch[5], sch[2])
+    r13 = write_a13(p["a13"], doc, ents, numbers, sch, cash, zoning, pre_price, full)
+    r24 = write_a24(p["a24"], doc, ents, numbers, sch, zoning, full)
     n_lot = sum(1 for e in ents if e["類別"] == KIND_LOT)
-    print(f"退縮 {tag} m：附表 13 戶 {len(r13)}（有分配地 {sum(1 for x in r13 if x[2])}、現金補償 {len(cash)}）＋縣有 "
-          f"{len(ents) - n_lot}；附表 24 張 {len(r24)}")
+    print(f"退縮 {tag} m：附表 13 戶 {len(r13)}（有分配地 {sum(1 for x in r13 if x[2])}、取配面積可填 {len(full)}、"
+          f"現金補償 {len(cash)}）＋縣有 {len(ents) - n_lot}；附表 24 張 {len(r24)}"
+          f"（Σa 可填 {sum(1 for x in r24 if x[2]['a0'] is not None)}）")
     for no, hh, x in r24:
-        print(f"  地號 {no}（歸戶號 {hh}）：G {x['G']}、Σ {x['tot']}（{x['a0']}＋{x['a1']}）、① {x['b1']}、② {x['b2']}、"
+        print(f"  地號 {no}（歸戶號 {hh}）：G {x['G']}、Σ {x['tot']}（Σa {x['a0']}、Σa' {x['a1']}）、① {x['b1']}、② {x['b2']}、"
               f"③ {x['c3']}、負擔額 {x['y1']}＋{x['y2']}＝{x['sum']}、差額 {x['diff']}")
     for k, v in p.items():
         print(f"輸出 {v}")
