@@ -77,6 +77,7 @@ idle ──發單端出單──▶ pending ──執行端接單──▶ runni
 - 欄位：`status`、`status_since`（ISO 8601，含時區）、`order`（`orders/` 下之檔名）、`order_bytes`、`order_sha256`、`order_kind`（`規格單`／`補令`／`短單`）、`expects_allocation_change`（`true`／`false`·發單端出單時填）、`attempt`（同一項目之第幾輪）、`report`（`reports/` 下之檔名）、`result`（`完成`／`停機上呈`）、`kl_question`、`history`（陣列·每次轉移一筆）。
 - **鎖**：每次轉移即一個 `commit` 推至 `ops/queue`（⛔ `--force`）。推送被拒（非快轉）⇒ 他輪已動 ⇒ 重新 `fetch` 後依新態重判，⛔ 硬推。
 - **逾時**：`running`、`verifying` 或 `drafting` 之輪，若 `ops/queue` **與**該單之側支（`verify/W-G.9-NNN-*`）皆逾 **3 小時**無新 `commit`（或自 `status_since` 起逾 8 小時）⇒ 視該輪已中斷（雲端之一輪可能中途結束而未回報·2026-10-17 W-G.9-387 之例）。接手之輪自側支之最後一筆 `commit` 續做（⛔ 重做已推之工項；先核其內容合單）。同一角色之次一輪可接手一次（`history` 記「接手」）；同一單第二次逾時 ⇒ `await_kl`。
+- **逾時後原輪之結果**（2026-10-31 `W-G.9-396` 之例·監看窗 17:12 之提醒）：被接手之原輪若其後仍得結果 ⇒ ⛔ 爭鎖、⛔ 改 `STATE.json`、⛔ 推側支；唯以 `reports/<單名去 .md>_回報_原輪.md` 與 `log.md` 一列告之。發單端復驗時以持鎖之輪之果為準，並併讀原輪之回報——其停機上呈之由與接手之輪對同一事之所歸併判之（`發單端.md` 乙之 4）。為免誤判逾時，執行端於長跑之期間每約 1 小時於 `log.md` 增一進度列並推送 `ops/queue`（⛔ 改 `STATE.json`）。
 
 ## 六、雲端之通則（取代以往單中之 Windows 通則）
 
